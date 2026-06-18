@@ -36,13 +36,21 @@
     coachBaseUrl: active.coachBase,
 
     workerMdptokenzUrl: isGithub
-  ? "https://w-mdptokenz.hugues-pavret.workers.dev"
-  : "https://mdptokenz-api.lacleduparc.fr",
+      ? "https://w-mdptokenz.hugues-pavret.workers.dev"
+      : "https://mdptokenz-api.lacleduparc.fr",
+
+    workerConnexionMembreUrl: "https://connexion-membre-api.lacleduparc.fr",
 
     PUBLIC_BASE: active.publicBase,
     MEMBRE_BASE: active.membreBase,
     PARC_BASE: active.parcBase,
     COACH_BASE: active.coachBase,
+
+    WORKER_MDPTOKENZ_URL: isGithub
+      ? "https://w-mdptokenz.hugues-pavret.workers.dev"
+      : "https://mdptokenz-api.lacleduparc.fr",
+
+    WORKER_CONNEXION_MEMBRE_URL: "https://connexion-membre-api.lacleduparc.fr",
 
     publicUrl(path) {
       return buildUrl(active.publicBase, path);
