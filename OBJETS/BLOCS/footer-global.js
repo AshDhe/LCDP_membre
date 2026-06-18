@@ -99,6 +99,7 @@
     const siteBase = (
       window.SITE_BASE ||
       window.SITE_CONFIG?.publicBaseUrl ||
+      window.SITE_CONFIG?.PUBLIC_BASE ||
       window.SITE_CONFIG?.siteBase ||
       ""
     ).replace(/\/$/, "");
