@@ -1,14 +1,16 @@
 (function () {
   const host = window.location.hostname;
 
-  const isGithub = host === "huguespavret.github.io";
+  const isGithub =
+    host === "ashdhe.github.io" ||
+    host === "huguespavret.github.io";
 
   const CONFIG = {
     github: {
-      publicBase: "https://huguespavret.github.io/LCDP_public",
-      membreBase: "https://huguespavret.github.io/LCDP_membre",
-      parcBase: "https://huguespavret.github.io/LCDP_parc",
-      coachBase: "https://huguespavret.github.io/LCDP_coach"
+      publicBase: "https://ashdhe.github.io/LCDP_public",
+      membreBase: "https://ashdhe.github.io/LCDP_membre",
+      parcBase: "https://ashdhe.github.io/LCDP_parc",
+      coachBase: "https://ashdhe.github.io/LCDP_coach"
     },
 
     production: {
@@ -26,6 +28,17 @@
   }
 
   window.SITE_CONFIG = {
+    publicBaseUrl: active.publicBase,
+    siteBase: active.publicBase,
+
+    membreBaseUrl: active.membreBase,
+    parcBaseUrl: active.parcBase,
+    coachBaseUrl: active.coachBase,
+
+    workerMdptokenzUrl: isGithub
+  ? "https://w-mdptokenz.hugues-pavret.workers.dev"
+  : "https://mdptokenz-api.lacleduparc.fr",
+
     PUBLIC_BASE: active.publicBase,
     MEMBRE_BASE: active.membreBase,
     PARC_BASE: active.parcBase,
