@@ -31,8 +31,8 @@ function initialiserPageMdpMembre() {
   if (texteModeMdp) {
     texteModeMdp.textContent =
       mode === "change"
-        ? "Saisissez le nouveau mot de passe de votre compte membre."
-        : "Choisissez le mot de passe qui vous permettra d’accéder à votre compte membre.";
+        ? "Choisissez votre nouveau mot de passe de compte membre."
+        : "Choisissez le mot de passe de votre compte membre.";
   }
 
   if (!formulaire || !champMotDePasse || !boutonValider) {
