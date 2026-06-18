@@ -1,1 +1,136 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
 
+  <title>Mot de passe membre - La Clé du Parc</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Créer ou modifier le mot de passe de votre compte membre La Clé du Parc.">
+
+  <!-- SITEBASE : config.js est chargé avant les scripts métier -->
+  <script src="../../../config.js"></script>
+
+  <script>
+    (() => {
+      const siteRootRelative = "../../../";
+      const baseDepuisChemin = new URL(siteRootRelative, window.location.href);
+
+      let siteBaseFallback = baseDepuisChemin.pathname.replace(/\/$/, "");
+
+      if (siteBaseFallback === "/") {
+        siteBaseFallback = "";
+      }
+
+      window.SITE_ROOT_RELATIVE = siteRootRelative;
+
+      window.SITE_BASE = (
+        window.SITE_CONFIG?.membreBaseUrl ||
+        window.SITE_CONFIG?.MEMBRE_BASE ||
+        window.SITE_CONFIG?.siteBase ||
+        siteBaseFallback ||
+        ""
+      ).replace(/\/$/, "");
+    })();
+  </script>
+
+  <!-- CSS communs -->
+  <link rel="stylesheet" href="../../../OBJETS/CSS/base.css">
+
+  <!-- CSS formulaire -->
+  <link rel="stylesheet" href="../../../OBJETS/CSS/formulaire.css">
+
+  <!-- CSS lightbox information -->
+  <link rel="stylesheet" href="../../../OBJETS/CSS/lightbox-information.css">
+</head>
+
+<body>
+  <div class="site-page">
+
+    <div id="lightbox-information-container"></div>
+
+    <main class="site-main">
+
+      <section class="page-section page-section-large" aria-label="Mot de passe du compte membre">
+        <div class="page-container">
+          <div class="page-content page-content-spaced">
+
+            <h1 class="titre-formulaire">
+              Mot de passe membre
+            </h1>
+
+            <p class="page-lead" id="texte-mode-mdp">
+              Créez ou modifiez le mot de passe de votre compte membre.
+            </p>
+
+            <div class="formulaire-page">
+
+              <form
+                id="formulaire-mdp-membre"
+                class="formulaire-inscription"
+                novalidate
+              >
+
+                <div class="formulaire-champ">
+                  <label for="passwordmembre">
+                    Mot de passe
+                  </label>
+
+                  <p class="formulaire-note">
+                    Votre mot de passe doit contenir au moins 10 caractères.
+                  </p>
+
+                  <input
+                    type="password"
+                    id="passwordmembre"
+                    name="passwordmembre"
+                    placeholder="Mot de passe"
+                    autocomplete="new-password"
+                    required
+                  >
+
+                  <label class="checkbox-ligne" for="afficher-mdp-membre">
+                    <input
+                      type="checkbox"
+                      id="afficher-mdp-membre"
+                    >
+                    <span>Afficher le mot de passe</span>
+                  </label>
+                </div>
+
+                <div class="formulaire-actions">
+                  <button
+                    type="submit"
+                    id="bouton-valider-formulaire"
+                    class="button"
+                  >
+                    Valider
+                  </button>
+                </div>
+
+              </form>
+
+            </div>
+
+            <p class="formulaire-note">
+              Vous pourrez ensuite vous connecter depuis la
+              <a
+                id="lien-connexion-membre"
+                href="#"
+              >
+                page de connexion membre
+              </a>.
+            </p>
+
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <script src="../../../OBJETS/BLOCS/lightbox-information.js"></script>
+  <script src="./mdp-membre.js"></script>
+</body>
+</html>
