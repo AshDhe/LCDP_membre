@@ -29,7 +29,7 @@
 
   window.SITE_CONFIG = {
     publicBaseUrl: active.publicBase,
-    siteBase: active.publicBase,
+    siteBase: active.membreBase,
 
     membreBaseUrl: active.membreBase,
     parcBaseUrl: active.parcBase,
