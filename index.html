@@ -63,8 +63,8 @@
               Espace membre
             </h1>
 
-            <p class="page-lead">
-              Choisissez l’action que vous souhaitez effectuer.
+            <p class="page-lead" id="message-accueil-membre">
+              Bonjour, que voulez-vous faire ?
             </p>
 
             <div class="page-actions page-actions-grid page-actions-column" aria-label="Actions membre">
@@ -156,6 +156,33 @@
         element.setAttribute("href", construireUrlMembre(element.dataset.siteHref));
       });
     })();
+  </script>
+
+  <script>
+    (() => {
+      const messageAccueil = document.getElementById("message-accueil-membre");
+
+      if (!messageAccueil) return;
+
+      const prenom = nettoyerPrenom(
+        sessionStorage.getItem("prenommembre") ||
+        sessionStorage.getItem("prenom_membre") ||
+        localStorage.getItem("prenommembre") ||
+        localStorage.getItem("prenom_membre") ||
+        ""
+      );
+
+      messageAccueil.textContent = prenom
+        ? `Bonjour ${prenom}, que voulez-vous faire ?`
+        : "Bonjour, que voulez-vous faire ?";
+    })();
+
+    function nettoyerPrenom(value) {
+      return String(value || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .slice(0, 60);
+    }
   </script>
 
   <script>
