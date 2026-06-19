@@ -23,6 +23,13 @@
 
   const active = isGithub ? CONFIG.github : CONFIG.production;
 
+  const WORKERS = {
+    mdptokenz: "https://mdptokenz-api.lacleduparc.fr",
+    connexionMembre: "https://connexion-membre-api.lacleduparc.fr",
+    formInscriptionMembre: "https://form-inscription-membre-api.lacleduparc.fr",
+    indexMembre: "https://index-membre-api.lacleduparc.fr"
+  };
+
   function buildUrl(base, path) {
     return base.replace(/\/$/, "") + "/" + String(path || "").replace(/^\/+/, "");
   }
@@ -35,30 +42,20 @@
     parcBaseUrl: active.parcBase,
     coachBaseUrl: active.coachBase,
 
-    workerMdptokenzUrl: isGithub
-      ? "https://w-mdptokenz.hugues-pavret.workers.dev"
-      : "https://mdptokenz-api.lacleduparc.fr",
-
-    workerConnexionMembreUrl: "https://connexion-membre-api.lacleduparc.fr",
-
-    workerFormInscriptionMembreUrl: "https://form-inscription-membre-api.lacleduparc.fr",
-
-    workerIndexMembreUrl: "https://index-membre-api.lacleduparc.fr",
+    workerMdptokenzUrl: WORKERS.mdptokenz,
+    workerConnexionMembreUrl: WORKERS.connexionMembre,
+    workerFormInscriptionMembreUrl: WORKERS.formInscriptionMembre,
+    workerIndexMembreUrl: WORKERS.indexMembre,
 
     PUBLIC_BASE: active.publicBase,
     MEMBRE_BASE: active.membreBase,
     PARC_BASE: active.parcBase,
     COACH_BASE: active.coachBase,
 
-    WORKER_MDPTOKENZ_URL: isGithub
-      ? "https://w-mdptokenz.hugues-pavret.workers.dev"
-      : "https://mdptokenz-api.lacleduparc.fr",
-
-    WORKER_CONNEXION_MEMBRE_URL: "https://connexion-membre-api.lacleduparc.fr",
-
-    WORKER_FORM_INSCRIPTION_MEMBRE_URL: "https://form-inscription-membre-api.lacleduparc.fr",
-
-    WORKER_INDEX_MEMBRE_URL: "https://index-membre-api.lacleduparc.fr",
+    WORKER_MDPTOKENZ_URL: WORKERS.mdptokenz,
+    WORKER_CONNEXION_MEMBRE_URL: WORKERS.connexionMembre,
+    WORKER_FORM_INSCRIPTION_MEMBRE_URL: WORKERS.formInscriptionMembre,
+    WORKER_INDEX_MEMBRE_URL: WORKERS.indexMembre,
 
     publicUrl(path) {
       return buildUrl(active.publicBase, path);
