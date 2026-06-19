@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+
+  <title>Espace membre - La Clé du Parc</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Choisir une action dans votre espace membre La Clé du Parc.">
+
+  <script src="../../../config.js"></script>
+
+  <script>
+    (() => {
+      const siteRootRelative = "../../../";
+      const baseDepuisChemin = new URL(siteRootRelative, window.location.href);
+
+      let siteBaseFallback = baseDepuisChemin.pathname.replace(/\/$/, "");
+
+      if (siteBaseFallback === "/") {
+        siteBaseFallback = "";
+      }
+
+      window.SITE_ROOT_RELATIVE = siteRootRelative;
+
+      window.SITE_BASE = (
+        window.SITE_CONFIG?.membreBaseUrl ||
+        window.SITE_CONFIG?.MEMBRE_BASE ||
+        siteBaseFallback ||
+        ""
+      ).replace(/\/$/, "");
+
+      window.ASSETS_BASE = (
+        window.SITE_CONFIG?.publicBaseUrl ||
+        window.SITE_CONFIG?.PUBLIC_BASE ||
+        window.SITE_CONFIG?.siteBase ||
+        ""
+      ).replace(/\/$/, "");
+
+      function chargerCss(chemin) {
+        const base = window.ASSETS_BASE || window.SITE_BASE || "";
+        document.write('<link rel="stylesheet" href="' + base + chemin + '">');
+      }
+
+      chargerCss("/OBJETS/CSS/base.css");
+      chargerCss("/OBJETS/CSS/bandeau-et-burger.css");
+      chargerCss("/OBJETS/CSS/footer.css");
+    })();
+  </script>
+</head>
+
+<body>
+  <div class="site-page">
+
+    <div id="bandeau-nav-container"></div>
+
+    <main class="site-main">
+
+      <section class="page-section page-section-large" aria-label="Choix espace membre">
+        <div class="page-container">
+          <div class="page-content page-content-spaced">
+
+            <h1 class="site-title">
+              Espace membre
+            </h1>
+
+            <p class="page-lead">
+              Choisissez l’action que vous souhaitez effectuer.
+            </p>
+
+            <div class="page-actions page-actions-grid page-actions-column" aria-label="Actions membre">
+
+              <a
+                class="button"
+                href="../../../PAGES/PRIVEES/MON-PLANNING-MEMBRE/mon-planning-membre.html"
+                data-site-href="/PAGES/PRIVEES/MON-PLANNING-MEMBRE/mon-planning-membre.html"
+              >
+                Mon planning
+              </a>
+
+              <a
+                class="button"
+                href="../../../PAGES/PRIVEES/NOUVELLE-DATE-MEMBRE/nouvelle-date-membre.html"
+                data-site-href="/PAGES/PRIVEES/NOUVELLE-DATE-MEMBRE/nouvelle-date-membre.html"
+              >
+                Nouvelle demande
+              </a>
+
+              <a
+                class="button button-orange"
+                href="../../../PAGES/PRIVEES/IA-MEMBRE/ia-membre.html"
+                data-site-href="/PAGES/PRIVEES/IA-MEMBRE/ia-membre.html"
+              >
+                Demander à l’IA
+              </a>
+
+              <a
+                class="button"
+                href="../../../PAGES/PRIVEES/INVITER-MEMBRE/inviter-membre.html"
+                data-site-href="/PAGES/PRIVEES/INVITER-MEMBRE/inviter-membre.html"
+              >
+                Inviter
+              </a>
+
+              <a
+                class="button"
+                href="../../../PAGES/PRIVEES/MON-COMPTE-MEMBRE/mon-compte-membre.html"
+                data-site-href="/PAGES/PRIVEES/MON-COMPTE-MEMBRE/mon-compte-membre.html"
+              >
+                Mon compte
+              </a>
+
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <div id="footer-container"></div>
+
+  </div>
+
+  <script>
+    (() => {
+      const siteBase = (
+        window.SITE_BASE ||
+        window.SITE_CONFIG?.membreBaseUrl ||
+        window.SITE_CONFIG?.MEMBRE_BASE ||
+        ""
+      ).replace(/\/$/, "");
+
+      const siteRootRelative = window.SITE_ROOT_RELATIVE || "../../../";
+
+      function construireUrlMembre(chemin) {
+        if (!chemin) return chemin;
+
+        if (
+          chemin.startsWith("#") ||
+          chemin.startsWith("mailto:") ||
+          chemin.startsWith("tel:") ||
+          chemin.startsWith("http://") ||
+          chemin.startsWith("https://")
+        ) {
+          return chemin;
+        }
+
+        if (siteBase) {
+          return chemin.startsWith("/")
+            ? siteBase + chemin
+            : siteBase + "/" + chemin.replace(/^\.\//, "");
+        }
+
+        return chemin.startsWith("/")
+          ? siteRootRelative.replace(/\/?$/, "/") + chemin.replace(/^\//, "")
+          : chemin;
+      }
+
+      document.querySelectorAll("[data-site-href]").forEach((element) => {
+        element.setAttribute("href", construireUrlMembre(element.dataset.siteHref));
+      });
+    })();
+  </script>
+
+  <script src="../../../OBJETS/BLOCS/burger-membre.js"></script>
+
+  <script>
+    (() => {
+      const base = window.ASSETS_BASE || window.SITE_CONFIG?.publicBaseUrl || "";
+
+      if (!base) return;
+
+      const script = document.createElement("script");
+      script.src = base.replace(/\/$/, "") + "/OBJETS/BLOCS/footer-global.js";
+      document.body.appendChild(script);
+    })();
+  </script>
+</body>
+</html>
