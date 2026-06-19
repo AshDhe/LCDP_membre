@@ -37,8 +37,14 @@
       ).replace(/\/$/, "");
 
       function chargerCss(chemin) {
-        const base = window.ASSETS_BASE || "";
-        document.write('<link rel="stylesheet" href="' + base + chemin + '">');
+        const base = window.ASSETS_BASE;
+
+        if (!base || !chemin) return;
+
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = base + chemin;
+        document.head.appendChild(link);
       }
 
       chargerCss("/OBJETS/CSS/base.css");
@@ -131,25 +137,26 @@
       ).replace(/\/$/, "");
 
       function construireUrlMembre(chemin) {
-        if (!chemin) return chemin;
+        const valeur = String(chemin || "");
 
         if (
-          chemin.startsWith("#") ||
-          chemin.startsWith("mailto:") ||
-          chemin.startsWith("tel:") ||
-          chemin.startsWith("http://") ||
-          chemin.startsWith("https://")
+          !valeur ||
+          valeur.startsWith("#") ||
+          valeur.startsWith("mailto:") ||
+          valeur.startsWith("tel:") ||
+          valeur.startsWith("http://") ||
+          valeur.startsWith("https://")
         ) {
-          return chemin;
+          return valeur;
         }
 
         if (siteBase) {
-          return chemin.startsWith("/")
-            ? siteBase + chemin
-            : siteBase + "/" + chemin.replace(/^\.\//, "");
+          return valeur.startsWith("/")
+            ? siteBase + valeur
+            : siteBase + "/" + valeur.replace(/^\.\//, "");
         }
 
-        return chemin.startsWith("/") ? chemin : "/" + chemin;
+        return valeur.startsWith("/") ? valeur : "/" + valeur;
       }
 
       document.querySelectorAll("[data-site-href]").forEach((element) => {
@@ -164,17 +171,42 @@
 
       if (!messageAccueil) return;
 
-      const prenom = nettoyerPrenom(
-        sessionStorage.getItem("prenommembre") ||
-        sessionStorage.getItem("prenom_membre") ||
-        localStorage.getItem("prenommembre") ||
-        localStorage.getItem("prenom_membre") ||
+      const workerIndexMembreUrl = (
+        window.SITE_CONFIG?.workerIndexMembreUrl ||
+        window.SITE_CONFIG?.WORKER_INDEX_MEMBRE_URL ||
         ""
-      );
+      ).replace(/\/$/, "");
 
-      messageAccueil.textContent = prenom
-        ? `Bonjour ${prenom}, que voulez-vous faire ?`
-        : "Bonjour, que voulez-vous faire ?";
+      if (!workerIndexMembreUrl) {
+        messageAccueil.textContent = "Bonjour, que voulez-vous faire ?";
+        return;
+      }
+
+      fetch(workerIndexMembreUrl, {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      })
+        .then(async (response) => {
+          const data = await response.json().catch(() => null);
+
+          if (!response.ok || !data || data.success !== true || data.connected !== true) {
+            messageAccueil.textContent = "Bonjour, que voulez-vous faire ?";
+            return;
+          }
+
+          const prenom = nettoyerPrenom(data.prenommembre);
+
+          messageAccueil.textContent = prenom
+            ? `Bonjour ${prenom}, que voulez-vous faire ?`
+            : "Bonjour, que voulez-vous faire ?";
+        })
+        .catch(() => {
+          messageAccueil.textContent = "Bonjour, que voulez-vous faire ?";
+        });
     })();
 
     function nettoyerPrenom(value) {

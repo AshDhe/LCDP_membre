@@ -43,6 +43,8 @@
 
     workerFormInscriptionMembreUrl: "https://form-inscription-membre-api.lacleduparc.fr",
 
+    workerIndexMembreUrl: "https://index-membre-api.lacleduparc.fr",
+
     PUBLIC_BASE: active.publicBase,
     MEMBRE_BASE: active.membreBase,
     PARC_BASE: active.parcBase,
@@ -55,6 +57,8 @@
     WORKER_CONNEXION_MEMBRE_URL: "https://connexion-membre-api.lacleduparc.fr",
 
     WORKER_FORM_INSCRIPTION_MEMBRE_URL: "https://form-inscription-membre-api.lacleduparc.fr",
+
+    WORKER_INDEX_MEMBRE_URL: "https://index-membre-api.lacleduparc.fr",
 
     publicUrl(path) {
       return buildUrl(active.publicBase, path);
