@@ -112,7 +112,7 @@ function initialiserPageMdpMembre() {
         headers: {
           "Content-Type": "application/json"
         },
-        credentials: "omit",
+        credentials: "include",
         body: JSON.stringify({
           action: "write-mdp",
           token,
