@@ -8,11 +8,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Choisir une action dans votre espace membre La Clé du Parc.">
 
-  <script src="../../../config.js"></script>
+  <script src="./config.js"></script>
 
   <script>
     (() => {
-      const siteRootRelative = "../../../";
+      const siteRootRelative = "./";
       const baseDepuisChemin = new URL(siteRootRelative, window.location.href);
 
       let siteBaseFallback = baseDepuisChemin.pathname.replace(/\/$/, "");
@@ -33,12 +33,11 @@
       window.ASSETS_BASE = (
         window.SITE_CONFIG?.publicBaseUrl ||
         window.SITE_CONFIG?.PUBLIC_BASE ||
-        window.SITE_CONFIG?.siteBase ||
         ""
       ).replace(/\/$/, "");
 
       function chargerCss(chemin) {
-        const base = window.ASSETS_BASE || window.SITE_BASE || "";
+        const base = window.ASSETS_BASE || "";
         document.write('<link rel="stylesheet" href="' + base + chemin + '">');
       }
 
@@ -72,7 +71,7 @@
 
               <a
                 class="button"
-                href="../../../PAGES/PRIVEES/MON-PLANNING-MEMBRE/mon-planning-membre.html"
+                href="/PAGES/PRIVEES/MON-PLANNING-MEMBRE/mon-planning-membre.html"
                 data-site-href="/PAGES/PRIVEES/MON-PLANNING-MEMBRE/mon-planning-membre.html"
               >
                 Mon planning
@@ -80,7 +79,7 @@
 
               <a
                 class="button"
-                href="../../../PAGES/PRIVEES/NOUVELLE-DATE-MEMBRE/nouvelle-date-membre.html"
+                href="/PAGES/PRIVEES/NOUVELLE-DATE-MEMBRE/nouvelle-date-membre.html"
                 data-site-href="/PAGES/PRIVEES/NOUVELLE-DATE-MEMBRE/nouvelle-date-membre.html"
               >
                 Nouvelle demande
@@ -88,7 +87,7 @@
 
               <a
                 class="button button-orange"
-                href="../../../PAGES/PRIVEES/IA-MEMBRE/ia-membre.html"
+                href="/PAGES/PRIVEES/IA-MEMBRE/ia-membre.html"
                 data-site-href="/PAGES/PRIVEES/IA-MEMBRE/ia-membre.html"
               >
                 Demander à l’IA
@@ -96,7 +95,7 @@
 
               <a
                 class="button"
-                href="../../../PAGES/PRIVEES/INVITER-MEMBRE/inviter-membre.html"
+                href="/PAGES/PRIVEES/INVITER-MEMBRE/inviter-membre.html"
                 data-site-href="/PAGES/PRIVEES/INVITER-MEMBRE/inviter-membre.html"
               >
                 Inviter
@@ -104,7 +103,7 @@
 
               <a
                 class="button"
-                href="../../../PAGES/PRIVEES/MON-COMPTE-MEMBRE/mon-compte-membre.html"
+                href="/PAGES/PRIVEES/MON-COMPTE-MEMBRE/mon-compte-membre.html"
                 data-site-href="/PAGES/PRIVEES/MON-COMPTE-MEMBRE/mon-compte-membre.html"
               >
                 Mon compte
@@ -131,8 +130,6 @@
         ""
       ).replace(/\/$/, "");
 
-      const siteRootRelative = window.SITE_ROOT_RELATIVE || "../../../";
-
       function construireUrlMembre(chemin) {
         if (!chemin) return chemin;
 
@@ -152,9 +149,7 @@
             : siteBase + "/" + chemin.replace(/^\.\//, "");
         }
 
-        return chemin.startsWith("/")
-          ? siteRootRelative.replace(/\/?$/, "/") + chemin.replace(/^\//, "")
-          : chemin;
+        return chemin.startsWith("/") ? chemin : "/" + chemin;
       }
 
       document.querySelectorAll("[data-site-href]").forEach((element) => {
@@ -163,16 +158,36 @@
     })();
   </script>
 
-  <script src="../../../OBJETS/BLOCS/burger-membre.js"></script>
-
   <script>
     (() => {
-      const base = window.ASSETS_BASE || window.SITE_CONFIG?.publicBaseUrl || "";
+      const base = (
+        window.ASSETS_BASE ||
+        window.SITE_CONFIG?.publicBaseUrl ||
+        window.SITE_CONFIG?.PUBLIC_BASE ||
+        ""
+      ).replace(/\/$/, "");
 
       if (!base) return;
 
       const script = document.createElement("script");
-      script.src = base.replace(/\/$/, "") + "/OBJETS/BLOCS/footer-global.js";
+      script.src = base + "/OBJETS/BLOCS/burger-membre.js";
+      document.body.appendChild(script);
+    })();
+  </script>
+
+  <script>
+    (() => {
+      const base = (
+        window.ASSETS_BASE ||
+        window.SITE_CONFIG?.publicBaseUrl ||
+        window.SITE_CONFIG?.PUBLIC_BASE ||
+        ""
+      ).replace(/\/$/, "");
+
+      if (!base) return;
+
+      const script = document.createElement("script");
+      script.src = base + "/OBJETS/BLOCS/footer-global.js";
       document.body.appendChild(script);
     })();
   </script>
