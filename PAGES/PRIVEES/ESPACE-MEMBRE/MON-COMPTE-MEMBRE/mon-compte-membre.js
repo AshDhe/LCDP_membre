@@ -1,7 +1,7 @@
 const CONFIG_MON_COMPTE_MEMBRE = window.SITE_CONFIG || {};
 
-const ENDPOINT_INFORMATIONS_MEMBRE =
-  construireEndpointApi("workerInformationsMembreUrl", "WORKER_INFORMATIONS_MEMBRE_URL", "informations-membre-api");
+const ENDPOINT_MON_COMPTE_MEMBRE =
+  construireEndpointApi("workerMonCompteMembreUrl", "WORKER_MON_COMPTE_MEMBRE_URL", "mon-compte-membre-api");
 
 const ENDPOINT_MAJ_EMAIL_MEMBRE =
   construireEndpointApi("workerMajEmailMembreUrl", "WORKER_MAJ_EMAIL_MEMBRE_URL", "maj-email-membre-api");
@@ -29,13 +29,13 @@ async function initialiserMonCompteMembre() {
   initialiserModificationParrainMembre();
   initialiserModificationDepartementMembre();
 
-  if (!ENDPOINT_INFORMATIONS_MEMBRE) {
+  if (!ENDPOINT_MON_COMPTE_MEMBRE) {
     afficherMessageErreur("Le service du compte membre n’est pas configuré.");
     return;
   }
 
   try {
-    const reponse = await fetch(ENDPOINT_INFORMATIONS_MEMBRE, {
+    const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE, {
       method: "GET",
       credentials: "include",
       cache: "no-store",
@@ -46,20 +46,20 @@ async function initialiserMonCompteMembre() {
 
     const resultat = await reponse.json().catch(() => null);
 
-    if (!reponse.ok || !resultat || resultat.ok !== true || !resultat.informations) {
+    if (!reponse.ok || !resultat || resultat.ok !== true || !resultat.compte) {
       redirigerConnexionMembre("inactive");
       return;
     }
 
-    afficherInformationsMembre(resultat.informations);
+    afficherCompteMembre(resultat.compte);
 
   } catch (erreur) {
-    console.error("Erreur chargement compte membre :", erreur);
+    console.error("Erreur chargement mon compte membre :", erreur);
     redirigerConnexionMembre("erreur");
   }
 }
 
-function afficherInformationsMembre(infos) {
+function afficherCompteMembre(infos) {
   emailMembreActuel = nettoyerEmail(infos.email);
 
   remplirChamp("champ-nom-membre", infos.nom);
