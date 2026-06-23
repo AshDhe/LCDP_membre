@@ -149,20 +149,25 @@ async function envoyerDemandeModificationEmail(nouveauMail) {
     }
 
     if (!reponse.ok || !resultat || resultat.ok !== true) {
-      afficherMessageErreur(messageErreurApi(resultat, "Impossible d’enregistrer le changement d’e-mail."));
+      afficherMessageErreur(
+        messageErreurApi(
+          resultat,
+          "Impossible d’envoyer l’e-mail de validation."
+        )
+      );
       return;
     }
 
-    emailMembreActuel = nouveauMail;
-    remplirChamp("champ-email-membre", nouveauMail);
-
     afficherMessageValidation(
-      "Changement enregistré",
-      "Votre e-mail a été modifié."
+      "Email de validation envoyé",
+      messageErreurApi(
+        resultat,
+        "Un email de validation a été envoyé. Votre e-mail actuel reste inchangé tant que le nouveau mail n'est pas validé."
+      )
     );
 
   } catch (erreur) {
-    console.error("Erreur modification email membre :", erreur);
+    console.error("Erreur demande modification email membre :", erreur);
     afficherMessageErreur("Erreur technique. Merci de réessayer.");
   }
 }
