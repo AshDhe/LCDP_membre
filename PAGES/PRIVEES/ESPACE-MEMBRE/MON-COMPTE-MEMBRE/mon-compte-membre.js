@@ -18,9 +18,11 @@ const PAGE_CONNEXION_MEMBRE = construireUrlPublic(
 
 let emailMembreActuel = "";
 
-document.addEventListener("DOMContentLoaded", () => {
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initialiserMonCompteMembre);
+} else {
   initialiserMonCompteMembre();
-});
+}
 
 async function initialiserMonCompteMembre() {
   initialiserModificationEmailMembre();
