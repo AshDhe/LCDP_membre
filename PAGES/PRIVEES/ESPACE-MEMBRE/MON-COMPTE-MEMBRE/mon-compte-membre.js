@@ -1,365 +1,481 @@
-const DEFAULT_ALLOWED_ORIGINS = [
-  "https://ashdhe.github.io",
-  "https://huguespavret.github.io",
-  "https://membre.lacleduparc.fr",
-  "https://lacleduparc.fr",
-  "https://www.lacleduparc.fr",
-  "http://localhost:5500",
-  "http://127.0.0.1:5500"
-];
+const CONFIG_MON_COMPTE_MEMBRE = window.SITE_CONFIG || {};
 
-export default {
-  async fetch(request, env) {
-    const corsHeaders = construireCorsHeaders(request, env);
+const ENDPOINT_MON_COMPTE_MEMBRE =
+  construireEndpointApi("workerMonCompteMembreUrl", "WORKER_MON_COMPTE_MEMBRE_URL", "mon-compte-membre-api");
 
-    if (!origineAutorisee(request, env)) {
-      return jsonResponse(
-        { ok: false, error: "ORIGINE_NON_AUTORISEE" },
-        403,
-        corsHeaders
-      );
-    }
+const ENDPOINT_MAJ_EMAIL_MEMBRE =
+  construireEndpointApi("workerMajEmailMembreUrl", "WORKER_MAJ_EMAIL_MEMBRE_URL", "maj-email-membre-api");
 
-    if (request.method === "OPTIONS") {
-      return new Response(null, {
-        status: 204,
-        headers: corsHeaders
-      });
-    }
+const ENDPOINT_MAJ_PARRAIN_MEMBRE =
+  construireEndpointApi("workerMajParrainMembreUrl", "WORKER_MAJ_PARRAIN_MEMBRE_URL", "maj-parrain-membre-api");
 
-    const url = new URL(request.url);
+const ENDPOINT_MAJ_DEPARTEMENT_MEMBRE =
+  construireEndpointApi("workerMajDepartementMembreUrl", "WORKER_MAJ_DEPARTEMENT_MEMBRE_URL", "maj-dptmt-membre-api");
 
-    if (
-      request.method === "GET" &&
-      (url.pathname === "/" || url.pathname === "/compte")
-    ) {
-      return afficherCompteMembre(request, env, corsHeaders);
-    }
+const PAGE_CONNEXION_MEMBRE = construireUrlPublic(
+  "/PAGES/PUBLIQUES/CONNEXION-MEMBRE/connexion-membre.html"
+);
 
-    return jsonResponse(
-      { ok: false, error: "ROUTE_INCONNUE" },
-      404,
-      corsHeaders
-    );
-  }
-};
+let emailMembreActuel = "";
 
-async function afficherCompteMembre(request, env, corsHeaders) {
-  const sessionCookie = await lireSessionMembreDepuisCookie(request, env);
-
-  if (!sessionCookie || !sessionCookie.idsession) {
-    return jsonResponse(
-      { ok: false, error: "SESSION_ABSENTE" },
-      401,
-      corsHeaders
-    );
-  }
-
-  const session = await chercherSessionActive(env, sessionCookie.idsession);
-
-  if (!session || !session.idmembre) {
-    return jsonResponse(
-      { ok: false, error: "SESSION_MEMBRE_INACTIVE" },
-      401,
-      corsHeaders
-    );
-  }
-
-  const idmembre = session.idmembre;
-
-  const membre = await chercherMembre(env, idmembre);
-
-  if (!membre) {
-    return jsonResponse(
-      { ok: false, error: "MEMBRE_INTROUVABLE" },
-      404,
-      corsHeaders
-    );
-  }
-
-  const parrain = await chercherParrain(env, idmembre);
-  const reglementApplication = await chercherReglement(env, "regleapp", idmembre);
-  const reglementClub = await chercherReglement(env, "regleclub", idmembre);
-  const abonnement = await chercherAbonnementActif(env, idmembre);
-
-  const statut =
-    abonnement && valeurBooleenneVraie(abonnement.aboactif)
-      ? "Abonné"
-      : "Invité";
-
-  return jsonResponse(
-    {
-      ok: true,
-      compte: {
-        idmembre: membre.idmembre,
-        nom: membre.nommembre,
-        prenom: membre.prenommembre,
-        email: membre.emailmembre,
-        departement: membre.dptmtmembre,
-        membreDepuis: membre.dateemailvalid || null,
-        statut,
-        parrain: parrain ? parrain.emailparrain : null,
-        reglementApplication,
-        reglementClub
-      }
-    },
-    200,
-    corsHeaders
-  );
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initialiserMonCompteMembre);
+} else {
+  initialiserMonCompteMembre();
 }
 
-async function chercherSessionActive(env, idsession) {
-  const url =
-    env.SUPABASE_URL +
-    "/rest/v1/sessactive" +
-    "?idsession=eq." + encodeURIComponent(idsession) +
-    "&select=idsession,idmembre" +
-    "&limit=1";
+async function initialiserMonCompteMembre() {
+  initialiserModificationEmailMembre();
+  initialiserModificationParrainMembre();
+  initialiserModificationDepartementMembre();
 
-  return premierResultat(env, url);
-}
-
-async function chercherMembre(env, idmembre) {
-  const url =
-    env.SUPABASE_URL +
-    "/rest/v1/membres" +
-    "?idmembre=eq." + encodeURIComponent(idmembre) +
-    "&select=idmembre,nommembre,prenommembre,dptmtmembre,emailmembre,dateemailvalid" +
-    "&limit=1";
-
-  return premierResultat(env, url);
-}
-
-async function chercherParrain(env, idmembre) {
-  const url =
-    env.SUPABASE_URL +
-    "/rest/v1/parrain" +
-    "?idmembre=eq." + encodeURIComponent(idmembre) +
-    "&select=emailparrain,datemaj" +
-    "&limit=1";
-
-  return premierResultat(env, url);
-}
-
-async function chercherAbonnementActif(env, idmembre) {
-  const url =
-    env.SUPABASE_URL +
-    "/rest/v1/aboactif" +
-    "?idmembre=eq." + encodeURIComponent(idmembre) +
-    "&select=idmembre,aboactif" +
-    "&limit=1";
-
-  return premierResultat(env, url);
-}
-
-async function chercherReglement(env, table, idmembre) {
-  const url =
-    env.SUPABASE_URL +
-    "/rest/v1/" + table +
-    "?idmembre=eq." + encodeURIComponent(idmembre) +
-    "&select=v1,datevalidv1,v2,datevalidv2" +
-    "&limit=1";
-
-  const reglement = await premierResultat(env, url);
-
-  if (!reglement) return null;
-
-  if (valeurBooleenneVraie(reglement.v2)) {
-    return reglement.datevalidv2 || null;
+  if (!ENDPOINT_MON_COMPTE_MEMBRE) {
+    afficherMessageErreur("Le service du compte membre n’est pas configuré.");
+    return;
   }
-
-  if (valeurBooleenneVraie(reglement.v1)) {
-    return reglement.datevalidv1 || null;
-  }
-
-  return null;
-}
-
-async function premierResultat(env, url) {
-  const response = await fetch(url, {
-    method: "GET",
-    headers: supabaseHeaders(env)
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const data = await response.json().catch(() => null);
-
-  if (!Array.isArray(data)) {
-    return null;
-  }
-
-  return data[0] || null;
-}
-
-async function lireSessionMembreDepuisCookie(request, env) {
-  const cookies = lireCookies(request.headers.get("Cookie"));
-  const sessionToken = cookies.idsession_membre;
-
-  if (!sessionToken || !env.SESSION_SECRET) {
-    return null;
-  }
-
-  const parties = sessionToken.split(".");
-
-  if (parties.length !== 2) {
-    return null;
-  }
-
-  const payloadEncode = parties[0];
-  const signatureRecue = parties[1];
-
-  const signatureAttendue = await signerHmacSha256(
-    env.SESSION_SECRET,
-    payloadEncode
-  );
-
-  if (signatureRecue !== signatureAttendue) {
-    return null;
-  }
-
-  let payload;
 
   try {
-    payload = JSON.parse(base64UrlDecodeToString(payloadEncode));
-  } catch {
-    return null;
+    const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE, {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
+    const resultat = await reponse.json().catch(() => null);
+
+    if (!reponse.ok || !resultat || resultat.ok !== true || !resultat.compte) {
+      redirigerConnexionMembre("inactive");
+      return;
+    }
+
+    afficherCompteMembre(resultat.compte);
+
+  } catch (erreur) {
+    console.error("Erreur chargement mon compte membre :", erreur);
+    redirigerConnexionMembre("erreur");
   }
-
-  if (payload.typ !== "session_membre") {
-    return null;
-  }
-
-  const maintenant = Math.floor(Date.now() / 1000);
-
-  if (!payload.exp || payload.exp < maintenant) {
-    return null;
-  }
-
-  return payload;
 }
 
-function supabaseHeaders(env) {
-  return {
-    "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
-    "Authorization": "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY,
-    "Accept": "application/json",
-    "Content-Type": "application/json"
-  };
+function afficherCompteMembre(compte) {
+  emailMembreActuel = nettoyerEmail(compte.email);
+
+  remplirChamp("champ-nom-membre", compte.nom);
+  remplirChamp("champ-prenom-membre", compte.prenom);
+  remplirChamp("champ-email-membre", compte.email);
+  remplirChamp("champ-date-creation-membre", formaterDate(compte.membreDepuis));
+  remplirChamp("champ-statut-membre", compte.statut);
+  remplirChamp("champ-parrain-membre", compte.parrain);
+  remplirChamp("champ-departement-membre", compte.departement);
+  remplirChamp("champ-reglement-club", formaterDate(compte.reglementClub));
+  remplirChamp("champ-reglement-application", formaterDate(compte.reglementApplication));
 }
 
-function lireCookies(cookieHeader) {
-  const cookies = {};
+function initialiserModificationEmailMembre() {
+  const bouton = document.getElementById("modifier-email-membre");
 
-  if (!cookieHeader) {
-    return cookies;
+  if (!bouton || bouton.dataset.initialise === "true") return;
+
+  bouton.dataset.initialise = "true";
+  bouton.addEventListener("click", ouvrirBoiteDialogueEmailMembre);
+}
+
+async function ouvrirBoiteDialogueEmailMembre() {
+  if (typeof window.afficherBoiteDialogue !== "function") {
+    afficherMessageErreur("La boîte de dialogue n’est pas disponible.");
+    return;
   }
 
-  cookieHeader.split(";").forEach((cookie) => {
-    const [nom, ...valeur] = cookie.trim().split("=");
-
-    if (!nom) return;
-
-    cookies[nom] = decodeURIComponent(valeur.join("="));
+  const resultat = await window.afficherBoiteDialogue({
+    titre: "Modifier mon e-mail",
+    texteAnnuler: "Annuler",
+    texteValider: "Valider",
+    champs: [
+      {
+        id: "nouvel-email-membre",
+        name: "emailmembre",
+        label: "Nouveau mail",
+        type: "email",
+        autocomplete: "email",
+        required: true
+      }
+    ]
   });
 
-  return cookies;
-}
+  if (!resultat) return;
 
-async function signerHmacSha256(secret, message) {
-  const encodeur = new TextEncoder();
+  const nouveauMail = nettoyerEmail(resultat.emailmembre);
 
-  const cle = await crypto.subtle.importKey(
-    "raw",
-    encodeur.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    cle,
-    encodeur.encode(message)
-  );
-
-  return base64Url(new Uint8Array(signature));
-}
-
-function base64Url(bytes) {
-  let binary = "";
-
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
+  if (!emailValide(nouveauMail)) {
+    afficherMessageErreur("L’adresse e-mail saisie est invalide.");
+    return;
   }
 
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-}
-
-function base64UrlDecodeToString(value) {
-  let base64 = String(value)
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
-
-  while (base64.length % 4 !== 0) {
-    base64 += "=";
+  if (nouveauMail === emailMembreActuel) {
+    afficherMessageErreur("Ce mail est déjà celui de votre compte.");
+    return;
   }
 
-  return atob(base64);
+  await envoyerDemandeModificationEmail(nouveauMail);
 }
 
-function valeurBooleenneVraie(valeur) {
-  return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
-}
-
-function construireCorsHeaders(request, env) {
-  const origin = request.headers.get("Origin") || "";
-  const allowedOrigins = lireOriginesAutorisees(env);
-  const headers = new Headers();
-
-  if (allowedOrigins.includes(origin)) {
-    headers.set("Access-Control-Allow-Origin", origin);
+async function envoyerDemandeModificationEmail(nouveauMail) {
+  if (!ENDPOINT_MAJ_EMAIL_MEMBRE) {
+    afficherMessageErreur("Le service de modification d’e-mail n’est pas configuré.");
+    return;
   }
 
-  headers.set("Access-Control-Allow-Credentials", "true");
-  headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
-  headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, Cookie, Accept");
-  headers.set("Vary", "Origin");
+  try {
+    const reponse = await fetch(ENDPOINT_MAJ_EMAIL_MEMBRE, {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        emailmembre: nouveauMail
+      })
+    });
 
-  return headers;
+    const resultat = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return;
+    }
+
+    if (!reponse.ok || !resultat || resultat.ok !== true) {
+      afficherMessageErreur(messageErreurApi(resultat, "Impossible d’enregistrer le changement d’e-mail."));
+      return;
+    }
+
+    emailMembreActuel = nouveauMail;
+    remplirChamp("champ-email-membre", nouveauMail);
+
+    afficherMessageValidation(
+      "Changement enregistré",
+      "Votre e-mail a été modifié."
+    );
+
+  } catch (erreur) {
+    console.error("Erreur modification email membre :", erreur);
+    afficherMessageErreur("Erreur technique. Merci de réessayer.");
+  }
 }
 
-function origineAutorisee(request, env) {
-  const origin = request.headers.get("Origin");
+function initialiserModificationParrainMembre() {
+  const bouton = document.getElementById("modifier-parrain-membre");
 
-  if (!origin) {
-    return true;
+  if (!bouton || bouton.dataset.initialise === "true") return;
+
+  bouton.dataset.initialise = "true";
+  bouton.addEventListener("click", ouvrirBoiteDialogueParrainMembre);
+}
+
+async function ouvrirBoiteDialogueParrainMembre() {
+  if (typeof window.afficherBoiteDialogue !== "function") {
+    afficherMessageErreur("La boîte de dialogue n’est pas disponible.");
+    return;
   }
 
-  return lireOriginesAutorisees(env).includes(origin);
-}
-
-function lireOriginesAutorisees(env) {
-  const valeur = env.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS.join(",");
-
-  return String(valeur)
-    .split(",")
-    .map((origin) => origin.trim().replace(/\/$/, ""))
-    .filter(Boolean);
-}
-
-function jsonResponse(data, status, corsHeaders) {
-  const headers = new Headers(corsHeaders);
-
-  headers.set("Content-Type", "application/json; charset=utf-8");
-
-  return new Response(JSON.stringify(data), {
-    status,
-    headers
+  const resultat = await window.afficherBoiteDialogue({
+    titre: "Modifier mon parrain",
+    texteAnnuler: "Annuler",
+    texteValider: "Valider",
+    champs: [
+      {
+        id: "nouvel-email-parrain",
+        name: "emailparrain",
+        label: "Email du parrain",
+        type: "email",
+        autocomplete: "email",
+        required: false
+      }
+    ]
   });
+
+  if (!resultat) return;
+
+  const emailparrain = nettoyerEmail(resultat.emailparrain);
+
+  if (emailparrain && !emailValide(emailparrain)) {
+    afficherMessageErreur("L’adresse e-mail du parrain est invalide.");
+    return;
+  }
+
+  await envoyerModificationParrain(emailparrain);
+}
+
+async function envoyerModificationParrain(emailparrain) {
+  if (!ENDPOINT_MAJ_PARRAIN_MEMBRE) {
+    afficherMessageErreur("Le service de modification du parrain n’est pas configuré.");
+    return;
+  }
+
+  try {
+    const reponse = await fetch(ENDPOINT_MAJ_PARRAIN_MEMBRE, {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        emailparrain
+      })
+    });
+
+    const resultat = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return;
+    }
+
+    if (!reponse.ok || !resultat || resultat.ok !== true) {
+      afficherMessageErreur(messageErreurApi(resultat, "Impossible d’enregistrer le changement de parrain."));
+      return;
+    }
+
+    remplirChamp("champ-parrain-membre", emailparrain || null);
+
+    afficherMessageValidation(
+      "Changement enregistré",
+      "Votre changement de parrain est enregistré."
+    );
+
+  } catch (erreur) {
+    console.error("Erreur modification parrain membre :", erreur);
+    afficherMessageErreur("Erreur technique. Merci de réessayer.");
+  }
+}
+
+function initialiserModificationDepartementMembre() {
+  const bouton = document.getElementById("modifier-departement-membre");
+
+  if (!bouton || bouton.dataset.initialise === "true") return;
+
+  bouton.dataset.initialise = "true";
+  bouton.addEventListener("click", ouvrirBoiteDialogueDepartementMembre);
+}
+
+async function ouvrirBoiteDialogueDepartementMembre() {
+  if (typeof window.afficherBoiteDialogue !== "function") {
+    afficherMessageErreur("La boîte de dialogue n’est pas disponible.");
+    return;
+  }
+
+  const resultat = await window.afficherBoiteDialogue({
+    titre: "Modifier mon département",
+    texteAnnuler: "Annuler",
+    texteValider: "Valider",
+    champs: [
+      {
+        id: "nouveau-departement-membre",
+        name: "dptmtmembre",
+        label: "Nouveau département",
+        type: "text",
+        value: "",
+        required: true
+      }
+    ]
+  });
+
+  if (!resultat) return;
+
+  const dptmtmembre = nettoyerDepartement(resultat.dptmtmembre);
+
+  if (!dptmtmembre) {
+    afficherMessageErreur("Le département est obligatoire.");
+    return;
+  }
+
+  await envoyerModificationDepartement(dptmtmembre);
+}
+
+async function envoyerModificationDepartement(dptmtmembre) {
+  if (!ENDPOINT_MAJ_DEPARTEMENT_MEMBRE) {
+    afficherMessageErreur("Le service de modification du département n’est pas configuré.");
+    return;
+  }
+
+  try {
+    const reponse = await fetch(ENDPOINT_MAJ_DEPARTEMENT_MEMBRE, {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        dptmtmembre
+      })
+    });
+
+    const resultat = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return;
+    }
+
+    if (!reponse.ok || !resultat || resultat.ok !== true) {
+      afficherMessageErreur(messageErreurApi(resultat, "Impossible d’enregistrer le changement de département."));
+      return;
+    }
+
+    remplirChamp("champ-departement-membre", dptmtmembre);
+
+    afficherMessageValidation(
+      "Changement enregistré",
+      "Votre changement de département est enregistré."
+    );
+
+  } catch (erreur) {
+    console.error("Erreur modification département membre :", erreur);
+    afficherMessageErreur("Erreur technique. Merci de réessayer.");
+  }
+}
+
+function construireEndpointApi(cleModerne, cleLegacy, sousDomaineWorker) {
+  const depuisConfig =
+    CONFIG_MON_COMPTE_MEMBRE?.[cleModerne] ||
+    CONFIG_MON_COMPTE_MEMBRE?.[cleLegacy] ||
+    "";
+
+  if (depuisConfig) {
+    return String(depuisConfig).replace(/\/$/, "");
+  }
+
+  if (typeof CONFIG_MON_COMPTE_MEMBRE.apiUrl === "function") {
+    return CONFIG_MON_COMPTE_MEMBRE.apiUrl(sousDomaineWorker).replace(/\/$/, "");
+  }
+
+  return "";
+}
+
+function construireUrlPublic(chemin) {
+  const valeur = String(chemin || "");
+
+  if (
+    !valeur ||
+    valeur.startsWith("#") ||
+    valeur.startsWith("mailto:") ||
+    valeur.startsWith("tel:") ||
+    valeur.startsWith("http://") ||
+    valeur.startsWith("https://")
+  ) {
+    return valeur;
+  }
+
+  if (typeof CONFIG_MON_COMPTE_MEMBRE.publicUrl === "function") {
+    return CONFIG_MON_COMPTE_MEMBRE.publicUrl(valeur);
+  }
+
+  const base = (
+    window.ASSETS_BASE ||
+    CONFIG_MON_COMPTE_MEMBRE.publicBaseUrl ||
+    CONFIG_MON_COMPTE_MEMBRE.PUBLIC_BASE ||
+    ""
+  ).replace(/\/$/, "");
+
+  if (base) {
+    return valeur.startsWith("/")
+      ? base + valeur
+      : base + "/" + valeur.replace(/^\.\//, "");
+  }
+
+  return valeur.startsWith("/") ? valeur : "/" + valeur;
+}
+
+function redirigerConnexionMembre(motif) {
+  const separateur = PAGE_CONNEXION_MEMBRE.includes("?") ? "&" : "?";
+
+  window.location.href =
+    PAGE_CONNEXION_MEMBRE +
+    separateur +
+    "source=mon-compte-membre&session=" +
+    encodeURIComponent(motif || "inactive");
+}
+
+function remplirChamp(id, valeur) {
+  const element = document.getElementById(id);
+
+  if (!element) return;
+
+  const texte = valeur || "Non renseigné";
+
+  if ("value" in element) {
+    element.value = texte;
+    return;
+  }
+
+  element.textContent = texte;
+}
+
+function formaterDate(valeur) {
+  if (!valeur) return "Non renseigné";
+
+  const date = new Date(valeur);
+
+  if (Number.isNaN(date.getTime())) {
+    return valeur;
+  }
+
+  return date.toLocaleDateString("fr-FR");
+}
+
+function nettoyerEmail(valeur) {
+  return String(valeur || "")
+    .trim()
+    .toLowerCase();
+}
+
+function nettoyerDepartement(valeur) {
+  return String(valeur || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
+}
+
+function emailValide(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function messageErreurApi(resultat, messageDefaut) {
+  return resultat && (resultat.message || resultat.error)
+    ? String(resultat.message || resultat.error)
+    : messageDefaut;
+}
+
+function afficherMessageErreur(message) {
+  if (typeof window.afficherLightboxInformation === "function") {
+    window.afficherLightboxInformation(
+      "Erreur",
+      message,
+      { type: "erreur" }
+    );
+    return;
+  }
+
+  alert(message);
+}
+
+function afficherMessageValidation(titre, message) {
+  if (typeof window.afficherLightboxInformation === "function") {
+    window.afficherLightboxInformation(
+      titre,
+      message,
+      { type: "validation" }
+    );
+    return;
+  }
+
+  alert(message);
 }
