@@ -13,7 +13,7 @@ const ENDPOINT_MAJ_DEPARTEMENT_MEMBRE =
   construireEndpointApi("workerMajDepartementMembreUrl", "WORKER_MAJ_DEPARTEMENT_MEMBRE_URL", "maj-dptmt-membre-api");
 
 const PAGE_CONNEXION_MEMBRE = construireUrlPublic(
-  "/PAGES/PUBLIQUES/CONNEXION%20MEMBRE/connexion-membre.html"
+  "/PAGES/PUBLIQUES/CONNEXION-MEMBRE/connexion-membre.html"
 );
 
 let emailMembreActuel = "";
