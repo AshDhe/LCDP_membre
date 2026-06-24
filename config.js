@@ -28,7 +28,8 @@
     connexionMembre: "https://connexion-membre-api.lacleduparc.fr",
     formInscriptionMembre: "https://form-inscription-membre-api.lacleduparc.fr",
     indexMembre: "https://index-membre-api.lacleduparc.fr",
-    monCompteMembre: "https://mon-compte-membre-api.lacleduparc.fr"
+    monCompteMembre: "https://mon-compte-membre-api.lacleduparc.fr",
+    fluxm: "https://fluxm-api.lacleduparc.fr"
   };
 
   function buildUrl(base, path) {
@@ -48,6 +49,7 @@
     workerFormInscriptionMembreUrl: WORKERS.formInscriptionMembre,
     workerIndexMembreUrl: WORKERS.indexMembre,
     workerMonCompteMembreUrl: WORKERS.monCompteMembre,
+    workerFluxmUrl: WORKERS.fluxm,
 
     PUBLIC_BASE: active.publicBase,
     MEMBRE_BASE: active.membreBase,
@@ -59,6 +61,7 @@
     WORKER_FORM_INSCRIPTION_MEMBRE_URL: WORKERS.formInscriptionMembre,
     WORKER_INDEX_MEMBRE_URL: WORKERS.indexMembre,
     WORKER_MON_COMPTE_MEMBRE_URL: WORKERS.monCompteMembre,
+    WORKER_FLUXM_URL: WORKERS.fluxm,
 
     publicUrl(path) {
       return buildUrl(active.publicBase, path);
