@@ -52,7 +52,6 @@ async function initialiserMonCompteMembre() {
     }
 
     afficherCompteMembre(resultat.compte);
-
   } catch (erreur) {
     console.error("Erreur chargement mon compte membre :", erreur);
     redirigerConnexionMembre("erreur");
@@ -165,7 +164,6 @@ async function envoyerDemandeModificationEmail(nouveauMail) {
         "Un email de validation a été envoyé. Votre e-mail actuel reste inchangé tant que le nouveau mail n'est pas validé."
       )
     );
-
   } catch (erreur) {
     console.error("Erreur demande modification email membre :", erreur);
     afficherMessageErreur("Erreur technique. Merci de réessayer.");
@@ -253,7 +251,6 @@ async function envoyerModificationParrain(emailparrain) {
       "Changement enregistré",
       "Votre changement de parrain est enregistré."
     );
-
   } catch (erreur) {
     console.error("Erreur modification parrain membre :", erreur);
     afficherMessageErreur("Erreur technique. Merci de réessayer.");
@@ -341,7 +338,6 @@ async function envoyerModificationDepartement(dptmtmembre) {
       "Changement enregistré",
       "Votre changement de département est enregistré."
     );
-
   } catch (erreur) {
     console.error("Erreur modification département membre :", erreur);
     afficherMessageErreur("Erreur technique. Merci de réessayer.");
