@@ -8,6 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Choisir une action dans votre espace membre La Clé du Parc.">
 
+  <!-- SITEBASE : config.js est chargé avant les scripts métier -->
   <script src="./config.js"></script>
 
   <script>
@@ -21,35 +22,138 @@
         siteBaseFallback = "";
       }
 
+      function nettoyerBaseUrl(value) {
+        return String(value || "").replace(/\/+$/, "");
+      }
+
+      function joindreBaseEtChemin(baseUrl, chemin) {
+        const base = nettoyerBaseUrl(baseUrl);
+        const cheminNettoye = "/" + String(chemin || "").replace(/^\/+/, "");
+
+        if (!base) {
+          return cheminNettoye;
+        }
+
+        return base + cheminNettoye;
+      }
+
+      function cheminExterneOuAncre(chemin) {
+        return (
+          chemin.startsWith("#") ||
+          chemin.startsWith("mailto:") ||
+          chemin.startsWith("tel:") ||
+          chemin.startsWith("http://") ||
+          chemin.startsWith("https://")
+        );
+      }
+
       window.SITE_ROOT_RELATIVE = siteRootRelative;
 
-      window.SITE_BASE = (
+      window.SITE_BASE = nettoyerBaseUrl(
         window.SITE_CONFIG?.membreBaseUrl ||
         window.SITE_CONFIG?.MEMBRE_BASE ||
+        window.SITE_CONFIG?.siteBase ||
         siteBaseFallback ||
         ""
-      ).replace(/\/$/, "");
+      );
 
-      window.ASSETS_BASE = (
+      window.ASSETS_BASE = nettoyerBaseUrl(
         window.SITE_CONFIG?.publicBaseUrl ||
         window.SITE_CONFIG?.PUBLIC_BASE ||
         ""
-      ).replace(/\/$/, "");
+      );
 
-      function chargerCss(chemin) {
-        const base = window.ASSETS_BASE;
+      window.construireUrlMembre = function construireUrlMembre(chemin) {
+        const valeur = String(chemin || "");
 
-        if (!base || !chemin) return;
+        if (!valeur || cheminExterneOuAncre(valeur)) {
+          return valeur;
+        }
 
-        const link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = base + chemin;
-        document.head.appendChild(link);
-      }
+        return joindreBaseEtChemin(window.SITE_BASE, valeur);
+      };
 
-      chargerCss("/OBJETS/CSS/base.css");
-      chargerCss("/OBJETS/CSS/bandeau-et-burger.css");
-      chargerCss("/OBJETS/CSS/footer.css");
+      window.construireUrlPublic = function construireUrlPublic(chemin) {
+        const valeur = String(chemin || "");
+
+        if (!valeur || cheminExterneOuAncre(valeur)) {
+          return valeur;
+        }
+
+        return joindreBaseEtChemin(window.SITE_CONFIG?.publicBaseUrl || window.SITE_CONFIG?.PUBLIC_BASE || "", valeur);
+      };
+
+      window.construireUrlParc = function construireUrlParc(chemin) {
+        const valeur = String(chemin || "");
+
+        if (!valeur || cheminExterneOuAncre(valeur)) {
+          return valeur;
+        }
+
+        return joindreBaseEtChemin(window.SITE_CONFIG?.parcBaseUrl || window.SITE_CONFIG?.PARC_BASE || "", valeur);
+      };
+
+      window.construireUrlCoach = function construireUrlCoach(chemin) {
+        const valeur = String(chemin || "");
+
+        if (!valeur || cheminExterneOuAncre(valeur)) {
+          return valeur;
+        }
+
+        return joindreBaseEtChemin(window.SITE_CONFIG?.coachBaseUrl || window.SITE_CONFIG?.COACH_BASE || "", valeur);
+      };
+
+      window.construireUrlAsset = function construireUrlAsset(chemin) {
+        return joindreBaseEtChemin(window.ASSETS_BASE, chemin);
+      };
+
+      window.construireUrlEspace = function construireUrlEspace(espace, chemin) {
+        switch (espace) {
+          case "public":
+            return window.construireUrlPublic(chemin);
+
+          case "parc":
+            return window.construireUrlParc(chemin);
+
+          case "coach":
+            return window.construireUrlCoach(chemin);
+
+          case "membre":
+          default:
+            return window.construireUrlMembre(chemin);
+        }
+      };
+
+      window.corrigerCheminsSite = function corrigerCheminsSite(scope) {
+        const racine = scope || document;
+
+        racine.querySelectorAll("[data-site-href]").forEach((element) => {
+          const espace = element.dataset.space || "membre";
+          element.setAttribute("href", window.construireUrlEspace(espace, element.dataset.siteHref));
+        });
+
+        racine.querySelectorAll("[data-site-src]").forEach((element) => {
+          element.setAttribute("src", window.construireUrlPublic(element.dataset.siteSrc));
+        });
+      };
+
+      document.write(
+        '<link rel="stylesheet" href="' +
+        window.construireUrlAsset("/OBJETS/CSS/base.css") +
+        '">'
+      );
+
+      document.write(
+        '<link rel="stylesheet" href="' +
+        window.construireUrlAsset("/OBJETS/CSS/bandeau-et-burger.css") +
+        '">'
+      );
+
+      document.write(
+        '<link rel="stylesheet" href="' +
+        window.construireUrlAsset("/OBJETS/CSS/footer.css") +
+        '">'
+      );
     })();
   </script>
 </head>
@@ -57,7 +161,98 @@
 <body>
   <div class="site-page">
 
-    <div id="bandeau-nav-container"></div>
+    <div id="bandeau-nav-container">
+      <header class="site-header">
+        <div class="site-header-inner">
+          <a
+            href="/index.html"
+            data-site-href="/index.html"
+            data-space="membre"
+            class="site-logo"
+          >
+            <img
+              class="site-logo-img"
+              src="/OBJETS/IMAGES/LOGO/logo-bandeau-96.webp"
+              data-site-src="/OBJETS/IMAGES/LOGO/logo-bandeau-96.webp"
+              width="96"
+              height="96"
+              alt=""
+              aria-hidden="true"
+              loading="eager"
+              fetchpriority="high"
+              decoding="async"
+            >
+            <span>Espace membre</span>
+          </a>
+
+          <button
+            class="burger-button"
+            type="button"
+            aria-label="Ouvrir le menu"
+            aria-expanded="false"
+            aria-controls="burger-nav-membre"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+          <nav
+            id="burger-nav-membre"
+            class="burger-nav burger-nav-membre"
+            aria-label="Navigation membre"
+          >
+            <a
+              href="/index.html?source=menu"
+              data-site-href="/index.html?source=menu"
+              data-space="public"
+            >
+              Accueil
+            </a>
+
+            <a
+              href="/index.html?source=menu"
+              data-site-href="/index.html?source=menu"
+              data-space="membre"
+            >
+              Espace membre
+            </a>
+
+            <a
+              href="/PAGES/PUBLIQUES/ACTUALITES/actualites.html?source=menu"
+              data-site-href="/PAGES/PUBLIQUES/ACTUALITES/actualites.html?source=menu"
+              data-space="public"
+            >
+              Actualités
+            </a>
+
+            <a
+              href="/PAGES/PRIVEES/ESPACE-MEMBRE/LES-PARCS/les-parcs.html?source=menu"
+              data-site-href="/PAGES/PRIVEES/ESPACE-MEMBRE/LES-PARCS/les-parcs.html?source=menu"
+              data-space="membre"
+            >
+              Les parcs
+            </a>
+
+            <a
+              href="/PAGES/PRIVEES/ESPACE-MEMBRE/LES-COACHS/les-coachs.html?source=menu"
+              data-site-href="/PAGES/PRIVEES/ESPACE-MEMBRE/LES-COACHS/les-coachs.html?source=menu"
+              data-space="membre"
+            >
+              Les coachs
+            </a>
+
+            <a
+              href="/PAGES/PUBLIQUES/CHOIX-CONNEXION/choix-connexion.html?source=menu"
+              data-site-href="/PAGES/PUBLIQUES/CHOIX-CONNEXION/choix-connexion.html?source=menu"
+              data-space="public"
+            >
+              Changer de compte
+            </a>
+          </nav>
+        </div>
+      </header>
+    </div>
 
     <main class="site-main">
 
@@ -79,6 +274,7 @@
                 class="button"
                 href="/PAGES/PRIVEES/ESPACE-MEMBRE/MON-PLANNING-MEMBRE/mon-planning-membre.html"
                 data-site-href="/PAGES/PRIVEES/ESPACE-MEMBRE/MON-PLANNING-MEMBRE/mon-planning-membre.html"
+                data-space="membre"
               >
                 Mon planning
               </a>
@@ -87,6 +283,7 @@
                 class="button"
                 href="/PAGES/PRIVEES/ESPACE-MEMBRE/NOUVELLE-DATE-MEMBRE/nouvelle-date-membre.html"
                 data-site-href="/PAGES/PRIVEES/ESPACE-MEMBRE/NOUVELLE-DATE-MEMBRE/nouvelle-date-membre.html"
+                data-space="membre"
               >
                 Nouvelle date
               </a>
@@ -95,6 +292,7 @@
                 class="button button-orange"
                 href="/PAGES/PRIVEES/ESPACE-MEMBRE/NOUVELLE-DATE-MEMBRE/demander-ia-membre.html"
                 data-site-href="/PAGES/PRIVEES/ESPACE-MEMBRE/NOUVELLE-DATE-MEMBRE/demander-ia-membre.html"
+                data-space="membre"
               >
                 Demander à l’IA
               </a>
@@ -103,6 +301,7 @@
                 class="button"
                 href="/PAGES/PRIVEES/ESPACE-MEMBRE/INVITER-MEMBRE/inviter-membre.html"
                 data-site-href="/PAGES/PRIVEES/ESPACE-MEMBRE/INVITER-MEMBRE/inviter-membre.html"
+                data-space="membre"
               >
                 Inviter
               </a>
@@ -111,6 +310,7 @@
                 class="button"
                 href="/PAGES/PRIVEES/ESPACE-MEMBRE/MON-COMPTE-MEMBRE/mon-compte-membre.html"
                 data-site-href="/PAGES/PRIVEES/ESPACE-MEMBRE/MON-COMPTE-MEMBRE/mon-compte-membre.html"
+                data-space="membre"
               >
                 Mon compte
               </a>
@@ -129,39 +329,9 @@
 
   <script>
     (() => {
-      const siteBase = (
-        window.SITE_BASE ||
-        window.SITE_CONFIG?.membreBaseUrl ||
-        window.SITE_CONFIG?.MEMBRE_BASE ||
-        ""
-      ).replace(/\/$/, "");
-
-      function construireUrlMembre(chemin) {
-        const valeur = String(chemin || "");
-
-        if (
-          !valeur ||
-          valeur.startsWith("#") ||
-          valeur.startsWith("mailto:") ||
-          valeur.startsWith("tel:") ||
-          valeur.startsWith("http://") ||
-          valeur.startsWith("https://")
-        ) {
-          return valeur;
-        }
-
-        if (siteBase) {
-          return valeur.startsWith("/")
-            ? siteBase + valeur
-            : siteBase + "/" + valeur.replace(/^\.\//, "");
-        }
-
-        return valeur.startsWith("/") ? valeur : "/" + valeur;
+      if (typeof window.corrigerCheminsSite === "function") {
+        window.corrigerCheminsSite(document);
       }
-
-      document.querySelectorAll("[data-site-href]").forEach((element) => {
-        element.setAttribute("href", construireUrlMembre(element.dataset.siteHref));
-      });
     })();
   </script>
 
@@ -218,37 +388,17 @@
   </script>
 
   <script>
-    (() => {
-      const base = (
-        window.ASSETS_BASE ||
-        window.SITE_CONFIG?.publicBaseUrl ||
-        window.SITE_CONFIG?.PUBLIC_BASE ||
-        ""
-      ).replace(/\/$/, "");
+    document.write(
+      '<script src="' +
+      window.construireUrlAsset("/OBJETS/BLOCS/burger-membre.js") +
+      '"><\/script>'
+    );
 
-      if (!base) return;
-
-      const script = document.createElement("script");
-      script.src = base + "/OBJETS/BLOCS/burger-membre.js";
-      document.body.appendChild(script);
-    })();
-  </script>
-
-  <script>
-    (() => {
-      const base = (
-        window.ASSETS_BASE ||
-        window.SITE_CONFIG?.publicBaseUrl ||
-        window.SITE_CONFIG?.PUBLIC_BASE ||
-        ""
-      ).replace(/\/$/, "");
-
-      if (!base) return;
-
-      const script = document.createElement("script");
-      script.src = base + "/OBJETS/BLOCS/footer-global.js";
-      document.body.appendChild(script);
-    })();
+    document.write(
+      '<script src="' +
+      window.construireUrlAsset("/OBJETS/BLOCS/footer-global.js") +
+      '"><\/script>'
+    );
   </script>
 </body>
 </html>
