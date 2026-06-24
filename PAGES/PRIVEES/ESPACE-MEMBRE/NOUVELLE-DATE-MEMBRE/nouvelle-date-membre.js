@@ -1,7 +1,7 @@
 const CONFIG_NOUVELLE_DATE_MEMBRE = window.SITE_CONFIG || {};
 
-const DOSSIER_NOUVELLE_DATE_MEMBRE =
-  "/PAGES/PRIVEES/ESPACE-MEMBRE/NOUVELLE-DATE-MEMBRE";
+const DOSSIER_BLOCS_NOUVELLE_DATE =
+  "/OBJETS/BLOCS";
 
 const ENDPOINT_NOUVELLE_DATE_MEMBRE = construireEndpointApi(
   "workerNouvelleDateMembreUrl",
@@ -319,8 +319,7 @@ function initialiserNouvelleDateMembre() {
   function ouvrirLightboxParc(parc) {
     fermerLightboxParc();
 
-    const urlFiche =
-      construireUrlFicheParcNouvelleDate(parc);
+    const urlFiche = construireUrlFicheParcNouvelleDate(parc);
 
     const lightbox = document.createElement("div");
     lightbox.id = "lightbox-fiche-parc";
@@ -415,41 +414,42 @@ function initialiserNouvelleDateMembre() {
   }
 
   function construireUrlFicheParcNouvelleDate(parc) {
-    return construireUrlMembre(
-      DOSSIER_NOUVELLE_DATE_MEMBRE +
+    return construireUrlAssets(
+      DOSSIER_BLOCS_NOUVELLE_DATE +
       "/fiche-parc-nouvelle-date.html" +
       construireParametresParc(parc)
     );
   }
 
   function construireUrlPlanningParcNouvelleDate(parc) {
-    return construireUrlMembre(
-      DOSSIER_NOUVELLE_DATE_MEMBRE +
+    return construireUrlAssets(
+      DOSSIER_BLOCS_NOUVELLE_DATE +
       "/planning-parc-nouvelle-date.html" +
       construireParametresParc(parc)
     );
   }
 
   function construireUrlHoraireParcNouvelleDate(parc, dateIso) {
-    return construireUrlMembre(
-      DOSSIER_NOUVELLE_DATE_MEMBRE +
+    const parametres = construireParametresParc(parc);
+
+    return construireUrlAssets(
+      DOSSIER_BLOCS_NOUVELLE_DATE +
       "/horaire-parc-nouvelle-date.html" +
-      construireParametresParc(parc) +
+      parametres +
       "&date=" +
       encodeURIComponent(dateIso)
     );
   }
 
   function construireParametresParc(parc) {
-    const idParc = encodeURIComponent(parc.idparc || parc.id || "");
-    const nomParc = encodeURIComponent(parc.nom || parc.nomparc || "");
-    const departement = encodeURIComponent(parc.dptmt || parc.departement || "");
+    const params = new URLSearchParams();
 
-    return (
-      "?idparc=" + idParc +
-      "&nom=" + nomParc +
-      "&dptmt=" + departement
-    );
+    params.set("idparc", parc.idparc || parc.id || "");
+    params.set("nom", parc.nom || parc.nomparc || "");
+    params.set("dptmt", parc.dptmt || parc.departement || "");
+    params.set("parentOrigin", window.location.origin);
+
+    return "?" + params.toString();
   }
 
   function formaterDateIsoLocale(date) {
@@ -622,7 +622,7 @@ function initialiserNouvelleDateMembre() {
   }
 
   function gererMessageIframePlanning(event) {
-    if (event.origin !== window.location.origin) {
+    if (!origineMessageAutorisee(event.origin)) {
       return;
     }
 
@@ -653,6 +653,30 @@ function initialiserNouvelleDateMembre() {
       }
 
       afficherBoutonFermerPlanningParcNouvelleDate(true);
+    }
+  }
+
+  function origineMessageAutorisee(origin) {
+    const origines = [
+      window.location.origin,
+      origineDepuisUrl(window.SITE_BASE),
+      origineDepuisUrl(window.ASSETS_BASE),
+      origineDepuisUrl(CONFIG_NOUVELLE_DATE_MEMBRE.membreBaseUrl),
+      origineDepuisUrl(CONFIG_NOUVELLE_DATE_MEMBRE.publicBaseUrl),
+      origineDepuisUrl(CONFIG_NOUVELLE_DATE_MEMBRE.MEMBRE_BASE),
+      origineDepuisUrl(CONFIG_NOUVELLE_DATE_MEMBRE.PUBLIC_BASE)
+    ].filter(Boolean);
+
+    return origines.includes(origin);
+  }
+
+  function origineDepuisUrl(url) {
+    if (!url) return "";
+
+    try {
+      return new URL(url, window.location.href).origin;
+    } catch (erreur) {
+      return "";
     }
   }
 
