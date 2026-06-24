@@ -770,6 +770,10 @@ function construireUrlMembre(chemin) {
     return CONFIG_NOUVELLE_DATE_MEMBRE.membreUrl(valeur);
   }
 
+  if (typeof window.construireUrlMembre === "function") {
+    return window.construireUrlMembre(valeur);
+  }
+
   const base = (
     window.SITE_BASE ||
     CONFIG_NOUVELLE_DATE_MEMBRE.membreBaseUrl ||
@@ -832,6 +836,10 @@ function construireUrlAssets(chemin) {
     valeur.startsWith("https://")
   ) {
     return valeur;
+  }
+
+  if (typeof window.construireUrlAsset === "function") {
+    return window.construireUrlAsset(valeur);
   }
 
   const base = (
