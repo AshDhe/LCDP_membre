@@ -3,7 +3,7 @@ const CONFIG_MON_PLANNING_MEMBRE = window.SITE_CONFIG || {};
 const ENDPOINT_FLUXM = construireEndpointApi(
   "workerFluxmUrl",
   "WORKER_FLUXM_URL",
-  "worker-fluxm-api"
+  "fluxm-api"
 );
 
 const ENDPOINT_IA_SHIFT_FLUXM = construireEndpointApi(
