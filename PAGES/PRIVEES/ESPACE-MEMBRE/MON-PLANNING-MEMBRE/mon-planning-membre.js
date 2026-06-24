@@ -231,6 +231,8 @@ function initialiserMonPlanningMembre() {
     const departement = parc.dptmt || parc.departement || reservation.dptmt || "";
 
     const ligneInvitation = creerLigneInvitation(reservation);
+    const idParc = parc.idparc || reservation.idparc || "";
+    const idFlux = reservation.idflux || "";
 
     return `
       <tr>
@@ -247,25 +249,29 @@ function initialiserMonPlanningMembre() {
                 : ""
             }
 
-            <p class="carte-planning-membre-ligne carte-planning-membre-date">
-              <span class="date-planning-membre">
-                ${formaterDateCourte(reservation.datebookd)}
-              </span>
+            <div class="carte-planning-membre-infos">
 
-              <span class="heure-planning-membre">
-                ${formaterHeureReservation(reservation.datebookd)}
-              </span>
-            </p>
+              <p class="carte-planning-membre-ligne carte-planning-membre-date">
+                <span class="date-planning-membre">
+                  ${formaterDateCourte(reservation.datebookd)}
+                </span>
 
-            <p class="carte-planning-membre-ligne carte-planning-membre-parc">
-              <span class="parc-planning-membre">
-                Parc de ${echapperHtml(nomParc)}
-              </span>
+                <span class="heure-planning-membre">
+                  ${formaterHeureReservation(reservation.datebookd)}
+                </span>
+              </p>
 
-              <span class="departement-planning-membre">
-                ${departement ? "(" + echapperHtml(departement) + ")" : ""}
-              </span>
-            </p>
+              <p class="carte-planning-membre-ligne carte-planning-membre-parc">
+                <span class="parc-planning-membre">
+                  Parc de ${echapperHtml(nomParc)}
+                </span>
+
+                <span class="departement-planning-membre">
+                  ${departement ? "(" + echapperHtml(departement) + ")" : ""}
+                </span>
+              </p>
+
+            </div>
 
             <div class="carte-planning-membre-actions">
 
@@ -273,7 +279,7 @@ function initialiserMonPlanningMembre() {
                 class="micro-action"
                 type="button"
                 data-action="adresse"
-                data-idparc="${echapperHtml(parc.idparc || reservation.idparc || "")}"
+                data-idparc="${echapperHtml(idParc)}"
               >
                 Voir l’adresse
               </button>
@@ -286,7 +292,7 @@ function initialiserMonPlanningMembre() {
                       class="micro-action"
                       type="button"
                       data-action="annuler"
-                      data-id="${echapperHtml(reservation.idflux || "")}"
+                      data-id="${echapperHtml(idFlux)}"
                     >
                       Annuler
                     </button>
@@ -406,93 +412,185 @@ function initialiserMonPlanningMembre() {
     return data.reservation || null;
   }
 
-  function ouvrirLightboxConfirmationAnnulation(idflux) {
-    fermerLightboxPlanningMembre();
+  async function traiterAnnulationReservation(boutonAnnuler) {
+    const idflux = boutonAnnuler ? String(boutonAnnuler.dataset.id || "").trim() : "";
 
-    const lightbox = document.createElement("div");
-    lightbox.id = "lightbox-planning-membre";
-    lightbox.className = "dialog-overlay";
-
-    lightbox.innerHTML = `
-      <div class="dialog-box" role="dialog" aria-modal="true">
-
-        <h2>
-          Confirmer l’annulation
-        </h2>
-
-        <p>
-          Voulez-vous vraiment annuler cette date ?
-        </p>
-
-        <div class="dialog-actions">
-
-          <button
-            class="button button-secondary"
-            type="button"
-            data-action="annuler-lightbox-annulation"
-          >
-            Non
-          </button>
-
-          <button
-            class="button"
-            type="button"
-            data-action="confirmer-annulation-reservation"
-            data-id="${echapperHtml(idflux)}"
-          >
-            Oui
-          </button>
-
-        </div>
-
-      </div>
-    `;
-
-    document.body.appendChild(lightbox);
-  }
-
-  function ouvrirLightboxAnnulationEnregistree() {
-    fermerLightboxPlanningMembre();
-
-    const lightbox = document.createElement("div");
-    lightbox.id = "lightbox-planning-membre";
-    lightbox.className = "dialog-overlay";
-
-    lightbox.innerHTML = `
-      <div class="dialog-box" role="dialog" aria-modal="true">
-
-        <h2>
-          Annulation enregistrée
-        </h2>
-
-        <p>
-          Votre annulation est enregistrée.
-        </p>
-
-        <div class="dialog-actions">
-
-          <button
-            class="button"
-            type="button"
-            data-action="retour-planning-apres-annulation"
-          >
-            OK
-          </button>
-
-        </div>
-
-      </div>
-    `;
-
-    document.body.appendChild(lightbox);
-  }
-
-  function fermerLightboxPlanningMembre() {
-    const lightbox = document.getElementById("lightbox-planning-membre");
-
-    if (lightbox) {
-      lightbox.remove();
+    if (!idflux) {
+      await afficherMessageErreur("Réservation manquante.");
+      return;
     }
+
+    const confirmation = await ouvrirBoiteConfirmationAnnulation();
+
+    if (confirmation !== true) {
+      return;
+    }
+
+    const texteInitial = boutonAnnuler.textContent;
+
+    boutonAnnuler.disabled = true;
+    boutonAnnuler.textContent = "Annulation...";
+
+    try {
+      await annulerReservation(idflux);
+      await ouvrirInformationAnnulationEnregistree();
+    } catch (erreur) {
+      boutonAnnuler.disabled = false;
+      boutonAnnuler.textContent = texteInitial;
+
+      await afficherMessageErreur(
+        erreur.message || "Impossible d’annuler cette réservation."
+      );
+    }
+  }
+
+  async function ouvrirBoiteConfirmationAnnulation() {
+    const elements = await obtenirElementsBoiteDialogueMonPlanning();
+
+    if (!elements) {
+      return window.confirm(
+        "Confirmer l’annulation\n\nVoulez-vous vraiment annuler cette date ?"
+      );
+    }
+
+    const {
+      boite,
+      titre,
+      form,
+      contenu,
+      erreur,
+      boutonAnnuler,
+      boutonValider
+    } = elements;
+
+    titre.textContent = "Confirmer l’annulation";
+
+    contenu.innerHTML = `
+      <p style="margin: 0; text-align: center; color: var(--color-text-muted);">
+        Voulez-vous vraiment annuler cette date ?
+      </p>
+    `;
+
+    erreur.textContent = "";
+    erreur.hidden = true;
+
+    boutonAnnuler.textContent = "Non";
+    boutonValider.textContent = "Oui";
+    boutonValider.disabled = false;
+
+    boite.hidden = false;
+    boutonAnnuler.focus();
+
+    return new Promise((resolve) => {
+      function fermer(resultat) {
+        boite.hidden = true;
+        form.reset();
+        contenu.innerHTML = "";
+        erreur.textContent = "";
+        erreur.hidden = true;
+
+        boutonAnnuler.onclick = null;
+        form.onsubmit = null;
+        boite.onclick = null;
+
+        resolve(resultat);
+      }
+
+      boutonAnnuler.onclick = () => {
+        fermer(false);
+      };
+
+      boite.onclick = (event) => {
+        if (event.target === boite) {
+          fermer(false);
+        }
+      };
+
+      form.onsubmit = (event) => {
+        event.preventDefault();
+        fermer(true);
+      };
+    });
+  }
+
+  async function ouvrirInformationAnnulationEnregistree() {
+    if (typeof window.afficherLightboxInformation === "function") {
+      const affichee = await window.afficherLightboxInformation(
+        "Annulation enregistrée",
+        "Votre annulation est enregistrée.",
+        {
+          type: "validation",
+          onClose: () => {
+            window.location.reload();
+          }
+        }
+      );
+
+      if (affichee !== false) {
+        return;
+      }
+    }
+
+    alert("Votre annulation est enregistrée.");
+    window.location.reload();
+  }
+
+  async function obtenirElementsBoiteDialogueMonPlanning() {
+    const boite = await attendreElementMonPlanning("boite-dialogue", 2500);
+
+    if (!boite) {
+      return null;
+    }
+
+    const box = boite.querySelector(".dialog-box");
+    const titre = document.getElementById("boite-dialogue-titre");
+    const form = document.getElementById("boite-dialogue-form");
+    const contenu = document.getElementById("boite-dialogue-contenu");
+    const erreur = document.getElementById("boite-dialogue-erreur");
+    const boutonAnnuler = document.getElementById("boite-dialogue-annuler");
+    const boutonValider = document.getElementById("boite-dialogue-valider");
+
+    if (!box || !titre || !form || !contenu || !erreur || !boutonAnnuler || !boutonValider) {
+      return null;
+    }
+
+    return {
+      boite,
+      box,
+      titre,
+      form,
+      contenu,
+      erreur,
+      boutonAnnuler,
+      boutonValider
+    };
+  }
+
+  function attendreElementMonPlanning(idElement, delaiMaximum) {
+    const elementExistant = document.getElementById(idElement);
+
+    if (elementExistant) {
+      return Promise.resolve(elementExistant);
+    }
+
+    return new Promise((resolve) => {
+      const debut = Date.now();
+
+      const timer = window.setInterval(() => {
+        const element = document.getElementById(idElement);
+
+        if (element) {
+          window.clearInterval(timer);
+          resolve(element);
+          return;
+        }
+
+        if (Date.now() - debut >= delaiMaximum) {
+          window.clearInterval(timer);
+          resolve(null);
+        }
+      }, 40);
+    });
   }
 
   function ouvrirLightboxIaPlanning() {
@@ -837,45 +935,14 @@ function initialiserMonPlanningMembre() {
   async function gererClicDocument(event) {
     const boutonAdresse = event.target.closest("[data-action='adresse']");
     const boutonAnnuler = event.target.closest("[data-action='annuler']");
-    const boutonAnnulerLightbox = event.target.closest("[data-action='annuler-lightbox-annulation']");
-    const boutonConfirmerAnnulation = event.target.closest("[data-action='confirmer-annulation-reservation']");
-    const boutonRetourPlanning = event.target.closest("[data-action='retour-planning-apres-annulation']");
 
     if (boutonAdresse) {
-      afficherMessageErreur("L’adresse sera raccordée ensuite.");
+      await afficherMessageErreur("L’adresse sera raccordée ensuite.");
       return;
     }
 
     if (boutonAnnuler) {
-      ouvrirLightboxConfirmationAnnulation(boutonAnnuler.dataset.id);
-      return;
-    }
-
-    if (boutonAnnulerLightbox) {
-      fermerLightboxPlanningMembre();
-      return;
-    }
-
-    if (boutonConfirmerAnnulation) {
-      const idflux = boutonConfirmerAnnulation.dataset.id;
-
-      boutonConfirmerAnnulation.disabled = true;
-      boutonConfirmerAnnulation.textContent = "Annulation...";
-
-      try {
-        await annulerReservation(idflux);
-        ouvrirLightboxAnnulationEnregistree();
-      } catch (erreur) {
-        boutonConfirmerAnnulation.disabled = false;
-        boutonConfirmerAnnulation.textContent = "Oui";
-        afficherMessageErreur(erreur.message || "Impossible d’annuler cette réservation.");
-      }
-
-      return;
-    }
-
-    if (boutonRetourPlanning) {
-      window.location.reload();
+      await traiterAnnulationReservation(boutonAnnuler);
     }
   }
 }
@@ -985,14 +1052,17 @@ function messageErreurApi(resultat, messageDefaut) {
     : messageDefaut;
 }
 
-function afficherMessageErreur(message) {
+async function afficherMessageErreur(message) {
   if (typeof window.afficherLightboxInformation === "function") {
-    window.afficherLightboxInformation(
+    const affichee = await window.afficherLightboxInformation(
       "Erreur",
       message,
       { type: "erreur" }
     );
-    return;
+
+    if (affichee !== false) {
+      return;
+    }
   }
 
   alert(message);
