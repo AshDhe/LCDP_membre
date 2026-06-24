@@ -21,7 +21,7 @@ const PAGE_CONNEXION_MEMBRE = construireUrlPublic(
 );
 
 const PAGE_NOUVELLE_DATE_MEMBRE = construireUrlMembre(
-  "/PAGES/PRIVEES/MON%20PLANNING%20MEMBRE/nouvelle-date-membre.html"
+  "/PAGES/PRIVEES/ESPACE-MEMBRE/NOUVELLE-DATE-MEMBRE/nouvelle-date-membre.html"
 );
 
 let monPlanningMembreInitialise = false;
@@ -273,7 +273,7 @@ function initialiserMonPlanningMembre() {
                 class="micro-action"
                 type="button"
                 data-action="adresse"
-                data-idparc="${echapperHtml(parc.idparc || reservation.idparc || "")}" 
+                data-idparc="${echapperHtml(parc.idparc || reservation.idparc || "")}"
               >
                 Voir l’adresse
               </button>
@@ -286,7 +286,7 @@ function initialiserMonPlanningMembre() {
                       class="micro-action"
                       type="button"
                       data-action="annuler"
-                      data-id="${echapperHtml(reservation.idflux || "")}" 
+                      data-id="${echapperHtml(reservation.idflux || "")}"
                     >
                       Annuler
                     </button>

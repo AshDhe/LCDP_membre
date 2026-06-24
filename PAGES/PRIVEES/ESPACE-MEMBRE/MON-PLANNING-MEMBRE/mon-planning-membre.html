@@ -8,57 +8,89 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Consulter les dates réservées dans votre espace membre La Clé du Parc.">
 
-  <script>
-    (() => {
-      const segments = window.location.pathname.split("/").filter(Boolean);
-      const baseGithub = window.location.hostname.endsWith("github.io") && segments.length
-        ? "/" + segments[0]
-        : "";
-
-      document.write('<script src="' + baseGithub + '/config.js"><\/script>');
-    })();
-  </script>
+  <script src="../../../../config.js"></script>
 
   <script>
     (() => {
-      const segments = window.location.pathname.split("/").filter(Boolean);
-      const baseGithub = window.location.hostname.endsWith("github.io") && segments.length
-        ? "/" + segments[0]
-        : "";
+      const siteRootRelative = "../../../../";
+      const baseDepuisChemin = new URL(siteRootRelative, window.location.href);
 
-      window.SITE_BASE = (
-        window.SITE_CONFIG?.membreBaseUrl ||
-        window.SITE_CONFIG?.MEMBRE_BASE ||
-        baseGithub ||
-        ""
-      ).replace(/\/$/, "");
+      let siteBaseFallback = baseDepuisChemin.pathname.replace(/\/$/, "");
 
-      window.ASSETS_BASE = (
-        window.SITE_CONFIG?.publicBaseUrl ||
-        window.SITE_CONFIG?.PUBLIC_BASE ||
-        baseGithub ||
-        ""
-      ).replace(/\/$/, "");
-
-      function chargerCss(chemin) {
-        const valeur = String(chemin || "");
-        const base = window.ASSETS_BASE || window.SITE_BASE || "";
-
-        if (!valeur) return;
-
-        const link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = base ? base + valeur : valeur;
-        document.head.appendChild(link);
+      if (siteBaseFallback === "/") {
+        siteBaseFallback = "";
       }
 
-      chargerCss("/OBJETS/CSS/base.css");
-      chargerCss("/OBJETS/CSS/bandeau-et-burger.css");
-      chargerCss("/OBJETS/CSS/footer.css");
-      chargerCss("/OBJETS/CSS/formulaire.css");
-      chargerCss("/OBJETS/CSS/boite-dialogue.css");
-      chargerCss("/OBJETS/CSS/lightbox-information.css");
-      chargerCss("/OBJETS/CSS/mon-planning-membre.css");
+      function nettoyerBaseUrl(value) {
+        return String(value || "").replace(/\/+$/, "");
+      }
+
+      function joindreBaseEtChemin(baseUrl, chemin) {
+        const valeur = String(chemin || "");
+
+        if (
+          !valeur ||
+          valeur.startsWith("#") ||
+          valeur.startsWith("mailto:") ||
+          valeur.startsWith("tel:") ||
+          valeur.startsWith("http://") ||
+          valeur.startsWith("https://")
+        ) {
+          return valeur;
+        }
+
+        const base = nettoyerBaseUrl(baseUrl);
+        const cheminNettoye = "/" + valeur.replace(/^\/+/, "");
+
+        if (!base) {
+          return cheminNettoye;
+        }
+
+        return base + cheminNettoye;
+      }
+
+      window.SITE_ROOT_RELATIVE = siteRootRelative;
+
+      window.SITE_BASE = nettoyerBaseUrl(
+        window.SITE_CONFIG?.membreBaseUrl ||
+        window.SITE_CONFIG?.MEMBRE_BASE ||
+        siteBaseFallback ||
+        ""
+      );
+
+      window.ASSETS_BASE = nettoyerBaseUrl(
+        window.SITE_CONFIG?.publicBaseUrl ||
+        window.SITE_CONFIG?.PUBLIC_BASE ||
+        ""
+      );
+
+      window.construireUrlMembre = function construireUrlMembre(chemin) {
+        if (typeof window.SITE_CONFIG?.membreUrl === "function") {
+          return window.SITE_CONFIG.membreUrl(chemin);
+        }
+
+        return joindreBaseEtChemin(window.SITE_BASE, chemin);
+      };
+
+      window.construireUrlAsset = function construireUrlAsset(chemin) {
+        return joindreBaseEtChemin(window.ASSETS_BASE, chemin);
+      };
+
+      function ecrireCssAsset(chemin) {
+        const href = window.construireUrlAsset(chemin);
+
+        if (!href) return;
+
+        document.write('<link rel="stylesheet" href="' + href + '">');
+      }
+
+      ecrireCssAsset("/OBJETS/CSS/base.css");
+      ecrireCssAsset("/OBJETS/CSS/bandeau-et-burger.css");
+      ecrireCssAsset("/OBJETS/CSS/footer.css");
+      ecrireCssAsset("/OBJETS/CSS/formulaire.css");
+      ecrireCssAsset("/OBJETS/CSS/boite-dialogue.css");
+      ecrireCssAsset("/OBJETS/CSS/lightbox-information.css");
+      ecrireCssAsset("/OBJETS/CSS/mon-planning-membre.css");
     })();
   </script>
 </head>
@@ -66,7 +98,52 @@
 <body>
   <div class="site-page">
 
-    <div id="bandeau-nav-container"></div>
+    <div id="bandeau-nav-container">
+      <header class="site-header">
+        <div class="site-header-inner">
+          <a href="/index.html" data-space="membre" class="site-logo">
+            <img
+              class="site-logo-img"
+              src="/OBJETS/IMAGES/LOGO/logo-bandeau-96.webp"
+              width="96"
+              height="96"
+              alt=""
+              aria-hidden="true"
+              loading="eager"
+              fetchpriority="high"
+              decoding="async"
+            >
+            <span>Espace membre</span>
+          </a>
+
+          <button
+            class="burger-button"
+            type="button"
+            aria-label="Ouvrir le menu"
+            aria-expanded="false"
+            aria-controls="burger-nav-membre"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+          <nav
+            id="burger-nav-membre"
+            class="burger-nav burger-nav-membre"
+            aria-label="Navigation membre"
+          >
+            <a href="/index.html?source=menu" data-space="public">Accueil</a>
+            <a href="/index.html?source=menu" data-space="membre">Espace membre</a>
+            <a href="/PAGES/PUBLIQUES/ACTUALITES/actualites.html?source=menu" data-space="public">Actualités</a>
+            <a href="/PAGES/PRIVEES/ESPACE-MEMBRE/LES-PARCS/les-parcs.html?source=menu" data-space="membre">Les parcs</a>
+            <a href="/PAGES/PRIVEES/ESPACE-MEMBRE/LES-COACHS/les-coachs.html?source=menu" data-space="membre">Les coachs</a>
+            <a href="/PAGES/PUBLIQUES/CHOIX-CONNEXION/choix-connexion.html?source=menu" data-space="public">Changer de compte</a>
+          </nav>
+        </div>
+      </header>
+    </div>
+
     <div id="boite-dialogue-container"></div>
     <div id="lightbox-information-container"></div>
 
@@ -84,8 +161,8 @@
 
               <a
                 class="button"
-                href="/PAGES/PRIVEES/MON%20PLANNING%20MEMBRE/nouvelle-date-membre.html"
-                data-site-href="/PAGES/PRIVEES/MON%20PLANNING%20MEMBRE/nouvelle-date-membre.html"
+                href="/PAGES/PRIVEES/ESPACE-MEMBRE/NOUVELLE-DATE-MEMBRE/nouvelle-date-membre.html"
+                data-site-href="/PAGES/PRIVEES/ESPACE-MEMBRE/NOUVELLE-DATE-MEMBRE/nouvelle-date-membre.html"
                 id="bouton-nouvelle-date-planning"
               >
                 Nouvelle date
@@ -207,92 +284,29 @@
 
   <script>
     (() => {
-      const siteBase = (
-        window.SITE_BASE ||
-        window.SITE_CONFIG?.membreBaseUrl ||
-        window.SITE_CONFIG?.MEMBRE_BASE ||
-        ""
-      ).replace(/\/$/, "");
-
-      function construireUrlMembre(chemin) {
-        const valeur = String(chemin || "");
-
-        if (
-          !valeur ||
-          valeur.startsWith("#") ||
-          valeur.startsWith("mailto:") ||
-          valeur.startsWith("tel:") ||
-          valeur.startsWith("http://") ||
-          valeur.startsWith("https://")
-        ) {
-          return valeur;
-        }
-
-        if (typeof window.SITE_CONFIG?.membreUrl === "function") {
-          return window.SITE_CONFIG.membreUrl(valeur);
-        }
-
-        if (siteBase) {
-          return valeur.startsWith("/")
-            ? siteBase + valeur
-            : siteBase + "/" + valeur.replace(/^\.\//, "");
-        }
-
-        return valeur.startsWith("/") ? valeur : "/" + valeur;
-      }
-
       document.querySelectorAll("[data-site-href]").forEach((element) => {
-        element.setAttribute("href", construireUrlMembre(element.dataset.siteHref));
+        element.setAttribute("href", window.construireUrlMembre(element.dataset.siteHref));
       });
     })();
   </script>
 
   <script>
     (() => {
-      const assetsBase = (
-        window.ASSETS_BASE ||
-        window.SITE_CONFIG?.publicBaseUrl ||
-        window.SITE_CONFIG?.PUBLIC_BASE ||
-        window.SITE_BASE ||
-        ""
-      ).replace(/\/$/, "");
+      function ecrireScriptAsset(chemin) {
+        const src = window.construireUrlAsset(chemin);
 
-      function chargerScript(src) {
-        return new Promise((resolve, reject) => {
-          if (!src) {
-            resolve();
-            return;
-          }
+        if (!src) return;
 
-          const script = document.createElement("script");
-          script.src = src;
-          script.defer = true;
-          script.onload = resolve;
-          script.onerror = reject;
-          document.body.appendChild(script);
-        });
+        document.write('<script src="' + src + '"><\/script>');
       }
 
-      function scriptAssets(chemin) {
-        const valeur = String(chemin || "");
-
-        if (!valeur) return Promise.resolve();
-
-        return chargerScript(assetsBase ? assetsBase + valeur : valeur);
-      }
-
-      scriptAssets("/OBJETS/BLOCS/burger-membre.js").catch(() => {});
-      scriptAssets("/OBJETS/BLOCS/footer-global.js").catch(() => {});
-
-      Promise.allSettled([
-        scriptAssets("/OBJETS/BLOCS/boite-dialogue.js"),
-        scriptAssets("/OBJETS/BLOCS/lightbox-information.js")
-      ]).then(() => {
-        return chargerScript("./mon-planning-membre.js");
-      }).catch(() => {
-        return chargerScript("./mon-planning-membre.js");
-      });
+      ecrireScriptAsset("/OBJETS/BLOCS/burger-membre.js");
+      ecrireScriptAsset("/OBJETS/BLOCS/footer-global.js");
+      ecrireScriptAsset("/OBJETS/BLOCS/boite-dialogue.js");
+      ecrireScriptAsset("/OBJETS/BLOCS/lightbox-information.js");
     })();
   </script>
+
+  <script src="./mon-planning-membre.js"></script>
 </body>
 </html>
