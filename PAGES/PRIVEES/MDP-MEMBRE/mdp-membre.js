@@ -17,10 +17,8 @@ function initialiserPageMdpMembre() {
   const token = String(params.get("token") || "").trim();
   const mode = normaliserMode(params.get("mode"));
 
-  const endpointMdptokenz = nettoyerBaseUrl(window.SITE_CONFIG?.workerMdptokenzUrl || "");
-  const urlConnexionMembre = construireUrlPublique(
-    "/PAGES/PUBLIQUES/CONNEXION-MEMBRE/connexion-membre.html"
-  );
+  const endpointMdptokenz = obtenirEndpointMdptokenz();
+  const urlConnexionMembre = construireUrlConnexionMembre();
 
   let envoiEnCours = false;
 
@@ -109,10 +107,12 @@ function initialiserPageMdpMembre() {
     try {
       const response = await fetch(endpointMdptokenz, {
         method: "POST",
+        credentials: "include",
+        cache: "no-store",
         headers: {
+          "Accept": "application/json",
           "Content-Type": "application/json"
         },
-        credentials: "include",
         body: JSON.stringify({
           action: "write-mdp",
           token,
@@ -144,7 +144,7 @@ function initialiserPageMdpMembre() {
       );
 
     } catch (error) {
-      console.error("Erreur appel w-mdptokenz :", error);
+      console.error("Erreur appel mdptokenz :", error);
 
       afficherInformation(
         "Erreur",
@@ -159,34 +159,48 @@ function initialiserPageMdpMembre() {
   }
 }
 
-function construireUrlPublique(chemin) {
-  const valeur = String(chemin || "");
+function obtenirEndpointMdptokenz() {
+  const config = window.SITE_CONFIG || {};
 
-  if (
-    valeur.startsWith("#") ||
-    valeur.startsWith("mailto:") ||
-    valeur.startsWith("tel:") ||
-    valeur.startsWith("http://") ||
-    valeur.startsWith("https://")
-  ) {
-    return valeur;
+  const depuisConfig =
+    config.workerMdptokenzUrl ||
+    config.WORKER_MDPTOKENZ_URL ||
+    "";
+
+  if (depuisConfig) {
+    return nettoyerBaseUrl(depuisConfig);
   }
 
-  const publicBaseUrl = nettoyerBaseUrl(
-    window.SITE_CONFIG?.publicBaseUrl ||
-    window.SITE_CONFIG?.PUBLIC_BASE ||
+  if (typeof config.apiUrl === "function") {
+    return nettoyerBaseUrl(config.apiUrl("mdptokenz-api"));
+  }
+
+  return "";
+}
+
+function construireUrlConnexionMembre() {
+  const chemin = "/PAGES/PUBLIQUES/CONNEXION-MEMBRE/connexion-membre.html";
+  const config = window.SITE_CONFIG || {};
+
+  if (typeof config.publicUrl === "function") {
+    return config.publicUrl(chemin);
+  }
+
+  const baseConnexion = nettoyerBaseUrl(
+    config.publicBaseUrl ||
+    config.PUBLIC_BASE ||
     ""
   );
 
-  if (publicBaseUrl) {
-    return joindreBaseEtChemin(publicBaseUrl, valeur);
+  if (baseConnexion) {
+    return joindreBaseEtChemin(baseConnexion, chemin);
   }
 
   if (window.location.hostname.includes("github.io")) {
-    return joindreBaseEtChemin("/LCDP_public", valeur);
+    return joindreBaseEtChemin("/LCDP_public", chemin);
   }
 
-  return valeur.startsWith("/") ? valeur : "/" + valeur;
+  return chemin;
 }
 
 function joindreBaseEtChemin(baseUrl, chemin) {

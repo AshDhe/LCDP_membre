@@ -22,21 +22,84 @@
         siteBaseFallback = "";
       }
 
+      function nettoyerBaseUrl(value) {
+        return String(value || "").replace(/\/+$/, "");
+      }
+
+      function joindreBaseEtChemin(baseUrl, chemin) {
+        const base = nettoyerBaseUrl(baseUrl);
+        const cheminNettoye = "/" + String(chemin || "").replace(/^\/+/, "");
+
+        if (!base) {
+          return cheminNettoye;
+        }
+
+        return base + cheminNettoye;
+      }
+
+      function urlAbsolueOuTechnique(chemin) {
+        const valeur = String(chemin || "");
+
+        return (
+          !valeur ||
+          valeur.startsWith("#") ||
+          valeur.startsWith("mailto:") ||
+          valeur.startsWith("tel:") ||
+          valeur.startsWith("http://") ||
+          valeur.startsWith("https://")
+        );
+      }
+
       window.SITE_ROOT_RELATIVE = siteRootRelative;
 
-      window.SITE_BASE = (
+      window.SITE_BASE = nettoyerBaseUrl(
         window.SITE_CONFIG?.membreBaseUrl ||
         window.SITE_CONFIG?.MEMBRE_BASE ||
+        window.SITE_CONFIG?.siteBase ||
         siteBaseFallback ||
         ""
-      ).replace(/\/$/, "");
+      );
+
+      window.LCDP_SHARED_ASSETS_BASE = nettoyerBaseUrl(
+        window.SITE_CONFIG?.assetsBaseUrl ||
+        window.SITE_CONFIG?.commonAssetsBaseUrl ||
+        window.SITE_CONFIG?.publicBaseUrl ||
+        window.SITE_CONFIG?.PUBLIC_BASE ||
+        ""
+      );
+
+      window.construireUrlAsset = function construireUrlAsset(chemin) {
+        const valeur = String(chemin || "");
+
+        if (urlAbsolueOuTechnique(valeur)) {
+          return valeur;
+        }
+
+        if (window.LCDP_SHARED_ASSETS_BASE) {
+          return joindreBaseEtChemin(window.LCDP_SHARED_ASSETS_BASE, valeur);
+        }
+
+        return valeur.startsWith("/")
+          ? siteRootRelative.replace(/\/?$/, "/") + valeur.replace(/^\//, "")
+          : valeur;
+      };
+
+      function chargerCssAsset(chemin) {
+        const href = window.construireUrlAsset(chemin);
+
+        if (!href) return;
+
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = href;
+        document.head.appendChild(link);
+      }
+
+      chargerCssAsset("/OBJETS/CSS/base.css");
+      chargerCssAsset("/OBJETS/CSS/formulaire.css");
+      chargerCssAsset("/OBJETS/CSS/lightbox-information.css");
     })();
   </script>
-
-  <link rel="stylesheet" href="https://ashdhe.github.io/LCDP_public/OBJETS/CSS/base.css">
-  <link rel="stylesheet" href="https://ashdhe.github.io/LCDP_public/OBJETS/CSS/formulaire.css">
-  <link rel="stylesheet" href="https://ashdhe.github.io/LCDP_public/OBJETS/CSS/lightbox-information.css">
-
 </head>
 
 <body>
@@ -123,7 +186,35 @@
 
   </div>
 
-  <script src="https://lacleduparc.fr/OBJETS/BLOCS/lightbox-information.js"></script>
-  <script src="./mdp-membre.js"></script>
+  <script>
+    (() => {
+      function chargerScript(src) {
+        return new Promise((resolve, reject) => {
+          if (!src) {
+            resolve();
+            return;
+          }
+
+          const script = document.createElement("script");
+          script.src = src;
+          script.defer = true;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Impossible de charger " + src));
+          document.body.appendChild(script);
+        });
+      }
+
+      const lightboxInformationSrc =
+        typeof window.construireUrlAsset === "function"
+          ? window.construireUrlAsset("/OBJETS/BLOCS/lightbox-information.js")
+          : "";
+
+      chargerScript(lightboxInformationSrc)
+        .catch(() => {})
+        .finally(() => {
+          chargerScript("./mdp-membre.js").catch(() => {});
+        });
+    })();
+  </script>
 </body>
 </html>
