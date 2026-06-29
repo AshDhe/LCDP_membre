@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+
+  <title>Mot de passe membre - La Clé du Parc</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Créer ou modifier le mot de passe de votre compte membre La Clé du Parc.">
+
+  <script src="../config.js"></script>
+
+  <script>
+    (() => {
+      "use strict";
+
+      function nettoyerBaseUrl(value) {
+        return String(value || "").replace(/\/+$/, "");
+      }
+
+      function joindreBaseEtChemin(baseUrl, chemin) {
+        const base = nettoyerBaseUrl(baseUrl);
+        const cheminNettoye = "/" + String(chemin || "").replace(/^\/+/, "");
+
+        if (!base) {
+          return cheminNettoye;
+        }
+
+        return base + cheminNettoye;
+      }
+
+      const membreBaseUrl = nettoyerBaseUrl(
+        window.SITE_CONFIG?.membreBaseUrl ||
+        window.SITE_CONFIG?.MEMBRE_BASE ||
+        window.SITE_CONFIG?.siteBase ||
+        ""
+      );
+
+      const objetBaseUrl = nettoyerBaseUrl(
+        window.SITE_CONFIG?.objetBaseUrl ||
+        window.SITE_CONFIG?.OBJET_BASE ||
+        ""
+      );
+
+      window.SITE_BASE = membreBaseUrl;
+      window.LCDP_OBJET_BASE = objetBaseUrl;
+
+      function chargerCssObjet(chemin) {
+        const href = typeof window.SITE_CONFIG?.objetUrl === "function"
+          ? window.SITE_CONFIG.objetUrl(chemin)
+          : joindreBaseEtChemin(objetBaseUrl, chemin);
+
+        if (!href) {
+          return;
+        }
+
+        document.write('<link rel="stylesheet" href="' + href.replace(/"/g, "&quot;") + '">');
+      }
+
+      chargerCssObjet("/CSSBASE/cssbase.css");
+      chargerCssObjet("/BOX/02-box-alerte.css");
+      chargerCssObjet("/BOX/03-box-formulaire.css");
+      chargerCssObjet("/BOX/03-box-champ-formulaire.css");
+    })();
+  </script>
+</head>
+
+<body>
+  <div class="lcdp-site-page">
+
+    <main class="lcdp-site-main">
+      <section
+        class="lcdp-page-section"
+        aria-label="Mot de passe du compte membre"
+      >
+        <div class="lcdp-page-container">
+
+          <section
+            class="lcdp-component lcdp-box-formulaire-page"
+            data-lcdp-box-formulaire-page
+          >
+            <div class="lcdp-box-formulaire-page__inner">
+
+              <form
+                id="formulaire-mdp-membre"
+                class="lcdp-box-formulaire"
+                aria-label="Formulaire de mot de passe membre"
+                novalidate
+              >
+                <header class="lcdp-box-formulaire__header">
+                  <h1 class="lcdp-box-formulaire__title">
+                    Mot de passe membre
+                  </h1>
+
+                  <p
+                    class="lcdp-box-formulaire__subtitle"
+                    id="texte-mode-mdp"
+                  ></p>
+
+                  <div class="lcdp-box-formulaire__intro">
+                    <p>
+                      Vous pourrez vous connecter depuis la page de
+                      <a
+                        id="lien-connexion-membre"
+                        href="#"
+                      >connexion membre</a>.
+                    </p>
+                  </div>
+                </header>
+
+                <div class="lcdp-box-formulaire__fields">
+                  <div class="lcdp-box-champ-formulaire" data-lcdp-box-champ-formulaire>
+                    <div class="lcdp-box-champ-formulaire__label-zone">
+                      <label
+                        class="lcdp-box-champ-formulaire__label"
+                        for="passwordmembre"
+                      >
+                        Mot de passe
+                      </label>
+                    </div>
+
+                    <p class="lcdp-box-champ-formulaire__description">
+                      Votre mot de passe doit contenir au moins 10 caractères.
+                    </p>
+
+                    <div class="lcdp-box-champ-formulaire__control">
+                      <input
+                        type="password"
+                        id="passwordmembre"
+                        name="passwordmembre"
+                        placeholder="Mot de passe"
+                        autocomplete="new-password"
+                        required
+                      >
+
+                      <label
+                        class="lcdp-box-champ-formulaire__checkbox-line"
+                        for="afficher-mdp-membre"
+                      >
+                        <input
+                          type="checkbox"
+                          id="afficher-mdp-membre"
+                        >
+                        <span>Afficher le mot de passe</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="lcdp-box-formulaire__actions">
+                  <button
+                    type="submit"
+                    id="bouton-valider-formulaire"
+                    class="lcdp-button lcdp-button-primary"
+                  >
+                    Valider
+                  </button>
+                </div>
+              </form>
+
+            </div>
+          </section>
+
+        </div>
+      </section>
+    </main>
+
+    <div id="lcdp-lightbox-slot"></div>
+
+  </div>
+
+  <script src="./mdp-membre.js"></script>
+</body>
+</html>
