@@ -77,11 +77,10 @@
         "/BOX/02-box-bandeau-nav.css",
         "/BOX/02-box-menu-burger.css",
         "/BOX/02-box-alerte.css",
+        "/BOX/02-box-dialogue-bouton.css",
         "/BOX/02-box-footer.css",
         "/BOX/04-box-liste-card.css",
-        "/BOX/04-box-card-reservation-membre.css",
-        "/BOX/04-box-dialogue-champ-inviter.css",
-        "/BOX/04-box-card-listemails.css"
+        "/BOX/04-box-card-reservation-membre.css"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -101,16 +100,18 @@
     <div id="lcdp-bandeau-slot"></div>
 
     <main class="lcdp-site-main">
-      <section class="lcdp-page-section" aria-label="Mon planning">
+      <section class="lcdp-page-section" aria-label="Planning membre">
         <div class="lcdp-page-container">
           <div class="lcdp-page-content lcdp-stack-large">
 
             <h1 class="lcdp-title-page-center">Mon planning</h1>
 
-            <div class="lcdp-box-menu-bouton__list lcdp-box-menu-bouton__list--single" aria-label="Actions planning membre">
+            <div class="lcdp-box-menu-bouton__list lcdp-box-menu-bouton__list--single" aria-label="Navigation planning membre">
               <a
                 class="lcdp-button lcdp-button-primary"
-                href="#"
+                href="./reserver-membre.html"
+                data-site-href="/ESPACE-MEMBRE/reserver-membre.html"
+                data-space="membre"
                 id="bouton-nouvelle-date-planning"
               >
                 Poser une nouvelle date

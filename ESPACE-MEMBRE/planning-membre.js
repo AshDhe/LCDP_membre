@@ -10,14 +10,9 @@
     "planning-membre-api"
   );
 
-  const ENDPOINT_INVITER_MEMBRE = construireEndpointApi(
-    "workerInviterMembreUrl",
-    "WORKER_INVITER_MEMBRE_URL",
-    "inviter-membre-api"
-  );
-
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_RESERVER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html");
+  const PAGE_INVITER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html");
 
   let pageInitialisee = false;
 
@@ -40,7 +35,7 @@
     try {
       await initialiserBandeau();
       await initialiserFooter();
-      await initialiserListeReservations("Mes réservations", false);
+      await initialiserListeReservations("Mes réservations");
       initialiserBoutonNouvelleDate();
       initialiserActionsListePlanning();
       document.addEventListener("click", gererClicDocument);
@@ -57,6 +52,7 @@
     if (!bouton) return;
 
     bouton.href = PAGE_RESERVER_MEMBRE;
+
     bouton.addEventListener("click", (event) => {
       event.preventDefault();
       window.location.href = PAGE_RESERVER_MEMBRE;
@@ -97,7 +93,9 @@
         method: "GET",
         credentials: "include",
         cache: "no-store",
-        headers: { "Accept": "application/json" }
+        headers: {
+          "Accept": "application/json"
+        }
       });
 
       const data = await reponse.json().catch(() => null);
@@ -114,7 +112,7 @@
       etat.reservations = Array.isArray(data.reservations) ? data.reservations : [];
       afficherReservations(etat.reservations);
     } catch (error) {
-      console.error("Erreur chargement planning :", error);
+      console.error("Erreur chargement planning membre :", error);
       afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
     }
   }
@@ -130,13 +128,30 @@
     }
 
     if (boutonInvitation) {
-      await ouvrirDialogueInvitation(String(boutonInvitation.dataset.id || ""));
+      await ouvrirPageInvitation(String(boutonInvitation.dataset.id || ""));
       return;
     }
 
     if (boutonAnnuler) {
       await traiterAnnulationReservation(boutonAnnuler);
     }
+  }
+
+  async function ouvrirPageInvitation(idflux) {
+    const idReservation = String(idflux || "").trim();
+
+    if (!idReservation) {
+      await afficherAlerte("Réservation manquante.");
+      return;
+    }
+
+    if (!membreAbonne()) {
+      await afficherAlerte("Cette fonction est réservée aux membres abonnés.");
+      return;
+    }
+
+    const separateur = PAGE_INVITER_MEMBRE.includes("?") ? "&" : "?";
+    window.location.href = PAGE_INVITER_MEMBRE + separateur + "idflux=" + encodeURIComponent(idReservation);
   }
 
   async function traiterAnnulationReservation(boutonAnnuler) {
@@ -147,9 +162,24 @@
       return;
     }
 
-    const confirmation = await afficherAlerte("Voulez-vous vraiment annuler cette date ?");
+    const confirmation = await ouvrirDialogueBoutons({
+      titre: "Confirmer l’annulation",
+      texte: "Voulez-vous vraiment annuler cette date ?",
+      boutons: [
+        {
+          label: "Non",
+          valeur: "non",
+          style: "lcdp-button-secondary"
+        },
+        {
+          label: "Oui",
+          valeur: "oui",
+          style: "lcdp-button-primary"
+        }
+      ]
+    });
 
-    if (confirmation !== true) return;
+    if (confirmation !== "oui") return;
 
     const texteInitial = boutonAnnuler.textContent;
     boutonAnnuler.disabled = true;
@@ -186,7 +216,7 @@
 
     if (reponse.status === 401) {
       redirigerConnexionMembre("inactive");
-      return;
+      return null;
     }
 
     if (!reponse.ok || !data || !reponseApiOk(data)) {
@@ -194,236 +224,6 @@
     }
 
     return data.reservation || null;
-  }
-
-  function nettoyerBaseUrl(value) {
-    return String(value || "").replace(/\/+$/, "");
-  }
-
-  function buildUrl(base, path) {
-    return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
-  }
-
-  function estUrlExterneOuAncre(chemin) {
-    return (
-      !chemin ||
-      chemin.startsWith("#") ||
-      chemin.startsWith("mailto:") ||
-      chemin.startsWith("tel:") ||
-      chemin.startsWith("http://") ||
-      chemin.startsWith("https://") ||
-      chemin.startsWith("data:")
-    );
-  }
-
-  function construireUrlPublic(chemin) {
-    const valeur = String(chemin || "");
-
-    if (estUrlExterneOuAncre(valeur)) return valeur;
-    if (typeof window.LCDP_urlPublic === "function") return window.LCDP_urlPublic(valeur);
-    if (typeof CONFIG_PAGE.publicUrl === "function") return CONFIG_PAGE.publicUrl(valeur);
-
-    return buildUrl(CONFIG_PAGE.publicBaseUrl || CONFIG_PAGE.PUBLIC_BASE || "", valeur);
-  }
-
-  function construireUrlMembre(chemin) {
-    const valeur = String(chemin || "");
-
-    if (estUrlExterneOuAncre(valeur)) return valeur;
-    if (typeof window.LCDP_urlMembre === "function") return window.LCDP_urlMembre(valeur);
-    if (typeof CONFIG_PAGE.membreUrl === "function") return CONFIG_PAGE.membreUrl(valeur);
-
-    return buildUrl(
-      CONFIG_PAGE.membreBaseUrl ||
-      CONFIG_PAGE.MEMBRE_BASE ||
-      CONFIG_PAGE.siteBase ||
-      "",
-      valeur
-    );
-  }
-
-  function construireUrlObjet(chemin) {
-    const valeur = String(chemin || "");
-
-    if (estUrlExterneOuAncre(valeur)) return valeur;
-    if (typeof window.LCDP_urlObjet === "function") return window.LCDP_urlObjet(valeur);
-    if (typeof CONFIG_PAGE.objetUrl === "function") return CONFIG_PAGE.objetUrl(valeur);
-
-    const objetBase =
-      CONFIG_PAGE.objetBaseUrl ||
-      CONFIG_PAGE.OBJET_BASE ||
-      buildUrl(CONFIG_PAGE.publicBaseUrl || CONFIG_PAGE.PUBLIC_BASE || "", "/OBJET");
-
-    return buildUrl(objetBase, valeur);
-  }
-
-  function construireEndpointApi(cleModerne, cleLegacy, sousDomaineWorker) {
-    const depuisConfig =
-      CONFIG_PAGE?.[cleModerne] ||
-      CONFIG_PAGE?.[cleLegacy] ||
-      "";
-
-    if (depuisConfig) return String(depuisConfig).replace(/\/+$/, "");
-    if (typeof CONFIG_PAGE.apiUrl === "function") {
-      return CONFIG_PAGE.apiUrl(sousDomaineWorker).replace(/\/+$/, "");
-    }
-
-    return "";
-  }
-
-  async function chargerFragmentObjet(chemin) {
-    const reponse = await fetch(construireUrlObjet(chemin), {
-      method: "GET",
-      credentials: "omit",
-      cache: "no-cache"
-    });
-
-    if (!reponse.ok) throw new Error("Fragment OBJET introuvable : " + chemin);
-
-    const html = await reponse.text();
-    const template = document.createElement("template");
-    template.innerHTML = html.trim();
-
-    return template.content.cloneNode(true);
-  }
-
-  function chargerScriptMembreUneFois(chemin) {
-    const src = construireUrlMembre(chemin);
-
-    if (document.querySelector(`script[data-lcdp-script="${chemin}"]`)) {
-      return Promise.resolve();
-    }
-
-    return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = src;
-      script.defer = true;
-      script.dataset.lcdpScript = chemin;
-      script.onload = resolve;
-      script.onerror = () => reject(new Error("Script membre introuvable : " + chemin));
-      document.body.appendChild(script);
-    });
-  }
-
-  function appliquerRoutesSite(racine = document) {
-    racine.querySelectorAll("[data-site-href]").forEach((element) => {
-      const chemin = element.dataset.siteHref || "";
-      const espace = element.dataset.space || "public";
-
-      element.setAttribute(
-        "href",
-        espace === "membre" ? construireUrlMembre(chemin) : construireUrlPublic(chemin)
-      );
-    });
-
-    racine.querySelectorAll("[data-site-src]").forEach((element) => {
-      const chemin = element.dataset.siteSrc || "";
-      const cheminObjet = chemin.replace(/^\/?OBJET\/?/, "/");
-      element.setAttribute("src", construireUrlObjet(cheminObjet));
-    });
-  }
-
-  async function initialiserBandeau() {
-    const slot = document.getElementById("lcdp-bandeau-slot");
-    if (!slot) return;
-
-    slot.innerHTML = "";
-    const bandeau = await chargerFragmentObjet("/BOX/02-box-bandeau-nav.html");
-    slot.appendChild(bandeau);
-    appliquerRoutesSite(slot);
-
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js");
-
-    if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
-      await window.LCDP_initialiserMenuBurgerMembre();
-    }
-  }
-
-  async function initialiserFooter() {
-    const slot = document.getElementById("lcdp-footer-slot");
-    if (!slot) return;
-
-    slot.innerHTML = "";
-    const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
-    slot.appendChild(footer);
-    appliquerRoutesSite(slot);
-  }
-
-  function lireCookie(nom) {
-    return document.cookie
-      .split(";")
-      .map((cookie) => cookie.trim())
-      .find((cookie) => cookie.startsWith(nom + "="))
-      ?.split("=")
-      .slice(1)
-      .join("=") || "";
-  }
-
-  function membreAbonne() {
-    return Boolean(lireCookie("abonne"));
-  }
-
-  function lireMaxinvit() {
-    const valeur = Number.parseInt(lireCookie("maxinvit") || "0", 10);
-    return Number.isFinite(valeur) && valeur > 0 ? valeur : 0;
-  }
-
-  function redirigerConnexionMembre(motif) {
-    const separateur = PAGE_CONNEXION_MEMBRE.includes("?") ? "&" : "?";
-
-    window.location.href =
-      PAGE_CONNEXION_MEMBRE +
-      separateur +
-      "source=" + encodeURIComponent(SOURCE_PAGE) +
-      "&session=" +
-      encodeURIComponent(motif || "inactive");
-  }
-
-  async function afficherAlerte(message) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-    if (!slot) return null;
-
-    slot.innerHTML = "";
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
-    slot.appendChild(fragment);
-
-    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-    const texte = slot.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      throw new Error("Structure de l’alerte incomplète.");
-    }
-
-    texte.textContent = message;
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer(valeur) {
-        if (resolu) return;
-        resolu = true;
-        slot.innerHTML = "";
-        resolve(valeur);
-      }
-
-      boutonFermer.addEventListener("click", () => fermer(false));
-      boutonOk.addEventListener("click", () => fermer(true));
-      alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) fermer(false);
-      });
-    });
-  }
-
-  function reponseApiOk(data) {
-    return data && (data.ok === true || data.success === true);
-  }
-
-  function messageErreurApi(resultat, messageDefaut) {
-    return resultat && (resultat.message || resultat.error)
-      ? String(resultat.message || resultat.error)
-      : messageDefaut;
   }
 
   async function initialiserListeReservations(titreListe) {
@@ -444,7 +244,7 @@
       throw new Error("Template card réservation membre introuvable.");
     }
 
-    const titre = document.querySelector("[data-lcdp-liste-card-title]");
+    const titre = slot.querySelector("[data-lcdp-liste-card-title]");
     if (titre) titre.textContent = titreListe || "Mes réservations";
   }
 
@@ -494,6 +294,7 @@
 
   function afficherReservations(reservations) {
     const zoneListe = obtenirZoneListe();
+
     if (!zoneListe) return;
 
     const reservationsFiltrees = filtrerEtTrierReservations(reservations);
@@ -588,7 +389,7 @@
 
     if (boutonInvitation) {
       boutonInvitation.dataset.id = idFlux;
-      boutonInvitation.hidden = estPasse;
+      boutonInvitation.hidden = estPasse || reservation.invitation === true;
     }
 
     if (boutonAnnuler) {
@@ -617,139 +418,327 @@
     return identite ? "Invitation (" + identite + ")" : "Invitation";
   }
 
-  async function ouvrirDialogueInvitation(idflux) {
-    if (!membreAbonne()) {
-      await afficherAlerte("Cette fonction est réservée aux membres abonnés.");
-      return;
-    }
+  async function initialiserBandeau() {
+    const slot = document.getElementById("lcdp-bandeau-slot");
 
-    const maxinvit = lireMaxinvit();
-
-    if (maxinvit <= 0) {
-      await afficherAlerte("Votre droit d'invitation n'est pas configuré.");
-      return;
-    }
-
-    const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) return;
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ-inviter.html");
-    slot.appendChild(fragment);
+    const bandeau = await chargerFragmentMembre("/ESPACE-MEMBRE/box-bandeau-nav-membre.html");
+    slot.appendChild(bandeau);
+    appliquerRoutesSite(slot);
 
-    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-champ-inviter]");
-    const boutonFermer = slot.querySelector("[data-lcdp-inviter-close]");
-    const formulaire = slot.querySelector("[data-lcdp-inviter-form]");
-    const zoneFields = slot.querySelector("[data-lcdp-inviter-fields]");
-    const boutonAjouter = slot.querySelector("[data-lcdp-inviter-add]");
-    const erreur = slot.querySelector("[data-lcdp-inviter-error]");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js");
 
-    if (!dialogue || !boutonFermer || !formulaire || !zoneFields || !boutonAjouter || !erreur) {
-      throw new Error("Structure invitation incomplète.");
+    if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
+      await window.LCDP_initialiserMenuBurgerMembre({
+        etatMembre: {
+          abonne: membreAbonne()
+        }
+      });
     }
-
-    function fermer() {
-      slot.innerHTML = "";
-    }
-
-    function afficherErreur(message) {
-      erreur.hidden = !message;
-      erreur.textContent = message || "";
-    }
-
-    async function ajouterChamp() {
-      const nombre = zoneFields.querySelectorAll("input[type='email']").length;
-
-      if (nombre >= maxinvit) {
-        await afficherAlerte("Votre maxinvit est atteint.");
-        return;
-      }
-
-      const index = nombre + 1;
-      const label = document.createElement("label");
-      label.className = "lcdp-box-dialogue-champ-inviter__field";
-      label.innerHTML = `
-        <span>Email invité ${index}</span>
-        <input
-          class="lcdp-box-dialogue-champ-inviter__input"
-          type="email"
-          name="emailinvite"
-          autocomplete="email"
-          placeholder="invite@email.fr"
-          required
-        >
-      `;
-
-      zoneFields.appendChild(label);
-      const input = label.querySelector("input");
-      if (input) input.focus();
-    }
-
-    boutonFermer.addEventListener("click", fermer);
-    dialogue.addEventListener("click", (event) => {
-      if (event.target === dialogue) fermer();
-    });
-
-    boutonAjouter.addEventListener("click", () => {
-      ajouterChamp().catch(console.error);
-    });
-
-    formulaire.addEventListener("submit", async (event) => {
-      event.preventDefault();
-
-      afficherErreur("");
-
-      const emails = Array.from(zoneFields.querySelectorAll("input[type='email']"))
-        .map((input) => String(input.value || "").trim().toLowerCase())
-        .filter(Boolean);
-
-      if (!emails.length) {
-        afficherErreur("Merci de saisir au moins une adresse e-mail.");
-        return;
-      }
-
-      try {
-        await envoyerInvitations(idflux, emails);
-        fermer();
-        await afficherAlerte("Invitation envoyée.");
-        await chargerReservations();
-      } catch (error) {
-        await afficherAlerte(error.message || "Impossible d'envoyer l'invitation.");
-      }
-    });
-
-    await ajouterChamp();
   }
 
-  async function envoyerInvitations(idflux, emails) {
-    if (!ENDPOINT_INVITER_MEMBRE) {
-      throw new Error("Le service inviter membre n’est pas configuré.");
+  async function initialiserFooter() {
+    const slot = document.getElementById("lcdp-footer-slot");
+
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
+    slot.appendChild(footer);
+    appliquerRoutesSite(slot);
+  }
+
+  async function afficherAlerte(message) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) return null;
+
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    slot.appendChild(fragment);
+
+    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
+    const texte = slot.querySelector("[data-lcdp-alerte-message]");
+    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
+    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
+
+    if (!alerte || !texte || !boutonFermer || !boutonOk) {
+      throw new Error("Structure de l’alerte incomplète.");
     }
 
-    const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/inviter-reservation", {
-      method: "POST",
-      credentials: "include",
-      cache: "no-store",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ idflux, emails })
+    texte.textContent = message || "";
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        slot.innerHTML = "";
+        resolve(valeur);
+      }
+
+      boutonFermer.addEventListener("click", () => fermer(false));
+      boutonOk.addEventListener("click", () => fermer(true));
+      alerte.addEventListener("click", (event) => {
+        if (event.target === alerte) fermer(false);
+      });
+
+      document.addEventListener(
+        "keydown",
+        (event) => {
+          if (event.key === "Escape") fermer(false);
+        },
+        { once: true }
+      );
+    });
+  }
+
+  async function ouvrirDialogueBoutons(options) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) return null;
+
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    slot.appendChild(fragment);
+
+    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
+    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
+    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
+
+    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
+      throw new Error("Structure de dialogue bouton incomplète.");
+    }
+
+    titre.textContent = options.titre || "";
+    texte.textContent = options.texte || "";
+    actions.innerHTML = "";
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        slot.innerHTML = "";
+        resolve(valeur || null);
+      }
+
+      (options.boutons || []).forEach((configuration) => {
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "lcdp-button " + (configuration.style || "lcdp-button-primary");
+        bouton.textContent = configuration.label || "Valider";
+
+        bouton.addEventListener("click", () => {
+          fermer(configuration.valeur || configuration.label || true);
+        });
+
+        actions.appendChild(bouton);
+      });
+
+      boutonFermer.addEventListener("click", () => fermer(null));
+      dialogue.addEventListener("click", (event) => {
+        if (event.target === dialogue) fermer(null);
+      });
+
+      document.addEventListener(
+        "keydown",
+        (event) => {
+          if (event.key === "Escape") fermer(null);
+        },
+        { once: true }
+      );
+    });
+  }
+
+  async function chargerFragmentObjet(chemin) {
+    const reponse = await fetch(construireUrlObjet(chemin), {
+      method: "GET",
+      credentials: "omit",
+      cache: "no-cache"
     });
 
-    const data = await reponse.json().catch(() => null);
+    if (!reponse.ok) throw new Error("Fragment OBJET introuvable : " + chemin);
 
-    if (reponse.status === 401) {
-      redirigerConnexionMembre("inactive");
-      return;
+    const html = await reponse.text();
+    const template = document.createElement("template");
+    template.innerHTML = html.trim();
+
+    return template.content.cloneNode(true);
+  }
+
+  async function chargerFragmentMembre(chemin) {
+    const reponse = await fetch(construireUrlMembre(chemin), {
+      method: "GET",
+      credentials: "omit",
+      cache: "no-cache"
+    });
+
+    if (!reponse.ok) throw new Error("Fragment membre introuvable : " + chemin);
+
+    const html = await reponse.text();
+    const template = document.createElement("template");
+    template.innerHTML = html.trim();
+
+    return template.content.cloneNode(true);
+  }
+
+  function chargerScriptMembreUneFois(chemin) {
+    const src = construireUrlMembre(chemin);
+
+    if (document.querySelector(`script[data-lcdp-script="${chemin}"]`)) {
+      return Promise.resolve();
     }
 
-    if (!reponse.ok || !data || !reponseApiOk(data)) {
-      throw new Error(messageErreurApi(data, "Impossible d'envoyer l'invitation."));
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.defer = true;
+      script.dataset.lcdpScript = chemin;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("Script membre introuvable : " + chemin));
+      document.body.appendChild(script);
+    });
+  }
+
+  function appliquerRoutesSite(racine = document) {
+    racine.querySelectorAll("[data-site-href]").forEach((element) => {
+      const chemin = element.dataset.siteHref || "";
+      const espace = element.dataset.space || "public";
+
+      element.setAttribute(
+        "href",
+        espace === "membre" ? construireUrlMembre(chemin) : construireUrlPublic(chemin)
+      );
+    });
+
+    racine.querySelectorAll("[data-site-src]").forEach((element) => {
+      const chemin = element.dataset.siteSrc || "";
+      const cheminObjet = chemin.replace(/^\/?OBJET\/?/, "/");
+      element.setAttribute("src", construireUrlObjet(cheminObjet));
+    });
+  }
+
+  function construireEndpointApi(cleModerne, cleLegacy, sousDomaineWorker) {
+    const depuisConfig =
+      CONFIG_PAGE?.[cleModerne] ||
+      CONFIG_PAGE?.[cleLegacy] ||
+      "";
+
+    if (depuisConfig) return String(depuisConfig).replace(/\/+$/, "");
+
+    if (typeof CONFIG_PAGE.apiUrl === "function") {
+      return CONFIG_PAGE.apiUrl(sousDomaineWorker).replace(/\/+$/, "");
     }
 
-    return data;
+    return "";
+  }
+
+  function construireUrlPublic(chemin) {
+    const valeur = String(chemin || "");
+
+    if (estUrlExterneOuAncre(valeur)) return valeur;
+    if (typeof window.LCDP_urlPublic === "function") return window.LCDP_urlPublic(valeur);
+    if (typeof CONFIG_PAGE.publicUrl === "function") return CONFIG_PAGE.publicUrl(valeur);
+
+    return buildUrl(CONFIG_PAGE.publicBaseUrl || CONFIG_PAGE.PUBLIC_BASE || "", valeur);
+  }
+
+  function construireUrlMembre(chemin) {
+    const valeur = String(chemin || "");
+
+    if (estUrlExterneOuAncre(valeur)) return valeur;
+    if (typeof window.LCDP_urlMembre === "function") return window.LCDP_urlMembre(valeur);
+    if (typeof CONFIG_PAGE.membreUrl === "function") return CONFIG_PAGE.membreUrl(valeur);
+
+    return buildUrl(
+      CONFIG_PAGE.membreBaseUrl ||
+      CONFIG_PAGE.MEMBRE_BASE ||
+      CONFIG_PAGE.siteBase ||
+      "",
+      valeur
+    );
+  }
+
+  function construireUrlObjet(chemin) {
+    const valeur = String(chemin || "");
+
+    if (estUrlExterneOuAncre(valeur)) return valeur;
+    if (typeof window.LCDP_urlObjet === "function") return window.LCDP_urlObjet(valeur);
+    if (typeof CONFIG_PAGE.objetUrl === "function") return CONFIG_PAGE.objetUrl(valeur);
+
+    const objetBase =
+      CONFIG_PAGE.objetBaseUrl ||
+      CONFIG_PAGE.OBJET_BASE ||
+      buildUrl(CONFIG_PAGE.publicBaseUrl || CONFIG_PAGE.PUBLIC_BASE || "", "/OBJET");
+
+    return buildUrl(objetBase, valeur);
+  }
+
+  function estUrlExterneOuAncre(chemin) {
+    return (
+      !chemin ||
+      chemin.startsWith("#") ||
+      chemin.startsWith("mailto:") ||
+      chemin.startsWith("tel:") ||
+      chemin.startsWith("http://") ||
+      chemin.startsWith("https://") ||
+      chemin.startsWith("data:")
+    );
+  }
+
+  function redirigerConnexionMembre(motif) {
+    const separateur = PAGE_CONNEXION_MEMBRE.includes("?") ? "&" : "?";
+
+    window.location.href =
+      PAGE_CONNEXION_MEMBRE +
+      separateur +
+      "source=" +
+      encodeURIComponent(SOURCE_PAGE) +
+      "&session=" +
+      encodeURIComponent(motif || "inactive");
+  }
+
+  function lireCookie(nom) {
+    return document.cookie
+      .split(";")
+      .map((cookie) => cookie.trim())
+      .find((cookie) => cookie.startsWith(nom + "="))
+      ?.split("=")
+      .slice(1)
+      .join("=") || "";
+  }
+
+  function membreAbonne() {
+    return Boolean(lireCookie("abonne"));
+  }
+
+  function reponseApiOk(data) {
+    return data && (data.ok === true || data.success === true);
+  }
+
+  function messageErreurApi(resultat, messageDefaut) {
+    return resultat && (resultat.message || resultat.error)
+      ? String(resultat.message || resultat.error)
+      : messageDefaut;
+  }
+
+  function nettoyerBaseUrl(value) {
+    return String(value || "").replace(/\/+$/, "");
+  }
+
+  function buildUrl(base, path) {
+    return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
   }
 
   function formaterDateCourte(dateIso) {
@@ -785,5 +774,4 @@
     const valeur = String(texte || "");
     return valeur ? valeur.charAt(0).toUpperCase() + valeur.slice(1) : "";
   }
-
 })();
