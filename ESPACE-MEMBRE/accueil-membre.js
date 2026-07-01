@@ -4,6 +4,8 @@
   const CONFIG_PAGE = window.SITE_CONFIG || {};
   const SOURCE_PAGE = "accueil-membre";
 
+  let sessionMembreValideeServeur = false;
+
   function estUrlExterneOuAncre(chemin) {
     return (
       !chemin ||
@@ -107,7 +109,7 @@
   }
 
   function sessionMembrePresente() {
-    return lireCookie("idsession_membre") || lireCookie("session_membre");
+    return sessionMembreValideeServeur || lireCookie("idsession_membre") || lireCookie("session_membre");
   }
 
   function membreAbonne() {
@@ -122,6 +124,42 @@
     );
 
     window.location.href = cible;
+  }
+
+  async function verifierSessionMembreServeur() {
+    const workerUrl = obtenirWorkerUserRouteurUrl();
+
+    if (!workerUrl) {
+      return false;
+    }
+
+    try {
+      const reponse = await fetch(workerUrl, {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          compte: "membre"
+        })
+      });
+
+      const data = await reponse.json().catch(() => null);
+
+      return (
+        reponse.ok &&
+        data &&
+        data.success === true &&
+        data.connected === true
+      );
+
+    } catch (error) {
+      console.error("Erreur vérification session membre :", error);
+      return false;
+    }
   }
 
   async function chargerFragmentObjet(chemin) {
@@ -546,7 +584,9 @@
   }
 
   async function initialiserPage() {
-    if (!sessionMembrePresente()) {
+    sessionMembreValideeServeur = await verifierSessionMembreServeur();
+
+    if (!sessionMembreValideeServeur) {
       redirigerConnexionMembre();
       return;
     }
