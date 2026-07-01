@@ -37,6 +37,8 @@
     formInscriptionMembre: "https://form-inscription-membre-api.lacleduparc.fr",
     userRouteur: "https://user-routeur-api.lacleduparc.fr",
 
+    indexMembre: "https://index-membre-api.lacleduparc.fr",
+
     nouvelleDateMembre: "https://nouvelle-date-membre-api.lacleduparc.fr",
     fluxm: "https://worker-fluxm-api.lacleduparc.fr",
     planningMembre: "https://planning-membre-api.lacleduparc.fr",
@@ -65,13 +67,14 @@
     adminBaseUrl: active.adminBase,
 
     objetBaseUrl: objetBase,
-
     siteBase: active.membreBase,
 
     workerMdptokenzUrl: WORKERS.mdptokenz,
     workerConnexionMembreUrl: WORKERS.connexionMembre,
     workerFormInscriptionMembreUrl: WORKERS.formInscriptionMembre,
     workerUserRouteurUrl: WORKERS.userRouteur,
+
+    workerIndexMembreUrl: WORKERS.indexMembre,
 
     workerNouvelleDateMembreUrl: WORKERS.nouvelleDateMembre,
     workerFluxmUrl: WORKERS.fluxm,
@@ -95,6 +98,8 @@
     WORKER_CONNEXION_MEMBRE_URL: WORKERS.connexionMembre,
     WORKER_FORM_INSCRIPTION_MEMBRE_URL: WORKERS.formInscriptionMembre,
     WORKER_USER_ROUTEUR_URL: WORKERS.userRouteur,
+
+    WORKER_INDEX_MEMBRE_URL: WORKERS.indexMembre,
 
     WORKER_NOUVELLE_DATE_MEMBRE_URL: WORKERS.nouvelleDateMembre,
     WORKER_FLUXM_URL: WORKERS.fluxm,
