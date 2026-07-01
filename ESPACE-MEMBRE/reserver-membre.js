@@ -15,10 +15,12 @@
 
   let pageInitialisee = false;
 
-  const etat = {
+  const etatPage = {
     departement: "",
+    autourDeMoi: true,
     parcs: [],
-    templateCardParc: null
+    templateCardParc: null,
+    templateJourMois: null
   };
 
   if (document.readyState === "loading") {
@@ -35,27 +37,13 @@
       await initialiserBandeau();
       await initialiserFooter();
       await initialiserListeParcs();
-      initialiserActionsPage();
+      initialiserBoutonIa();
+      initialiserActionsListeParcs();
       document.addEventListener("click", gererClicDocument);
       await chargerParcsAutourDeMoi();
     } catch (error) {
       console.error("Erreur réserver membre :", error);
-      afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
-    }
-  }
-
-  function initialiserActionsPage() {
-    const boutonIa = document.getElementById("bouton-rechercher-ia");
-    const boutonDepartement = document.getElementById("bouton-changer-departement");
-
-    if (boutonIa) {
-      boutonIa.addEventListener("click", () => {
-        afficherAlerte("La recherche avec l’IA sera raccordée ensuite.").catch(console.error);
-      });
-    }
-
-    if (boutonDepartement) {
-      boutonDepartement.addEventListener("click", ouvrirDialogueDepartement);
+      await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
     }
   }
 
@@ -66,255 +54,66 @@
       throw new Error("Slot liste des parcs introuvable.");
     }
 
-    slot.innerHTML = "";
-
     const fragmentListe = await chargerFragmentObjet("/BOX/04-box-liste-card.html");
+    slot.innerHTML = "";
     slot.appendChild(fragmentListe);
 
     const fragmentCard = await chargerFragmentObjet("/BOX/04-box-card-parc.html");
-    etat.templateCardParc = fragmentCard.querySelector("[data-lcdp-box-card-parc]");
+    etatPage.templateCardParc = fragmentCard.querySelector("[data-lcdp-box-card-parc]");
 
-    if (!etat.templateCardParc) {
-      throw new Error("Template card parc introuvable.");
-    }
+    const fragmentJour = await chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html");
+    etatPage.templateJourMois = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
 
-    const titre = slot.querySelector("[data-lcdp-liste-card-title]");
-    const zoneActions = slot.querySelector("[data-lcdp-liste-card-actions]");
-
-    if (titre) titre.textContent = "Autour de moi";
-    if (zoneActions) zoneActions.hidden = true;
-  }
-
-  async function chargerParcsAutourDeMoi() {
-    if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
-      afficherErreurListe("Le service de réservation membre n’est pas configuré.");
-      return;
-    }
-
-    try {
-      afficherChargementListe("Chargement des parcs...");
-
-      const reponse = await fetch(ENDPOINT_NOUVELLE_DATE_MEMBRE + "/autour-de-moi", {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-          "Accept": "application/json"
-        }
-      });
-
-      const data = await reponse.json().catch(() => null);
-
-      if (reponse.status === 401) {
-        redirigerConnexionMembre("inactive");
-        return;
-      }
-
-      if (!reponse.ok || !data || !reponseApiOk(data)) {
-        throw new Error(messageErreurApi(data, "Impossible de charger les parcs autour de vous."));
-      }
-
-      etat.departement = nettoyerDepartement(data.departement);
-      etat.parcs = Array.isArray(data.parcs) ? data.parcs : [];
-
-      afficherTitreListe("Autour de moi");
-      afficherParcs(etat.parcs);
-    } catch (error) {
-      console.error("Erreur chargement parcs autour de moi :", error);
-      afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
+    if (!etatPage.templateCardParc || !etatPage.templateJourMois) {
+      throw new Error("Templates parc ou jour introuvables.");
     }
   }
 
-  async function chargerParcsDepartement(departement) {
-    if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
-      afficherErreurListe("Le service de réservation membre n’est pas configuré.");
-      return;
-    }
+  function initialiserBoutonIa() {
+    const bouton = document.getElementById("bouton-demander-ia");
 
-    const dptmt = nettoyerDepartement(departement);
+    if (!bouton) return;
 
-    if (!dptmt) {
-      await afficherAlerte("Le département est obligatoire.");
-      return;
-    }
-
-    try {
-      afficherChargementListe("Chargement des parcs...");
-
-      const reponse = await fetch(
-        ENDPOINT_NOUVELLE_DATE_MEMBRE + "/departement?dptmt=" + encodeURIComponent(dptmt),
-        {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-          headers: {
-            "Accept": "application/json"
-          }
-        }
-      );
-
-      const data = await reponse.json().catch(() => null);
-
-      if (reponse.status === 401) {
-        redirigerConnexionMembre("inactive");
-        return;
-      }
-
-      if (!reponse.ok || !data || !reponseApiOk(data)) {
-        throw new Error(messageErreurApi(data, "Impossible de charger les parcs de ce département."));
-      }
-
-      etat.departement = nettoyerDepartement(data.departement || dptmt);
-      etat.parcs = Array.isArray(data.parcs) ? data.parcs : [];
-
-      afficherTitreListe("Parcs du département " + etat.departement);
-      afficherParcs(etat.parcs);
-    } catch (error) {
-      console.error("Erreur chargement parcs département :", error);
-      afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
-    }
-  }
-
-  function afficherTitreListe(titreTexte) {
-    const titre = document.querySelector("[data-lcdp-liste-card-title]");
-
-    if (titre) titre.textContent = titreTexte || "Parcs";
-  }
-
-  function afficherChargementListe(message) {
-    const zoneListe = obtenirZoneListe();
-
-    if (zoneListe) zoneListe.innerHTML = "";
-
-    afficherMessageListe(message || "Chargement...", "information");
-  }
-
-  function afficherErreurListe(message) {
-    const zoneListe = obtenirZoneListe();
-
-    if (zoneListe) zoneListe.innerHTML = "";
-
-    afficherMessageListe(message || "Erreur technique. Merci de réessayer.", "erreur");
-  }
-
-  function afficherMessageListe(message, type) {
-    const zoneMessage = obtenirZoneMessageListe();
-
-    if (!zoneMessage) return;
-
-    zoneMessage.hidden = false;
-    zoneMessage.textContent = message;
-    zoneMessage.dataset.lcdpMessageType = type || "information";
-  }
-
-  function masquerMessageListe() {
-    const zoneMessage = obtenirZoneMessageListe();
-
-    if (!zoneMessage) return;
-
-    zoneMessage.hidden = true;
-    zoneMessage.textContent = "";
-    delete zoneMessage.dataset.lcdpMessageType;
-  }
-
-  function afficherParcs(parcs) {
-    const zoneListe = obtenirZoneListe();
-
-    if (!zoneListe) return;
-
-    zoneListe.innerHTML = "";
-
-    if (!Array.isArray(parcs) || parcs.length === 0) {
-      afficherMessageListe("Aucun parc trouvé pour ce département.", "information");
-      return;
-    }
-
-    masquerMessageListe();
-
-    parcs.forEach((parc) => {
-      zoneListe.appendChild(creerCardParc(parc));
+    bouton.addEventListener("click", () => {
+      afficherAlerte("La recherche avec l’IA sera traitée après la réservation classique.").catch(console.error);
     });
   }
 
-  function creerCardParc(parc) {
-    const card = etat.templateCardParc.cloneNode(true);
+  function initialiserActionsListeParcs() {
+    const zoneActions = document.querySelector("[data-lcdp-liste-card-actions]");
 
-    const idparc = String(parc.idparc || parc.id || "").trim();
-    const nom = String(parc.nom || parc.nomparc || "Parc").trim();
-    const departement = nettoyerDepartement(parc.dptmt || parc.departement || "");
-    const presentation = nettoyerTexteParc(parc.prez || parc.presentation || "");
-    const imageUrl = construireUrlImageParc(parc.imageparc || "");
+    if (!zoneActions) return;
 
-    const image = card.querySelector("[data-lcdp-card-parc-image]");
-    const titre = card.querySelector("[data-lcdp-card-parc-title]");
-    const meta = card.querySelector("[data-lcdp-card-parc-meta]");
-    const description = card.querySelector("[data-lcdp-card-parc-description]");
-    const boutonFiche = card.querySelector("[data-action='ouvrir-fiche-parc']");
-    const boutonNouvelleDate = card.querySelector("[data-action='nouvelle-date-parc']");
+    zoneActions.innerHTML = "";
 
-    card.dataset.idparc = idparc;
-    card.dataset.nomparc = nom;
+    const boutonAutour = document.createElement("button");
+    boutonAutour.type = "button";
+    boutonAutour.className = "lcdp-button lcdp-button-secondary";
+    boutonAutour.textContent = "Autour de moi";
 
-    if (image) {
-      if (imageUrl) {
-        image.src = imageUrl;
-        image.alt = "Image du parc " + nom;
-        image.addEventListener("error", () => {
-          image.hidden = true;
-          image.removeAttribute("src");
-          card.classList.add("lcdp-box-card-parc--sans-image");
-        }, { once: true });
-      } else {
-        image.hidden = true;
-        card.classList.add("lcdp-box-card-parc--sans-image");
-      }
-    }
+    const boutonDepartement = document.createElement("button");
+    boutonDepartement.type = "button";
+    boutonDepartement.className = "lcdp-button lcdp-button-secondary";
+    boutonDepartement.textContent = "Changer de département";
 
-    if (titre) titre.textContent = nom;
+    boutonAutour.addEventListener("click", () => {
+      chargerParcsAutourDeMoi().catch(console.error);
+    });
 
-    if (meta) {
-      meta.textContent = departement ? "Département " + departement : "";
-      meta.hidden = !departement;
-    }
+    boutonDepartement.addEventListener("click", () => {
+      ouvrirChoixDepartement().catch(console.error);
+    });
 
-    if (description) {
-      description.textContent = presentation;
-      description.hidden = !presentation;
-    }
-
-    if (boutonFiche) {
-      boutonFiche.dataset.id = idparc;
-      boutonFiche.dataset.nom = nom;
-    }
-
-    if (boutonNouvelleDate) {
-      boutonNouvelleDate.dataset.id = idparc;
-      boutonNouvelleDate.dataset.nom = nom;
-    }
-
-    return card;
+    zoneActions.appendChild(boutonAutour);
+    zoneActions.appendChild(boutonDepartement);
   }
 
-  async function gererClicDocument(event) {
-    const boutonFiche = event.target.closest("[data-action='ouvrir-fiche-parc']");
-    const boutonNouvelleDate = event.target.closest("[data-action='nouvelle-date-parc']");
-
-    if (boutonFiche) {
-      await afficherAlerte("La fiche du parc sera raccordée ensuite.");
-      return;
-    }
-
-    if (boutonNouvelleDate) {
-      await afficherAlerte("Le choix de la date sera raccordé à l’étape suivante.");
-    }
-  }
-
-  async function ouvrirDialogueDepartement() {
+  async function ouvrirChoixDepartement() {
     const resultat = await ouvrirDialogueChamp({
       titre: "Changer de département",
       champs: [
         {
-          id: "reservation-departement",
+          id: "departement-recherche-parc",
           name: "dptmt",
           label: "Département",
           type: "text",
@@ -337,8 +136,453 @@
     await chargerParcsDepartement(departement);
   }
 
+  async function chargerParcsAutourDeMoi() {
+    if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
+      afficherErreurListe("Le service de réservation membre n’est pas configuré.");
+      return;
+    }
+
+    try {
+      afficherChargementListe("Chargement des parcs autour de vous...");
+
+      const reponse = await fetch(ENDPOINT_NOUVELLE_DATE_MEMBRE + "/autour-de-moi", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+      const data = await reponse.json().catch(() => null);
+
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+
+      if (!reponse.ok || !data || !reponseApiOk(data)) {
+        throw new Error(messageErreurApi(data, "Impossible de charger les parcs autour de vous."));
+      }
+
+      etatPage.departement = String(data.departement || "");
+      etatPage.autourDeMoi = true;
+      etatPage.parcs = Array.isArray(data.parcs) ? data.parcs : [];
+
+      afficherTitreListe();
+      afficherParcs(etatPage.parcs);
+    } catch (error) {
+      console.error("Erreur chargement parcs autour de moi :", error);
+      afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
+    }
+  }
+
+  async function chargerParcsDepartement(departement) {
+    if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
+      afficherErreurListe("Le service de réservation membre n’est pas configuré.");
+      return;
+    }
+
+    try {
+      afficherChargementListe("Chargement des parcs du département...");
+
+      const reponse = await fetch(
+        ENDPOINT_NOUVELLE_DATE_MEMBRE + "/departement?dptmt=" + encodeURIComponent(departement),
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            "Accept": "application/json"
+          }
+        }
+      );
+
+      const data = await reponse.json().catch(() => null);
+
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+
+      if (!reponse.ok || !data || !reponseApiOk(data)) {
+        throw new Error(messageErreurApi(data, "Impossible de charger les parcs de ce département."));
+      }
+
+      etatPage.departement = String(data.departement || departement);
+      etatPage.autourDeMoi = false;
+      etatPage.parcs = Array.isArray(data.parcs) ? data.parcs : [];
+
+      afficherTitreListe();
+      afficherParcs(etatPage.parcs);
+    } catch (error) {
+      console.error("Erreur chargement parcs département :", error);
+      afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
+    }
+  }
+
+  function afficherTitreListe() {
+    const titre = document.querySelector("[data-lcdp-liste-card-title]");
+
+    if (!titre) return;
+
+    titre.textContent = etatPage.autourDeMoi
+      ? "Parcs autour de moi" + (etatPage.departement ? " (" + etatPage.departement + ")" : "")
+      : "Parcs dans le " + etatPage.departement;
+  }
+
+  function afficherParcs(parcs) {
+    const zoneListe = obtenirZoneListe();
+
+    if (!zoneListe) return;
+
+    zoneListe.innerHTML = "";
+
+    if (!Array.isArray(parcs) || !parcs.length) {
+      afficherMessageListe("Aucun parc trouvé pour ce département.", "information");
+      return;
+    }
+
+    masquerMessageListe();
+
+    parcs.forEach((parc) => {
+      zoneListe.appendChild(creerCardParc(parc));
+    });
+  }
+
+  function creerCardParc(parc) {
+    const card = etatPage.templateCardParc.cloneNode(true);
+
+    const idparc = String(parc.idparc || parc.id || "");
+    const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
+    const departement = String(parc.dptmt || parc.departement || "").trim();
+    const description = nettoyerTexteCourt(parc.prez || parc.presentation || "", 190);
+
+    const image = card.querySelector("[data-lcdp-card-parc-image]");
+    const titre = card.querySelector("[data-lcdp-card-parc-title]");
+    const meta = card.querySelector("[data-lcdp-card-parc-meta]");
+    const texte = card.querySelector("[data-lcdp-card-parc-description]");
+    const boutonFiche = card.querySelector("[data-action='ouvrir-fiche-parc']");
+    const boutonReserver = card.querySelector("[data-action='nouvelle-date-parc']");
+
+    card.dataset.idparc = idparc;
+
+    if (image) {
+      image.src = construireUrlImageParc(parc.imageparc);
+      image.alt = "Image du parc " + nom;
+    }
+
+    if (titre) titre.textContent = nom;
+
+    if (meta) {
+      meta.textContent = departement ? "Département " + departement : "Département non renseigné";
+    }
+
+    if (texte) {
+      texte.textContent = description;
+      texte.hidden = !description;
+    }
+
+    if (boutonFiche) {
+      boutonFiche.dataset.idparc = idparc;
+    }
+
+    if (boutonReserver) {
+      boutonReserver.dataset.idparc = idparc;
+    }
+
+    return card;
+  }
+
+  async function gererClicDocument(event) {
+    const boutonFiche = event.target.closest("[data-action='ouvrir-fiche-parc']");
+    const boutonReserver = event.target.closest("[data-action='nouvelle-date-parc']");
+    const jourCalendrier = event.target.closest("[data-lcdp-card-jour-mois]");
+
+    if (boutonFiche) {
+      event.preventDefault();
+      await afficherAlerte("La fiche du parc sera traitée après le choix de réservation.");
+      return;
+    }
+
+    if (boutonReserver) {
+      event.preventDefault();
+      const parc = trouverParcParId(boutonReserver.dataset.idparc);
+
+      if (!parc) {
+        await afficherAlerte("Parc introuvable.");
+        return;
+      }
+
+      await ouvrirCalendrierMoisParc(parc);
+      return;
+    }
+
+    if (jourCalendrier && !jourCalendrier.disabled) {
+      event.preventDefault();
+      await afficherAlerte("Le choix de l’heure d’arrivée sera traité à l’étape suivante.");
+    }
+  }
+
+  function trouverParcParId(idparc) {
+    const id = String(idparc || "");
+
+    return etatPage.parcs.find((parc) => String(parc.idparc || parc.id || "") === id) || null;
+  }
+
+  async function ouvrirCalendrierMoisParc(parc) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
+    slot.appendChild(fragment);
+
+    const calendrier = slot.querySelector("[data-lcdp-box-calendrier-mois]");
+    const titre = slot.querySelector("[data-lcdp-calendrier-mois-title]");
+    const meta = slot.querySelector("[data-lcdp-calendrier-mois-meta]");
+    const boutonFermer = slot.querySelector("[data-lcdp-calendrier-mois-close]");
+    const boutonPrecedent = slot.querySelector("[data-lcdp-calendrier-mois-prev]");
+    const boutonSuivant = slot.querySelector("[data-lcdp-calendrier-mois-next]");
+
+    if (!calendrier || !titre || !meta || !boutonFermer || !boutonPrecedent || !boutonSuivant) {
+      throw new Error("Structure calendrier mois incomplète.");
+    }
+
+    const nomParc = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
+    const departement = String(parc.dptmt || parc.departement || "").trim();
+
+    titre.textContent = "Planning du parc";
+    meta.textContent = nomParc + (departement ? " · " + departement : "");
+
+    const maintenant = new Date();
+    const etatCalendrier = {
+      parc,
+      annee: maintenant.getFullYear(),
+      mois: maintenant.getMonth() + 1
+    };
+
+    async function fermer() {
+      slot.innerHTML = "";
+    }
+
+    boutonFermer.addEventListener("click", fermer);
+
+    calendrier.addEventListener("click", (event) => {
+      if (event.target === calendrier) fermer();
+    });
+
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Escape") fermer();
+      },
+      { once: true }
+    );
+
+    boutonPrecedent.addEventListener("click", () => {
+      changerMois(etatCalendrier, -1);
+      afficherCalendrierMois(etatCalendrier).catch(console.error);
+    });
+
+    boutonSuivant.addEventListener("click", () => {
+      changerMois(etatCalendrier, 1);
+      afficherCalendrierMois(etatCalendrier).catch(console.error);
+    });
+
+    await afficherCalendrierMois(etatCalendrier);
+  }
+
+  async function afficherCalendrierMois(etatCalendrier) {
+    const moisCourant = document.querySelector("[data-lcdp-calendrier-mois-current]");
+    const message = document.querySelector("[data-lcdp-calendrier-mois-message]");
+    const grille = document.querySelector("[data-lcdp-calendrier-mois-grid]");
+
+    if (!moisCourant || !message || !grille) return;
+
+    moisCourant.textContent = formaterMoisAnnee(etatCalendrier.annee, etatCalendrier.mois);
+    grille.innerHTML = "";
+    message.hidden = false;
+    message.textContent = "Chargement du planning...";
+
+    try {
+      const planning = await chargerPlanningParcMois(etatCalendrier);
+      message.hidden = true;
+      message.textContent = "";
+      remplirGrilleCalendrier(grille, etatCalendrier, planning);
+    } catch (error) {
+      console.error("Erreur planning parc mois :", error);
+      message.hidden = false;
+      message.textContent = error.message || "Impossible de charger le planning du parc.";
+    }
+  }
+
+  async function chargerPlanningParcMois(etatCalendrier) {
+    if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
+      throw new Error("Le service de réservation membre n’est pas configuré.");
+    }
+
+    const idparc = String(etatCalendrier.parc.idparc || etatCalendrier.parc.id || "").trim();
+
+    if (!idparc) {
+      throw new Error("Parc manquant.");
+    }
+
+    const url =
+      ENDPOINT_NOUVELLE_DATE_MEMBRE +
+      "/planning-parc-mois?idparc=" + encodeURIComponent(idparc) +
+      "&annee=" + encodeURIComponent(etatCalendrier.annee) +
+      "&mois=" + encodeURIComponent(etatCalendrier.mois);
+
+    const reponse = await fetch(url, {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return [];
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Impossible de charger le planning du parc."));
+    }
+
+    return Array.isArray(data.planning) ? data.planning : [];
+  }
+
+  function remplirGrilleCalendrier(grille, etatCalendrier, planning) {
+    grille.innerHTML = "";
+
+    const planningParDate = new Map(
+      (Array.isArray(planning) ? planning : []).map((jour) => [String(jour.date || ""), jour])
+    );
+
+    const premierJour = new Date(etatCalendrier.annee, etatCalendrier.mois - 1, 1);
+    const nombreJours = new Date(etatCalendrier.annee, etatCalendrier.mois, 0).getDate();
+    const decalageLundi = (premierJour.getDay() + 6) % 7;
+
+    for (let i = 0; i < decalageLundi; i += 1) {
+      grille.appendChild(creerCardJourVide());
+    }
+
+    for (let jour = 1; jour <= nombreJours; jour += 1) {
+      const dateIso = construireDateIso(etatCalendrier.annee, etatCalendrier.mois, jour);
+      grille.appendChild(creerCardJourCalendrier(dateIso, jour, planningParDate.get(dateIso)));
+    }
+  }
+
+  function creerCardJourVide() {
+    const card = etatPage.templateJourMois.cloneNode(true);
+    card.classList.add("lcdp-box-card-jour-in-calendrier-mois--empty");
+    card.disabled = true;
+    card.setAttribute("aria-hidden", "true");
+    return card;
+  }
+
+  function creerCardJourCalendrier(dateIso, numeroJour, planningJour) {
+    const card = etatPage.templateJourMois.cloneNode(true);
+    const numero = card.querySelector("[data-lcdp-card-jour-mois-number]");
+
+    const ouvert = Boolean(planningJour && planningJour.ouvert);
+    const estPasse = dateIso < dateAujourdhuiIso();
+    const estAujourdhui = dateIso === dateAujourdhuiIso();
+
+    card.dataset.date = dateIso;
+    card.setAttribute("aria-label", construireLibelleJour(dateIso, ouvert));
+
+    if (numero) {
+      numero.textContent = String(numeroJour);
+    }
+
+    if (estAujourdhui) {
+      card.classList.add("lcdp-box-card-jour-in-calendrier-mois--today");
+    }
+
+    if (estPasse) {
+      card.classList.add("lcdp-box-card-jour-in-calendrier-mois--past");
+      card.disabled = true;
+    }
+
+    if (!ouvert) {
+      card.classList.add("lcdp-box-card-jour-in-calendrier-mois--closed");
+      card.disabled = true;
+    }
+
+    remplirPlagesJour(card, planningJour);
+
+    return card;
+  }
+
+  function remplirPlagesJour(card, planningJour) {
+    ["plage1", "plage2", "plage3"].forEach((nomPlage) => {
+      const slot = card.querySelector('[data-lcdp-card-jour-mois-slot="' + nomPlage + '"]');
+
+      if (!slot) return;
+
+      const plage = planningJour && planningJour.plages ? planningJour.plages[nomPlage] : null;
+      const couleur = normaliserCouleurClasse(plage && plage.ouverte ? plage.couleur : "gris_clair");
+
+      slot.className = "lcdp-box-card-jour-in-calendrier-mois__slot lcdp-box-card-jour-in-calendrier-mois__slot--" + couleur;
+    });
+  }
+
+  function changerMois(etatCalendrier, delta) {
+    const date = new Date(etatCalendrier.annee, etatCalendrier.mois - 1 + delta, 1);
+    etatCalendrier.annee = date.getFullYear();
+    etatCalendrier.mois = date.getMonth() + 1;
+  }
+
+  async function afficherAlerte(message) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) return null;
+
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    slot.appendChild(fragment);
+
+    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
+    const texte = slot.querySelector("[data-lcdp-alerte-message]");
+    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
+    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
+
+    if (!alerte || !texte || !boutonFermer || !boutonOk) {
+      throw new Error("Structure de l’alerte incomplète.");
+    }
+
+    texte.textContent = message || "";
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        slot.innerHTML = "";
+        resolve(valeur);
+      }
+
+      boutonFermer.addEventListener("click", () => fermer(false));
+      boutonOk.addEventListener("click", () => fermer(true));
+      alerte.addEventListener("click", (event) => {
+        if (event.target === alerte) fermer(false);
+      });
+    });
+  }
+
   async function ouvrirDialogueChamp(options) {
     const slot = document.getElementById("lcdp-lightbox-slot");
+
     if (!slot) return null;
 
     slot.innerHTML = "";
@@ -391,7 +635,7 @@
         let champRequisManquant = false;
 
         (options.champs || []).forEach((champ) => {
-          const input = formulaire.querySelector(`[name="${champ.name}"]`);
+          const input = formulaire.querySelector('[name="' + champ.name + '"]');
           const valeur = input ? String(input.value || "").trim() : "";
 
           if (champ.required && !valeur) {
@@ -436,9 +680,15 @@
     input.name = configurationChamp.name;
     input.type = configurationChamp.type || "text";
     input.required = configurationChamp.required === true;
+    input.value = configurationChamp.value || "";
 
-    if (configurationChamp.inputmode) input.inputMode = configurationChamp.inputmode;
-    if (configurationChamp.autocomplete) input.autocomplete = configurationChamp.autocomplete;
+    if (configurationChamp.inputmode) {
+      input.inputMode = configurationChamp.inputmode;
+    }
+
+    if (configurationChamp.autocomplete) {
+      input.autocomplete = configurationChamp.autocomplete;
+    }
 
     zoneLabel.appendChild(label);
     zoneControl.appendChild(input);
@@ -446,46 +696,9 @@
     return champ;
   }
 
-  async function afficherAlerte(message) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-    if (!slot) return null;
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
-    slot.appendChild(fragment);
-
-    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-    const texte = slot.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      throw new Error("Structure de l’alerte incomplète.");
-    }
-
-    texte.textContent = message || "";
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer(valeur) {
-        if (resolu) return;
-        resolu = true;
-        slot.innerHTML = "";
-        resolve(valeur);
-      }
-
-      boutonFermer.addEventListener("click", () => fermer(false));
-      boutonOk.addEventListener("click", () => fermer(true));
-      alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) fermer(false);
-      });
-    });
-  }
-
   async function initialiserBandeau() {
     const slot = document.getElementById("lcdp-bandeau-slot");
+
     if (!slot) return;
 
     slot.innerHTML = "";
@@ -507,6 +720,7 @@
 
   async function initialiserFooter() {
     const slot = document.getElementById("lcdp-footer-slot");
+
     if (!slot) return;
 
     slot.innerHTML = "";
@@ -514,64 +728,6 @@
     const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
     slot.appendChild(footer);
     appliquerRoutesSite(slot);
-  }
-
-  function obtenirZoneListe() {
-    return document.querySelector("[data-lcdp-liste-card-list]");
-  }
-
-  function obtenirZoneMessageListe() {
-    return document.querySelector("[data-lcdp-liste-card-message]");
-  }
-
-  async function chargerFragmentObjet(chemin) {
-    const reponse = await fetch(construireUrlObjet(chemin), {
-      method: "GET",
-      credentials: "omit",
-      cache: "no-cache"
-    });
-
-    if (!reponse.ok) throw new Error("Fragment OBJET introuvable : " + chemin);
-
-    const html = await reponse.text();
-    const template = document.createElement("template");
-    template.innerHTML = html.trim();
-
-    return template.content.cloneNode(true);
-  }
-
-  async function chargerFragmentMembre(chemin) {
-    const reponse = await fetch(construireUrlMembre(chemin), {
-      method: "GET",
-      credentials: "omit",
-      cache: "no-cache"
-    });
-
-    if (!reponse.ok) throw new Error("Fragment membre introuvable : " + chemin);
-
-    const html = await reponse.text();
-    const template = document.createElement("template");
-    template.innerHTML = html.trim();
-
-    return template.content.cloneNode(true);
-  }
-
-  function chargerScriptMembreUneFois(chemin) {
-    const src = construireUrlMembre(chemin);
-
-    if (document.querySelector(`script[data-lcdp-script="${chemin}"]`)) {
-      return Promise.resolve();
-    }
-
-    return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = src;
-      script.defer = true;
-      script.dataset.lcdpScript = chemin;
-      script.onload = resolve;
-      script.onerror = () => reject(new Error("Script membre introuvable : " + chemin));
-      document.body.appendChild(script);
-    });
   }
 
   function appliquerRoutesSite(racine = document) {
@@ -590,6 +746,104 @@
       const cheminObjet = chemin.replace(/^\/?OBJET\/?/, "/");
       element.setAttribute("src", construireUrlObjet(cheminObjet));
     });
+  }
+
+  async function chargerFragmentObjet(chemin) {
+    const reponse = await fetch(construireUrlObjet(chemin), {
+      method: "GET",
+      credentials: "omit",
+      cache: "no-cache"
+    });
+
+    if (!reponse.ok) {
+      throw new Error("Fragment OBJET introuvable : " + chemin);
+    }
+
+    const html = await reponse.text();
+    const template = document.createElement("template");
+    template.innerHTML = html.trim();
+
+    return template.content.cloneNode(true);
+  }
+
+  async function chargerFragmentMembre(chemin) {
+    const reponse = await fetch(construireUrlMembre(chemin), {
+      method: "GET",
+      credentials: "omit",
+      cache: "no-cache"
+    });
+
+    if (!reponse.ok) {
+      throw new Error("Fragment membre introuvable : " + chemin);
+    }
+
+    const html = await reponse.text();
+    const template = document.createElement("template");
+    template.innerHTML = html.trim();
+
+    return template.content.cloneNode(true);
+  }
+
+  function chargerScriptMembreUneFois(chemin) {
+    const src = construireUrlMembre(chemin);
+
+    if (document.querySelector('script[data-lcdp-script="' + chemin + '"]')) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.defer = true;
+      script.dataset.lcdpScript = chemin;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("Script membre introuvable : " + chemin));
+      document.body.appendChild(script);
+    });
+  }
+
+  function obtenirZoneListe() {
+    return document.querySelector("[data-lcdp-liste-card-list]");
+  }
+
+  function obtenirZoneMessageListe() {
+    return document.querySelector("[data-lcdp-liste-card-message]");
+  }
+
+  function afficherChargementListe(message) {
+    const zoneListe = obtenirZoneListe();
+
+    if (zoneListe) zoneListe.innerHTML = "";
+
+    afficherMessageListe(message || "Chargement...", "information");
+  }
+
+  function afficherErreurListe(message) {
+    const zoneListe = obtenirZoneListe();
+
+    if (zoneListe) zoneListe.innerHTML = "";
+
+    afficherMessageListe(message, "erreur");
+  }
+
+  function afficherMessageListe(message, type) {
+    const zoneMessage = obtenirZoneMessageListe();
+
+    if (!zoneMessage) return;
+
+    zoneMessage.hidden = false;
+    zoneMessage.textContent = message || "";
+    zoneMessage.dataset.lcdpMessageType = type || "information";
+  }
+
+  function masquerMessageListe() {
+    const zoneMessage = obtenirZoneMessageListe();
+
+    if (!zoneMessage) return;
+
+    zoneMessage.hidden = true;
+    zoneMessage.textContent = "";
+    delete zoneMessage.dataset.lcdpMessageType;
   }
 
   function construireEndpointApi(cleModerne, cleLegacy, sousDomaineWorker) {
@@ -649,36 +903,9 @@
   }
 
   function construireUrlImageParc(imageparc) {
-    const valeur = String(imageparc || "").trim();
+    const fichier = String(imageparc || "").trim() || "parc-defaut.jpg";
 
-    if (!valeur) return "";
-    if (estUrlExterneOuAncre(valeur)) return valeur;
-
-    if (valeur.startsWith("/OBJET/")) {
-      return construireUrlObjet(valeur.replace(/^\/OBJET\/?/, "/"));
-    }
-
-    if (valeur.startsWith("/")) {
-      return construireUrlPublic(valeur);
-    }
-
-    if (valeur.includes("/")) {
-      return construireUrlObjet("/" + valeur.replace(/^\/+/, ""));
-    }
-
-    return construireUrlObjet(DOSSIER_IMAGES_PARC_OBJET + "/" + encodeURIComponent(valeur));
-  }
-
-  function estUrlExterneOuAncre(chemin) {
-    return (
-      !chemin ||
-      chemin.startsWith("#") ||
-      chemin.startsWith("mailto:") ||
-      chemin.startsWith("tel:") ||
-      chemin.startsWith("http://") ||
-      chemin.startsWith("https://") ||
-      chemin.startsWith("data:")
-    );
+    return construireUrlObjet(DOSSIER_IMAGES_PARC_OBJET + "/" + encodeURIComponent(fichier));
   }
 
   function redirigerConnexionMembre(motif) {
@@ -693,18 +920,8 @@
       encodeURIComponent(motif || "inactive");
   }
 
-  function reponseApiOk(data) {
-    return data && (data.ok === true || data.success === true);
-  }
-
-  function messageErreurApi(resultat, messageDefaut) {
-    return resultat && (resultat.message || resultat.error)
-      ? String(resultat.message || resultat.error)
-      : messageDefaut;
-  }
-
-  function nettoyerDepartement(value) {
-    const departement = String(value || "")
+  function nettoyerDepartement(valeur) {
+    const departement = String(valeur || "")
       .trim()
       .toUpperCase()
       .replace(/\s+/g, "");
@@ -716,14 +933,88 @@
     return departement;
   }
 
-  function nettoyerTexteParc(value) {
-    const texte = String(value || "")
-      .trim()
-      .replace(/\s+/g, " ");
+  function nettoyerTexteCourt(valeur, longueurMax) {
+    const texte = String(valeur || "")
+      .replace(/\s+/g, " ")
+      .trim();
 
-    if (texte.length <= 220) return texte;
+    if (!texte) return "";
 
-    return texte.slice(0, 217).trim() + "...";
+    if (texte.length <= longueurMax) return texte;
+
+    return texte.slice(0, Math.max(0, longueurMax - 1)).trim() + "…";
+  }
+
+  function construireDateIso(annee, mois, jour) {
+    return [
+      String(annee).padStart(4, "0"),
+      String(mois).padStart(2, "0"),
+      String(jour).padStart(2, "0")
+    ].join("-");
+  }
+
+  function dateAujourdhuiIso() {
+    const maintenant = new Date();
+    return construireDateIso(
+      maintenant.getFullYear(),
+      maintenant.getMonth() + 1,
+      maintenant.getDate()
+    );
+  }
+
+  function formaterMoisAnnee(annee, mois) {
+    const date = new Date(annee, mois - 1, 1);
+
+    return date.toLocaleDateString("fr-FR", {
+      month: "long",
+      year: "numeric"
+    });
+  }
+
+  function construireLibelleJour(dateIso, ouvert) {
+    const date = new Date(dateIso + "T00:00:00");
+    const libelleDate = Number.isNaN(date.getTime())
+      ? dateIso
+      : date.toLocaleDateString("fr-FR", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric"
+        });
+
+    return libelleDate + (ouvert ? " disponible" : " indisponible");
+  }
+
+  function normaliserCouleurClasse(couleur) {
+    const valeur = String(couleur || "gris_clair").trim().toLowerCase();
+
+    if (valeur === "vert") return "vert";
+    if (valeur === "orange") return "orange";
+    if (valeur === "gris_fonce" || valeur === "fonce") return "gris-fonce";
+
+    return "gris-clair";
+  }
+
+  function reponseApiOk(data) {
+    return data && (data.ok === true || data.success === true);
+  }
+
+  function messageErreurApi(resultat, messageDefaut) {
+    return resultat && (resultat.message || resultat.error)
+      ? String(resultat.message || resultat.error)
+      : messageDefaut;
+  }
+
+  function estUrlExterneOuAncre(chemin) {
+    return (
+      !chemin ||
+      chemin.startsWith("#") ||
+      chemin.startsWith("mailto:") ||
+      chemin.startsWith("tel:") ||
+      chemin.startsWith("http://") ||
+      chemin.startsWith("https://") ||
+      chemin.startsWith("data:")
+    );
   }
 
   function nettoyerBaseUrl(value) {

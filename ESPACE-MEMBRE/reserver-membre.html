@@ -6,7 +6,7 @@
   <title>Réserver - La Clé du Parc</title>
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Choisir un parc pour réserver une nouvelle date dans votre espace membre La Clé du Parc.">
+  <meta name="description" content="Choisir un parc et réserver une nouvelle date dans votre espace membre La Clé du Parc.">
 
   <script src="../config.js"></script>
 
@@ -82,7 +82,9 @@
         "/BOX/03-box-champ-formulaire.css",
         "/BOX/04-box-dialogue-champ.css",
         "/BOX/04-box-liste-card.css",
-        "/BOX/04-box-card-parc.css"
+        "/BOX/04-box-card-parc.css",
+        "/BOX/04-box-calendrier-mois.css",
+        "/BOX/04-box-card-jour-in-calendrier-mois.css"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -102,23 +104,19 @@
     <div id="lcdp-bandeau-slot"></div>
 
     <main class="lcdp-site-main">
-      <section class="lcdp-page-section" aria-label="Réserver une nouvelle date">
+      <section class="lcdp-page-section" aria-label="Réserver une date">
         <div class="lcdp-page-container">
           <div class="lcdp-page-content lcdp-stack-large">
 
             <h1 class="lcdp-title-page-center">Réserver</h1>
 
             <p class="lcdp-text-strong-lead">
-              Posez une nouvelle date sur le parc de votre choix.
+              Choisissez un parc pour afficher ses disponibilités
             </p>
 
-            <div class="lcdp-box-menu-bouton__list" aria-label="Actions de recherche de parc">
-              <button class="lcdp-button lcdp-button-orange" type="button" id="bouton-rechercher-ia">
+            <div class="lcdp-box-menu-bouton__list lcdp-box-menu-bouton__list--single" aria-label="Actions réservation membre">
+              <button class="lcdp-button lcdp-button-orange" type="button" id="bouton-demander-ia">
                 Rechercher avec l'IA
-              </button>
-
-              <button class="lcdp-button lcdp-button-secondary" type="button" id="bouton-changer-departement">
-                Changer de département
               </button>
             </div>
 
