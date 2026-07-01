@@ -38,6 +38,7 @@
     userRouteur: "https://user-routeur-api.lacleduparc.fr",
 
     indexMembre: "https://index-membre-api.lacleduparc.fr",
+    deconnexionMembre: "https://deconnexion-membre-api.lacleduparc.fr",
 
     nouvelleDateMembre: "https://nouvelle-date-membre-api.lacleduparc.fr",
     fluxm: "https://worker-fluxm-api.lacleduparc.fr",
@@ -100,6 +101,8 @@
     WORKER_USER_ROUTEUR_URL: WORKERS.userRouteur,
 
     WORKER_INDEX_MEMBRE_URL: WORKERS.indexMembre,
+    W_INDEX_MEMBRE_URL: WORKERS.indexMembre,
+    W_DECONNEXION_URL: WORKERS.deconnexionMembre,
 
     WORKER_NOUVELLE_DATE_MEMBRE_URL: WORKERS.nouvelleDateMembre,
     WORKER_FLUXM_URL: WORKERS.fluxm,

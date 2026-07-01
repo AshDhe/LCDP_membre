@@ -6,25 +6,34 @@
   <title>Espace membre - La Clé du Parc</title>
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Accès à l’espace membre La Clé du Parc.">
+  <meta name="description" content="Redirection vers le menu membre La Clé du Parc.">
 
   <script src="./config.js"></script>
-</head>
-
-<body>
-  <p>Redirection vers l’espace membre...</p>
 
   <script>
     (() => {
       "use strict";
 
       const config = window.SITE_CONFIG || {};
-      const cible = typeof config.membreUrl === "function"
-        ? config.membreUrl("/ESPACE-MEMBRE/accueil-membre.html")
-        : "/ESPACE-MEMBRE/accueil-membre.html";
+      const cheminAccueil = "/ESPACE-MEMBRE/accueil-membre.html";
 
-      window.location.replace(cible);
+      if (typeof config.membreUrl === "function") {
+        window.location.replace(config.membreUrl(cheminAccueil));
+        return;
+      }
+
+      const base = String(
+        config.membreBaseUrl ||
+        config.MEMBRE_BASE ||
+        config.siteBase ||
+        ""
+      ).replace(/\/+$/, "");
+
+      window.location.replace(base + cheminAccueil);
     })();
   </script>
+</head>
+<body>
+  <p>Redirection vers l’espace membre…</p>
 </body>
 </html>
