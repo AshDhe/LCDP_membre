@@ -139,6 +139,15 @@
     if (!slot) return;
 
     slot.innerHTML = "";
+    slot.classList.add("lcdp-stack");
+
+    const messageAccueil = document.createElement("p");
+    messageAccueil.className = "lcdp-text-strong-lead";
+    messageAccueil.id = "message-accueil-membre";
+    messageAccueil.textContent = etat.prenommembre
+      ? "Bonjour " + etat.prenommembre + ", que voulez-vous faire ?"
+      : "Bonjour, que voulez-vous faire ?";
+    slot.appendChild(messageAccueil);
 
     const fragment = await chargerFragmentObjet("/BOX/02-box-menu-bouton.html");
     slot.appendChild(fragment);
