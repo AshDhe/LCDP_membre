@@ -42,7 +42,6 @@
     pageInitialisee = true;
 
     try {
-      appliquerCentrageTextesPage();
       await initialiserBandeau();
       await initialiserFooter();
 
@@ -58,19 +57,6 @@
     } catch (error) {
       console.error("Erreur accueil membre :", error);
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
-    }
-  }
-
-  function appliquerCentrageTextesPage() {
-    const mention = document.getElementById("mention-statut-membre");
-    const message = document.getElementById("message-accueil-membre");
-
-    if (mention) {
-      mention.style.textAlign = "center";
-    }
-
-    if (message) {
-      message.style.textAlign = "center";
     }
   }
 
@@ -104,7 +90,8 @@
       abonne: valeurBooleenneVraie(resultat.abonne),
       emailparrain: nettoyerEmail(resultat.emailparrain),
       parrainRenseigne: valeurBooleenneVraie(resultat.parrainRenseigne),
-      aReservationEnCours: valeurBooleenneVraie(resultat.aReservationEnCours)
+      aReservationEnCours: valeurBooleenneVraie(resultat.aReservationEnCours || resultat.aReservationValidable),
+      reservationEnCours: resultat.reservationEnCours || resultat.reservationValidable || null
     };
   }
 
@@ -171,7 +158,7 @@
       {
         label: "RÉSERVER",
         style: "lcdp-button-primary",
-        action: () => ouvrirPageAbonne(etat, "RÉSERVER", "/ESPACE-MEMBRE/reserver-membre.html")
+        action: () => ouvrirPageAbonne(etat, "RESERVER", "/ESPACE-MEMBRE/reserver-membre.html")
       },
       {
         label: "PLANNING",
