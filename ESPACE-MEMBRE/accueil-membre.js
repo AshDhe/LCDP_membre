@@ -258,7 +258,7 @@
       return;
     }
 
-    await afficherAlerte("C'est votre parrain qui peut vous inviter");
+    await afficherAlerte("Votre parrain peut vous inviter depuis son espace.");
   }
 
   async function gererDeconnexion() {
