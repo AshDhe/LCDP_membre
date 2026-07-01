@@ -4,83 +4,425 @@
   const CONFIG_PAGE = window.SITE_CONFIG || {};
   const SOURCE_PAGE = "accueil-membre";
 
-  let sessionMembreValideeServeur = false;
+  const ENDPOINT_INDEX_MEMBRE = construireEndpointApi(
+    "workerIndexMembreUrl",
+    "WORKER_INDEX_MEMBRE_URL",
+    "W_INDEX_MEMBRE_URL",
+    "index-membre-api"
+  );
 
-  function estUrlExterneOuAncre(chemin) {
-    return (
-      !chemin ||
-      chemin.startsWith("#") ||
-      chemin.startsWith("mailto:") ||
-      chemin.startsWith("tel:") ||
-      chemin.startsWith("http://") ||
-      chemin.startsWith("https://") ||
-      chemin.startsWith("data:")
-    );
+  const ENDPOINT_DECONNEXION_MEMBRE = construireEndpointApi(
+    "",
+    "W_DECONNEXION_URL",
+    "",
+    "deconnexion-membre-api"
+  );
+
+  let pageInitialisee = false;
+  let etatMembre = {
+    prenommembre: "",
+    abonne: false,
+    emailparrain: "",
+    parrainRenseigne: false,
+    aReservationEnCours: false
+  };
+
+  window.LCDP_gererEtreInviteMembre = function LCDP_gererEtreInviteMembre() {
+    return gererEtreInvite(etatMembre);
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initialiserPage);
+  } else {
+    initialiserPage();
   }
 
-  function nettoyerBaseUrl(value) {
-    return String(value || "").replace(/\/+$/, "");
+  async function initialiserPage() {
+    if (pageInitialisee) return;
+    pageInitialisee = true;
+
+    try {
+      appliquerCentrageTextesPage();
+      await initialiserBandeau();
+      await initialiserFooter();
+
+      const etat = await chargerEtatMembre();
+
+      if (!etat) return;
+
+      etatMembre = etat;
+
+      afficherEtatMembre(etatMembre);
+      await initialiserBurgerMembre(etatMembre);
+      await initialiserMenuCentral(etatMembre);
+    } catch (error) {
+      console.error("Erreur accueil membre :", error);
+      await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
+    }
   }
 
-  function buildUrl(base, path) {
-    return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
-  }
+  function appliquerCentrageTextesPage() {
+    const mention = document.getElementById("mention-statut-membre");
+    const message = document.getElementById("message-accueil-membre");
 
-  function construireUrlPublic(chemin) {
-    const valeur = String(chemin || "");
-
-    if (estUrlExterneOuAncre(valeur)) return valeur;
-    if (typeof window.LCDP_urlPublic === "function") return window.LCDP_urlPublic(valeur);
-    if (typeof CONFIG_PAGE.publicUrl === "function") return CONFIG_PAGE.publicUrl(valeur);
-
-    return buildUrl(CONFIG_PAGE.publicBaseUrl || CONFIG_PAGE.PUBLIC_BASE || "", valeur);
-  }
-
-  function construireUrlMembre(chemin) {
-    const valeur = String(chemin || "");
-
-    if (estUrlExterneOuAncre(valeur)) return valeur;
-    if (typeof window.LCDP_urlMembre === "function") return window.LCDP_urlMembre(valeur);
-    if (typeof CONFIG_PAGE.membreUrl === "function") return CONFIG_PAGE.membreUrl(valeur);
-
-    return buildUrl(
-      CONFIG_PAGE.membreBaseUrl ||
-      CONFIG_PAGE.MEMBRE_BASE ||
-      CONFIG_PAGE.siteBase ||
-      window.SITE_BASE ||
-      "",
-      valeur
-    );
-  }
-
-  function construireUrlObjet(chemin) {
-    const valeur = String(chemin || "");
-
-    if (estUrlExterneOuAncre(valeur)) return valeur;
-    if (typeof window.LCDP_urlObjet === "function") return window.LCDP_urlObjet(valeur);
-    if (typeof CONFIG_PAGE.objetUrl === "function") return CONFIG_PAGE.objetUrl(valeur);
-
-    const objetBase =
-      CONFIG_PAGE.objetBaseUrl ||
-      CONFIG_PAGE.OBJET_BASE ||
-      buildUrl(CONFIG_PAGE.publicBaseUrl || CONFIG_PAGE.PUBLIC_BASE || "", "/OBJET");
-
-    return buildUrl(objetBase, valeur);
-  }
-
-  function construireEndpointApi(cleModerne, cleLegacy, sousDomaineWorker) {
-    const depuisConfig =
-      CONFIG_PAGE?.[cleModerne] ||
-      CONFIG_PAGE?.[cleLegacy] ||
-      "";
-
-    if (depuisConfig) return String(depuisConfig).replace(/\/+$/, "");
-
-    if (typeof CONFIG_PAGE.apiUrl === "function" && sousDomaineWorker) {
-      return CONFIG_PAGE.apiUrl(sousDomaineWorker).replace(/\/+$/, "");
+    if (mention) {
+      mention.style.textAlign = "center";
     }
 
-    return "";
+    if (message) {
+      message.style.textAlign = "center";
+    }
+  }
+
+  async function chargerEtatMembre() {
+    if (!ENDPOINT_INDEX_MEMBRE) {
+      throw new Error("Le service d’accueil membre n’est pas configuré.");
+    }
+
+    const reponse = await fetch(ENDPOINT_INDEX_MEMBRE + "/index", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
+    const resultat = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return null;
+    }
+
+    if (!reponse.ok || !resultat || resultat.success !== true || resultat.connected !== true) {
+      throw new Error(messageErreurApi(resultat, "Impossible de vérifier votre session membre."));
+    }
+
+    return {
+      prenommembre: nettoyerPrenom(resultat.prenommembre),
+      abonne: valeurBooleenneVraie(resultat.abonne),
+      emailparrain: nettoyerEmail(resultat.emailparrain),
+      parrainRenseigne: valeurBooleenneVraie(resultat.parrainRenseigne),
+      aReservationEnCours: valeurBooleenneVraie(resultat.aReservationEnCours)
+    };
+  }
+
+  function afficherEtatMembre(etat) {
+    const mention = document.getElementById("mention-statut-membre");
+    const message = document.getElementById("message-accueil-membre");
+
+    if (mention) {
+      mention.textContent = etat.abonne
+        ? "[Vous êtes membre abonné]"
+        : "[Vous êtes membre invité]";
+    }
+
+    if (message) {
+      message.textContent = etat.prenommembre
+        ? "Bonjour " + etat.prenommembre + ", que voulez-vous faire ?"
+        : "Bonjour, que voulez-vous faire ?";
+    }
+  }
+
+  async function initialiserBandeau() {
+    const slot = document.getElementById("lcdp-bandeau-slot");
+
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const bandeau = await chargerFragmentMembre("/ESPACE-MEMBRE/box-bandeau-nav-membre.html");
+    slot.appendChild(bandeau);
+
+    appliquerRoutesSite(slot);
+
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js");
+  }
+
+  async function initialiserBurgerMembre(etat) {
+    if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
+      await window.LCDP_initialiserMenuBurgerMembre({ etatMembre: etat });
+    }
+  }
+
+  async function initialiserMenuCentral(etat) {
+    const slot = document.getElementById("lcdp-menu-central-slot");
+
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-menu-bouton.html");
+    slot.appendChild(fragment);
+
+    const liste = slot.querySelector("[data-lcdp-menu-bouton-list]");
+
+    if (!liste) {
+      throw new Error("Structure du menu bouton incomplète.");
+    }
+
+    const boutons = [
+      {
+        label: "VALIDER",
+        style: "lcdp-button-primary",
+        action: () => gererValidationPresence(etat)
+      },
+      {
+        label: "RÉSERVER",
+        style: "lcdp-button-primary",
+        action: () => ouvrirPageAbonne(etat, "RÉSERVER", "/ESPACE-MEMBRE/reserver-membre.html")
+      },
+      {
+        label: "PLANNING",
+        style: "lcdp-button-primary",
+        action: () => redirigerMembre("/ESPACE-MEMBRE/planning-membre.html")
+      },
+      {
+        label: "INVITER",
+        style: "lcdp-button-primary",
+        action: () => ouvrirPageAbonne(etat, "INVITER", "/ESPACE-MEMBRE/inviter-membre.html")
+      }
+    ];
+
+    if (!etat.abonne) {
+      boutons.push({
+        label: "ÊTRE INVITÉ(E)",
+        style: "lcdp-button-orange",
+        action: () => gererEtreInvite(etat)
+      });
+    }
+
+    boutons.push(
+      {
+        label: "ACTUALITÉ",
+        style: "lcdp-button-primary",
+        action: () => redirigerPublic("/ESPACE-PUBLIC/actualite.html")
+      },
+      {
+        label: "DÉCONNEXION",
+        style: "lcdp-button-primary",
+        action: gererDeconnexion
+      }
+    );
+
+    boutons.forEach((configuration) => {
+      const bouton = document.createElement("button");
+      bouton.type = "button";
+      bouton.className = "lcdp-button " + configuration.style;
+      bouton.textContent = configuration.label;
+
+      bouton.addEventListener("click", () => {
+        Promise.resolve(configuration.action()).catch((error) => {
+          console.error(error);
+          afficherAlerte(error.message || "Erreur technique. Merci de réessayer.").catch(console.error);
+        });
+      });
+
+      liste.appendChild(bouton);
+    });
+  }
+
+  async function gererValidationPresence(etat) {
+    if (!etat.aReservationEnCours) {
+      await afficherAlerte("Vous n'avez pas de réservation en cours");
+      return;
+    }
+
+    await ouvrirDialogueBoutons({
+      titre: "Valider ma présence",
+      texte: "Choisissez le mode de validation.",
+      boutons: [
+        {
+          label: "BALISER",
+          valeur: "baliser",
+          style: "lcdp-button-primary"
+        },
+        {
+          label: "DÉLÉGUER",
+          valeur: "deleguer",
+          style: "lcdp-button-secondary"
+        }
+      ]
+    });
+  }
+
+  async function ouvrirPageAbonne(etat, fonction, chemin) {
+    if (!etat.abonne) {
+      await afficherAlerte("Vous devez être membre abonné pour utiliser la fonction " + fonction);
+      return;
+    }
+
+    redirigerMembre(chemin);
+  }
+
+  async function gererEtreInvite(etat) {
+    if (!etat.parrainRenseigne) {
+      await afficherAlerte('Renseignez votre parrain dans la rubrique "Mes informations"');
+      return;
+    }
+
+    await afficherAlerte("C'est votre parrain qui peut vous inviter");
+  }
+
+  async function gererDeconnexion() {
+    const confirmation = await ouvrirDialogueBoutons({
+      titre: "Confirmer la déconnexion",
+      texte: "Voulez-vous vous déconnecter de votre espace membre ?",
+      boutons: [
+        {
+          label: "Confirmer",
+          valeur: "confirmer",
+          style: "lcdp-button-primary"
+        }
+      ]
+    });
+
+    if (confirmation !== "confirmer") return;
+
+    if (!ENDPOINT_DECONNEXION_MEMBRE) {
+      throw new Error("Le service de déconnexion membre n’est pas configuré.");
+    }
+
+    const reponse = await fetch(ENDPOINT_DECONNEXION_MEMBRE + "/deconnexion", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
+    const resultat = await reponse.json().catch(() => null);
+
+    if (!reponse.ok || !resultat || resultat.success !== true) {
+      throw new Error(messageErreurApi(resultat, "Impossible de fermer la session membre."));
+    }
+
+    redirigerPublic("/ESPACE-PUBLIC/accueil-public.html");
+  }
+
+  async function afficherAlerte(message) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    slot.appendChild(fragment);
+
+    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
+    const texte = slot.querySelector("[data-lcdp-alerte-message]");
+    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
+    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
+
+    if (!alerte || !texte || !boutonFermer || !boutonOk) {
+      throw new Error("Structure de l’alerte incomplète.");
+    }
+
+    texte.textContent = message || "";
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer() {
+        if (resolu) return;
+        resolu = true;
+        slot.innerHTML = "";
+        resolve(true);
+      }
+
+      boutonFermer.addEventListener("click", fermer);
+      boutonOk.addEventListener("click", fermer);
+
+      alerte.addEventListener("click", (event) => {
+        if (event.target === alerte) fermer();
+      });
+
+      document.addEventListener(
+        "keydown",
+        (event) => {
+          if (event.key === "Escape") fermer();
+        },
+        { once: true }
+      );
+    });
+  }
+
+  async function ouvrirDialogueBoutons(options) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) return null;
+
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    slot.appendChild(fragment);
+
+    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
+    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
+    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
+
+    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
+      throw new Error("Structure de dialogue bouton incomplète.");
+    }
+
+    titre.textContent = options.titre || "";
+    texte.textContent = options.texte || "";
+    actions.innerHTML = "";
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        slot.innerHTML = "";
+        resolve(valeur || null);
+      }
+
+      (options.boutons || []).forEach((configuration) => {
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "lcdp-button " + (configuration.style || "lcdp-button-primary");
+        bouton.textContent = configuration.label || "Valider";
+
+        bouton.addEventListener("click", () => {
+          fermer(configuration.valeur || configuration.label || true);
+        });
+
+        actions.appendChild(bouton);
+      });
+
+      boutonFermer.addEventListener("click", () => fermer(null));
+
+      dialogue.addEventListener("click", (event) => {
+        if (event.target === dialogue) fermer(null);
+      });
+
+      document.addEventListener(
+        "keydown",
+        (event) => {
+          if (event.key === "Escape") fermer(null);
+        },
+        { once: true }
+      );
+    });
+  }
+
+  async function initialiserFooter() {
+    const slot = document.getElementById("lcdp-footer-slot");
+
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
+    slot.appendChild(footer);
+    appliquerRoutesSite(slot);
   }
 
   function appliquerRoutesSite(racine = document) {
@@ -101,67 +443,6 @@
     });
   }
 
-  function lireCookie(nom) {
-    return document.cookie
-      .split(";")
-      .map((part) => part.trim())
-      .some((part) => part.startsWith(nom + "="));
-  }
-
-  function sessionMembrePresente() {
-    return sessionMembreValideeServeur || lireCookie("idsession_membre") || lireCookie("session_membre");
-  }
-
-  function membreAbonne() {
-    return lireCookie("abonne");
-  }
-
-  function redirigerConnexionMembre() {
-    const cible = construireUrlPublic(
-      "/ESPACE-PUBLIC/connexion-membre.html?source=" +
-      encodeURIComponent(SOURCE_PAGE) +
-      "&session=inactive"
-    );
-
-    window.location.href = cible;
-  }
-
-  async function verifierSessionMembreServeur() {
-    const workerUrl = obtenirWorkerUserRouteurUrl();
-
-    if (!workerUrl) {
-      return false;
-    }
-
-    try {
-      const reponse = await fetch(workerUrl, {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          compte: "membre"
-        })
-      });
-
-      const data = await reponse.json().catch(() => null);
-
-      return (
-        reponse.ok &&
-        data &&
-        data.success === true &&
-        data.connected === true
-      );
-
-    } catch (error) {
-      console.error("Erreur vérification session membre :", error);
-      return false;
-    }
-  }
-
   async function chargerFragmentObjet(chemin) {
     const reponse = await fetch(construireUrlObjet(chemin), {
       method: "GET",
@@ -171,6 +452,24 @@
 
     if (!reponse.ok) {
       throw new Error("Fragment OBJET introuvable : " + chemin);
+    }
+
+    const html = await reponse.text();
+    const template = document.createElement("template");
+    template.innerHTML = html.trim();
+
+    return template.content.cloneNode(true);
+  }
+
+  async function chargerFragmentMembre(chemin) {
+    const reponse = await fetch(construireUrlMembre(chemin), {
+      method: "GET",
+      credentials: "omit",
+      cache: "no-cache"
+    });
+
+    if (!reponse.ok) {
+      throw new Error("Fragment membre introuvable : " + chemin);
     }
 
     const html = await reponse.text();
@@ -198,337 +497,98 @@
     });
   }
 
-  async function afficherAlerte(message) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
+  function construireEndpointApi(cleModerne, cleLegacy, cleCourte, sousDomaineWorker) {
+    const depuisConfig =
+      (cleModerne ? CONFIG_PAGE?.[cleModerne] : "") ||
+      (cleLegacy ? CONFIG_PAGE?.[cleLegacy] : "") ||
+      (cleCourte ? CONFIG_PAGE?.[cleCourte] : "") ||
+      "";
 
-    if (!slot) return;
+    if (depuisConfig) return String(depuisConfig).replace(/\/+$/, "");
 
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
-    slot.appendChild(fragment);
-
-    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-    const texte = slot.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      throw new Error("Structure de l’alerte incomplète.");
+    if (typeof CONFIG_PAGE.apiUrl === "function") {
+      return CONFIG_PAGE.apiUrl(sousDomaineWorker).replace(/\/+$/, "");
     }
 
-    texte.textContent = message || "";
+    return "";
+  }
 
-    const fermer = () => {
-      slot.innerHTML = "";
-    };
+  function construireUrlPublic(chemin) {
+    const valeur = String(chemin || "");
 
-    boutonFermer.addEventListener("click", fermer);
-    boutonOk.addEventListener("click", fermer);
+    if (estUrlExterneOuAncre(valeur)) return valeur;
+    if (typeof window.LCDP_urlPublic === "function") return window.LCDP_urlPublic(valeur);
+    if (typeof CONFIG_PAGE.publicUrl === "function") return CONFIG_PAGE.publicUrl(valeur);
 
-    alerte.addEventListener("click", (event) => {
-      if (event.target === alerte) fermer();
-    });
+    return buildUrl(CONFIG_PAGE.publicBaseUrl || CONFIG_PAGE.PUBLIC_BASE || "", valeur);
+  }
 
-    document.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.key === "Escape") fermer();
-      },
-      { once: true }
+  function construireUrlMembre(chemin) {
+    const valeur = String(chemin || "");
+
+    if (estUrlExterneOuAncre(valeur)) return valeur;
+    if (typeof window.LCDP_urlMembre === "function") return window.LCDP_urlMembre(valeur);
+    if (typeof CONFIG_PAGE.membreUrl === "function") return CONFIG_PAGE.membreUrl(valeur);
+
+    return buildUrl(
+      CONFIG_PAGE.membreBaseUrl ||
+      CONFIG_PAGE.MEMBRE_BASE ||
+      CONFIG_PAGE.siteBase ||
+      "",
+      valeur
     );
   }
 
-  async function initialiserBandeau() {
-    const slot = document.getElementById("lcdp-bandeau-slot");
+  function construireUrlObjet(chemin) {
+    const valeur = String(chemin || "");
 
-    if (!slot) return;
+    if (estUrlExterneOuAncre(valeur)) return valeur;
+    if (typeof window.LCDP_urlObjet === "function") return window.LCDP_urlObjet(valeur);
+    if (typeof CONFIG_PAGE.objetUrl === "function") return CONFIG_PAGE.objetUrl(valeur);
 
-    slot.innerHTML = "";
+    const objetBase =
+      CONFIG_PAGE.objetBaseUrl ||
+      CONFIG_PAGE.OBJET_BASE ||
+      buildUrl(CONFIG_PAGE.publicBaseUrl || CONFIG_PAGE.PUBLIC_BASE || "", "/OBJET");
 
-    const bandeau = await chargerFragmentObjet("/BOX/02-box-bandeau-nav.html");
-    slot.appendChild(bandeau);
-
-    const lienLogo = slot.querySelector(".lcdp-box-bandeau-nav__logo-link");
-    const label = slot.querySelector("[data-lcdp-bandeau-nav-label]");
-
-    if (lienLogo) {
-      lienLogo.dataset.siteHref = "/ESPACE-MEMBRE/accueil-membre.html";
-      lienLogo.dataset.space = "membre";
-      lienLogo.setAttribute("aria-label", "Accueil espace membre");
-    }
-
-    if (label) {
-      label.textContent = "Espace membre";
-    }
-
-    appliquerRoutesSite(slot);
-
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js");
-
-    if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
-      await window.LCDP_initialiserMenuBurgerMembre();
-    }
+    return buildUrl(objetBase, valeur);
   }
 
-  function verifierAccesBouton(configurationBouton) {
-    if (configurationBouton.type !== "membre") {
-      return { autorise: true, message: "" };
-    }
-
-    if (!sessionMembrePresente()) {
-      return {
-        autorise: false,
-        redirectionConnexion: true,
-        message: "Session membre inactive."
-      };
-    }
-
-    if (configurationBouton.abonnementRequis && !membreAbonne()) {
-      return {
-        autorise: false,
-        redirectionConnexion: false,
-        message: configurationBouton.message || "Cette fonction est réservée aux membres abonnés."
-      };
-    }
-
-    return { autorise: true, message: "" };
-  }
-
-  async function initialiserMenuCentral() {
-    const slot = document.getElementById("lcdp-menu-central-slot");
-
-    if (!slot) return;
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/BOX/02-box-menu-bouton.html");
-    slot.appendChild(fragment);
-
-    const liste = slot.querySelector("[data-lcdp-menu-bouton-list]");
-
-    if (!liste) {
-      throw new Error("Structure du menu bouton incomplète.");
-    }
-
-    const boutons = [
-      {
-        label: "VALIDER",
-        type: "membre",
-        target: "/ESPACE-MEMBRE/valider-membre.html",
-        abonnementRequis: true,
-        style: "lcdp-button-primary",
-        message: "La fonction valider est réservée aux membres abonnés."
-      },
-      {
-        label: "RÉSERVER",
-        type: "membre",
-        target: "/ESPACE-MEMBRE/reserver-membre.html",
-        abonnementRequis: true,
-        style: "lcdp-button-primary",
-        message: "La fonction réserver est réservée aux membres abonnés."
-      },
-      {
-        label: "PLANNING",
-        type: "membre",
-        target: "/ESPACE-MEMBRE/planning-membre.html",
-        abonnementRequis: false,
-        style: "lcdp-button-primary"
-      },
-      {
-        label: "INVITER",
-        type: "membre",
-        target: "/ESPACE-MEMBRE/inviter-membre.html",
-        abonnementRequis: true,
-        style: "lcdp-button-primary",
-        message: "La fonction inviter est réservée aux membres abonnés."
-      },
-      {
-        label: "ÊTRE INVITÉ(E)",
-        type: "public",
-        target: "/ESPACE-PUBLIC/inscription.html",
-        style: "lcdp-button-orange"
-      },
-      {
-        label: "LE CLUB",
-        type: "public",
-        target: "/ESPACE-PUBLIC/la-cle-du-parc.html",
-        style: "lcdp-button-primary"
-      },
-      {
-        label: "ACTUALITÉ",
-        type: "public",
-        target: "/ESPACE-PUBLIC/actualite.html",
-        style: "lcdp-button-primary"
-      },
-      {
-        label: "CONNEXION",
-        type: "dialogue",
-        style: "lcdp-button-primary"
-      }
-    ];
-
-    boutons.forEach((configurationBouton) => {
-      const bouton = document.createElement("button");
-      bouton.type = "button";
-      bouton.className = "lcdp-button " + (configurationBouton.style || "lcdp-button-primary");
-      bouton.textContent = configurationBouton.label;
-
-      bouton.addEventListener("click", () => {
-        if (configurationBouton.type === "dialogue") {
-          ouvrirDialogueConnexion().catch((error) => {
-            console.error("Erreur dialogue connexion :", error);
-            window.location.href = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html?source=accueil-membre");
-          });
-          return;
-        }
-
-        if (configurationBouton.type === "public") {
-          window.location.href = construireUrlPublic(configurationBouton.target);
-          return;
-        }
-
-        const acces = verifierAccesBouton(configurationBouton);
-
-        if (!acces.autorise && acces.redirectionConnexion) {
-          redirigerConnexionMembre();
-          return;
-        }
-
-        if (!acces.autorise) {
-          afficherAlerte(acces.message).catch(console.error);
-          return;
-        }
-
-        window.location.href = construireUrlMembre(configurationBouton.target);
-      });
-
-      liste.appendChild(bouton);
-    });
-  }
-
-  async function initialiserFooter() {
-    const slot = document.getElementById("lcdp-footer-slot");
-
-    if (!slot) return;
-
-    slot.innerHTML = "";
-
-    const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
-    slot.appendChild(footer);
-
-    appliquerRoutesSite(slot);
-  }
-
-  function obtenirWorkerUserRouteurUrl() {
-    return construireEndpointApi("workerUserRouteurUrl", "WORKER_USER_ROUTEUR_URL", "user-routeur-api");
-  }
-
-  async function redirigerCompte(compte) {
-    const workerUrl = obtenirWorkerUserRouteurUrl();
-
-    if (!workerUrl) {
-      window.location.href = construireUrlConnexion(compte);
-      return;
-    }
-
-    try {
-      const reponse = await fetch(workerUrl, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ compte })
-      });
-
-      if (!reponse.ok) {
-        throw new Error("Routeur utilisateur indisponible.");
-      }
-
-      const data = await reponse.json().catch(() => null);
-
-      if (data && data.redirectUrl) {
-        window.location.href = data.redirectUrl;
-        return;
-      }
-
-      window.location.href = construireUrlConnexion(compte);
-
-    } catch (error) {
-      console.error("Erreur routeur utilisateur :", error);
-      window.location.href = construireUrlConnexion(compte);
-    }
-  }
-
-  function construireUrlConnexion(compte) {
-    const chemins = {
-      membre: "/ESPACE-PUBLIC/connexion-membre.html?source=accueil-membre-dialogue",
-      parc: "/ESPACE-PUBLIC/connexion-parc.html?source=accueil-membre-dialogue",
-      coach: "/ESPACE-PUBLIC/connexion-coach.html?source=accueil-membre-dialogue"
-    };
-
-    return construireUrlPublic(chemins[compte] || chemins.membre);
-  }
-
-  async function ouvrirDialogueConnexion() {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return;
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
-    slot.appendChild(fragment);
-
-    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
-    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
-    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
-    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
-    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
-
-    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
-      throw new Error("Structure de dialogue connexion incomplète.");
-    }
-
-    titre.textContent = "Connexion";
-    texte.textContent = "Choisissez votre espace de connexion.";
-    actions.innerHTML = "";
-
-    [
-      { compte: "membre", label: "Espace MEMBRE" },
-      { compte: "parc", label: "Espace PARC" },
-      { compte: "coach", label: "Espace COACH" }
-    ].forEach((item) => {
-      const bouton = document.createElement("button");
-      bouton.type = "button";
-      bouton.className = "lcdp-button lcdp-button-primary";
-      bouton.textContent = item.label;
-
-      bouton.addEventListener("click", () => {
-        redirigerCompte(item.compte).catch(console.error);
-      });
-
-      actions.appendChild(bouton);
-    });
-
-    const fermer = () => {
-      slot.innerHTML = "";
-    };
-
-    boutonFermer.addEventListener("click", fermer);
-
-    dialogue.addEventListener("click", (event) => {
-      if (event.target === dialogue) fermer();
-    });
-
-    document.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.key === "Escape") fermer();
-      },
-      { once: true }
+  function estUrlExterneOuAncre(chemin) {
+    return (
+      !chemin ||
+      chemin.startsWith("#") ||
+      chemin.startsWith("mailto:") ||
+      chemin.startsWith("tel:") ||
+      chemin.startsWith("http://") ||
+      chemin.startsWith("https://") ||
+      chemin.startsWith("data:")
     );
+  }
+
+  function redirigerMembre(chemin) {
+    window.location.href = construireUrlMembre(chemin);
+  }
+
+  function redirigerPublic(chemin) {
+    window.location.href = construireUrlPublic(chemin);
+  }
+
+  function redirigerConnexionMembre(motif) {
+    const chemin =
+      "/ESPACE-PUBLIC/connexion-membre.html" +
+      "?source=" + encodeURIComponent(SOURCE_PAGE) +
+      "&session=" + encodeURIComponent(motif || "inactive");
+
+    redirigerPublic(chemin);
+  }
+
+  function nettoyerBaseUrl(value) {
+    return String(value || "").replace(/\/+$/, "");
+  }
+
+  function buildUrl(base, path) {
+    return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
   }
 
   function nettoyerPrenom(value) {
@@ -538,66 +598,19 @@
       .slice(0, 60);
   }
 
-  async function initialiserMessageAccueil() {
-    const messageAccueil = document.getElementById("message-accueil-membre");
-
-    if (!messageAccueil) return;
-
-    const workerIndexMembreUrl = construireEndpointApi(
-      "workerIndexMembreUrl",
-      "WORKER_INDEX_MEMBRE_URL",
-      ""
-    );
-
-    if (!workerIndexMembreUrl) {
-      messageAccueil.textContent = "Bonjour, que voulez-vous faire ?";
-      return;
-    }
-
-    try {
-      const reponse = await fetch(workerIndexMembreUrl, {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-          "Accept": "application/json"
-        }
-      });
-
-      const data = await reponse.json().catch(() => null);
-
-      if (!reponse.ok || !data || data.success !== true || data.connected !== true) {
-        messageAccueil.textContent = "Bonjour, que voulez-vous faire ?";
-        return;
-      }
-
-      const prenom = nettoyerPrenom(data.prenommembre);
-
-      messageAccueil.textContent = prenom
-        ? `Bonjour ${prenom}, que voulez-vous faire ?`
-        : "Bonjour, que voulez-vous faire ?";
-
-    } catch (error) {
-      console.error("Erreur message accueil membre :", error);
-      messageAccueil.textContent = "Bonjour, que voulez-vous faire ?";
-    }
+  function nettoyerEmail(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase();
   }
 
-  async function initialiserPage() {
-    sessionMembreValideeServeur = await verifierSessionMembreServeur();
-
-    if (!sessionMembreValideeServeur) {
-      redirigerConnexionMembre();
-      return;
-    }
-
-    await initialiserBandeau();
-    await initialiserMenuCentral();
-    await initialiserFooter();
-    await initialiserMessageAccueil();
+  function valeurBooleenneVraie(valeur) {
+    return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
   }
 
-  initialiserPage().catch((error) => {
-    console.error("Erreur accueil membre :", error);
-  });
+  function messageErreurApi(resultat, messageDefaut) {
+    return resultat && (resultat.message || resultat.error)
+      ? String(resultat.message || resultat.error)
+      : messageDefaut;
+  }
 })();
