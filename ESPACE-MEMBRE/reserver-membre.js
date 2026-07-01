@@ -11,7 +11,14 @@
     "nouvelle-date-membre-api"
   );
 
+  const ENDPOINT_FLUXM = construireEndpointApi(
+    "workerFluxmUrl",
+    "WORKER_FLUXM_URL",
+    "fluxm-api"
+  );
+
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
+  const PAGE_PLANNING_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/planning-membre.html");
 
   let pageInitialisee = false;
 
@@ -20,7 +27,9 @@
     autourDeMoi: true,
     parcs: [],
     templateCardParc: null,
-    templateJourMois: null
+    templateJourMois: null,
+    templateHeureJour: null,
+    calendrierMoisActif: null
   };
 
   if (document.readyState === "loading") {
@@ -64,8 +73,11 @@
     const fragmentJour = await chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html");
     etatPage.templateJourMois = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
 
-    if (!etatPage.templateCardParc || !etatPage.templateJourMois) {
-      throw new Error("Templates parc ou jour introuvables.");
+    const fragmentHeure = await chargerFragmentObjet("/BOX/04-box-card-heure-in-calendrier-jour.html");
+    etatPage.templateHeureJour = fragmentHeure.querySelector("[data-lcdp-card-heure-jour]");
+
+    if (!etatPage.templateCardParc || !etatPage.templateJourMois || !etatPage.templateHeureJour) {
+      throw new Error("Templates parc, jour ou heure introuvables.");
     }
   }
 
@@ -298,6 +310,7 @@
     const boutonFiche = event.target.closest("[data-action='ouvrir-fiche-parc']");
     const boutonReserver = event.target.closest("[data-action='nouvelle-date-parc']");
     const jourCalendrier = event.target.closest("[data-lcdp-card-jour-mois]");
+    const boutonHeure = event.target.closest("[data-action='choisir-heure-arrivee']");
 
     if (boutonFiche) {
       event.preventDefault();
@@ -320,7 +333,13 @@
 
     if (jourCalendrier && !jourCalendrier.disabled) {
       event.preventDefault();
-      await afficherAlerte("Le choix de l’heure d’arrivée sera traité à l’étape suivante.");
+      await ouvrirCalendrierJourDepuisCard(jourCalendrier);
+      return;
+    }
+
+    if (boutonHeure && !boutonHeure.disabled) {
+      event.preventDefault();
+      await traiterChoixHeure(boutonHeure);
     }
   }
 
@@ -361,8 +380,11 @@
     const etatCalendrier = {
       parc,
       annee: maintenant.getFullYear(),
-      mois: maintenant.getMonth() + 1
+      mois: maintenant.getMonth() + 1,
+      planning: []
     };
+
+    etatPage.calendrierMoisActif = etatCalendrier;
 
     async function fermer() {
       slot.innerHTML = "";
@@ -409,6 +431,7 @@
 
     try {
       const planning = await chargerPlanningParcMois(etatCalendrier);
+      etatCalendrier.planning = planning;
       message.hidden = true;
       message.textContent = "";
       remplirGrilleCalendrier(grille, etatCalendrier, planning);
@@ -476,7 +499,7 @@
 
     for (let jour = 1; jour <= nombreJours; jour += 1) {
       const dateIso = construireDateIso(etatCalendrier.annee, etatCalendrier.mois, jour);
-      grille.appendChild(creerCardJourCalendrier(dateIso, jour, planningParDate.get(dateIso)));
+      grille.appendChild(creerCardJourCalendrier(etatCalendrier, dateIso, jour, planningParDate.get(dateIso)));
     }
   }
 
@@ -488,7 +511,7 @@
     return card;
   }
 
-  function creerCardJourCalendrier(dateIso, numeroJour, planningJour) {
+  function creerCardJourCalendrier(etatCalendrier, dateIso, numeroJour, planningJour) {
     const card = etatPage.templateJourMois.cloneNode(true);
     const numero = card.querySelector("[data-lcdp-card-jour-mois-number]");
 
@@ -497,6 +520,7 @@
     const estAujourdhui = dateIso === dateAujourdhuiIso();
 
     card.dataset.date = dateIso;
+    card.dataset.idparc = String(etatCalendrier.parc.idparc || etatCalendrier.parc.id || "");
     card.setAttribute("aria-label", construireLibelleJour(dateIso, ouvert));
 
     if (numero) {
@@ -532,6 +556,370 @@
       const couleur = normaliserCouleurClasse(plage && plage.ouverte ? plage.couleur : "gris_clair");
 
       slot.className = "lcdp-box-card-jour-in-calendrier-mois__slot lcdp-box-card-jour-in-calendrier-mois__slot--" + couleur;
+    });
+  }
+
+  async function ouvrirCalendrierJourDepuisCard(cardJour) {
+    const dateIso = String(cardJour.dataset.date || "").trim();
+    const etatCalendrier = etatPage.calendrierMoisActif;
+
+    if (!dateIso || !etatCalendrier || !etatCalendrier.parc) {
+      await afficherAlerte("Date ou parc manquant.");
+      return;
+    }
+
+    const planningJour = (etatCalendrier.planning || [])
+      .find((jour) => String(jour.date || "") === dateIso);
+
+    if (!planningJour || planningJour.ouvert !== true) {
+      await afficherAlerte("Aucun horaire disponible pour cette date.");
+      return;
+    }
+
+    await ouvrirCalendrierJourParc({
+      parc: etatCalendrier.parc,
+      dateIso,
+      planningJour
+    });
+  }
+
+  async function ouvrirCalendrierJourParc(contexte) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-jour.html");
+    slot.appendChild(fragment);
+
+    const calendrier = slot.querySelector("[data-lcdp-box-calendrier-jour]");
+    const titre = slot.querySelector("[data-lcdp-calendrier-jour-title]");
+    const meta = slot.querySelector("[data-lcdp-calendrier-jour-meta]");
+    const message = slot.querySelector("[data-lcdp-calendrier-jour-message]");
+    const grille = slot.querySelector("[data-lcdp-calendrier-jour-grid]");
+    const boutonFermer = slot.querySelector("[data-lcdp-calendrier-jour-close]");
+
+    if (!calendrier || !titre || !meta || !message || !grille || !boutonFermer) {
+      throw new Error("Structure calendrier jour incomplète.");
+    }
+
+    const nomParc = String(contexte.parc.nom || contexte.parc.nomparc || "Parc").trim() || "Parc";
+    const departement = String(contexte.parc.dptmt || contexte.parc.departement || "").trim();
+
+    titre.textContent = "Votre heure d'arrivée";
+    meta.textContent = formaterDateFr(contexte.dateIso) + " · " + nomParc + (departement ? " · " + departement : "");
+
+    boutonFermer.addEventListener("click", () => {
+      slot.innerHTML = "";
+    });
+
+    calendrier.addEventListener("click", (event) => {
+      if (event.target === calendrier) slot.innerHTML = "";
+    });
+
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Escape") slot.innerHTML = "";
+      },
+      { once: true }
+    );
+
+    remplirGrilleHoraires(grille, message, contexte);
+  }
+
+  function remplirGrilleHoraires(grille, message, contexte) {
+    grille.innerHTML = "";
+
+    const plages = construirePlagesJour(contexte.planningJour);
+    const heures = genererHeuresDisponibles();
+
+    heures.forEach((heure) => {
+      const plage = trouverPlagePourHeure(plages, heure);
+
+      if (!plage) return;
+
+      grille.appendChild(creerCardHeure(contexte, heure, plage));
+    });
+
+    if (!grille.children.length) {
+      message.hidden = false;
+      message.textContent = "Aucun horaire d'arrivée n'est disponible pour cette date.";
+      return;
+    }
+
+    message.hidden = true;
+    message.textContent = "";
+  }
+
+  function construirePlagesJour(planningJour) {
+    if (!planningJour || !planningJour.plages) {
+      return [];
+    }
+
+    const plages = [];
+
+    ajouterPlageSiOuverte(plages, "plage1", planningJour.plages.plage1, {
+      debut: "06:00",
+      fin: "13:00"
+    });
+
+    ajouterPlageSiOuverte(plages, "plage2", planningJour.plages.plage2, {
+      debut: "13:00",
+      fin: "19:00"
+    });
+
+    ajouterPlageSiOuverte(plages, "plage3", planningJour.plages.plage3, {
+      debut: "19:00",
+      fin: "21:30"
+    });
+
+    return plages;
+  }
+
+  function ajouterPlageSiOuverte(plages, nomPlage, plage, defaut) {
+    if (!plage || plage.ouverte !== true) {
+      return;
+    }
+
+    plages.push({
+      nom: nomPlage,
+      debut: plage.debut || defaut.debut,
+      fin: plage.fin || defaut.fin,
+      couleur: normaliserCouleurClasse(plage.couleur)
+    });
+  }
+
+  function genererHeuresDisponibles() {
+    const heures = [];
+
+    for (let totalMinutes = 6 * 60; totalMinutes <= 21 * 60; totalMinutes += 30) {
+      const heure = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+
+      heures.push(
+        String(heure).padStart(2, "0") + ":" + String(minutes).padStart(2, "0")
+      );
+    }
+
+    return heures;
+  }
+
+  function trouverPlagePourHeure(plages, heure) {
+    const totalMinutes = convertirHeureEnMinutes(heure);
+
+    return plages.find((plage) => {
+      const debut = convertirHeureEnMinutes(plage.debut);
+      const fin = convertirHeureEnMinutes(plage.fin);
+
+      return totalMinutes >= debut && totalMinutes < fin;
+    }) || null;
+  }
+
+  function convertirHeureEnMinutes(heure) {
+    const [heures, minutes] = String(heure || "00:00").split(":").map(Number);
+
+    if (!Number.isFinite(heures) || !Number.isFinite(minutes)) {
+      return 0;
+    }
+
+    return heures * 60 + minutes;
+  }
+
+  function creerCardHeure(contexte, heure, plage) {
+    const card = etatPage.templateHeureJour.cloneNode(true);
+    const label = card.querySelector("[data-lcdp-card-heure-jour-label]");
+    const couleur = normaliserCouleurClasse(plage.couleur);
+
+    card.classList.add("lcdp-box-card-heure-in-calendrier-jour--" + couleur);
+    card.dataset.idparc = String(contexte.parc.idparc || contexte.parc.id || "");
+    card.dataset.date = contexte.dateIso;
+    card.dataset.heure = heure;
+    card.dataset.plagebookd = plage.nom;
+
+    if (label) {
+      label.textContent = formaterHeureAffichee(heure);
+    }
+
+    return card;
+  }
+
+  async function traiterChoixHeure(boutonHeure) {
+    const heure = String(boutonHeure.dataset.heure || "").trim();
+    const dateIso = String(boutonHeure.dataset.date || "").trim();
+    const idparc = String(boutonHeure.dataset.idparc || "").trim();
+    const plagebookd = String(boutonHeure.dataset.plagebookd || "").trim();
+
+    if (!heure || !dateIso || !idparc || !plagebookd) {
+      await afficherAlerteSuperposee("Heure, date ou parc manquant.");
+      return;
+    }
+
+    const confirmation = await ouvrirDialogueBoutonsSuperpose({
+      titre: "Confirmer l'heure d'arrivée",
+      texte: "Vous avez choisi le " + formaterDateFr(dateIso) + " à " + formaterHeureAffichee(heure) + ".",
+      boutons: [
+        {
+          label: "Annuler",
+          valeur: "annuler",
+          style: "lcdp-button-secondary"
+        },
+        {
+          label: "Confirmer",
+          valeur: "confirmer",
+          style: "lcdp-button-primary"
+        }
+      ]
+    });
+
+    if (confirmation !== "confirmer") return;
+
+    const texteInitial = boutonHeure.textContent;
+    boutonHeure.disabled = true;
+    boutonHeure.textContent = "Enregistrement...";
+
+    try {
+      await enregistrerReservation({
+        idparc,
+        datebookd: construireDateBookd(dateIso, heure),
+        plagebookd
+      });
+
+      const slot = document.getElementById("lcdp-lightbox-slot");
+      if (slot) slot.innerHTML = "";
+
+      await afficherAlerte("Votre nouvelle date a bien été enregistrée.");
+      window.location.href = PAGE_PLANNING_MEMBRE;
+    } catch (error) {
+      boutonHeure.disabled = false;
+      boutonHeure.textContent = texteInitial;
+      await afficherAlerteSuperposee(error.message || "Impossible d'enregistrer la réservation.");
+    }
+  }
+
+  async function enregistrerReservation(payload) {
+    if (!ENDPOINT_FLUXM) {
+      throw new Error("Le service du planning membre n’est pas configuré.");
+    }
+
+    const reponse = await fetch(ENDPOINT_FLUXM + "/creer-reservation", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return null;
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Impossible d'enregistrer la réservation."));
+    }
+
+    return data.reservation || null;
+  }
+
+  function construireDateBookd(dateIso, heure) {
+    const dateLocale = new Date(dateIso + "T" + heure + ":00");
+
+    return dateLocale.toISOString();
+  }
+
+  async function ouvrirDialogueBoutonsSuperpose(options) {
+    const conteneur = document.createElement("div");
+    document.body.appendChild(conteneur);
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    conteneur.appendChild(fragment);
+
+    const dialogue = conteneur.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = conteneur.querySelector("[data-lcdp-dialogue-title]");
+    const texte = conteneur.querySelector("[data-lcdp-dialogue-text]");
+    const actions = conteneur.querySelector("[data-lcdp-dialogue-actions]");
+    const boutonFermer = conteneur.querySelector("[data-lcdp-dialogue-close]");
+
+    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
+      conteneur.remove();
+      throw new Error("Structure de dialogue bouton incomplète.");
+    }
+
+    titre.textContent = options.titre || "";
+    texte.textContent = options.texte || "";
+    actions.innerHTML = "";
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        conteneur.remove();
+        resolve(valeur || null);
+      }
+
+      (options.boutons || []).forEach((configuration) => {
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "lcdp-button " + (configuration.style || "lcdp-button-primary");
+        bouton.textContent = configuration.label || "Valider";
+
+        bouton.addEventListener("click", () => {
+          fermer(configuration.valeur || configuration.label || true);
+        });
+
+        actions.appendChild(bouton);
+      });
+
+      boutonFermer.addEventListener("click", () => fermer(null));
+      dialogue.addEventListener("click", (event) => {
+        if (event.target === dialogue) fermer(null);
+      });
+    });
+  }
+
+  async function afficherAlerteSuperposee(message) {
+    const conteneur = document.createElement("div");
+    document.body.appendChild(conteneur);
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    conteneur.appendChild(fragment);
+
+    const alerte = conteneur.querySelector("[data-lcdp-box-alerte]");
+    const texte = conteneur.querySelector("[data-lcdp-alerte-message]");
+    const boutonFermer = conteneur.querySelector("[data-lcdp-alerte-close]");
+    const boutonOk = conteneur.querySelector("[data-lcdp-alerte-ok]");
+
+    if (!alerte || !texte || !boutonFermer || !boutonOk) {
+      conteneur.remove();
+      throw new Error("Structure de l’alerte incomplète.");
+    }
+
+    texte.textContent = message || "";
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        conteneur.remove();
+        resolve(valeur);
+      }
+
+      boutonFermer.addEventListener("click", () => fermer(false));
+      boutonOk.addEventListener("click", () => fermer(true));
+      alerte.addEventListener("click", (event) => {
+        if (event.target === alerte) fermer(false);
+      });
     });
   }
 
@@ -969,6 +1357,25 @@
       month: "long",
       year: "numeric"
     });
+  }
+
+  function formaterDateFr(dateIso) {
+    if (!dateIso) return "";
+
+    const date = new Date(dateIso + "T12:00:00");
+
+    if (Number.isNaN(date.getTime())) return dateIso;
+
+    return date.toLocaleDateString("fr-FR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+  }
+
+  function formaterHeureAffichee(heure) {
+    return String(heure || "").replace(":", "h");
   }
 
   function construireLibelleJour(dateIso, ouvert) {
