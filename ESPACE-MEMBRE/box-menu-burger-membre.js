@@ -3,18 +3,9 @@
 
   let initialisationEnCours = null;
 
-  const config = window.SITE_CONFIG || {};
-
-  function nettoyerBaseUrl(value) {
-    return String(value || "").replace(/\/+$/, "");
-  }
-
-  function buildUrl(base, path) {
-    return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
-  }
-
   function estUrlExterneOuAncre(chemin) {
     return (
+      !chemin ||
       chemin.startsWith("#") ||
       chemin.startsWith("mailto:") ||
       chemin.startsWith("tel:") ||
@@ -24,49 +15,52 @@
     );
   }
 
+  function nettoyerBaseUrl(value) {
+    return String(value || "").replace(/\/+$/, "");
+  }
+
+  function buildUrl(base, path) {
+    return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
+  }
+
   function construireUrlPublic(chemin) {
     const valeur = String(chemin || "");
 
-    if (!valeur || estUrlExterneOuAncre(valeur)) {
-      return valeur;
-    }
+    if (estUrlExterneOuAncre(valeur)) return valeur;
+    if (typeof window.LCDP_urlPublic === "function") return window.LCDP_urlPublic(valeur);
+    if (typeof window.SITE_CONFIG?.publicUrl === "function") return window.SITE_CONFIG.publicUrl(valeur);
 
-    if (typeof config.publicUrl === "function") {
-      return config.publicUrl(valeur);
-    }
-
-    return buildUrl(config.publicBaseUrl || config.PUBLIC_BASE || "", valeur);
+    return buildUrl(window.SITE_CONFIG?.publicBaseUrl || window.SITE_CONFIG?.PUBLIC_BASE || "", valeur);
   }
 
   function construireUrlMembre(chemin) {
     const valeur = String(chemin || "");
 
-    if (!valeur || estUrlExterneOuAncre(valeur)) {
-      return valeur;
-    }
+    if (estUrlExterneOuAncre(valeur)) return valeur;
+    if (typeof window.LCDP_urlMembre === "function") return window.LCDP_urlMembre(valeur);
+    if (typeof window.SITE_CONFIG?.membreUrl === "function") return window.SITE_CONFIG.membreUrl(valeur);
 
-    if (typeof config.membreUrl === "function") {
-      return config.membreUrl(valeur);
-    }
-
-    return buildUrl(config.membreBaseUrl || config.MEMBRE_BASE || config.siteBase || "", valeur);
+    return buildUrl(
+      window.SITE_CONFIG?.membreBaseUrl ||
+      window.SITE_CONFIG?.MEMBRE_BASE ||
+      window.SITE_CONFIG?.siteBase ||
+      window.SITE_BASE ||
+      "",
+      valeur
+    );
   }
 
   function construireUrlObjet(chemin) {
     const valeur = String(chemin || "");
 
-    if (!valeur || estUrlExterneOuAncre(valeur)) {
-      return valeur;
-    }
-
-    if (typeof config.objetUrl === "function") {
-      return config.objetUrl(valeur);
-    }
+    if (estUrlExterneOuAncre(valeur)) return valeur;
+    if (typeof window.LCDP_urlObjet === "function") return window.LCDP_urlObjet(valeur);
+    if (typeof window.SITE_CONFIG?.objetUrl === "function") return window.SITE_CONFIG.objetUrl(valeur);
 
     const objetBase =
-      config.objetBaseUrl ||
-      config.OBJET_BASE ||
-      buildUrl(config.publicBaseUrl || config.PUBLIC_BASE || "", "/OBJET");
+      window.SITE_CONFIG?.objetBaseUrl ||
+      window.SITE_CONFIG?.OBJET_BASE ||
+      buildUrl(window.SITE_CONFIG?.publicBaseUrl || window.SITE_CONFIG?.PUBLIC_BASE || "", "/OBJET");
 
     return buildUrl(objetBase, valeur);
   }
@@ -92,18 +86,33 @@
   function fermerMenu(boutonBurger, navBurger) {
     boutonBurger.setAttribute("aria-expanded", "false");
     navBurger.hidden = true;
+    navBurger.setAttribute("hidden", "");
+  }
+
+  function ouvrirMenu(boutonBurger, navBurger) {
+    boutonBurger.setAttribute("aria-expanded", "true");
+    navBurger.hidden = false;
+    navBurger.removeAttribute("hidden");
+  }
+
+  function basculerMenu(boutonBurger, navBurger) {
+    const ouvert = boutonBurger.getAttribute("aria-expanded") === "true";
+
+    if (ouvert) {
+      fermerMenu(boutonBurger, navBurger);
+      return;
+    }
+
+    ouvrirMenu(boutonBurger, navBurger);
   }
 
   function creerLienMenu(item, boutonBurger, navBurger) {
     const lien = document.createElement("a");
     lien.className = "lcdp-box-menu-burger__link";
     lien.textContent = item.label;
-
-    if (item.space === "membre") {
-      lien.href = construireUrlMembre(item.href);
-    } else {
-      lien.href = construireUrlPublic(item.href);
-    }
+    lien.href = item.espace === "membre"
+      ? construireUrlMembre(item.href)
+      : construireUrlPublic(item.href);
 
     lien.addEventListener("click", () => {
       fermerMenu(boutonBurger, navBurger);
@@ -115,17 +124,11 @@
   async function initialiserMenuBurgerMembre() {
     const slot = document.querySelector("[data-lcdp-burger-slot]");
 
-    if (!slot) {
-      return;
-    }
+    if (!slot) return;
 
-    if (slot.dataset.lcdpBurgerInitialise === "true") {
-      return;
-    }
+    if (slot.dataset.lcdpBurgerInitialise === "true") return;
 
-    if (initialisationEnCours) {
-      return initialisationEnCours;
-    }
+    if (initialisationEnCours) return initialisationEnCours;
 
     initialisationEnCours = (async () => {
       slot.innerHTML = "";
@@ -141,40 +144,45 @@
         throw new Error("Structure du menu burger générique incomplète.");
       }
 
-      const liensMembreNonAbonne = [
+      fermerMenu(boutonBurger, navBurger);
+
+      const liensMembre = [
         {
           label: "Accueil",
-          href: "/ESPACE-PUBLIC/accueil-public.html",
-          space: "public"
+          espace: "membre",
+          href: "/ESPACE-MEMBRE/accueil-membre.html"
         },
         {
           label: "Mon compte",
-          href: "/ESPACE-MEMBRE/mon-compte-membre.html",
-          space: "membre"
+          espace: "membre",
+          href: "/ESPACE-MEMBRE/mes-informations.html"
         },
         {
           label: "Actualité",
-          href: "/ESPACE-PUBLIC/actualité.html",
-          space: "public"
+          espace: "public",
+          href: "/ESPACE-PUBLIC/actualite.html"
         },
         {
-          label: "À propos",
-          href: "/ESPACE-PUBLIC/la-cle-du-parc.html",
-          space: "public"
+          label: "Le club",
+          espace: "public",
+          href: "/ESPACE-PUBLIC/la-cle-du-parc.html"
         }
       ];
 
-      liensMembreNonAbonne.forEach((item) => {
-        listeBurger.appendChild(
-          creerLienMenu(item, boutonBurger, navBurger)
-        );
+      listeBurger.innerHTML = "";
+
+      liensMembre.forEach((item) => {
+        listeBurger.appendChild(creerLienMenu(item, boutonBurger, navBurger));
       });
 
-      boutonBurger.addEventListener("click", () => {
-        const ouvert = boutonBurger.getAttribute("aria-expanded") === "true";
+      boutonBurger.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        basculerMenu(boutonBurger, navBurger);
+      });
 
-        boutonBurger.setAttribute("aria-expanded", String(!ouvert));
-        navBurger.hidden = ouvert;
+      navBurger.addEventListener("click", (event) => {
+        event.stopPropagation();
       });
 
       document.addEventListener("click", (event) => {
