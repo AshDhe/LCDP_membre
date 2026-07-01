@@ -577,7 +577,7 @@
 
     slot.innerHTML = "";
 
-    const bandeau = await chargerFragmentObjet("/BOX/02-box-bandeau-nav.html");
+    const bandeau = await chargerFragmentMembre("/ESPACE-MEMBRE/box-bandeau-nav-membre.html");
     slot.appendChild(bandeau);
     appliquerRoutesSite(slot);
 
@@ -626,6 +626,24 @@
 
     if (!reponse.ok) {
       throw new Error("Fragment OBJET introuvable : " + chemin);
+    }
+
+    const html = await reponse.text();
+    const template = document.createElement("template");
+    template.innerHTML = html.trim();
+
+    return template.content.cloneNode(true);
+  }
+
+  async function chargerFragmentMembre(chemin) {
+    const reponse = await fetch(construireUrlMembre(chemin), {
+      method: "GET",
+      credentials: "omit",
+      cache: "no-cache"
+    });
+
+    if (!reponse.ok) {
+      throw new Error("Fragment membre introuvable : " + chemin);
     }
 
     const html = await reponse.text();
