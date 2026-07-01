@@ -32,14 +32,14 @@
     if (texteModeMdp) {
       texteModeMdp.textContent =
         mode === "change"
-          ? "Choisissez votre nouveau mot de passe de compte membre."
-          : "Choisissez le mot de passe de votre compte membre.";
+          ? "Choisissez le mot de passe de votre compte membre"
+          : "Choisissez le mot de passe de votre compte membre";
     }
 
     if (!formulaire || !champMotDePasse || !boutonValider) {
       afficherInformation(
         "Erreur technique",
-        "Le formulaire est incomplet. Veuillez réessayer plus tard."
+        "Le formulaire est incomplet. Veuillez réessayer."
       );
       return;
     }
