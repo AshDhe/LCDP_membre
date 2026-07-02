@@ -306,6 +306,8 @@
       codeRemiseValide: false,
       dernierCodeRemiseValide: "",
       remise: null,
+      typeaboPrix: "",
+      tauxTva: PARAMETRES_ABONNEMENT.tauxTva,
       prixInitialTtc: null,
       prixNetTtc: null,
       calendrierMoisAffiche: null,
@@ -369,7 +371,21 @@
 
     if (!valeur) return;
 
+    const typeAvant = etat.workflow.typeAbonnement || "";
+    const typeChange = valeur !== typeAvant;
+
     etat.workflow.typeAbonnement = valeur;
+
+    if (typeChange) {
+      etat.workflow.emails = [];
+      etat.workflow.emailsMode = "nouveau";
+      etat.workflow.duree = "";
+      etat.workflow.dateDebut = "";
+      etat.workflow.dateFin = "";
+      etat.workflow.calendrierMoisAffiche = null;
+      etat.workflow.calendrierAnneeAffiche = null;
+      reinitialiserPrixEtRemiseWorkflow();
+    }
 
     if (valeur === "duo") {
       etat.workflow.emailsMode = "duo";
@@ -382,13 +398,24 @@
   }
 
   function preparerEmailsFamille() {
+    const modeFamilleDejaPrepare =
+      etat.workflow.emailsMode === "famille-existant" ||
+      etat.workflow.emailsMode === "famille-nouveau";
+
+    if (modeFamilleDejaPrepare && etat.workflow.emails.length) {
+      return;
+    }
+
     const contexte = etat.contexteWorkflow || {};
-    const dejaFamilleSansDuo = contexte.aDejaEuFamille === true && contexte.aDejaEuDuo !== true;
+    const dernierAbonnementFamille = contexte.dernierAbonnementFamille === true;
     const emailsFamille = Array.isArray(contexte.emailsFamille) ? contexte.emailsFamille : [];
 
-    if (dejaFamilleSansDuo && emailsFamille.length) {
+    if (dernierAbonnementFamille && emailsFamille.length) {
       etat.workflow.emailsMode = "famille-existant";
-      etat.workflow.emails = emailsFamille.map(nettoyerEmail).filter(Boolean).slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille);
+      etat.workflow.emails = emailsFamille
+        .map(nettoyerEmail)
+        .filter(Boolean)
+        .slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille);
       return;
     }
 
@@ -702,6 +729,7 @@
       etat.workflow.dateFin = "";
       etat.workflow.calendrierMoisAffiche = null;
       etat.workflow.calendrierAnneeAffiche = null;
+      reinitialiserPrixEtRemiseWorkflow();
     }
 
     if (valeur === "1J") {
@@ -836,8 +864,13 @@
         return;
       }
 
-      calculerDatesWorkflow();
-      await afficherEtapeRecapitulatif();
+      try {
+        calculerDatesWorkflow();
+        await afficherEtapeRecapitulatif();
+      } catch (error) {
+        console.error(error);
+        await afficherErreurAction(error);
+      }
     });
 
     box.addEventListener("click", (event) => {
@@ -1124,7 +1157,7 @@
 
   async function afficherEtapeRecapitulatif() {
     etat.workflow.etape = "recap";
-    calculerPrixWorkflow();
+    await calculerPrixWorkflow();
 
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
@@ -1193,7 +1226,8 @@
     const workflow = etat.workflow;
     const typeLabel = libelleTypeAbonnement(workflow.typeAbonnement);
     const dureeLabel = libelleDuree(workflow.duree);
-    const tvaLabel = "(TVA " + String(PARAMETRES_ABONNEMENT.tauxTva) + "%)";
+    const tauxTva = nombreOuNull(workflow.tauxTva) ?? PARAMETRES_ABONNEMENT.tauxTva;
+    const tvaLabel = "(TVA " + String(tauxTva).replace(".", ",") + "%)";
 
     remplirTexte(racine, "[data-lcdp-recaporder-abonnement]", typeLabel + " - " + dureeLabel);
     remplirTexte(racine, "[data-lcdp-recaporder-debut]", formaterDate(workflow.dateDebut));
@@ -1259,6 +1293,9 @@
     etat.workflow.codeRemiseValide = true;
     etat.workflow.dernierCodeRemiseValide = code;
     etat.workflow.remise = data.remise || null;
+    etat.workflow.typeaboPrix = data.typeaboPrix || data.typeabo || etat.workflow.typeaboPrix || "";
+    etat.workflow.tauxTva = nombreOuNull(data.txtvafr ?? data.tauxTva ?? data.tva ?? etat.workflow.tauxTva) ?? PARAMETRES_ABONNEMENT.tauxTva;
+    etat.workflow.prixInitialTtc = nombreOuNull(data.prixInitialTtc ?? data.prixabottc ?? etat.workflow.prixInitialTtc);
     etat.workflow.prixNetTtc = nombreOuNull(data.prixNetTtc ?? data.prix_net_ttc ?? etat.workflow.prixNetTtc);
   }
 
@@ -1479,7 +1516,28 @@
 
   function creerPayloadCommande(extra = {}) {
     calculerDatesWorkflow();
-    calculerPrixWorkflow();
+
+    return {
+      typeAbonnement: etat.workflow.typeAbonnement,
+      typabo: etat.workflow.typeAbonnement,
+      typeaboPrix: etat.workflow.typeaboPrix,
+      duree: etat.workflow.duree,
+      debut: etat.workflow.dateDebut,
+      fin: etat.workflow.dateFin,
+      emails: normaliserListeEmails(etat.workflow.emails),
+      tva: etat.workflow.tauxTva,
+      txtvafr: etat.workflow.tauxTva,
+      prixInitialTtc: etat.workflow.prixInitialTtc,
+      prixNetTtc: etat.workflow.prixNetTtc,
+      codeRemise: etat.workflow.codeRemise,
+      remise: etat.workflow.remise,
+      paiement: etat.workflow.paiement,
+      ...extra
+    };
+  }
+
+  function creerPayloadPrix(extra = {}) {
+    calculerDatesWorkflow();
 
     return {
       typeAbonnement: etat.workflow.typeAbonnement,
@@ -1487,13 +1545,8 @@
       duree: etat.workflow.duree,
       debut: etat.workflow.dateDebut,
       fin: etat.workflow.dateFin,
-      emails: etat.workflow.emails,
-      tva: PARAMETRES_ABONNEMENT.tauxTva,
-      prixInitialTtc: etat.workflow.prixInitialTtc,
-      prixNetTtc: etat.workflow.prixNetTtc,
-      codeRemise: etat.workflow.codeRemise,
-      remise: etat.workflow.remise,
-      paiement: etat.workflow.paiement,
+      emails: normaliserListeEmails(etat.workflow.emails),
+      codeRemise: etat.workflow.codeRemiseValide ? etat.workflow.dernierCodeRemiseValide : "",
       ...extra
     };
   }
@@ -1509,10 +1562,38 @@
     etat.workflow.dateFin = dateIsoLocale(fin);
   }
 
-  function calculerPrixWorkflow() {
-    const tarifsType = PARAMETRES_ABONNEMENT.tarifsTtc[etat.workflow.typeAbonnement] || {};
-    const prixInitial = nombreOuNull(tarifsType[etat.workflow.duree]);
+  async function calculerPrixWorkflow() {
+    if (!ENDPOINT_ABO_MEMBRE) {
+      throw new Error("Le service abonnement membre n’est pas configuré.");
+    }
 
+    const reponse = await fetch(ENDPOINT_ABO_MEMBRE + "/calculer-prix", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(creerPayloadPrix())
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return;
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Impossible de calculer le prix de l'abonnement."));
+    }
+
+    const prixInitial = nombreOuNull(data.prixInitialTtc ?? data.prixabottc);
+    const tauxTva = nombreOuNull(data.txtvafr ?? data.tauxTva ?? data.tva) ?? PARAMETRES_ABONNEMENT.tauxTva;
+
+    etat.workflow.typeaboPrix = data.typeaboPrix || data.typeabo || "";
+    etat.workflow.tauxTva = tauxTva;
     etat.workflow.prixInitialTtc = prixInitial;
 
     if (etat.workflow.remise && montantValide(etat.workflow.remise.prixNetTtc)) {
@@ -1520,7 +1601,21 @@
       return;
     }
 
-    etat.workflow.prixNetTtc = prixInitial;
+    const pourcentRemise = nombreOuNull(etat.workflow.remise?.pourcent ?? etat.workflow.remise?.pourcentage) || 0;
+    etat.workflow.prixNetTtc = prixInitial === null
+      ? null
+      : arrondirMontant(prixInitial * (1 - pourcentRemise / 100));
+  }
+
+  function reinitialiserPrixEtRemiseWorkflow() {
+    etat.workflow.codeRemise = "";
+    etat.workflow.codeRemiseValide = false;
+    etat.workflow.dernierCodeRemiseValide = "";
+    etat.workflow.remise = null;
+    etat.workflow.typeaboPrix = "";
+    etat.workflow.tauxTva = PARAMETRES_ABONNEMENT.tauxTva;
+    etat.workflow.prixInitialTtc = null;
+    etat.workflow.prixNetTtc = null;
   }
 
   async function ouvrirDialogueChoix(options) {
@@ -1945,11 +2040,24 @@
     bouton.addEventListener("click", () => {
       Promise.resolve(action()).catch(async (error) => {
         console.error(error);
-        await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
+        await afficherErreurAction(error);
       });
     });
 
     return bouton;
+  }
+
+  async function afficherErreurAction(error) {
+    const message = error && error.message
+      ? error.message
+      : "Erreur technique. Merci de réessayer.";
+
+    if (document.querySelector("[data-lcdp-box-workflow-abonnement]")) {
+      await afficherAlerteSuperposee(message);
+      return;
+    }
+
+    await afficherAlerte(message);
   }
 
   function appliquerRoutesSite(racine = document) {
@@ -2362,6 +2470,10 @@
   function montantValide(valeur) {
     const nombre = nombreOuNull(valeur);
     return nombre !== null && nombre > 0;
+  }
+
+  function arrondirMontant(value) {
+    return Math.round(Number(value || 0) * 100) / 100;
   }
 
   function formaterMontant(valeur) {
