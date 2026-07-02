@@ -176,6 +176,17 @@
   }
 
   function initialiserActionsListeAbonnement() {
+    const zoneActions = document.querySelector("[data-lcdp-liste-card-actions]");
+
+    if (!zoneActions) return;
+
+    zoneActions.innerHTML = "";
+
+    const boutonPasse = creerBoutonFiltre("Passé", "passe");
+    const boutonAvenir = creerBoutonFiltre("À venir", "avenir");
+
+    zoneActions.appendChild(boutonPasse);
+    zoneActions.appendChild(boutonAvenir);
     actualiserBoutonsFiltre();
   }
 
@@ -185,39 +196,15 @@
     bouton.className = "lcdp-button lcdp-button-secondary";
     bouton.textContent = label;
     bouton.dataset.filtreAbonnement = filtre;
-    bouton.setAttribute("aria-pressed", "false");
 
     bouton.addEventListener("click", () => {
-      if (etat.filtre === filtre) return;
-
-      etat.filtre = filtre;
+      etat.filtre = etat.filtre === filtre ? "encours" : filtre;
       actualiserTitreListe();
       actualiserBoutonsFiltre();
       afficherAbonnements(etat.abonnements);
     });
 
     return bouton;
-  }
-
-  function actionsDisponiblesPourFiltre() {
-    if (etat.filtre === "passe") {
-      return [
-        { label: "Abonnement en cours", filtre: "encours" },
-        { label: "À venir", filtre: "avenir" }
-      ];
-    }
-
-    if (etat.filtre === "avenir") {
-      return [
-        { label: "Abonnement en cours", filtre: "encours" },
-        { label: "Passé", filtre: "passe" }
-      ];
-    }
-
-    return [
-      { label: "Passé", filtre: "passe" },
-      { label: "À venir", filtre: "avenir" }
-    ];
   }
 
   function actualiserTitreListe() {
@@ -227,14 +214,19 @@
   }
 
   function actualiserBoutonsFiltre() {
-    const zoneActions = document.querySelector("[data-lcdp-liste-card-actions]");
+    document.querySelectorAll("[data-filtre-abonnement]").forEach((bouton) => {
+      const filtre = bouton.dataset.filtreAbonnement;
+      const actif = filtre === etat.filtre;
 
-    if (!zoneActions) return;
+      bouton.setAttribute("aria-pressed", actif ? "true" : "false");
 
-    zoneActions.innerHTML = "";
-
-    actionsDisponiblesPourFiltre().forEach((action) => {
-      zoneActions.appendChild(creerBoutonFiltre(action.label, action.filtre));
+      if (actif) {
+        bouton.textContent = "Abonnement en cours";
+      } else if (filtre === "passe") {
+        bouton.textContent = "Passé";
+      } else if (filtre === "avenir") {
+        bouton.textContent = "À venir";
+      }
     });
   }
 
@@ -304,10 +296,10 @@
   function creerWorkflowVide() {
     return {
       etape: "type",
-      typeAbonnement: "duo",
+      typeAbonnement: "",
       emails: [],
       emailsMode: "nouveau",
-      duree: "1M",
+      duree: "",
       dateDebut: "",
       dateFin: "",
       codeRemise: "",
@@ -362,14 +354,15 @@
 
     const valeur = await ouvrirDialogueChoix({
       titre: "",
-      texte: "Prendre une abonnement :",
+      texte: "Choisir un abonnement :",
       choix: [
         { label: "Duo", valeur: "duo" },
         { label: "Famille", valeur: "famille" }
       ],
-      valeurInitiale: etat.workflow.typeAbonnement || "duo",
+      valeurInitiale: etat.workflow.typeAbonnement || "",
       boutonSuivant: "Suivant",
       boutonRetour: "",
+      selectionObligatoire: true,
       onFermer: demanderQuitterWorkflow
     });
 
@@ -409,7 +402,7 @@
     etat.workflow.etape = "emails-duo";
 
     const slot = obtenirLightboxSlot();
-    slot.innerHTML = "";
+    await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ-inviter.html");
     slot.appendChild(fragment);
@@ -422,10 +415,14 @@
     const boutonFermer = slot.querySelector("[data-lcdp-dialogue-inviter-close]");
     const boutonRetour = slot.querySelector("[data-lcdp-dialogue-inviter-back]");
     const boutonPasser = slot.querySelector("[data-lcdp-dialogue-inviter-skip]");
+    const actions = slot.querySelector("[data-lcdp-dialogue-inviter-actions]");
 
-    if (!box || !titre || !form || !input || !erreur || !boutonFermer || !boutonRetour || !boutonPasser) {
+    if (!box || !titre || !form || !input || !erreur || !boutonFermer || !boutonRetour || !boutonPasser || !actions) {
       throw new Error("Structure dialogue invité incomplète.");
     }
+
+    appliquerClasseWorkflow(box, "email-duo");
+    actions.classList.add("lcdp-workflow-abonnement__email-actions");
 
     titre.textContent = "Indiquez votre invité(e)";
     input.value = etat.workflow.emails[0] || "";
@@ -443,12 +440,18 @@
 
       const email = nettoyerEmail(input.value);
 
-      if (email && !emailValide(email)) {
+      if (!email) {
+        await afficherAlerteSuperposee("Indiquez un e-mail ou passez cette étape.");
+        input.focus();
+        return;
+      }
+
+      if (!emailValide(email)) {
         afficherErreurChamp(erreur, "L'adresse e-mail saisie est invalide.");
         return;
       }
 
-      etat.workflow.emails = email ? [email] : [];
+      etat.workflow.emails = [email];
       await afficherEtapeChoixDuree();
     });
 
@@ -466,7 +469,7 @@
     const titre = modeExistant ? "Indiquez vos invités famille" : "Indiquez vos invités famille";
 
     const slot = obtenirLightboxSlot();
-    slot.innerHTML = "";
+    await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-listemails.html");
     slot.appendChild(fragment);
@@ -481,6 +484,8 @@
     if (!box || !titreElement || !message || !liste || !actions || !boutonFermer) {
       throw new Error("Structure liste e-mails incomplète.");
     }
+
+    appliquerClasseWorkflow(box, "emails-famille");
 
     titreElement.textContent = titre;
     liste.innerHTML = "";
@@ -659,9 +664,10 @@
       titre: "",
       texte: "Durée du nouvel abonnement :",
       choix: DUREES_ABONNEMENT.map((duree) => ({ label: duree.label, valeur: duree.code })),
-      valeurInitiale: etat.workflow.duree || "1M",
+      valeurInitiale: etat.workflow.duree || "",
       boutonSuivant: "Suivant",
       boutonRetour: "Précédent",
+      selectionObligatoire: true,
       onRetour: retourDepuisDuree,
       onFermer: demanderQuitterWorkflow
     });
@@ -693,7 +699,7 @@
     etat.workflow.etape = "calendrier-mois";
 
     const slot = obtenirLightboxSlot();
-    slot.innerHTML = "";
+    await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-an.html");
     slot.appendChild(fragment);
@@ -710,6 +716,8 @@
     if (!box || !titre || !meta || !message || !years || !boutonFermer || !boutonRetour || !boutonSuivant) {
       throw new Error("Structure calendrier année incomplète.");
     }
+
+    appliquerClasseWorkflow(box, "calendrier-an");
 
     titre.textContent = "Début du nouvel abonnement";
     meta.textContent = "Sélectionnez le mois de début du nouvel abonnement.";
@@ -826,7 +834,7 @@
     etat.workflow.etape = "calendrier-jour";
 
     const slot = obtenirLightboxSlot();
-    slot.innerHTML = "";
+    await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
     slot.appendChild(fragment);
@@ -845,6 +853,7 @@
       throw new Error("Structure calendrier mois incomplète.");
     }
 
+    appliquerClasseWorkflow(box, "calendrier-mois");
     box.classList.add("lcdp-box-calendrier-mois--abonnement");
 
     titre.textContent = "Début du nouvel abonnement";
@@ -960,7 +969,7 @@
     calculerPrixWorkflow();
 
     const slot = obtenirLightboxSlot();
-    slot.innerHTML = "";
+    await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-card-recaporder.html");
     slot.appendChild(fragment);
@@ -977,6 +986,8 @@
     if (!box || !boutonFermer || !boutonRetour || !boutonAnnuler || !boutonPayer || !boutonValiderCode || !inputCode || !message) {
       throw new Error("Structure récapitulatif incomplète.");
     }
+
+    appliquerClasseWorkflow(box, "recapitulatif");
 
     remplirRecapitulatif(slot);
 
@@ -1095,7 +1106,7 @@
     etat.workflow.etape = "paiement";
 
     const slot = obtenirLightboxSlot();
-    slot.innerHTML = "";
+    await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
     slot.appendChild(fragment);
@@ -1109,6 +1120,8 @@
     if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
       throw new Error("Structure dialogue paiement incomplète.");
     }
+
+    appliquerClasseWorkflow(dialogue, "paiement");
 
     titre.textContent = "Paiement";
     texte.textContent = "Choisissez les modalités de paiement.";
@@ -1348,7 +1361,7 @@
 
   async function ouvrirDialogueChoix(options) {
     const slot = obtenirLightboxSlot();
-    slot.innerHTML = "";
+    await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
     slot.appendChild(fragment);
@@ -1363,15 +1376,27 @@
       throw new Error("Structure dialogue bouton incomplète.");
     }
 
+    appliquerClasseWorkflow(dialogue, "dialogue-choix");
+
     titre.textContent = options.titre || "";
     titre.hidden = !options.titre;
     texte.textContent = options.texte || "";
     actions.innerHTML = "";
+    actions.classList.add("lcdp-workflow-abonnement__dialogue-actions");
 
-    let valeur = options.valeurInitiale || options.choix?.[0]?.valeur || "";
+    let valeur = options.valeurInitiale || "";
+    const selectionObligatoire = options.selectionObligatoire === true;
 
     const zoneChoix = document.createElement("div");
-    zoneChoix.className = "lcdp-workflow-choice-zone";
+    zoneChoix.className = "lcdp-workflow-choice-zone lcdp-workflow-abonnement__choice-zone";
+
+    let boutonSuivant = null;
+
+    function actualiserEtatSuivant() {
+      if (!boutonSuivant || !selectionObligatoire) return;
+      boutonSuivant.disabled = !valeur;
+      boutonSuivant.setAttribute("aria-disabled", valeur ? "false" : "true");
+    }
 
     (options.choix || []).forEach((choix) => {
       const bouton = document.createElement("button");
@@ -1386,6 +1411,7 @@
         zoneChoix.querySelectorAll("[data-workflow-choix]").forEach((element) => {
           element.setAttribute("aria-pressed", element === bouton ? "true" : "false");
         });
+        actualiserEtatSuivant();
       });
 
       zoneChoix.appendChild(bouton);
@@ -1393,8 +1419,13 @@
 
     actions.appendChild(zoneChoix);
 
+    const zoneNavigation = document.createElement("div");
+    zoneNavigation.className = options.boutonRetour
+      ? "lcdp-workflow-abonnement__actions-row"
+      : "lcdp-workflow-abonnement__actions-full";
+
     if (options.boutonRetour) {
-      actions.appendChild(creerBouton(options.boutonRetour, "lcdp-button-secondary", async () => {
+      zoneNavigation.appendChild(creerBouton(options.boutonRetour, "lcdp-button-secondary", async () => {
         if (typeof options.onRetour === "function") {
           await options.onRetour();
         }
@@ -1404,14 +1435,21 @@
     return new Promise((resolve) => {
       let resolu = false;
 
-      function fermer(resultat) {
+      async function fermer(resultat) {
         if (resolu) return;
         resolu = true;
-        if (resultat) slot.innerHTML = "";
+        if (resultat) await preparerTransitionWorkflow(slot);
         resolve(resultat || null);
       }
 
-      actions.appendChild(creerBouton(options.boutonSuivant || "Suivant", "lcdp-button-primary", () => fermer(valeur)));
+      boutonSuivant = creerBouton(options.boutonSuivant || "Suivant", "lcdp-button-primary", () => {
+        if (selectionObligatoire && !valeur) return;
+        fermer(valeur);
+      });
+      zoneNavigation.appendChild(boutonSuivant);
+      actions.appendChild(zoneNavigation);
+      actualiserEtatSuivant();
+
       boutonFermer.addEventListener("click", () => {
         if (typeof options.onFermer === "function") options.onFermer();
         fermer(null);
@@ -1626,6 +1664,43 @@
     };
   }
 
+  async function afficherAlerteSuperposee(message) {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    container.appendChild(fragment);
+
+    const alerte = container.querySelector("[data-lcdp-box-alerte]");
+    const texte = container.querySelector("[data-lcdp-alerte-message]");
+    const boutonFermer = container.querySelector("[data-lcdp-alerte-close]");
+    const boutonOk = container.querySelector("[data-lcdp-alerte-ok]");
+
+    if (!alerte || !texte || !boutonFermer || !boutonOk) {
+      container.remove();
+      throw new Error("Structure de l’alerte incomplète.");
+    }
+
+    texte.textContent = message || "";
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        container.remove();
+        resolve(valeur);
+      }
+
+      boutonFermer.addEventListener("click", () => fermer(false));
+      boutonOk.addEventListener("click", () => fermer(true));
+      alerte.addEventListener("click", (event) => {
+        if (event.target === alerte) fermer(false);
+      });
+    });
+  }
+
   async function afficherAlerte(message) {
     const slot = obtenirLightboxSlot();
     slot.innerHTML = "";
@@ -1837,6 +1912,37 @@
       "source=" + encodeURIComponent(SOURCE_PAGE) +
       "&session=" +
       encodeURIComponent(motif || "inactive");
+  }
+
+  async function preparerTransitionWorkflow(slot) {
+    if (!slot) return;
+
+    const contenuActuel = slot.firstElementChild;
+
+    if (!contenuActuel) {
+      slot.innerHTML = "";
+      return;
+    }
+
+    contenuActuel.classList.add("lcdp-workflow-abonnement-box--sortie");
+    await attendre(120);
+    slot.innerHTML = "";
+  }
+
+  function appliquerClasseWorkflow(box, variante) {
+    if (!box) return;
+
+    box.classList.add("lcdp-workflow-abonnement-box");
+
+    if (variante) {
+      box.classList.add("lcdp-workflow-abonnement-box--" + variante);
+    }
+  }
+
+  function attendre(delaiMs) {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, delaiMs);
+    });
   }
 
   function obtenirLightboxSlot() {
