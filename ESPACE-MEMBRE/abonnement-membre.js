@@ -176,17 +176,6 @@
   }
 
   function initialiserActionsListeAbonnement() {
-    const zoneActions = document.querySelector("[data-lcdp-liste-card-actions]");
-
-    if (!zoneActions) return;
-
-    zoneActions.innerHTML = "";
-
-    const boutonPasse = creerBoutonFiltre("Passé", "passe");
-    const boutonAvenir = creerBoutonFiltre("À venir", "avenir");
-
-    zoneActions.appendChild(boutonPasse);
-    zoneActions.appendChild(boutonAvenir);
     actualiserBoutonsFiltre();
   }
 
@@ -196,15 +185,39 @@
     bouton.className = "lcdp-button lcdp-button-secondary";
     bouton.textContent = label;
     bouton.dataset.filtreAbonnement = filtre;
+    bouton.setAttribute("aria-pressed", "false");
 
     bouton.addEventListener("click", () => {
-      etat.filtre = etat.filtre === filtre ? "encours" : filtre;
+      if (etat.filtre === filtre) return;
+
+      etat.filtre = filtre;
       actualiserTitreListe();
       actualiserBoutonsFiltre();
       afficherAbonnements(etat.abonnements);
     });
 
     return bouton;
+  }
+
+  function actionsDisponiblesPourFiltre() {
+    if (etat.filtre === "passe") {
+      return [
+        { label: "Abonnement en cours", filtre: "encours" },
+        { label: "À venir", filtre: "avenir" }
+      ];
+    }
+
+    if (etat.filtre === "avenir") {
+      return [
+        { label: "Abonnement en cours", filtre: "encours" },
+        { label: "Passé", filtre: "passe" }
+      ];
+    }
+
+    return [
+      { label: "Passé", filtre: "passe" },
+      { label: "À venir", filtre: "avenir" }
+    ];
   }
 
   function actualiserTitreListe() {
@@ -214,9 +227,14 @@
   }
 
   function actualiserBoutonsFiltre() {
-    document.querySelectorAll("[data-filtre-abonnement]").forEach((bouton) => {
-      const actif = bouton.dataset.filtreAbonnement === etat.filtre;
-      bouton.setAttribute("aria-pressed", actif ? "true" : "false");
+    const zoneActions = document.querySelector("[data-lcdp-liste-card-actions]");
+
+    if (!zoneActions) return;
+
+    zoneActions.innerHTML = "";
+
+    actionsDisponiblesPourFiltre().forEach((action) => {
+      zoneActions.appendChild(creerBoutonFiltre(action.label, action.filtre));
     });
   }
 
