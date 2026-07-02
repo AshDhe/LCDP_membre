@@ -309,6 +309,7 @@
       prixInitialTtc: null,
       prixNetTtc: null,
       calendrierMoisAffiche: null,
+      calendrierAnneeAffiche: null,
       paiement: {
         echeancier: "comptant",
         mode: "virement"
@@ -354,7 +355,7 @@
 
     const valeur = await ouvrirDialogueChoix({
       titre: "",
-      texte: "Choisir un abonnement :",
+      texte: "Choisir un abonnement",
       choix: [
         { label: "Duo", valeur: "duo" },
         { label: "Famille", valeur: "famille" }
@@ -568,7 +569,7 @@
     }
 
     boutonSupprimer.addEventListener("click", async () => {
-      const ok = await afficherAlerte("Supprimer cet invité famille ?");
+      const ok = await afficherAlerteSuperposee("Supprimer cet invité famille ?");
       if (!ok) return;
 
       etat.workflow.emails.splice(index, 1);
@@ -662,7 +663,7 @@
 
     const valeur = await ouvrirDialogueChoix({
       titre: "",
-      texte: "Durée du nouvel abonnement :",
+      texte: "Durée du nouvel abonnement",
       choix: DUREES_ABONNEMENT.map((duree) => ({ label: duree.label, valeur: duree.code })),
       valeurInitiale: etat.workflow.duree || "",
       boutonSuivant: "Suivant",
@@ -725,9 +726,66 @@
 
     const maintenant = new Date();
     const anneeCourante = maintenant.getFullYear();
+    const anneeMaximum = anneeCourante + 1;
 
-    [anneeCourante, anneeCourante + 1].forEach((annee) => {
-      years.appendChild(creerBlocAnnee(annee));
+    etat.workflow.calendrierAnneeAffiche = Math.min(
+      Math.max(etat.workflow.calendrierAnneeAffiche || anneeCourante, anneeCourante),
+      anneeMaximum
+    );
+
+    const navigationAnnees = document.createElement("div");
+    navigationAnnees.className = "lcdp-box-calendrier-an__navigation";
+
+    const boutonAnneePrecedente = document.createElement("button");
+    boutonAnneePrecedente.type = "button";
+    boutonAnneePrecedente.className = "lcdp-box-calendrier-an__nav-button";
+    boutonAnneePrecedente.setAttribute("aria-label", "Année précédente");
+    boutonAnneePrecedente.textContent = "←";
+
+    const anneeAffichee = document.createElement("h3");
+    anneeAffichee.className = "lcdp-box-calendrier-an__current";
+
+    const boutonAnneeSuivante = document.createElement("button");
+    boutonAnneeSuivante.type = "button";
+    boutonAnneeSuivante.className = "lcdp-box-calendrier-an__nav-button";
+    boutonAnneeSuivante.setAttribute("aria-label", "Année suivante");
+    boutonAnneeSuivante.textContent = "→";
+
+    navigationAnnees.appendChild(boutonAnneePrecedente);
+    navigationAnnees.appendChild(anneeAffichee);
+    navigationAnnees.appendChild(boutonAnneeSuivante);
+    years.parentNode.insertBefore(navigationAnnees, years);
+
+    function actualiserBoutonSuivant() {
+      const actif = Boolean(etat.workflow.dateDebut);
+      boutonSuivant.disabled = !actif;
+      boutonSuivant.setAttribute("aria-disabled", actif ? "false" : "true");
+    }
+
+    function afficherAnnee() {
+      const annee = etat.workflow.calendrierAnneeAffiche;
+
+      anneeAffichee.textContent = String(annee);
+      boutonAnneePrecedente.disabled = annee <= anneeCourante;
+      boutonAnneeSuivante.disabled = annee >= anneeMaximum;
+      boutonAnneePrecedente.setAttribute("aria-disabled", boutonAnneePrecedente.disabled ? "true" : "false");
+      boutonAnneeSuivante.setAttribute("aria-disabled", boutonAnneeSuivante.disabled ? "true" : "false");
+
+      years.innerHTML = "";
+      years.appendChild(creerBlocAnnee(annee, actualiserBoutonSuivant));
+      actualiserBoutonSuivant();
+    }
+
+    boutonAnneePrecedente.addEventListener("click", () => {
+      if (etat.workflow.calendrierAnneeAffiche <= anneeCourante) return;
+      etat.workflow.calendrierAnneeAffiche -= 1;
+      afficherAnnee();
+    });
+
+    boutonAnneeSuivante.addEventListener("click", () => {
+      if (etat.workflow.calendrierAnneeAffiche >= anneeMaximum) return;
+      etat.workflow.calendrierAnneeAffiche += 1;
+      afficherAnnee();
     });
 
     boutonFermer.addEventListener("click", demanderQuitterWorkflow);
@@ -745,16 +803,13 @@
     box.addEventListener("click", (event) => {
       if (event.target === box) demanderQuitterWorkflow();
     });
+
+    afficherAnnee();
   }
 
-  function creerBlocAnnee(annee) {
+  function creerBlocAnnee(annee, onSelectionMois) {
     const section = document.createElement("section");
     section.className = "lcdp-box-calendrier-an__year";
-
-    const titre = document.createElement("h3");
-    titre.className = "lcdp-box-calendrier-an__year-title";
-    titre.textContent = String(annee);
-    section.appendChild(titre);
 
     const mois = document.createElement("div");
     mois.className = "lcdp-box-calendrier-an__months";
@@ -784,6 +839,10 @@
         document.querySelectorAll("[data-lcdp-box-calendrier-an] .lcdp-box-calendrier-an__month").forEach((element) => {
           element.setAttribute("aria-pressed", element === bouton ? "true" : "false");
         });
+
+        if (typeof onSelectionMois === "function") {
+          onSelectionMois();
+        }
       });
 
       mois.appendChild(bouton);
@@ -800,8 +859,8 @@
     const finCourante = finAbonnementEnCours();
     const abonnements = Array.isArray(etat.abonnements) ? etat.abonnements : [];
 
-    if (debutMois < premierMoisCourant) {
-      return { disabled: true, type: "passe", raison: "Mois passé" };
+    if (debutMois <= premierMoisCourant) {
+      return { disabled: true, type: "passe", raison: debutMois < premierMoisCourant ? "Mois passé" : "Mois en cours" };
     }
 
     if (finCourante && debutMois <= finCourante) {
@@ -864,8 +923,9 @@
 
     const footer = document.createElement("div");
     footer.className = "lcdp-box-calendrier-mois-abonnement__actions";
-    footer.appendChild(creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeChoixDuree));
-    footer.appendChild(creerBouton("Suivant", "lcdp-button-primary", async () => {
+
+    const boutonRetour = creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeChoixDuree);
+    const boutonSuivant = creerBouton("Suivant", "lcdp-button-primary", async () => {
       if (!etat.workflow.dateDebut) {
         afficherMessageInline(message, "Merci de sélectionner un jour de début.");
         return;
@@ -873,8 +933,17 @@
 
       calculerDatesWorkflow();
       await afficherEtapeRecapitulatif();
-    }));
+    });
+
+    footer.appendChild(boutonRetour);
+    footer.appendChild(boutonSuivant);
     box.querySelector(".lcdp-box-calendrier-mois__card").appendChild(footer);
+
+    function actualiserBoutonSuivant() {
+      const actif = Boolean(etat.workflow.dateDebut);
+      boutonSuivant.disabled = !actif;
+      boutonSuivant.setAttribute("aria-disabled", actif ? "false" : "true");
+    }
 
     function afficherMois() {
       const moisAffiche = etat.workflow.calendrierMoisAffiche;
@@ -912,9 +981,13 @@
           grid.querySelectorAll(".lcdp-box-calendrier-mois-abonnement__day").forEach((element) => {
             element.setAttribute("aria-pressed", element === bouton ? "true" : "false");
           });
+
+          actualiserBoutonSuivant();
         });
         grid.appendChild(bouton);
       }
+
+      actualiserBoutonSuivant();
     }
 
     prev.addEventListener("click", () => {
@@ -1048,12 +1121,20 @@
     remplirTexte(racine, "[data-lcdp-recaporder-tva-net-label]", tvaLabel);
 
     const invitesRow = racine.querySelector("[data-lcdp-recaporder-invites-row]");
+    const invitesLabel = invitesRow ? invitesRow.querySelector("dt") : null;
     const invitesElement = racine.querySelector("[data-lcdp-recaporder-invites]");
+    const emails = normaliserListeEmails(workflow.emails);
 
-    if (invitesRow && invitesElement) {
-      const afficherInvites = workflow.typeAbonnement === "famille" && workflow.emails.length;
+    if (invitesRow && invitesElement && invitesLabel) {
+      const afficherInvites = emails.length > 0;
       invitesRow.hidden = !afficherInvites;
-      invitesElement.textContent = afficherInvites ? workflow.emails.join(", ") : "";
+
+      if (afficherInvites) {
+        invitesLabel.textContent = workflow.typeAbonnement === "famille" ? "Invités famille" : "Invité duo";
+        invitesElement.textContent = emails.join(", ");
+      } else {
+        invitesElement.textContent = "";
+      }
     }
 
     const lienClub = racine.querySelector("[data-lcdp-recaporder-reglement-club]");
@@ -1099,7 +1180,7 @@
 
   async function afficherEtapePaiement() {
     if (!montantValide(etat.workflow.prixNetTtc)) {
-      await afficherAlerte("Le tarif de cet abonnement n'est pas configuré.");
+      await afficherAlerteSuperposee("Le tarif de cet abonnement n'est pas configuré.");
       return;
     }
 
@@ -1195,7 +1276,7 @@
       }
 
       if (etat.workflow.paiement.mode === "cb") {
-        await afficherAlerte("Le paiement Stripe sera raccordé ensuite.");
+        await afficherAlerteSuperposee("Le paiement Stripe sera raccordé ensuite.");
         await afficherEtapeRecapitulatif();
         return;
       }
@@ -1464,8 +1545,11 @@
   }
 
   async function demanderQuitterWorkflow() {
-    await afficherAlerte("Quitter la demande d'abonnement ?");
-    window.location.href = PAGE_ABONNEMENT_MEMBRE;
+    const ok = await afficherAlerteSuperposee("Quitter la demande d'abonnement ?");
+
+    if (ok) {
+      window.location.href = PAGE_ABONNEMENT_MEMBRE;
+    }
   }
 
   async function ouvrirFacture(card) {
@@ -1666,6 +1750,7 @@
 
   async function afficherAlerteSuperposee(message) {
     const container = document.createElement("div");
+    container.className = "lcdp-workflow-abonnement-alerte";
     document.body.appendChild(container);
 
     const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
