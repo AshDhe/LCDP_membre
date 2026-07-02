@@ -429,7 +429,6 @@
     input.value = etat.workflow.emails[0] || "";
     boutonPasser.hidden = false;
 
-    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
     boutonRetour.addEventListener("click", afficherEtapeChoixTypeAbonnement);
     boutonPasser.addEventListener("click", async () => {
       etat.workflow.emails = [];
@@ -745,6 +744,7 @@
     }
 
     appliquerClasseWorkflow(box, "calendrier-an");
+    boutonSuivant.textContent = "Récapitulatif";
 
     titre.textContent = "Début du nouvel abonnement";
     meta.textContent = "Sélectionnez le mois de début du nouvel abonnement.";
@@ -829,7 +829,6 @@
       afficherAnnee();
     });
 
-    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
     boutonRetour.addEventListener("click", afficherEtapeChoixDuree);
     boutonSuivant.addEventListener("click", async () => {
       if (!etat.workflow.dateDebut) {
@@ -981,7 +980,7 @@
     footer.className = "lcdp-box-calendrier-mois-abonnement__actions";
 
     const boutonRetour = creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeChoixDuree);
-    const boutonSuivant = creerBouton("Suivant", "lcdp-button-primary", async () => {
+    const boutonSuivant = creerBouton("Récapitulatif", "lcdp-button-primary", async () => {
       if (!etat.workflow.dateDebut) {
         await afficherAlerteSuperposee("Merci de sélectionner un jour de début.");
         return;
@@ -1072,7 +1071,6 @@
       afficherMois();
     });
 
-    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
     box.addEventListener("click", (event) => {
       if (event.target === box) demanderQuitterWorkflow();
     });
@@ -1135,7 +1133,6 @@
     slot.appendChild(fragment);
 
     const box = slot.querySelector("[data-lcdp-box-card-recaporder]");
-    const boutonFermer = slot.querySelector("[data-lcdp-recaporder-close]");
     const boutonRetour = slot.querySelector("[data-lcdp-recaporder-back]");
     const boutonAnnuler = slot.querySelector("[data-lcdp-recaporder-cancel]");
     const boutonPayer = slot.querySelector("[data-lcdp-recaporder-pay]");
@@ -1143,7 +1140,7 @@
     const inputCode = slot.querySelector("[data-lcdp-recaporder-code-remise]");
     const message = slot.querySelector("[data-lcdp-recaporder-message]");
 
-    if (!box || !boutonFermer || !boutonRetour || !boutonAnnuler || !boutonPayer || !boutonValiderCode || !inputCode || !message) {
+    if (!box || !boutonRetour || !boutonAnnuler || !boutonPayer || !boutonValiderCode || !inputCode || !message) {
       throw new Error("Structure récapitulatif incomplète.");
     }
 
@@ -1176,7 +1173,6 @@
       }
     });
 
-    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
     boutonAnnuler.addEventListener("click", demanderQuitterWorkflow);
     boutonRetour.addEventListener("click", async () => {
       if (etat.workflow.duree === "1J") {
@@ -1381,7 +1377,6 @@
       });
     });
 
-    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
     dialogue.addEventListener("click", (event) => {
       if (event.target === dialogue) demanderQuitterWorkflow();
     });
