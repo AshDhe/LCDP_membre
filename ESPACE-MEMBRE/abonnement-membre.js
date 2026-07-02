@@ -398,32 +398,29 @@
   }
 
   function preparerEmailsFamille() {
-    const modeFamilleDejaPrepare =
-      etat.workflow.emailsMode === "famille-existant" ||
-      etat.workflow.emailsMode === "famille-nouveau";
+    const contexte = etat.contexteWorkflow || {};
+    const dernierAbonnementFamille = contexte.dernierAbonnementFamille === true;
+    const emailsFamille = Array.isArray(contexte.emailsFamille)
+      ? contexte.emailsFamille.map(nettoyerEmail).filter(Boolean).slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille)
+      : [];
 
-    if (modeFamilleDejaPrepare && etat.workflow.emails.length) {
+    if (etat.workflow.emailsMode === "famille-nouveau" && etat.workflow.emails.length) {
       return;
     }
 
-    const contexte = etat.contexteWorkflow || {};
-    const dernierAbonnementFamille = contexte.dernierAbonnementFamille === true;
-    const emailsFamille = Array.isArray(contexte.emailsFamille) ? contexte.emailsFamille : [];
+    if (etat.workflow.emailsMode === "famille-existant") {
+      if (dernierAbonnementFamille && etat.workflow.emails.length) return;
+      etat.workflow.emails = [];
+    }
 
     if (dernierAbonnementFamille && emailsFamille.length) {
       etat.workflow.emailsMode = "famille-existant";
-      etat.workflow.emails = emailsFamille
-        .map(nettoyerEmail)
-        .filter(Boolean)
-        .slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille);
+      etat.workflow.emails = emailsFamille;
       return;
     }
 
     etat.workflow.emailsMode = "famille-nouveau";
-
-    if (!etat.workflow.emails.length) {
-      etat.workflow.emails = [""];
-    }
+    etat.workflow.emails = etat.workflow.emails.length ? etat.workflow.emails : [""];
   }
 
   async function afficherEtapeEmailDuo() {
@@ -607,24 +604,19 @@
         input.value = nettoyerEmail(nouveau);
         etat.workflow.emails[index] = input.value;
       });
+
+      boutonSupprimer.addEventListener("click", async () => {
+        const ok = await afficherAlerteSuperposee("Supprimer cet invité famille ?");
+        if (!ok) return;
+
+        etat.workflow.emails.splice(index, 1);
+        await afficherEtapeEmailsFamille();
+      });
     } else {
       input.readOnly = false;
-      boutonModifier.hidden = true;
-      boutonSupprimer.hidden = true;
+      boutonModifier.remove();
+      boutonSupprimer.remove();
     }
-
-    boutonSupprimer.addEventListener("click", async () => {
-      const ok = await afficherAlerteSuperposee("Supprimer cet invité famille ?");
-      if (!ok) return;
-
-      etat.workflow.emails.splice(index, 1);
-
-      if (!etat.workflow.emails.length && !modeExistant) {
-        etat.workflow.emails.push("");
-      }
-
-      await afficherEtapeEmailsFamille();
-    });
 
     return card;
   }
