@@ -1527,8 +1527,10 @@
     const valeur = String(couleur || "gris_clair").trim().toLowerCase();
 
     if (valeur === "vert") return "vert";
+    if (valeur === "rouge_clair" || valeur === "rouge-clair") return "rouge-clair";
+    if (valeur === "rouge") return "rouge";
     if (valeur === "orange") return "orange";
-    if (valeur === "gris_fonce" || valeur === "fonce") return "gris-fonce";
+    if (valeur === "gris_fonce" || valeur === "gris-fonce" || valeur === "fonce") return "gris-fonce";
 
     return "gris-clair";
   }
