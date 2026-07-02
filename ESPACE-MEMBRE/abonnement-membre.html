@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+
+  <title>Mon abonnement - La Clé du Parc</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Consulter votre abonnement membre La Clé du Parc.">
+
+  <script src="../config.js"></script>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const config = window.SITE_CONFIG || {};
+
+      function nettoyerBaseUrl(value) {
+        return String(value || "").replace(/\/+$/, "");
+      }
+
+      function buildUrl(base, path) {
+        return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
+      }
+
+      const membreBase = nettoyerBaseUrl(
+        config.membreBaseUrl ||
+        config.MEMBRE_BASE ||
+        config.siteBase ||
+        ""
+      );
+
+      const publicBase = nettoyerBaseUrl(
+        config.publicBaseUrl ||
+        config.PUBLIC_BASE ||
+        ""
+      );
+
+      const objetBase = nettoyerBaseUrl(
+        config.objetBaseUrl ||
+        config.OBJET_BASE ||
+        buildUrl(publicBase, "/OBJET")
+      );
+
+      window.SITE_BASE = membreBase;
+      window.LCDP_MEMBRE_BASE = membreBase;
+      window.LCDP_PUBLIC_BASE = publicBase;
+      window.LCDP_OBJET_BASE = objetBase;
+
+      window.LCDP_urlPublic = function LCDP_urlPublic(path) {
+        if (typeof config.publicUrl === "function") {
+          return config.publicUrl(path);
+        }
+
+        return buildUrl(publicBase, path);
+      };
+
+      window.LCDP_urlMembre = function LCDP_urlMembre(path) {
+        if (typeof config.membreUrl === "function") {
+          return config.membreUrl(path);
+        }
+
+        return buildUrl(membreBase, path);
+      };
+
+      window.LCDP_urlObjet = function LCDP_urlObjet(path) {
+        if (typeof config.objetUrl === "function") {
+          return config.objetUrl(path);
+        }
+
+        return buildUrl(objetBase, path);
+      };
+
+      const feuillesCssObjet = [
+        "/CSSBASE/cssbase.css",
+        "/BOX/02-box-bandeau-nav.css",
+        "/BOX/02-box-menu-burger.css",
+        "/BOX/02-box-alerte.css",
+        "/BOX/02-box-dialogue-bouton.css",
+        "/BOX/02-box-footer.css",
+        "/BOX/04-box-liste-card.css",
+        "/BOX/04-box-card-abonnement.css",
+        "/BOX/04-box-facture.css"
+      ];
+
+      feuillesCssObjet.forEach((chemin) => {
+        document.write(
+          '<link rel="stylesheet" href="' +
+          window.LCDP_urlObjet(chemin) +
+          '">'
+        );
+      });
+    })();
+  </script>
+</head>
+
+<body>
+  <div class="lcdp-site-page">
+
+    <div id="lcdp-bandeau-slot"></div>
+
+    <main class="lcdp-site-main">
+      <section class="lcdp-page-section" aria-label="Abonnement membre">
+        <div class="lcdp-page-container">
+          <div class="lcdp-page-content lcdp-stack-large">
+
+            <h1 class="lcdp-title-page-center">Mon abonnement</h1>
+
+            <p class="lcdp-mention-connexion" id="mention-statut-membre" aria-live="polite">
+              [Chargement du statut membre]
+            </p>
+
+            <div class="lcdp-box-menu-bouton__list lcdp-box-menu-bouton__list--single" aria-label="Navigation abonnement membre">
+              <button
+                class="lcdp-button lcdp-button-primary"
+                type="button"
+                id="bouton-choisir-abonnement"
+              >
+                Choisir un nouvel abonnement
+              </button>
+            </div>
+
+            <div id="lcdp-liste-card-abonnements-slot"></div>
+
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="lcdp-footer-slot"></div>
+    <div id="lcdp-lightbox-slot"></div>
+
+  </div>
+
+  <script src="./abonnement-membre.js"></script>
+</body>
+</html>
