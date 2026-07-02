@@ -310,6 +310,11 @@
       tauxTva: PARAMETRES_ABONNEMENT.tauxTva,
       prixInitialTtc: null,
       prixNetTtc: null,
+      ech: 1,
+      mois1: null,
+      mois2: null,
+      mois3: null,
+      vrmt: null,
       calendrierMoisAffiche: null,
       calendrierAnneeAffiche: null,
       paiement: {
@@ -1289,6 +1294,11 @@
     etat.workflow.tauxTva = nombreOuNull(data.txtvafr ?? data.tauxTva ?? data.tva ?? etat.workflow.tauxTva) ?? PARAMETRES_ABONNEMENT.tauxTva;
     etat.workflow.prixInitialTtc = nombreOuNull(data.prixInitialTtc ?? data.prixabottc ?? etat.workflow.prixInitialTtc);
     etat.workflow.prixNetTtc = nombreOuNull(data.prixNetTtc ?? data.prix_net_ttc ?? etat.workflow.prixNetTtc);
+    etat.workflow.ech = entierOuDefaut(data.ech ?? etat.workflow.ech, 1);
+    etat.workflow.mois1 = nombreOuNull(data.mois1 ?? etat.workflow.mois1);
+    etat.workflow.mois2 = nombreOuNull(data.mois2 ?? etat.workflow.mois2);
+    etat.workflow.mois3 = nombreOuNull(data.mois3 ?? etat.workflow.mois3);
+    etat.workflow.vrmt = nombreOuNull(data.vrmt ?? etat.workflow.vrmt);
   }
 
   async function afficherEtapePaiement() {
@@ -1318,48 +1328,50 @@
     appliquerClasseWorkflow(dialogue, "paiement");
 
     titre.textContent = "Paiement";
-    texte.textContent = "Choisissez les modalités de paiement.";
+    texte.textContent = "";
+    texte.hidden = true;
     actions.innerHTML = "";
 
     const zone = document.createElement("div");
     zone.className = "lcdp-workflow-paiement";
 
-    const economie = PARAMETRES_ABONNEMENT.economiesPaiementComptantTtc[etat.workflow.typeAbonnement];
-    const nbEcheances = PARAMETRES_ABONNEMENT.echeancesPaiement[etat.workflow.typeAbonnement] || 2;
-    const echeances = calculerEcheancesPaiement(nbEcheances);
+    const nbEcheances = Math.max(1, entierOuDefaut(etat.workflow.ech, 1));
+    if (nbEcheances <= 1 && etat.workflow.paiement.echeancier === "echelonne") {
+      etat.workflow.paiement.echeancier = "comptant";
+    }
 
     zone.appendChild(creerOptionRadioPaiement({
       name: "echeancier-abonnement",
       value: "comptant",
-      checked: etat.workflow.paiement.echeancier === "comptant",
-      label: economie
-        ? "Payer en 1 fois et économiser " + formaterMontant(economie) + " TTC"
-        : "Payer en 1 fois",
+      checked: etat.workflow.paiement.echeancier !== "echelonne",
+      label: "Payer en 1x",
       detail: "Montant : " + formaterMontant(etat.workflow.prixNetTtc)
     }));
 
-    zone.appendChild(creerOptionRadioPaiement({
-      name: "echeancier-abonnement",
-      value: "echelonne",
-      checked: etat.workflow.paiement.echeancier === "echelonne",
-      label: "Payer en " + nbEcheances + " fois sans frais",
-      detail: echeances.join(" / ")
-    }));
+    if (nbEcheances > 1) {
+      zone.appendChild(creerOptionRadioPaiement({
+        name: "echeancier-abonnement",
+        value: "echelonne",
+        checked: etat.workflow.paiement.echeancier === "echelonne",
+        label: "Payer en " + String(nbEcheances) + "x sans frais",
+        detail: calculerEcheancesPaiementDepuisPrix().join(" / ")
+      }));
+    }
 
     zone.appendChild(creerOptionRadioPaiement({
       name: "mode-paiement-abonnement",
       value: "virement",
       checked: etat.workflow.paiement.mode === "virement",
-      label: "Payer par virement dans les 15 jours",
-      detail: "Disponible uniquement pour le paiement en 1 fois."
+      label: "Payer par virement",
+      detail: detailPaiementVirement()
     }));
 
     zone.appendChild(creerOptionRadioPaiement({
       name: "mode-paiement-abonnement",
       value: "cb",
       checked: etat.workflow.paiement.mode === "cb",
-      label: "Payer par CB dès maintenant",
-      detail: "Sélectionné automatiquement en cas de paiement échelonné."
+      label: "Payer par CB",
+      detail: ""
     }));
 
     const confirmationLabel = document.createElement("label");
@@ -1369,7 +1381,7 @@
     confirmation.type = "checkbox";
     confirmation.dataset.confirmationPaiement = "1";
     confirmationLabel.appendChild(confirmation);
-    confirmationLabel.append("Je confirme que mon abonnement n'est pas utilisable tant que je ne respecte pas les règles de paiement de la somme due.");
+    confirmationLabel.append("Mon abonnement n'est pas utilisable tant que je ne respecte pas les échéances de paiement.");
     zone.appendChild(confirmationLabel);
 
     const message = document.createElement("p");
@@ -1378,9 +1390,7 @@
     zone.appendChild(message);
 
     actions.appendChild(zone);
-    actions.appendChild(creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeRecapitulatif));
-    actions.appendChild(creerBouton("Annuler", "lcdp-button-secondary", demanderQuitterWorkflow));
-    actions.appendChild(creerBouton("Confirmer", "lcdp-button-primary", async () => {
+    actions.appendChild(creerBouton("Payer", "lcdp-button-primary", async () => {
       lireOptionsPaiementDepuisDialogue(slot);
 
       if (!confirmation.checked) {
@@ -1396,6 +1406,8 @@
 
       await enregistrerCommandeVirement();
     }));
+    actions.appendChild(creerBouton("Annuler", "lcdp-button-secondary", demanderQuitterWorkflow));
+    actions.appendChild(creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeRecapitulatif));
 
     synchroniserOptionsPaiement(slot);
 
@@ -1448,26 +1460,37 @@
   }
 
   function synchroniserOptionsPaiement(racine) {
-    const echeancier = etat.workflow.paiement.echeancier || "comptant";
+    const nbEcheances = Math.max(1, entierOuDefaut(etat.workflow.ech, 1));
+    let echeancier = etat.workflow.paiement.echeancier || "comptant";
     const virement = racine.querySelector("input[name='mode-paiement-abonnement'][value='virement']");
     const cb = racine.querySelector("input[name='mode-paiement-abonnement'][value='cb']");
 
     if (!virement || !cb) return;
+
+    if (nbEcheances <= 1 && echeancier === "echelonne") {
+      echeancier = "comptant";
+      etat.workflow.paiement.echeancier = "comptant";
+    }
 
     if (echeancier === "echelonne") {
       virement.checked = false;
       virement.disabled = true;
       cb.checked = true;
       etat.workflow.paiement.mode = "cb";
-      return;
+    } else {
+      virement.disabled = false;
+
+      if (!virement.checked && !cb.checked) {
+        virement.checked = true;
+        etat.workflow.paiement.mode = "virement";
+      }
     }
 
-    virement.disabled = false;
-
-    if (!virement.checked && !cb.checked) {
-      virement.checked = true;
-      etat.workflow.paiement.mode = "virement";
-    }
+    racine.querySelectorAll(".lcdp-workflow-paiement__option").forEach((option) => {
+      const input = option.querySelector("input[type='radio']");
+      option.classList.toggle("lcdp-workflow-paiement__option--selected", Boolean(input && input.checked));
+      option.classList.toggle("lcdp-workflow-paiement__option--disabled", Boolean(input && input.disabled));
+    });
   }
 
   async function enregistrerCommandeVirement() {
@@ -1500,7 +1523,7 @@
     await afficherAlerte(
       "La commande d'abonnement est enregistrée sous le n° " +
       String(data.orderid || data.commande?.orderid || "") +
-      ". Le récapitulatif a été envoyé par mail avec le RIB de l'association et le rappel des règles de paiement par virement : 1. Indiquer le montant de la commande dans l'objet du virement. 2. Payer dans les 15 jours +/- 2 jours."
+      ". Le récapitulatif a été envoyé par mail avec le RIB de l'association et le rappel des règles de paiement par virement : 1. Indiquer le montant de la commande dans l'objet du virement. 2. Payer dans les 10 jours."
     );
 
     window.location.href = PAGE_ABONNEMENT_MEMBRE;
@@ -1521,6 +1544,11 @@
       txtvafr: etat.workflow.tauxTva,
       prixInitialTtc: etat.workflow.prixInitialTtc,
       prixNetTtc: etat.workflow.prixNetTtc,
+      ech: etat.workflow.ech,
+      mois1: etat.workflow.mois1,
+      mois2: etat.workflow.mois2,
+      mois3: etat.workflow.mois3,
+      vrmt: etat.workflow.vrmt,
       codeRemise: etat.workflow.codeRemise,
       remise: etat.workflow.remise,
       paiement: etat.workflow.paiement,
@@ -1587,6 +1615,11 @@
     etat.workflow.typeaboPrix = data.typeaboPrix || data.typeabo || "";
     etat.workflow.tauxTva = tauxTva;
     etat.workflow.prixInitialTtc = prixInitial;
+    etat.workflow.ech = entierOuDefaut(data.ech, 1);
+    etat.workflow.mois1 = nombreOuNull(data.mois1);
+    etat.workflow.mois2 = nombreOuNull(data.mois2);
+    etat.workflow.mois3 = nombreOuNull(data.mois3);
+    etat.workflow.vrmt = nombreOuNull(data.vrmt);
 
     if (etat.workflow.remise && montantValide(etat.workflow.remise.prixNetTtc)) {
       etat.workflow.prixNetTtc = nombreOuNull(etat.workflow.remise.prixNetTtc);
@@ -1608,6 +1641,11 @@
     etat.workflow.tauxTva = PARAMETRES_ABONNEMENT.tauxTva;
     etat.workflow.prixInitialTtc = null;
     etat.workflow.prixNetTtc = null;
+    etat.workflow.ech = 1;
+    etat.workflow.mois1 = null;
+    etat.workflow.mois2 = null;
+    etat.workflow.mois3 = null;
+    etat.workflow.vrmt = null;
   }
 
   async function ouvrirDialogueChoix(options) {
@@ -2487,19 +2525,46 @@
     return formaterMontant(nombre);
   }
 
-  function calculerEcheancesPaiement(nombreEcheances) {
+  function calculerEcheancesPaiementDepuisPrix() {
     const debut = lireDateLocale(etat.workflow.dateDebut) || new Date();
-    const montant = nombreOuNull(etat.workflow.prixNetTtc) || 0;
-    const montantEcheance = montant / nombreEcheances;
-    const lignes = [];
+    const montants = [etat.workflow.mois1, etat.workflow.mois2, etat.workflow.mois3]
+      .map(nombreOuNull)
+      .filter((montant) => montant !== null && montant > 0);
 
-    for (let index = 0; index < nombreEcheances; index += 1) {
+    return montants.map((montant, index) => {
       const moisReference = index - 1;
       const date = new Date(debut.getFullYear(), debut.getMonth() + moisReference + 1, 0);
-      lignes.push("mois " + String(index + 1) + " : " + formaterDate(dateIsoLocale(date)) + " - " + formaterMontant(montantEcheance));
+      return "mois " + String(index + 1) + " : " + formaterDate(dateIsoLocale(date)) + " - " + formaterMontant(montant);
+    });
+  }
+
+  function detailPaiementVirement() {
+    const economieVirement = nombreOuNull(etat.workflow.vrmt);
+    const suffixe = "Disponible uniquement pour le paiement en 1x.";
+
+    if (economieVirement && economieVirement > 0) {
+      return "Economisez " + formaterMontantCourt(economieVirement) + " de plus en payant par virement dans les 10 jours. " + suffixe;
     }
 
-    return lignes;
+    return suffixe;
+  }
+
+  function entierOuDefaut(value, defaut) {
+    const nombre = Number(value);
+
+    return Number.isInteger(nombre) ? nombre : defaut;
+  }
+
+  function formaterMontantCourt(value) {
+    const nombre = nombreOuNull(value);
+
+    if (nombre === null) return "0 €";
+
+    if (Number.isInteger(nombre)) {
+      return nombre.toLocaleString("fr-FR") + " €";
+    }
+
+    return formaterMontant(nombre);
   }
 
   function nettoyerBaseUrl(value) {
