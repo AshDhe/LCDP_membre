@@ -194,7 +194,7 @@
       {
         label: "Abonnement",
         espace: "membre",
-        href: "/ESPACE-MEMBRE/abonnement.html"
+        href: "/ESPACE-MEMBRE/abonnement-membre.html"
       },
       {
         label: "Actualité du club",
