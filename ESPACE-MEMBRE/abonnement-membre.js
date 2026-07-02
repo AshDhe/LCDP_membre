@@ -467,7 +467,7 @@
     etat.workflow.etape = "emails-famille";
 
     const modeExistant = etat.workflow.emailsMode === "famille-existant";
-    const titre = modeExistant ? "Indiquez vos invités famille" : "Indiquez vos invités famille";
+    const titre = "Indiquez vos invités famille";
 
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
@@ -479,18 +479,25 @@
     const titreElement = slot.querySelector("[data-lcdp-listemails-title]");
     const message = slot.querySelector("[data-lcdp-listemails-message]");
     const liste = slot.querySelector("[data-lcdp-listemails-list]");
-    const actions = slot.querySelector("[data-lcdp-listemails-actions]");
+    const actions = slot.querySelector("[data-lcdp-listemails-actions]") || document.createElement("div");
     const boutonFermer = slot.querySelector("[data-lcdp-listemails-close]");
 
-    if (!box || !titreElement || !message || !liste || !actions || !boutonFermer) {
+    if (!box || !titreElement || !message || !liste) {
       throw new Error("Structure liste e-mails incomplète.");
     }
 
     appliquerClasseWorkflow(box, "emails-famille");
+    actions.classList.add("lcdp-workflow-abonnement__emails-actions");
+
+    if (!actions.parentNode) {
+      box.querySelector(".lcdp-box-card-listemails__card")?.appendChild(actions);
+    }
 
     titreElement.textContent = titre;
     liste.innerHTML = "";
     actions.innerHTML = "";
+    message.hidden = true;
+    message.textContent = "";
 
     const emails = normaliserListeEmails(etat.workflow.emails);
     if (!emails.length) emails.push("");
@@ -501,42 +508,49 @@
     }
 
     if (!modeExistant) {
-      const boutonAjouter = creerBouton("Ajouter un invité famille", "lcdp-button-secondary", async () => {
+      const zoneAjouter = document.createElement("div");
+      zoneAjouter.className = "lcdp-workflow-abonnement__actions-full";
+
+      zoneAjouter.appendChild(creerBouton("Ajouter un invité famille", "lcdp-button-secondary", async () => {
         sauvegarderEmailsDepuisListe(liste);
 
         if (etat.workflow.emails.length >= PARAMETRES_ABONNEMENT.maxInvitesFamille) {
-          afficherMessageInline(message, "10 e-mails maximum.");
+          await afficherAlerteSuperposee("10 e-mails maximum.");
           return;
         }
 
         etat.workflow.emails.push("");
         await afficherEtapeEmailsFamille();
-      });
-      actions.appendChild(boutonAjouter);
+      }));
+
+      actions.appendChild(zoneAjouter);
     }
 
-    actions.appendChild(creerBouton("Retour", "lcdp-button-secondary", afficherEtapeChoixTypeAbonnement));
-    actions.appendChild(creerBouton("Suivant", "lcdp-button-primary", async () => {
+    const zoneNavigation = document.createElement("div");
+    zoneNavigation.className = "lcdp-workflow-abonnement__actions-row";
+    zoneNavigation.appendChild(creerBouton("Retour", "lcdp-button-secondary", afficherEtapeChoixTypeAbonnement));
+    zoneNavigation.appendChild(creerBouton("Suivant", "lcdp-button-primary", async () => {
       sauvegarderEmailsDepuisListe(liste);
 
       const emailsValides = normaliserListeEmails(etat.workflow.emails);
 
       if (!emailsValides.length) {
-        afficherMessageInline(message, "Merci d'indiquer au moins un e-mail invité famille.");
+        await afficherAlerteSuperposee("Merci d'indiquer au moins un e-mail invité famille.");
         return;
       }
 
       const emailInvalide = emailsValides.find((email) => !emailValide(email));
       if (emailInvalide) {
-        afficherMessageInline(message, "Un e-mail invité famille est invalide.");
+        await afficherAlerteSuperposee("Un e-mail invité famille est invalide.");
         return;
       }
 
       etat.workflow.emails = emailsValides;
       await afficherEtapeChoixDuree();
     }));
+    actions.appendChild(zoneNavigation);
 
-    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
+    if (boutonFermer) boutonFermer.addEventListener("click", demanderQuitterWorkflow);
     box.addEventListener("click", (event) => {
       if (event.target === box) demanderQuitterWorkflow();
     });
@@ -560,12 +574,17 @@
     if (modeExistant) {
       input.readOnly = true;
       boutonModifier.hidden = false;
+      boutonSupprimer.hidden = false;
       boutonModifier.addEventListener("click", async () => {
         const nouveau = await ouvrirDialogueModifierEmail(input.value);
         if (nouveau === null) return;
         input.value = nettoyerEmail(nouveau);
         etat.workflow.emails[index] = input.value;
       });
+    } else {
+      input.readOnly = false;
+      boutonModifier.hidden = true;
+      boutonSupprimer.hidden = true;
     }
 
     boutonSupprimer.addEventListener("click", async () => {
@@ -661,11 +680,12 @@
   async function afficherEtapeChoixDuree() {
     etat.workflow.etape = "duree";
 
+    const dureeAvant = etat.workflow.duree || "";
     const valeur = await ouvrirDialogueChoix({
       titre: "",
       texte: "Durée du nouvel abonnement",
       choix: DUREES_ABONNEMENT.map((duree) => ({ label: duree.label, valeur: duree.code })),
-      valeurInitiale: etat.workflow.duree || "",
+      valeurInitiale: dureeAvant,
       boutonSuivant: "Suivant",
       boutonRetour: "Précédent",
       selectionObligatoire: true,
@@ -675,9 +695,15 @@
 
     if (!valeur) return;
 
+    const dureeChangee = valeur !== dureeAvant;
     etat.workflow.duree = valeur;
-    etat.workflow.dateDebut = "";
-    etat.workflow.dateFin = "";
+
+    if (dureeChangee) {
+      etat.workflow.dateDebut = "";
+      etat.workflow.dateFin = "";
+      etat.workflow.calendrierMoisAffiche = null;
+      etat.workflow.calendrierAnneeAffiche = null;
+    }
 
     if (valeur === "1J") {
       await afficherEtapeCalendrierJour();
@@ -727,9 +753,24 @@
     const maintenant = new Date();
     const anneeCourante = maintenant.getFullYear();
     const anneeMaximum = anneeCourante + 1;
+    let dateDebutSelectionnee = lireDateLocale(etat.workflow.dateDebut);
+
+    if (dateDebutSelectionnee) {
+      const moisSelectionne = new Date(dateDebutSelectionnee.getFullYear(), dateDebutSelectionnee.getMonth(), 1);
+      const horsLimite = dateDebutSelectionnee.getFullYear() < anneeCourante || dateDebutSelectionnee.getFullYear() > anneeMaximum;
+      const desactive = !horsLimite && statutMoisAbonnement(moisSelectionne).disabled;
+
+      if (horsLimite || desactive) {
+        etat.workflow.dateDebut = "";
+        etat.workflow.dateFin = "";
+        dateDebutSelectionnee = null;
+      }
+    }
+
+    const anneeInitiale = dateDebutSelectionnee ? dateDebutSelectionnee.getFullYear() : (etat.workflow.calendrierAnneeAffiche || anneeCourante);
 
     etat.workflow.calendrierAnneeAffiche = Math.min(
-      Math.max(etat.workflow.calendrierAnneeAffiche || anneeCourante, anneeCourante),
+      Math.max(anneeInitiale, anneeCourante),
       anneeMaximum
     );
 
@@ -919,7 +960,22 @@
     meta.textContent = "Sélectionnez le jour du nouvel abonnement.";
 
     const maintenant = new Date();
-    etat.workflow.calendrierMoisAffiche = etat.workflow.calendrierMoisAffiche || new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+    const moisMinimum = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+    const moisMaximum = new Date(maintenant.getFullYear() + 1, 11, 1);
+    const dateMaximum = new Date(maintenant.getFullYear() + 1, 11, 31, 23, 59, 59, 999);
+
+    const dateDebutSelectionnee = lireDateLocale(etat.workflow.dateDebut);
+    if (dateDebutSelectionnee && (dateDebutSelectionnee < debutJour(maintenant) || dateDebutSelectionnee > dateMaximum)) {
+      etat.workflow.dateDebut = "";
+      etat.workflow.dateFin = "";
+    }
+
+    etat.workflow.calendrierMoisAffiche = bornerMoisCalendrier(
+      etat.workflow.calendrierMoisAffiche ||
+      (dateDebutSelectionnee ? new Date(dateDebutSelectionnee.getFullYear(), dateDebutSelectionnee.getMonth(), 1) : moisMinimum),
+      moisMinimum,
+      moisMaximum
+    );
 
     const footer = document.createElement("div");
     footer.className = "lcdp-box-calendrier-mois-abonnement__actions";
@@ -927,7 +983,7 @@
     const boutonRetour = creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeChoixDuree);
     const boutonSuivant = creerBouton("Suivant", "lcdp-button-primary", async () => {
       if (!etat.workflow.dateDebut) {
-        afficherMessageInline(message, "Merci de sélectionner un jour de début.");
+        await afficherAlerteSuperposee("Merci de sélectionner un jour de début.");
         return;
       }
 
@@ -943,6 +999,17 @@
       const actif = Boolean(etat.workflow.dateDebut);
       boutonSuivant.disabled = !actif;
       boutonSuivant.setAttribute("aria-disabled", actif ? "false" : "true");
+    }
+
+    function actualiserNavigation() {
+      const moisAffiche = etat.workflow.calendrierMoisAffiche;
+      const auMinimum = moisAffiche.getFullYear() === moisMinimum.getFullYear() && moisAffiche.getMonth() === moisMinimum.getMonth();
+      const auMaximum = moisAffiche.getFullYear() === moisMaximum.getFullYear() && moisAffiche.getMonth() === moisMaximum.getMonth();
+
+      prev.disabled = auMinimum;
+      next.disabled = auMaximum;
+      prev.setAttribute("aria-disabled", auMinimum ? "true" : "false");
+      next.setAttribute("aria-disabled", auMaximum ? "true" : "false");
     }
 
     function afficherMois() {
@@ -987,18 +1054,21 @@
         grid.appendChild(bouton);
       }
 
+      actualiserNavigation();
       actualiserBoutonSuivant();
     }
 
     prev.addEventListener("click", () => {
+      if (prev.disabled) return;
       const mois = etat.workflow.calendrierMoisAffiche;
-      etat.workflow.calendrierMoisAffiche = new Date(mois.getFullYear(), mois.getMonth() - 1, 1);
+      etat.workflow.calendrierMoisAffiche = bornerMoisCalendrier(new Date(mois.getFullYear(), mois.getMonth() - 1, 1), moisMinimum, moisMaximum);
       afficherMois();
     });
 
     next.addEventListener("click", () => {
+      if (next.disabled) return;
       const mois = etat.workflow.calendrierMoisAffiche;
-      etat.workflow.calendrierMoisAffiche = new Date(mois.getFullYear(), mois.getMonth() + 1, 1);
+      etat.workflow.calendrierMoisAffiche = bornerMoisCalendrier(new Date(mois.getFullYear(), mois.getMonth() + 1, 1), moisMinimum, moisMaximum);
       afficherMois();
     });
 
@@ -1010,13 +1080,30 @@
     afficherMois();
   }
 
+  function bornerMoisCalendrier(mois, moisMinimum, moisMaximum) {
+    const candidat = mois instanceof Date && !Number.isNaN(mois.getTime())
+      ? new Date(mois.getFullYear(), mois.getMonth(), 1)
+      : new Date(moisMinimum.getFullYear(), moisMinimum.getMonth(), 1);
+
+    if (candidat < moisMinimum) return new Date(moisMinimum.getFullYear(), moisMinimum.getMonth(), 1);
+    if (candidat > moisMaximum) return new Date(moisMaximum.getFullYear(), moisMaximum.getMonth(), 1);
+
+    return candidat;
+  }
+
   function statutJourAbonnement(date) {
-    const aujourdHui = debutJour(new Date());
+    const maintenant = new Date();
+    const aujourdHui = debutJour(maintenant);
+    const dateMaximum = new Date(maintenant.getFullYear() + 1, 11, 31, 23, 59, 59, 999);
     const finCourante = finAbonnementEnCours();
     const abonnements = Array.isArray(etat.abonnements) ? etat.abonnements : [];
 
     if (date < aujourdHui) {
       return { disabled: true, raison: "Date passée" };
+    }
+
+    if (date > dateMaximum) {
+      return { disabled: true, raison: "Date trop lointaine" };
     }
 
     if (finCourante && date <= finCourante) {
@@ -1120,15 +1207,22 @@
     remplirTexte(racine, "[data-lcdp-recaporder-tva-label]", tvaLabel);
     remplirTexte(racine, "[data-lcdp-recaporder-tva-net-label]", tvaLabel);
 
-    const invitesRow = racine.querySelector("[data-lcdp-recaporder-invites-row]");
-    const invitesLabel = invitesRow ? invitesRow.querySelector("dt") : null;
+    const invitesLabel = racine.querySelector("[data-lcdp-recaporder-invites-label]");
     const invitesElement = racine.querySelector("[data-lcdp-recaporder-invites]");
     const emails = normaliserListeEmails(workflow.emails);
 
-    if (invitesRow && invitesElement && invitesLabel) {
-      invitesRow.hidden = false;
-      invitesLabel.textContent = workflow.typeAbonnement === "famille" ? "Invité(s) Famille" : "Invité Duo";
-      invitesElement.textContent = emails.length ? emails.join(", ") : "-";
+    if (invitesLabel && invitesElement) {
+      if (workflow.typeAbonnement === "famille") {
+        const nombre = emails.length;
+        const pluriel = nombre > 1 ? "s" : "";
+        invitesLabel.textContent = "Invité(s) Famille";
+        invitesElement.textContent = nombre
+          ? String(nombre) + " invité" + pluriel + " : " + emails.join(", ")
+          : "-";
+      } else {
+        invitesLabel.textContent = "Invité Duo";
+        invitesElement.textContent = emails[0] || "-";
+      }
     }
 
     const lienClub = racine.querySelector("[data-lcdp-recaporder-reglement-club]");
@@ -1510,10 +1604,9 @@
     return new Promise((resolve) => {
       let resolu = false;
 
-      async function fermer(resultat) {
+      function fermer(resultat) {
         if (resolu) return;
         resolu = true;
-        if (resultat) await preparerTransitionWorkflow(slot);
         resolve(resultat || null);
       }
 
@@ -1772,9 +1865,18 @@
         resolve(valeur);
       }
 
-      boutonFermer.addEventListener("click", () => fermer(false));
-      boutonOk.addEventListener("click", () => fermer(true));
+      boutonFermer.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        fermer(false);
+      });
+      boutonOk.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        fermer(true);
+      });
       alerte.addEventListener("click", (event) => {
+        event.stopPropagation();
         if (event.target === alerte) fermer(false);
       });
     });
@@ -1808,9 +1910,18 @@
         resolve(valeur);
       }
 
-      boutonFermer.addEventListener("click", () => fermer(false));
-      boutonOk.addEventListener("click", () => fermer(true));
+      boutonFermer.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        fermer(false);
+      });
+      boutonOk.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        fermer(true);
+      });
       alerte.addEventListener("click", (event) => {
+        event.stopPropagation();
         if (event.target === alerte) fermer(false);
       });
     });
