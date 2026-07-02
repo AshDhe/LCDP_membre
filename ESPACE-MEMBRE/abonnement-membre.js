@@ -1126,15 +1126,9 @@
     const emails = normaliserListeEmails(workflow.emails);
 
     if (invitesRow && invitesElement && invitesLabel) {
-      const afficherInvites = emails.length > 0;
-      invitesRow.hidden = !afficherInvites;
-
-      if (afficherInvites) {
-        invitesLabel.textContent = workflow.typeAbonnement === "famille" ? "Invités famille" : "Invité duo";
-        invitesElement.textContent = emails.join(", ");
-      } else {
-        invitesElement.textContent = "";
-      }
+      invitesRow.hidden = false;
+      invitesLabel.textContent = workflow.typeAbonnement === "famille" ? "Invité(s) Famille" : "Invité Duo";
+      invitesElement.textContent = emails.length ? emails.join(", ") : "-";
     }
 
     const lienClub = racine.querySelector("[data-lcdp-recaporder-reglement-club]");
