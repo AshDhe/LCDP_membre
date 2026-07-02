@@ -1421,7 +1421,7 @@
       lireOptionsPaiementDepuisDialogue(slot);
 
       if (!confirmation.checked) {
-        afficherMessageInline(message, "Merci de confirmer la règle de paiement.");
+        await afficherAlerteSuperposee("Merci de confirmer la règle de paiement.");
         return;
       }
 
