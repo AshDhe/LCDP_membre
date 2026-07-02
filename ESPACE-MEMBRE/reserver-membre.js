@@ -24,7 +24,6 @@
 
   const etatPage = {
     departement: "",
-    autourDeMoi: true,
     parcs: [],
     templateCardParc: null,
     templateJourMois: null,
@@ -49,7 +48,7 @@
       initialiserBoutonIa();
       initialiserActionsListeParcs();
       document.addEventListener("click", gererClicDocument);
-      await chargerParcsAutourDeMoi();
+      await chargerParcsDepartementMembre();
     } catch (error) {
       console.error("Erreur réserver membre :", error);
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -98,25 +97,15 @@
 
     zoneActions.innerHTML = "";
 
-    const boutonAutour = document.createElement("button");
-    boutonAutour.type = "button";
-    boutonAutour.className = "lcdp-button lcdp-button-secondary";
-    boutonAutour.textContent = "Autour de moi";
-
     const boutonDepartement = document.createElement("button");
     boutonDepartement.type = "button";
     boutonDepartement.className = "lcdp-button lcdp-button-secondary";
     boutonDepartement.textContent = "Changer de département";
 
-    boutonAutour.addEventListener("click", () => {
-      chargerParcsAutourDeMoi().catch(console.error);
-    });
-
     boutonDepartement.addEventListener("click", () => {
       ouvrirChoixDepartement().catch(console.error);
     });
 
-    zoneActions.appendChild(boutonAutour);
     zoneActions.appendChild(boutonDepartement);
   }
 
@@ -148,14 +137,14 @@
     await chargerParcsDepartement(departement);
   }
 
-  async function chargerParcsAutourDeMoi() {
+  async function chargerParcsDepartementMembre() {
     if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
       afficherErreurListe("Le service de réservation membre n’est pas configuré.");
       return;
     }
 
     try {
-      afficherChargementListe("Chargement des parcs autour de vous...");
+      afficherChargementListe("Chargement des parcs du département...");
 
       const reponse = await fetch(ENDPOINT_NOUVELLE_DATE_MEMBRE + "/autour-de-moi", {
         method: "GET",
@@ -174,17 +163,16 @@
       }
 
       if (!reponse.ok || !data || !reponseApiOk(data)) {
-        throw new Error(messageErreurApi(data, "Impossible de charger les parcs autour de vous."));
+        throw new Error(messageErreurApi(data, "Impossible de charger les parcs du département."));
       }
 
       etatPage.departement = String(data.departement || "");
-      etatPage.autourDeMoi = true;
       etatPage.parcs = Array.isArray(data.parcs) ? data.parcs : [];
 
       afficherTitreListe();
       afficherParcs(etatPage.parcs);
     } catch (error) {
-      console.error("Erreur chargement parcs autour de moi :", error);
+      console.error("Erreur chargement parcs du département membre :", error);
       afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
     }
   }
@@ -222,7 +210,6 @@
       }
 
       etatPage.departement = String(data.departement || departement);
-      etatPage.autourDeMoi = false;
       etatPage.parcs = Array.isArray(data.parcs) ? data.parcs : [];
 
       afficherTitreListe();
@@ -238,9 +225,7 @@
 
     if (!titre) return;
 
-    titre.textContent = etatPage.autourDeMoi
-      ? "Parcs autour de moi" + (etatPage.departement ? " (" + etatPage.departement + ")" : "")
-      : "Parcs dans le " + etatPage.departement;
+    titre.textContent = "Parcs dans le " + (etatPage.departement || "département");
   }
 
   function afficherParcs(parcs) {
@@ -251,7 +236,7 @@
     zoneListe.innerHTML = "";
 
     if (!Array.isArray(parcs) || !parcs.length) {
-      afficherMessageListe("Aucun parc trouvé pour ce département.", "information");
+      afficherMessageListe("Aucun parc trouvé pour ce département", "information");
       return;
     }
 
