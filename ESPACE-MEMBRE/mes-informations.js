@@ -210,6 +210,8 @@
     lien.className = "lcdp-link-secondary";
     lien.href = construireUrlPublic(lienConfig.href || "#");
     lien.textContent = lienConfig.texteLien || "";
+    lien.target = "_blank";
+    lien.rel = "noopener noreferrer";
 
     note.appendChild(lien);
     champ.appendChild(note);
