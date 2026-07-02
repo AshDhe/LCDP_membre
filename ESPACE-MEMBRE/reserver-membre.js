@@ -11,6 +11,12 @@
     "nouvelle-date-membre-api"
   );
 
+  const ENDPOINT_PLANNING_MEMBRE = construireEndpointApi(
+    "workerPlanningMembreUrl",
+    "WORKER_PLANNING_MEMBRE_URL",
+    "planning-membre-api"
+  );
+
   const ENDPOINT_FLUXM = construireEndpointApi(
     "workerFluxmUrl",
     "WORKER_FLUXM_URL",
@@ -25,6 +31,7 @@
   const etatPage = {
     departement: "",
     parcs: [],
+    reservationsMembre: [],
     templateCardParc: null,
     templateJourMois: null,
     templateHeureJour: null,
@@ -48,6 +55,7 @@
       initialiserBoutonIa();
       initialiserActionsListeParcs();
       document.addEventListener("click", gererClicDocument);
+      await chargerReservationsMembre();
       await chargerParcsDepartementMembre();
     } catch (error) {
       console.error("Erreur réserver membre :", error);
@@ -135,6 +143,45 @@
     }
 
     await chargerParcsDepartement(departement);
+  }
+
+  async function chargerReservationsMembre() {
+    if (!ENDPOINT_PLANNING_MEMBRE) {
+      etatPage.reservationsMembre = [];
+      return;
+    }
+
+    try {
+      const reponse = await fetch(ENDPOINT_PLANNING_MEMBRE + "/mes-reservations", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+      const data = await reponse.json().catch(() => null);
+
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+
+      if (!reponse.ok || !data || !reponseApiOk(data)) {
+        console.warn(
+          "Réservations membre non chargées :",
+          messageErreurApi(data, "Réponse planning membre invalide.")
+        );
+        etatPage.reservationsMembre = [];
+        return;
+      }
+
+      etatPage.reservationsMembre = Array.isArray(data.reservations) ? data.reservations : [];
+    } catch (error) {
+      console.warn("Réservations membre non chargées :", error);
+      etatPage.reservationsMembre = [];
+    }
   }
 
   async function chargerParcsDepartementMembre() {
@@ -619,18 +666,30 @@
 
     const plages = construirePlagesJour(contexte.planningJour);
     const heures = genererHeuresDisponibles();
+    let nombreHorairesSelectionnables = 0;
 
     heures.forEach((heure) => {
       const plage = trouverPlagePourHeure(plages, heure);
 
       if (!plage) return;
 
-      grille.appendChild(creerCardHeure(contexte, heure, plage));
+      const card = creerCardHeure(contexte, heure, plage);
+      grille.appendChild(card);
+
+      if (!card.disabled) {
+        nombreHorairesSelectionnables += 1;
+      }
     });
 
     if (!grille.children.length) {
       message.hidden = false;
       message.textContent = "Aucun horaire d'arrivée n'est disponible pour cette date.";
+      return;
+    }
+
+    if (nombreHorairesSelectionnables === 0) {
+      message.hidden = false;
+      message.textContent = "Aucun horaire supplémentaire n'est disponible pour cette date.";
       return;
     }
 
@@ -702,6 +761,47 @@
     }) || null;
   }
 
+  function membreAReservationSurPlage(dateIso, plagebookd) {
+    const dateRecherchee = String(dateIso || "").trim();
+    const plageRecherchee = String(plagebookd || "").trim();
+
+    if (!dateRecherchee || !plageRecherchee) {
+      return false;
+    }
+
+    return (etatPage.reservationsMembre || []).some((reservation) => {
+      if (!reservation || reservation.statut === "cancd") {
+        return false;
+      }
+
+      return (
+        String(reservation.plagebookd || "").trim() === plageRecherchee &&
+        extraireDateFranceReservation(reservation.datebookd) === dateRecherchee
+      );
+    });
+  }
+
+  function extraireDateFranceReservation(dateIso) {
+    const date = new Date(dateIso);
+
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    const morceaux = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(date);
+
+    const annee = morceaux.find((item) => item.type === "year")?.value || "";
+    const mois = morceaux.find((item) => item.type === "month")?.value || "";
+    const jour = morceaux.find((item) => item.type === "day")?.value || "";
+
+    return annee && mois && jour ? annee + "-" + mois + "-" + jour : "";
+  }
+
   function convertirHeureEnMinutes(heure) {
     const [heures, minutes] = String(heure || "00:00").split(":").map(Number);
 
@@ -716,6 +816,8 @@
     const card = etatPage.templateHeureJour.cloneNode(true);
     const label = card.querySelector("[data-lcdp-card-heure-jour-label]");
     const couleur = normaliserCouleurClasse(plage.couleur);
+    const libelleHeure = formaterHeureAffichee(heure);
+    const plageDejaReservee = membreAReservationSurPlage(contexte.dateIso, plage.nom);
 
     card.classList.add("lcdp-box-card-heure-in-calendrier-jour--" + couleur);
     card.dataset.idparc = String(contexte.parc.idparc || contexte.parc.id || "");
@@ -724,7 +826,18 @@
     card.dataset.plagebookd = plage.nom;
 
     if (label) {
-      label.textContent = formaterHeureAffichee(heure);
+      label.textContent = libelleHeure;
+    }
+
+    if (plageDejaReservee) {
+      card.disabled = true;
+      card.title = "Vous avez déjà une réservation sur cette plage de la journée.";
+      card.setAttribute(
+        "aria-label",
+        libelleHeure + " indisponible : vous avez déjà une réservation sur cette plage de la journée"
+      );
+    } else {
+      card.setAttribute("aria-label", libelleHeure);
     }
 
     return card;
@@ -762,7 +875,7 @@
 
     const texteInitial = boutonHeure.textContent;
     boutonHeure.disabled = true;
-    boutonHeure.textContent = "Enregistrement...";
+    boutonHeure.setAttribute("aria-busy", "true");
 
     try {
       await enregistrerReservation({
@@ -779,6 +892,7 @@
     } catch (error) {
       boutonHeure.disabled = false;
       boutonHeure.textContent = texteInitial;
+      boutonHeure.removeAttribute("aria-busy");
       await afficherAlerteSuperposee(error.message || "Impossible d'enregistrer la réservation.");
     }
   }
