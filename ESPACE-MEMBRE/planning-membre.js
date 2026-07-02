@@ -303,7 +303,7 @@
 
     if (!reservationsFiltrees.length) {
       afficherMessageListe(
-        etat.filtre === "avenir" ? "Aucune date à venir." : "Aucune date passée.",
+        etat.filtre === "avenir" ? "Aucune date à venir" : "Aucune date passée",
         "information"
       );
       return;
