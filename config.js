@@ -45,13 +45,12 @@
     planningMembre: "https://planning-membre-api.lacleduparc.fr",
     inviterMembre: "https://inviter-membre-api.lacleduparc.fr",
     invitationMembre: "https://invitation-membre-api.lacleduparc.fr",
-
     aboMembre: "https://abo-membre-api.lacleduparc.fr",
 
     monCompteMembre: "https://mon-compte-membre-api.lacleduparc.fr",
     majEmailMembre: "https://maj-email-membre-api.lacleduparc.fr",
     majParrainMembre: "https://maj-parrain-membre-api.lacleduparc.fr",
-    majDepartementMembre: "https://maj-departement-membre-api.lacleduparc.fr"
+    majDepartementMembre: "https://maj-dptmt-membre-api.lacleduparc.fr"
   };
 
   function buildUrl(base, path) {
@@ -84,7 +83,6 @@
     workerPlanningMembreUrl: WORKERS.planningMembre,
     workerInviterMembreUrl: WORKERS.inviterMembre,
     workerInvitationMembreUrl: WORKERS.invitationMembre,
-
     workerAboMembreUrl: WORKERS.aboMembre,
 
     workerMonCompteMembreUrl: WORKERS.monCompteMembre,
@@ -113,7 +111,6 @@
     WORKER_PLANNING_MEMBRE_URL: WORKERS.planningMembre,
     WORKER_INVITER_MEMBRE_URL: WORKERS.inviterMembre,
     WORKER_INVITATION_MEMBRE_URL: WORKERS.invitationMembre,
-
     WORKER_ABO_MEMBRE_URL: WORKERS.aboMembre,
 
     WORKER_MON_COMPTE_MEMBRE_URL: WORKERS.monCompteMembre,
