@@ -221,7 +221,7 @@
       bouton.setAttribute("aria-pressed", actif ? "true" : "false");
 
       if (actif) {
-        bouton.textContent = "Abonnement en cours";
+        bouton.textContent = "En cours";
       } else if (filtre === "passe") {
         bouton.textContent = "Passé";
       } else if (filtre === "avenir") {
