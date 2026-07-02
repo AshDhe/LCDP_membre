@@ -11,16 +11,16 @@
     "nouvelle-date-membre-api"
   );
 
-  const ENDPOINT_PLANNING_MEMBRE = construireEndpointApi(
-    "workerPlanningMembreUrl",
-    "WORKER_PLANNING_MEMBRE_URL",
-    "planning-membre-api"
-  );
-
   const ENDPOINT_FLUXM = construireEndpointApi(
     "workerFluxmUrl",
     "WORKER_FLUXM_URL",
     "fluxm-api"
+  );
+
+  const ENDPOINT_PLANNING_MEMBRE = construireEndpointApi(
+    "workerPlanningMembreUrl",
+    "WORKER_PLANNING_MEMBRE_URL",
+    "planning-membre-api"
   );
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
@@ -55,7 +55,7 @@
       initialiserBoutonIa();
       initialiserActionsListeParcs();
       document.addEventListener("click", gererClicDocument);
-      await chargerReservationsMembre();
+      await chargerReservationsMembrePourBlocages();
       await chargerParcsDepartementMembre();
     } catch (error) {
       console.error("Erreur réserver membre :", error);
@@ -117,6 +117,42 @@
     zoneActions.appendChild(boutonDepartement);
   }
 
+  async function chargerReservationsMembrePourBlocages() {
+    if (!ENDPOINT_PLANNING_MEMBRE) {
+      etatPage.reservationsMembre = [];
+      return;
+    }
+
+    try {
+      const reponse = await fetch(ENDPOINT_PLANNING_MEMBRE + "/mes-reservations", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+      const data = await reponse.json().catch(() => null);
+
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+
+      if (!reponse.ok || !data || !reponseApiOk(data)) {
+        etatPage.reservationsMembre = [];
+        console.warn("Réservations membre indisponibles pour le blocage front.", data);
+        return;
+      }
+
+      etatPage.reservationsMembre = Array.isArray(data.reservations) ? data.reservations : [];
+    } catch (error) {
+      etatPage.reservationsMembre = [];
+      console.warn("Réservations membre indisponibles pour le blocage front.", error);
+    }
+  }
+
   async function ouvrirChoixDepartement() {
     const resultat = await ouvrirDialogueChamp({
       titre: "Changer de département",
@@ -143,45 +179,6 @@
     }
 
     await chargerParcsDepartement(departement);
-  }
-
-  async function chargerReservationsMembre() {
-    if (!ENDPOINT_PLANNING_MEMBRE) {
-      etatPage.reservationsMembre = [];
-      return;
-    }
-
-    try {
-      const reponse = await fetch(ENDPOINT_PLANNING_MEMBRE + "/mes-reservations", {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-          "Accept": "application/json"
-        }
-      });
-
-      const data = await reponse.json().catch(() => null);
-
-      if (reponse.status === 401) {
-        redirigerConnexionMembre("inactive");
-        return;
-      }
-
-      if (!reponse.ok || !data || !reponseApiOk(data)) {
-        console.warn(
-          "Réservations membre non chargées :",
-          messageErreurApi(data, "Réponse planning membre invalide.")
-        );
-        etatPage.reservationsMembre = [];
-        return;
-      }
-
-      etatPage.reservationsMembre = Array.isArray(data.reservations) ? data.reservations : [];
-    } catch (error) {
-      console.warn("Réservations membre non chargées :", error);
-      etatPage.reservationsMembre = [];
-    }
   }
 
   async function chargerParcsDepartementMembre() {
@@ -666,19 +663,29 @@
 
     const plages = construirePlagesJour(contexte.planningJour);
     const heures = genererHeuresDisponibles();
-    let nombreHorairesSelectionnables = 0;
+    const messagesBlocage = [];
+
+    plages.forEach((plage) => {
+      const reservationPlage = trouverReservationActiveDatePlage(contexte.dateIso, plage.nom);
+
+      if (reservationPlage) {
+        messagesBlocage.push(
+          "Vous avez déjà une réservation à " +
+          formaterHeurePhrase(extraireHeureFranceReservation(reservationPlage.datebookd)) +
+          " sur " +
+          libellePlageReservation(plage.nom) +
+          "."
+        );
+      }
+    });
 
     heures.forEach((heure) => {
       const plage = trouverPlagePourHeure(plages, heure);
 
       if (!plage) return;
 
-      const card = creerCardHeure(contexte, heure, plage);
-      grille.appendChild(card);
-
-      if (!card.disabled) {
-        nombreHorairesSelectionnables += 1;
-      }
+      const reservationPlage = trouverReservationActiveDatePlage(contexte.dateIso, plage.nom);
+      grille.appendChild(creerCardHeure(contexte, heure, plage, reservationPlage));
     });
 
     if (!grille.children.length) {
@@ -687,9 +694,9 @@
       return;
     }
 
-    if (nombreHorairesSelectionnables === 0) {
+    if (messagesBlocage.length) {
       message.hidden = false;
-      message.textContent = "Aucun horaire supplémentaire n'est disponible pour cette date.";
+      message.textContent = messagesBlocage.join(" ");
       return;
     }
 
@@ -761,32 +768,67 @@
     }) || null;
   }
 
-  function membreAReservationSurPlage(dateIso, plagebookd) {
-    const dateRecherchee = String(dateIso || "").trim();
-    const plageRecherchee = String(plagebookd || "").trim();
+  function convertirHeureEnMinutes(heure) {
+    const [heures, minutes] = String(heure || "00:00").split(":").map(Number);
 
-    if (!dateRecherchee || !plageRecherchee) {
-      return false;
+    if (!Number.isFinite(heures) || !Number.isFinite(minutes)) {
+      return 0;
     }
 
-    return (etatPage.reservationsMembre || []).some((reservation) => {
-      if (!reservation || reservation.statut === "cancd") {
-        return false;
-      }
-
-      return (
-        String(reservation.plagebookd || "").trim() === plageRecherchee &&
-        extraireDateFranceReservation(reservation.datebookd) === dateRecherchee
-      );
-    });
+    return heures * 60 + minutes;
   }
 
-  function extraireDateFranceReservation(dateIso) {
-    const date = new Date(dateIso);
+  function creerCardHeure(contexte, heure, plage, reservationPlage) {
+    const card = etatPage.templateHeureJour.cloneNode(true);
+    const label = card.querySelector("[data-lcdp-card-heure-jour-label]");
+    const couleur = normaliserCouleurClasse(plage.couleur);
+    const heureReservee = reservationPlage
+      ? extraireHeureFranceReservation(reservationPlage.datebookd)
+      : "";
+    const estHeureReservee = reservationPlage && heureReservee === heure;
 
-    if (Number.isNaN(date.getTime())) {
-      return "";
+    card.classList.add("lcdp-box-card-heure-in-calendrier-jour--" + couleur);
+    card.dataset.idparc = String(contexte.parc.idparc || contexte.parc.id || "");
+    card.dataset.date = contexte.dateIso;
+    card.dataset.heure = heure;
+    card.dataset.plagebookd = plage.nom;
+
+    if (reservationPlage) {
+      card.disabled = true;
+      card.dataset.indisponible = estHeureReservee ? "deja-reserve" : "plage-deja-reservee";
+
+      if (estHeureReservee) {
+        card.classList.add("lcdp-box-card-heure-in-calendrier-jour--deja-reserve");
+        card.setAttribute("aria-label", formaterHeureAffichee(heure) + " déjà réservé");
+      } else {
+        card.classList.add("lcdp-box-card-heure-in-calendrier-jour--plage-bloquee");
+        card.setAttribute("aria-label", formaterHeureAffichee(heure) + " indisponible car une réservation existe déjà sur cette plage");
+      }
     }
+
+    if (label) {
+      label.textContent = formaterHeureAffichee(heure);
+    }
+
+    return card;
+  }
+
+  function trouverReservationActiveDatePlage(dateIso, plagebookd) {
+    return (Array.isArray(etatPage.reservationsMembre) ? etatPage.reservationsMembre : [])
+      .find((reservation) => {
+        if (!reservation || reservation.statut === "cancd") return false;
+
+        return (
+          extraireDateFranceReservation(reservation.datebookd) === dateIso &&
+          String(reservation.plagebookd || "") === String(plagebookd || "")
+        );
+      }) || null;
+  }
+
+  function extraireDateFranceReservation(timestampIso) {
+    const date = new Date(timestampIso);
+
+    if (Number.isNaN(date.getTime())) return "";
 
     const morceaux = new Intl.DateTimeFormat("fr-FR", {
       timeZone: "Europe/Paris",
@@ -802,45 +844,39 @@
     return annee && mois && jour ? annee + "-" + mois + "-" + jour : "";
   }
 
-  function convertirHeureEnMinutes(heure) {
-    const [heures, minutes] = String(heure || "00:00").split(":").map(Number);
+  function extraireHeureFranceReservation(timestampIso) {
+    const date = new Date(timestampIso);
 
-    if (!Number.isFinite(heures) || !Number.isFinite(minutes)) {
-      return 0;
-    }
+    if (Number.isNaN(date.getTime())) return "";
 
-    return heures * 60 + minutes;
+    const morceaux = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).formatToParts(date);
+
+    const heure = morceaux.find((item) => item.type === "hour")?.value || "";
+    const minute = morceaux.find((item) => item.type === "minute")?.value || "";
+
+    return heure && minute ? heure + ":" + minute : "";
   }
 
-  function creerCardHeure(contexte, heure, plage) {
-    const card = etatPage.templateHeureJour.cloneNode(true);
-    const label = card.querySelector("[data-lcdp-card-heure-jour-label]");
-    const couleur = normaliserCouleurClasse(plage.couleur);
-    const libelleHeure = formaterHeureAffichee(heure);
-    const plageDejaReservee = membreAReservationSurPlage(contexte.dateIso, plage.nom);
+  function formaterHeurePhrase(heure) {
+    const valeur = String(heure || "");
+    const match = valeur.match(/^(\d{2}):(\d{2})$/);
 
-    card.classList.add("lcdp-box-card-heure-in-calendrier-jour--" + couleur);
-    card.dataset.idparc = String(contexte.parc.idparc || contexte.parc.id || "");
-    card.dataset.date = contexte.dateIso;
-    card.dataset.heure = heure;
-    card.dataset.plagebookd = plage.nom;
+    if (!match) return formaterHeureAffichee(valeur);
 
-    if (label) {
-      label.textContent = libelleHeure;
-    }
+    return String(Number(match[1])) + "h" + match[2];
+  }
 
-    if (plageDejaReservee) {
-      card.disabled = true;
-      card.title = "Vous avez déjà une réservation sur cette plage de la journée.";
-      card.setAttribute(
-        "aria-label",
-        libelleHeure + " indisponible : vous avez déjà une réservation sur cette plage de la journée"
-      );
-    } else {
-      card.setAttribute("aria-label", libelleHeure);
-    }
+  function libellePlageReservation(plagebookd) {
+    if (plagebookd === "plage1") return "la matinée";
+    if (plagebookd === "plage2") return "l'après-midi";
+    if (plagebookd === "plage3") return "la soirée";
 
-    return card;
+    return "cette plage";
   }
 
   async function traiterChoixHeure(boutonHeure) {
@@ -873,9 +909,7 @@
 
     if (confirmation !== "confirmer") return;
 
-    const texteInitial = boutonHeure.textContent;
     boutonHeure.disabled = true;
-    boutonHeure.setAttribute("aria-busy", "true");
 
     try {
       await enregistrerReservation({
@@ -891,8 +925,6 @@
       window.location.href = PAGE_PLANNING_MEMBRE;
     } catch (error) {
       boutonHeure.disabled = false;
-      boutonHeure.textContent = texteInitial;
-      boutonHeure.removeAttribute("aria-busy");
       await afficherAlerteSuperposee(error.message || "Impossible d'enregistrer la réservation.");
     }
   }
