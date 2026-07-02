@@ -203,7 +203,7 @@
     if (!champ) return;
 
     const note = document.createElement("p");
-    note.className = "lcdp-box-formulaire__note";
+    note.className = "lcdp-box-champ-formulaire__aide";
     note.append(lienConfig.texteAvant || "");
 
     const lien = document.createElement("a");
