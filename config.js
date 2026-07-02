@@ -41,7 +41,7 @@
     deconnexionMembre: "https://deconnexion-membre-api.lacleduparc.fr",
 
     nouvelleDateMembre: "https://nouvelle-date-membre-api.lacleduparc.fr",
-    fluxm: "https://worker-fluxm-api.lacleduparc.fr",
+    fluxm: "https://fluxm-api.lacleduparc.fr",
     planningMembre: "https://planning-membre-api.lacleduparc.fr",
     inviterMembre: "https://inviter-membre-api.lacleduparc.fr",
     invitationMembre: "https://invitation-membre-api.lacleduparc.fr",
