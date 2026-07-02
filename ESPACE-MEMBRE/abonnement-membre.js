@@ -4,20 +4,63 @@
   const CONFIG_PAGE = window.SITE_CONFIG || {};
   const SOURCE_PAGE = "abonnement-membre";
 
-  const ENDPOINT_ABONNEMENT_MEMBRE = construireEndpointApi(
-    "workerAbonnementMembreUrl",
-    "WORKER_ABONNEMENT_MEMBRE_URL",
-    "abonnement-membre-api"
+  const ENDPOINT_ABO_MEMBRE = construireEndpointApi(
+    "workerAboMembreUrl",
+    "WORKER_ABO_MEMBRE_URL",
+    "abo-membre-api"
   );
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
+  const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
+  const PAGE_REGLEMENT_CLUB = construireUrlPublic("/ESPACE-PUBLIC/reglement-club.html");
+  const PAGE_REGLEMENT_APPLICATION = construireUrlPublic("/ESPACE-PUBLIC/reglement-app.html");
+
+  const PARAMETRES_ABONNEMENT = {
+    tauxTva: 20,
+    maxInvitesFamille: 10,
+    tarifsTtc: {
+      duo: {
+        "1J": null,
+        "1M": null,
+        "3M": null,
+        "6M": null,
+        "1A": null
+      },
+      famille: {
+        "1J": null,
+        "1M": null,
+        "3M": null,
+        "6M": null,
+        "1A": null
+      }
+    },
+    economiesPaiementComptantTtc: {
+      duo: null,
+      famille: null
+    },
+    echeancesPaiement: {
+      duo: 2,
+      famille: 3
+    }
+  };
+
+  const DUREES_ABONNEMENT = [
+    { code: "1J", label: "1 jour (1J)", type: "jour", jours: 1, mois: 0 },
+    { code: "1M", label: "1 mois (1M)", type: "mois", jours: 0, mois: 1 },
+    { code: "3M", label: "3 mois (3M)", type: "mois", jours: 0, mois: 3 },
+    { code: "6M", label: "6 mois (6M)", type: "mois", jours: 0, mois: 6 },
+    { code: "1A", label: "1 an (1A)", type: "mois", jours: 0, mois: 12 }
+  ];
 
   let pageInitialisee = false;
 
   const etat = {
     abonnements: [],
     filtre: "encours",
-    templateAbonnement: null
+    templateAbonnement: null,
+    contexteWorkflow: null,
+    calendrierMoisAffiche: null,
+    workflow: creerWorkflowVide()
   };
 
   const titresFiltres = {
@@ -123,8 +166,12 @@
 
     if (!bouton) return;
 
-    bouton.addEventListener("click", async () => {
-      await afficherAlerte("Le workflow d'abonnement sera raccordé ensuite.");
+    bouton.textContent = "Choisir mon nouvel abonnement";
+    bouton.addEventListener("click", () => {
+      demarrerWorkflowNouvelAbonnement().catch(async (error) => {
+        console.error("Erreur workflow abonnement :", error);
+        await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
+      });
     });
   }
 
@@ -135,11 +182,11 @@
 
     zoneActions.innerHTML = "";
 
-    const boutonAvenir = creerBoutonFiltre("À venir", "avenir");
     const boutonPasse = creerBoutonFiltre("Passé", "passe");
+    const boutonAvenir = creerBoutonFiltre("À venir", "avenir");
 
-    zoneActions.appendChild(boutonAvenir);
     zoneActions.appendChild(boutonPasse);
+    zoneActions.appendChild(boutonAvenir);
     actualiserBoutonsFiltre();
   }
 
@@ -174,7 +221,7 @@
   }
 
   async function chargerAbonnements() {
-    if (!ENDPOINT_ABONNEMENT_MEMBRE) {
+    if (!ENDPOINT_ABO_MEMBRE) {
       afficherErreurListe("Le service abonnement membre n’est pas configuré.");
       return;
     }
@@ -182,7 +229,7 @@
     try {
       afficherChargementListe("Chargement de votre abonnement...");
 
-      const reponse = await fetch(ENDPOINT_ABONNEMENT_MEMBRE + "/mes-abonnements", {
+      const reponse = await fetch(ENDPOINT_ABO_MEMBRE + "/mes-abonnements", {
         method: "GET",
         credentials: "include",
         cache: "no-store",
@@ -229,6 +276,1140 @@
     }
   }
 
+  async function demarrerWorkflowNouvelAbonnement() {
+    etat.workflow = creerWorkflowVide();
+    etat.workflow.etape = "type";
+    await chargerContexteWorkflow();
+    await afficherEtapeChoixTypeAbonnement();
+  }
+
+  function creerWorkflowVide() {
+    return {
+      etape: "type",
+      typeAbonnement: "duo",
+      emails: [],
+      emailsMode: "nouveau",
+      duree: "1M",
+      dateDebut: "",
+      dateFin: "",
+      codeRemise: "",
+      codeRemiseValide: false,
+      dernierCodeRemiseValide: "",
+      remise: null,
+      prixInitialTtc: null,
+      prixNetTtc: null,
+      calendrierMoisAffiche: null,
+      paiement: {
+        echeancier: "comptant",
+        mode: "virement"
+      }
+    };
+  }
+
+  async function chargerContexteWorkflow() {
+    if (!ENDPOINT_ABO_MEMBRE) {
+      throw new Error("Le service abonnement membre n’est pas configuré.");
+    }
+
+    const reponse = await fetch(ENDPOINT_ABO_MEMBRE + "/contexte-nouvel-abonnement", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return;
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Impossible de préparer la demande d'abonnement."));
+    }
+
+    etat.contexteWorkflow = data.contexte || {};
+
+    if (Array.isArray(etat.contexteWorkflow.abonnements)) {
+      etat.abonnements = etat.contexteWorkflow.abonnements;
+      afficherAbonnements(etat.abonnements);
+    }
+  }
+
+  async function afficherEtapeChoixTypeAbonnement() {
+    etat.workflow.etape = "type";
+
+    const valeur = await ouvrirDialogueChoix({
+      titre: "",
+      texte: "Prendre une abonnement :",
+      choix: [
+        { label: "Duo", valeur: "duo" },
+        { label: "Famille", valeur: "famille" }
+      ],
+      valeurInitiale: etat.workflow.typeAbonnement || "duo",
+      boutonSuivant: "Suivant",
+      boutonRetour: "",
+      onFermer: demanderQuitterWorkflow
+    });
+
+    if (!valeur) return;
+
+    etat.workflow.typeAbonnement = valeur;
+
+    if (valeur === "duo") {
+      etat.workflow.emailsMode = "duo";
+      await afficherEtapeEmailDuo();
+      return;
+    }
+
+    preparerEmailsFamille();
+    await afficherEtapeEmailsFamille();
+  }
+
+  function preparerEmailsFamille() {
+    const contexte = etat.contexteWorkflow || {};
+    const dejaFamilleSansDuo = contexte.aDejaEuFamille === true && contexte.aDejaEuDuo !== true;
+    const emailsFamille = Array.isArray(contexte.emailsFamille) ? contexte.emailsFamille : [];
+
+    if (dejaFamilleSansDuo && emailsFamille.length) {
+      etat.workflow.emailsMode = "famille-existant";
+      etat.workflow.emails = emailsFamille.map(nettoyerEmail).filter(Boolean).slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille);
+      return;
+    }
+
+    etat.workflow.emailsMode = "famille-nouveau";
+
+    if (!etat.workflow.emails.length) {
+      etat.workflow.emails = [""];
+    }
+  }
+
+  async function afficherEtapeEmailDuo() {
+    etat.workflow.etape = "emails-duo";
+
+    const slot = obtenirLightboxSlot();
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ-inviter.html");
+    slot.appendChild(fragment);
+
+    const box = slot.querySelector("[data-lcdp-box-dialogue-champ-inviter]");
+    const titre = slot.querySelector("[data-lcdp-dialogue-inviter-title]");
+    const form = slot.querySelector("[data-lcdp-dialogue-inviter-form]");
+    const input = slot.querySelector("[data-lcdp-dialogue-inviter-email]");
+    const erreur = slot.querySelector("[data-lcdp-dialogue-inviter-error]");
+    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-inviter-close]");
+    const boutonRetour = slot.querySelector("[data-lcdp-dialogue-inviter-back]");
+    const boutonPasser = slot.querySelector("[data-lcdp-dialogue-inviter-skip]");
+
+    if (!box || !titre || !form || !input || !erreur || !boutonFermer || !boutonRetour || !boutonPasser) {
+      throw new Error("Structure dialogue invité incomplète.");
+    }
+
+    titre.textContent = "Indiquez votre invité(e)";
+    input.value = etat.workflow.emails[0] || "";
+    boutonPasser.hidden = false;
+
+    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
+    boutonRetour.addEventListener("click", afficherEtapeChoixTypeAbonnement);
+    boutonPasser.addEventListener("click", async () => {
+      etat.workflow.emails = [];
+      await afficherEtapeChoixDuree();
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const email = nettoyerEmail(input.value);
+
+      if (email && !emailValide(email)) {
+        afficherErreurChamp(erreur, "L'adresse e-mail saisie est invalide.");
+        return;
+      }
+
+      etat.workflow.emails = email ? [email] : [];
+      await afficherEtapeChoixDuree();
+    });
+
+    box.addEventListener("click", (event) => {
+      if (event.target === box) demanderQuitterWorkflow();
+    });
+
+    input.focus();
+  }
+
+  async function afficherEtapeEmailsFamille() {
+    etat.workflow.etape = "emails-famille";
+
+    const modeExistant = etat.workflow.emailsMode === "famille-existant";
+    const titre = modeExistant ? "Indiquez vos invités famille" : "Indiquez vos invités famille";
+
+    const slot = obtenirLightboxSlot();
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/04-box-listemails.html");
+    slot.appendChild(fragment);
+
+    const box = slot.querySelector("[data-lcdp-box-card-listemails]");
+    const titreElement = slot.querySelector("[data-lcdp-listemails-title]");
+    const message = slot.querySelector("[data-lcdp-listemails-message]");
+    const liste = slot.querySelector("[data-lcdp-listemails-list]");
+    const actions = slot.querySelector("[data-lcdp-listemails-actions]");
+    const boutonFermer = slot.querySelector("[data-lcdp-listemails-close]");
+
+    if (!box || !titreElement || !message || !liste || !actions || !boutonFermer) {
+      throw new Error("Structure liste e-mails incomplète.");
+    }
+
+    titreElement.textContent = titre;
+    liste.innerHTML = "";
+    actions.innerHTML = "";
+
+    const emails = normaliserListeEmails(etat.workflow.emails);
+    if (!emails.length) emails.push("");
+    etat.workflow.emails = emails;
+
+    for (let index = 0; index < etat.workflow.emails.length; index += 1) {
+      liste.appendChild(await creerCardEmail(index, modeExistant));
+    }
+
+    if (!modeExistant) {
+      const boutonAjouter = creerBouton("Ajouter un invité famille", "lcdp-button-secondary", async () => {
+        sauvegarderEmailsDepuisListe(liste);
+
+        if (etat.workflow.emails.length >= PARAMETRES_ABONNEMENT.maxInvitesFamille) {
+          afficherMessageInline(message, "10 e-mails maximum.");
+          return;
+        }
+
+        etat.workflow.emails.push("");
+        await afficherEtapeEmailsFamille();
+      });
+      actions.appendChild(boutonAjouter);
+    }
+
+    actions.appendChild(creerBouton("Retour", "lcdp-button-secondary", afficherEtapeChoixTypeAbonnement));
+    actions.appendChild(creerBouton("Suivant", "lcdp-button-primary", async () => {
+      sauvegarderEmailsDepuisListe(liste);
+
+      const emailsValides = normaliserListeEmails(etat.workflow.emails);
+
+      if (!emailsValides.length) {
+        afficherMessageInline(message, "Merci d'indiquer au moins un e-mail invité famille.");
+        return;
+      }
+
+      const emailInvalide = emailsValides.find((email) => !emailValide(email));
+      if (emailInvalide) {
+        afficherMessageInline(message, "Un e-mail invité famille est invalide.");
+        return;
+      }
+
+      etat.workflow.emails = emailsValides;
+      await afficherEtapeChoixDuree();
+    }));
+
+    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
+    box.addEventListener("click", (event) => {
+      if (event.target === box) demanderQuitterWorkflow();
+    });
+  }
+
+  async function creerCardEmail(index, modeExistant) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-listemails.html");
+    const card = fragment.querySelector("[data-lcdp-box-card-listemails-item]");
+    const input = fragment.querySelector("[data-lcdp-card-listemails-email]");
+    const boutonModifier = fragment.querySelector("[data-lcdp-card-listemails-modifier]");
+    const boutonSupprimer = fragment.querySelector("[data-lcdp-card-listemails-supprimer]");
+
+    if (!card || !input || !boutonModifier || !boutonSupprimer) {
+      throw new Error("Structure card e-mail incomplète.");
+    }
+
+    card.dataset.index = String(index);
+    input.value = etat.workflow.emails[index] || "";
+    input.placeholder = "E-mail du membre invité";
+
+    if (modeExistant) {
+      input.readOnly = true;
+      boutonModifier.hidden = false;
+      boutonModifier.addEventListener("click", async () => {
+        const nouveau = await ouvrirDialogueModifierEmail(input.value);
+        if (nouveau === null) return;
+        input.value = nettoyerEmail(nouveau);
+        etat.workflow.emails[index] = input.value;
+      });
+    }
+
+    boutonSupprimer.addEventListener("click", async () => {
+      const ok = await afficherAlerte("Supprimer cet invité famille ?");
+      if (!ok) return;
+
+      etat.workflow.emails.splice(index, 1);
+
+      if (!etat.workflow.emails.length && !modeExistant) {
+        etat.workflow.emails.push("");
+      }
+
+      await afficherEtapeEmailsFamille();
+    });
+
+    return card;
+  }
+
+  function sauvegarderEmailsDepuisListe(liste) {
+    const emails = [];
+
+    liste.querySelectorAll("[data-lcdp-card-listemails-email]").forEach((input) => {
+      emails.push(nettoyerEmail(input.value));
+    });
+
+    etat.workflow.emails = emails;
+  }
+
+  async function ouvrirDialogueModifierEmail(valeurInitiale) {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ.html");
+    container.appendChild(fragment);
+
+    const dialogue = container.querySelector("[data-lcdp-box-dialogue-champ]");
+    const titre = container.querySelector("[data-lcdp-dialogue-champ-title]");
+    const formulaire = container.querySelector("[data-lcdp-dialogue-champ-form]");
+    const zoneContent = container.querySelector("[data-lcdp-dialogue-champ-content]");
+    const erreur = container.querySelector("[data-lcdp-dialogue-champ-error]");
+    const boutonFermer = container.querySelector("[data-lcdp-dialogue-champ-close]");
+    const boutonAnnuler = container.querySelector("[data-lcdp-dialogue-champ-cancel]");
+
+    if (!dialogue || !titre || !formulaire || !zoneContent || !erreur || !boutonFermer || !boutonAnnuler) {
+      container.remove();
+      throw new Error("Structure dialogue champ incomplète.");
+    }
+
+    titre.textContent = "Modifier l'e-mail";
+
+    const label = document.createElement("label");
+    label.className = "lcdp-box-champ-formulaire__label";
+    label.setAttribute("for", "email-famille-modifie");
+    label.textContent = "E-mail du membre invité";
+
+    const input = document.createElement("input");
+    input.id = "email-famille-modifie";
+    input.name = "email";
+    input.type = "email";
+    input.value = valeurInitiale || "";
+    input.autocomplete = "email";
+
+    zoneContent.appendChild(label);
+    zoneContent.appendChild(input);
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        container.remove();
+        resolve(valeur);
+      }
+
+      boutonFermer.addEventListener("click", () => fermer(null));
+      boutonAnnuler.addEventListener("click", () => fermer(null));
+      dialogue.addEventListener("click", (event) => {
+        if (event.target === dialogue) fermer(null);
+      });
+
+      formulaire.addEventListener("submit", (event) => {
+        event.preventDefault();
+        erreur.hidden = true;
+        erreur.textContent = "";
+        fermer(input.value || "");
+      });
+
+      input.focus();
+    });
+  }
+
+  async function afficherEtapeChoixDuree() {
+    etat.workflow.etape = "duree";
+
+    const valeur = await ouvrirDialogueChoix({
+      titre: "",
+      texte: "Durée du nouvel abonnement :",
+      choix: DUREES_ABONNEMENT.map((duree) => ({ label: duree.label, valeur: duree.code })),
+      valeurInitiale: etat.workflow.duree || "1M",
+      boutonSuivant: "Suivant",
+      boutonRetour: "Précédent",
+      onRetour: retourDepuisDuree,
+      onFermer: demanderQuitterWorkflow
+    });
+
+    if (!valeur) return;
+
+    etat.workflow.duree = valeur;
+    etat.workflow.dateDebut = "";
+    etat.workflow.dateFin = "";
+
+    if (valeur === "1J") {
+      await afficherEtapeCalendrierJour();
+      return;
+    }
+
+    await afficherEtapeCalendrierMois();
+  }
+
+  async function retourDepuisDuree() {
+    if (etat.workflow.typeAbonnement === "duo") {
+      await afficherEtapeEmailDuo();
+      return;
+    }
+
+    await afficherEtapeEmailsFamille();
+  }
+
+  async function afficherEtapeCalendrierMois() {
+    etat.workflow.etape = "calendrier-mois";
+
+    const slot = obtenirLightboxSlot();
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-an.html");
+    slot.appendChild(fragment);
+
+    const box = slot.querySelector("[data-lcdp-box-calendrier-an]");
+    const titre = slot.querySelector("[data-lcdp-calendrier-an-title]");
+    const meta = slot.querySelector("[data-lcdp-calendrier-an-meta]");
+    const message = slot.querySelector("[data-lcdp-calendrier-an-message]");
+    const years = slot.querySelector("[data-lcdp-calendrier-an-years]");
+    const boutonFermer = slot.querySelector("[data-lcdp-calendrier-an-close]");
+    const boutonRetour = slot.querySelector("[data-lcdp-calendrier-an-back]");
+    const boutonSuivant = slot.querySelector("[data-lcdp-calendrier-an-next]");
+
+    if (!box || !titre || !meta || !message || !years || !boutonFermer || !boutonRetour || !boutonSuivant) {
+      throw new Error("Structure calendrier année incomplète.");
+    }
+
+    titre.textContent = "Début du nouvel abonnement";
+    meta.textContent = "Sélectionnez le mois de début du nouvel abonnement.";
+    years.innerHTML = "";
+
+    const maintenant = new Date();
+    const anneeCourante = maintenant.getFullYear();
+
+    [anneeCourante, anneeCourante + 1].forEach((annee) => {
+      years.appendChild(creerBlocAnnee(annee));
+    });
+
+    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
+    boutonRetour.addEventListener("click", afficherEtapeChoixDuree);
+    boutonSuivant.addEventListener("click", async () => {
+      if (!etat.workflow.dateDebut) {
+        afficherMessageInline(message, "Merci de sélectionner un mois de début.");
+        return;
+      }
+
+      calculerDatesWorkflow();
+      await afficherEtapeRecapitulatif();
+    });
+
+    box.addEventListener("click", (event) => {
+      if (event.target === box) demanderQuitterWorkflow();
+    });
+  }
+
+  function creerBlocAnnee(annee) {
+    const section = document.createElement("section");
+    section.className = "lcdp-box-calendrier-an__year";
+
+    const titre = document.createElement("h3");
+    titre.className = "lcdp-box-calendrier-an__year-title";
+    titre.textContent = String(annee);
+    section.appendChild(titre);
+
+    const mois = document.createElement("div");
+    mois.className = "lcdp-box-calendrier-an__months";
+    section.appendChild(mois);
+
+    for (let indexMois = 0; indexMois < 12; indexMois += 1) {
+      const debutMois = new Date(annee, indexMois, 1);
+      const statut = statutMoisAbonnement(debutMois);
+
+      const bouton = document.createElement("button");
+      bouton.type = "button";
+      bouton.className = "lcdp-box-calendrier-an__month";
+      bouton.textContent = nomMois(debutMois);
+      bouton.dataset.dateDebut = dateIsoLocale(debutMois);
+      bouton.disabled = statut.disabled;
+      bouton.title = statut.raison || "";
+      bouton.setAttribute("aria-pressed", etat.workflow.dateDebut === bouton.dataset.dateDebut ? "true" : "false");
+
+      if (statut.type === "incompatible") {
+        bouton.classList.add("lcdp-box-calendrier-an__month--incompatible");
+      }
+
+      bouton.addEventListener("click", () => {
+        etat.workflow.dateDebut = bouton.dataset.dateDebut;
+        etat.workflow.dateFin = "";
+
+        document.querySelectorAll("[data-lcdp-box-calendrier-an] .lcdp-box-calendrier-an__month").forEach((element) => {
+          element.setAttribute("aria-pressed", element === bouton ? "true" : "false");
+        });
+      });
+
+      mois.appendChild(bouton);
+    }
+
+    return section;
+  }
+
+  function statutMoisAbonnement(debutMois) {
+    const maintenant = new Date();
+    const premierMoisCourant = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+    const duree = obtenirDuree(etat.workflow.duree);
+    const finCandidate = finAbonnementDepuisDebut(debutMois, duree);
+    const finCourante = finAbonnementEnCours();
+    const abonnements = Array.isArray(etat.abonnements) ? etat.abonnements : [];
+
+    if (debutMois < premierMoisCourant) {
+      return { disabled: true, type: "passe", raison: "Mois passé" };
+    }
+
+    if (finCourante && debutMois <= finCourante) {
+      return { disabled: true, type: "occupe", raison: "Abonnement en cours" };
+    }
+
+    const chevauchement = abonnements.find((abonnement) => {
+      const debut = debutMoisDate(abonnement.debut);
+      const fin = finMoisDate(abonnement.fin);
+      if (!debut || !fin) return false;
+      return plagesSeChevauchent(debutMois, finCandidate, debut, fin);
+    });
+
+    if (!chevauchement) {
+      return { disabled: false, type: "libre", raison: "" };
+    }
+
+    const debutChevauchement = debutMoisDate(chevauchement.debut);
+    const finChevauchement = finMoisDate(chevauchement.fin);
+    const moisLuiMemeOccupe = debutChevauchement && finChevauchement && plagesSeChevauchent(debutMois, finMoisDate(debutMois), debutChevauchement, finChevauchement);
+
+    return {
+      disabled: true,
+      type: moisLuiMemeOccupe ? "occupe" : "incompatible",
+      raison: moisLuiMemeOccupe ? "Mois déjà occupé" : "Durée incompatible avec un abonnement à venir"
+    };
+  }
+
+  async function afficherEtapeCalendrierJour() {
+    etat.workflow.etape = "calendrier-jour";
+
+    const slot = obtenirLightboxSlot();
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
+    slot.appendChild(fragment);
+
+    const box = slot.querySelector("[data-lcdp-box-calendrier-mois]");
+    const titre = slot.querySelector("[data-lcdp-calendrier-mois-title]");
+    const meta = slot.querySelector("[data-lcdp-calendrier-mois-meta]");
+    const current = slot.querySelector("[data-lcdp-calendrier-mois-current]");
+    const prev = slot.querySelector("[data-lcdp-calendrier-mois-prev]");
+    const next = slot.querySelector("[data-lcdp-calendrier-mois-next]");
+    const grid = slot.querySelector("[data-lcdp-calendrier-mois-grid]");
+    const message = slot.querySelector("[data-lcdp-calendrier-mois-message]");
+    const boutonFermer = slot.querySelector("[data-lcdp-calendrier-mois-close]");
+
+    if (!box || !titre || !meta || !current || !prev || !next || !grid || !message || !boutonFermer) {
+      throw new Error("Structure calendrier mois incomplète.");
+    }
+
+    titre.textContent = "Début du nouvel abonnement";
+    meta.textContent = "Sélectionnez le jour du nouvel abonnement.";
+
+    const maintenant = new Date();
+    etat.workflow.calendrierMoisAffiche = etat.workflow.calendrierMoisAffiche || new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+
+    const footer = document.createElement("div");
+    footer.className = "lcdp-box-calendrier-mois__footer-actions";
+    footer.appendChild(creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeChoixDuree));
+    footer.appendChild(creerBouton("Suivant", "lcdp-button-primary", async () => {
+      if (!etat.workflow.dateDebut) {
+        afficherMessageInline(message, "Merci de sélectionner un jour de début.");
+        return;
+      }
+
+      calculerDatesWorkflow();
+      await afficherEtapeRecapitulatif();
+    }));
+    box.querySelector(".lcdp-box-calendrier-mois__card").appendChild(footer);
+
+    function afficherMois() {
+      const moisAffiche = etat.workflow.calendrierMoisAffiche;
+      current.textContent = moisAffiche.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+      grid.innerHTML = "";
+
+      const premierJour = new Date(moisAffiche.getFullYear(), moisAffiche.getMonth(), 1);
+      const dernierJour = new Date(moisAffiche.getFullYear(), moisAffiche.getMonth() + 1, 0);
+      const decalage = (premierJour.getDay() + 6) % 7;
+
+      for (let index = 0; index < decalage; index += 1) {
+        const vide = document.createElement("button");
+        vide.type = "button";
+        vide.disabled = true;
+        vide.className = "lcdp-box-calendrier-mois__day lcdp-box-calendrier-mois__day--empty";
+        vide.setAttribute("aria-hidden", "true");
+        grid.appendChild(vide);
+      }
+
+      for (let jour = 1; jour <= dernierJour.getDate(); jour += 1) {
+        const date = new Date(moisAffiche.getFullYear(), moisAffiche.getMonth(), jour);
+        const statut = statutJourAbonnement(date);
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "lcdp-box-calendrier-mois__day";
+        bouton.textContent = String(jour);
+        bouton.dataset.dateDebut = dateIsoLocale(date);
+        bouton.disabled = statut.disabled;
+        bouton.title = statut.raison || "";
+        bouton.setAttribute("aria-pressed", etat.workflow.dateDebut === bouton.dataset.dateDebut ? "true" : "false");
+        bouton.addEventListener("click", () => {
+          etat.workflow.dateDebut = bouton.dataset.dateDebut;
+          etat.workflow.dateFin = bouton.dataset.dateDebut;
+
+          grid.querySelectorAll(".lcdp-box-calendrier-mois__day").forEach((element) => {
+            element.setAttribute("aria-pressed", element === bouton ? "true" : "false");
+          });
+        });
+        grid.appendChild(bouton);
+      }
+    }
+
+    prev.addEventListener("click", () => {
+      const mois = etat.workflow.calendrierMoisAffiche;
+      etat.workflow.calendrierMoisAffiche = new Date(mois.getFullYear(), mois.getMonth() - 1, 1);
+      afficherMois();
+    });
+
+    next.addEventListener("click", () => {
+      const mois = etat.workflow.calendrierMoisAffiche;
+      etat.workflow.calendrierMoisAffiche = new Date(mois.getFullYear(), mois.getMonth() + 1, 1);
+      afficherMois();
+    });
+
+    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
+    box.addEventListener("click", (event) => {
+      if (event.target === box) demanderQuitterWorkflow();
+    });
+
+    afficherMois();
+  }
+
+  function statutJourAbonnement(date) {
+    const aujourdHui = debutJour(new Date());
+    const finCourante = finAbonnementEnCours();
+    const abonnements = Array.isArray(etat.abonnements) ? etat.abonnements : [];
+
+    if (date < aujourdHui) {
+      return { disabled: true, raison: "Date passée" };
+    }
+
+    if (finCourante && date <= finCourante) {
+      return { disabled: true, raison: "Abonnement en cours" };
+    }
+
+    const occupe = abonnements.some((abonnement) => {
+      const debut = debutJourDate(abonnement.debut);
+      const fin = finJourDate(abonnement.fin);
+      if (!debut || !fin) return false;
+      return date >= debut && date <= fin;
+    });
+
+    if (occupe) {
+      return { disabled: true, raison: "Date déjà occupée" };
+    }
+
+    return { disabled: false, raison: "" };
+  }
+
+  async function afficherEtapeRecapitulatif() {
+    etat.workflow.etape = "recap";
+    calculerPrixWorkflow();
+
+    const slot = obtenirLightboxSlot();
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-recaporder.html");
+    slot.appendChild(fragment);
+
+    const box = slot.querySelector("[data-lcdp-box-card-recaporder]");
+    const boutonFermer = slot.querySelector("[data-lcdp-recaporder-close]");
+    const boutonRetour = slot.querySelector("[data-lcdp-recaporder-back]");
+    const boutonAnnuler = slot.querySelector("[data-lcdp-recaporder-cancel]");
+    const boutonPayer = slot.querySelector("[data-lcdp-recaporder-pay]");
+    const boutonValiderCode = slot.querySelector("[data-lcdp-recaporder-valider-code]");
+    const inputCode = slot.querySelector("[data-lcdp-recaporder-code-remise]");
+    const message = slot.querySelector("[data-lcdp-recaporder-message]");
+
+    if (!box || !boutonFermer || !boutonRetour || !boutonAnnuler || !boutonPayer || !boutonValiderCode || !inputCode || !message) {
+      throw new Error("Structure récapitulatif incomplète.");
+    }
+
+    remplirRecapitulatif(slot);
+
+    inputCode.value = etat.workflow.codeRemise || "";
+    boutonValiderCode.disabled = etat.workflow.codeRemiseValide && etat.workflow.dernierCodeRemiseValide === nettoyerCodeRemise(inputCode.value);
+
+    inputCode.addEventListener("input", () => {
+      const code = nettoyerCodeRemise(inputCode.value);
+      boutonValiderCode.disabled = etat.workflow.codeRemiseValide && etat.workflow.dernierCodeRemiseValide === code;
+    });
+
+    boutonValiderCode.addEventListener("click", async () => {
+      const code = nettoyerCodeRemise(inputCode.value);
+
+      if (!code) {
+        afficherMessageInline(message, "Merci de renseigner un code remise.");
+        return;
+      }
+
+      try {
+        await verifierCodeRemise(code);
+        boutonValiderCode.disabled = true;
+        await afficherEtapeRecapitulatif();
+      } catch (error) {
+        afficherMessageInline(message, error.message || "Code remise non applicable.");
+      }
+    });
+
+    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
+    boutonAnnuler.addEventListener("click", demanderQuitterWorkflow);
+    boutonRetour.addEventListener("click", async () => {
+      if (etat.workflow.duree === "1J") {
+        await afficherEtapeCalendrierJour();
+        return;
+      }
+
+      await afficherEtapeCalendrierMois();
+    });
+    boutonPayer.addEventListener("click", afficherEtapePaiement);
+
+    box.addEventListener("click", (event) => {
+      if (event.target === box) demanderQuitterWorkflow();
+    });
+  }
+
+  function remplirRecapitulatif(racine) {
+    const workflow = etat.workflow;
+    const typeLabel = libelleTypeAbonnement(workflow.typeAbonnement);
+    const dureeLabel = libelleDuree(workflow.duree);
+    const tvaLabel = "(TVA " + String(PARAMETRES_ABONNEMENT.tauxTva) + "%)";
+
+    remplirTexte(racine, "[data-lcdp-recaporder-abonnement]", typeLabel + " - " + dureeLabel);
+    remplirTexte(racine, "[data-lcdp-recaporder-debut]", formaterDate(workflow.dateDebut));
+    remplirTexte(racine, "[data-lcdp-recaporder-fin]", formaterDate(workflow.dateFin) + " inclus");
+    remplirTexte(racine, "[data-lcdp-recaporder-prix-initial]", formaterMontantOuNonConfigure(workflow.prixInitialTtc));
+    remplirTexte(racine, "[data-lcdp-recaporder-prix-net]", formaterMontantOuNonConfigure(workflow.prixNetTtc));
+    remplirTexte(racine, "[data-lcdp-recaporder-tva-label]", tvaLabel);
+    remplirTexte(racine, "[data-lcdp-recaporder-tva-net-label]", tvaLabel);
+
+    const invitesRow = racine.querySelector("[data-lcdp-recaporder-invites-row]");
+    const invitesElement = racine.querySelector("[data-lcdp-recaporder-invites]");
+
+    if (invitesRow && invitesElement) {
+      const afficherInvites = workflow.typeAbonnement === "famille" && workflow.emails.length;
+      invitesRow.hidden = !afficherInvites;
+      invitesElement.textContent = afficherInvites ? workflow.emails.join(", ") : "";
+    }
+
+    const lienClub = racine.querySelector("[data-lcdp-recaporder-reglement-club]");
+    const lienApplication = racine.querySelector("[data-lcdp-recaporder-reglement-application]");
+
+    if (lienClub) lienClub.href = PAGE_REGLEMENT_CLUB;
+    if (lienApplication) lienApplication.href = PAGE_REGLEMENT_APPLICATION;
+  }
+
+  async function verifierCodeRemise(code) {
+    if (!ENDPOINT_ABO_MEMBRE) {
+      throw new Error("Le service abonnement membre n’est pas configuré.");
+    }
+
+    const reponse = await fetch(ENDPOINT_ABO_MEMBRE + "/verifier-remise", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(creerPayloadCommande({ codeRemise: code }))
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return;
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Code remise non applicable."));
+    }
+
+    etat.workflow.codeRemise = code;
+    etat.workflow.codeRemiseValide = true;
+    etat.workflow.dernierCodeRemiseValide = code;
+    etat.workflow.remise = data.remise || null;
+    etat.workflow.prixNetTtc = nombreOuNull(data.prixNetTtc ?? data.prix_net_ttc ?? etat.workflow.prixNetTtc);
+  }
+
+  async function afficherEtapePaiement() {
+    if (!montantValide(etat.workflow.prixNetTtc)) {
+      await afficherAlerte("Le tarif de cet abonnement n'est pas configuré.");
+      return;
+    }
+
+    etat.workflow.etape = "paiement";
+
+    const slot = obtenirLightboxSlot();
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    slot.appendChild(fragment);
+
+    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
+    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
+    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
+
+    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
+      throw new Error("Structure dialogue paiement incomplète.");
+    }
+
+    titre.textContent = "Paiement";
+    texte.textContent = "Choisissez les modalités de paiement.";
+    actions.innerHTML = "";
+
+    const zone = document.createElement("div");
+    zone.className = "lcdp-workflow-paiement";
+
+    const economie = PARAMETRES_ABONNEMENT.economiesPaiementComptantTtc[etat.workflow.typeAbonnement];
+    const nbEcheances = PARAMETRES_ABONNEMENT.echeancesPaiement[etat.workflow.typeAbonnement] || 2;
+    const echeances = calculerEcheancesPaiement(nbEcheances);
+
+    zone.appendChild(creerOptionRadioPaiement({
+      name: "echeancier-abonnement",
+      value: "comptant",
+      checked: etat.workflow.paiement.echeancier === "comptant",
+      label: economie
+        ? "Payer en 1 fois et économiser " + formaterMontant(economie) + " TTC"
+        : "Payer en 1 fois",
+      detail: "Montant : " + formaterMontant(etat.workflow.prixNetTtc)
+    }));
+
+    zone.appendChild(creerOptionRadioPaiement({
+      name: "echeancier-abonnement",
+      value: "echelonne",
+      checked: etat.workflow.paiement.echeancier === "echelonne",
+      label: "Payer en " + nbEcheances + " fois sans frais",
+      detail: echeances.join(" / ")
+    }));
+
+    zone.appendChild(creerOptionRadioPaiement({
+      name: "mode-paiement-abonnement",
+      value: "virement",
+      checked: etat.workflow.paiement.mode === "virement",
+      label: "Payer par virement dans les 15 jours",
+      detail: "Disponible uniquement pour le paiement en 1 fois."
+    }));
+
+    zone.appendChild(creerOptionRadioPaiement({
+      name: "mode-paiement-abonnement",
+      value: "cb",
+      checked: etat.workflow.paiement.mode === "cb",
+      label: "Payer par CB dès maintenant",
+      detail: "Sélectionné automatiquement en cas de paiement échelonné."
+    }));
+
+    const confirmationLabel = document.createElement("label");
+    confirmationLabel.className = "lcdp-workflow-paiement__check";
+
+    const confirmation = document.createElement("input");
+    confirmation.type = "checkbox";
+    confirmation.dataset.confirmationPaiement = "1";
+    confirmationLabel.appendChild(confirmation);
+    confirmationLabel.append("Je confirme que mon abonnement n'est pas utilisable tant que je ne respecte pas les règles de paiement de la somme due.");
+    zone.appendChild(confirmationLabel);
+
+    const message = document.createElement("p");
+    message.className = "lcdp-workflow-paiement__message";
+    message.hidden = true;
+    zone.appendChild(message);
+
+    actions.appendChild(zone);
+    actions.appendChild(creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeRecapitulatif));
+    actions.appendChild(creerBouton("Annuler", "lcdp-button-secondary", demanderQuitterWorkflow));
+    actions.appendChild(creerBouton("Confirmer", "lcdp-button-primary", async () => {
+      lireOptionsPaiementDepuisDialogue(slot);
+
+      if (!confirmation.checked) {
+        afficherMessageInline(message, "Merci de confirmer la règle de paiement.");
+        return;
+      }
+
+      if (etat.workflow.paiement.mode === "cb") {
+        await afficherAlerte("Le paiement Stripe sera raccordé ensuite.");
+        await afficherEtapeRecapitulatif();
+        return;
+      }
+
+      await enregistrerCommandeVirement();
+    }));
+
+    synchroniserOptionsPaiement(slot);
+
+    slot.querySelectorAll("input[name='echeancier-abonnement'], input[name='mode-paiement-abonnement']").forEach((input) => {
+      input.addEventListener("change", () => {
+        lireOptionsPaiementDepuisDialogue(slot);
+        synchroniserOptionsPaiement(slot);
+      });
+    });
+
+    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
+    dialogue.addEventListener("click", (event) => {
+      if (event.target === dialogue) demanderQuitterWorkflow();
+    });
+  }
+
+  function creerOptionRadioPaiement(options) {
+    const label = document.createElement("label");
+    label.className = "lcdp-workflow-paiement__option";
+
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = options.name;
+    input.value = options.value;
+    input.checked = options.checked === true;
+
+    const texte = document.createElement("span");
+    texte.className = "lcdp-workflow-paiement__option-text";
+    texte.textContent = options.label || "";
+
+    const detail = document.createElement("small");
+    detail.textContent = options.detail || "";
+
+    label.appendChild(input);
+    label.appendChild(texte);
+    if (options.detail) label.appendChild(detail);
+
+    return label;
+  }
+
+  function lireOptionsPaiementDepuisDialogue(racine) {
+    const echeancier = racine.querySelector("input[name='echeancier-abonnement']:checked")?.value || "comptant";
+    let mode = racine.querySelector("input[name='mode-paiement-abonnement']:checked")?.value || "virement";
+
+    if (echeancier === "echelonne") {
+      mode = "cb";
+    }
+
+    etat.workflow.paiement.echeancier = echeancier;
+    etat.workflow.paiement.mode = mode;
+  }
+
+  function synchroniserOptionsPaiement(racine) {
+    const echeancier = etat.workflow.paiement.echeancier || "comptant";
+    const virement = racine.querySelector("input[name='mode-paiement-abonnement'][value='virement']");
+    const cb = racine.querySelector("input[name='mode-paiement-abonnement'][value='cb']");
+
+    if (!virement || !cb) return;
+
+    if (echeancier === "echelonne") {
+      virement.checked = false;
+      virement.disabled = true;
+      cb.checked = true;
+      etat.workflow.paiement.mode = "cb";
+      return;
+    }
+
+    virement.disabled = false;
+
+    if (!virement.checked && !cb.checked) {
+      virement.checked = true;
+      etat.workflow.paiement.mode = "virement";
+    }
+  }
+
+  async function enregistrerCommandeVirement() {
+    if (!ENDPOINT_ABO_MEMBRE) {
+      throw new Error("Le service abonnement membre n’est pas configuré.");
+    }
+
+    const reponse = await fetch(ENDPOINT_ABO_MEMBRE + "/enregistrer-commande-virement", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(creerPayloadCommande())
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return;
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Impossible d'enregistrer la commande."));
+    }
+
+    await afficherAlerte(
+      "La commande d'abonnement est enregistrée sous le n° " +
+      String(data.orderid || data.commande?.orderid || "") +
+      ". Le récapitulatif a été envoyé par mail avec le RIB de l'association et le rappel des règles de paiement par virement : 1. Indiquer le montant de la commande dans l'objet du virement. 2. Payer dans les 15 jours +/- 2 jours."
+    );
+
+    window.location.href = PAGE_ABONNEMENT_MEMBRE;
+  }
+
+  function creerPayloadCommande(extra = {}) {
+    calculerDatesWorkflow();
+    calculerPrixWorkflow();
+
+    return {
+      typeAbonnement: etat.workflow.typeAbonnement,
+      typabo: etat.workflow.typeAbonnement,
+      duree: etat.workflow.duree,
+      debut: etat.workflow.dateDebut,
+      fin: etat.workflow.dateFin,
+      emails: etat.workflow.emails,
+      tva: PARAMETRES_ABONNEMENT.tauxTva,
+      prixInitialTtc: etat.workflow.prixInitialTtc,
+      prixNetTtc: etat.workflow.prixNetTtc,
+      codeRemise: etat.workflow.codeRemise,
+      remise: etat.workflow.remise,
+      paiement: etat.workflow.paiement,
+      ...extra
+    };
+  }
+
+  function calculerDatesWorkflow() {
+    const debut = lireDateLocale(etat.workflow.dateDebut);
+    if (!debut) return;
+
+    const duree = obtenirDuree(etat.workflow.duree);
+    const fin = finAbonnementDepuisDebut(debut, duree);
+
+    etat.workflow.dateDebut = dateIsoLocale(debut);
+    etat.workflow.dateFin = dateIsoLocale(fin);
+  }
+
+  function calculerPrixWorkflow() {
+    const tarifsType = PARAMETRES_ABONNEMENT.tarifsTtc[etat.workflow.typeAbonnement] || {};
+    const prixInitial = nombreOuNull(tarifsType[etat.workflow.duree]);
+
+    etat.workflow.prixInitialTtc = prixInitial;
+
+    if (etat.workflow.remise && montantValide(etat.workflow.remise.prixNetTtc)) {
+      etat.workflow.prixNetTtc = nombreOuNull(etat.workflow.remise.prixNetTtc);
+      return;
+    }
+
+    etat.workflow.prixNetTtc = prixInitial;
+  }
+
+  async function ouvrirDialogueChoix(options) {
+    const slot = obtenirLightboxSlot();
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    slot.appendChild(fragment);
+
+    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
+    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
+    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
+
+    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
+      throw new Error("Structure dialogue bouton incomplète.");
+    }
+
+    titre.textContent = options.titre || "";
+    titre.hidden = !options.titre;
+    texte.textContent = options.texte || "";
+    actions.innerHTML = "";
+
+    let valeur = options.valeurInitiale || options.choix?.[0]?.valeur || "";
+
+    const zoneChoix = document.createElement("div");
+    zoneChoix.className = "lcdp-workflow-choice-zone";
+
+    (options.choix || []).forEach((choix) => {
+      const bouton = document.createElement("button");
+      bouton.type = "button";
+      bouton.className = "lcdp-button lcdp-button-secondary";
+      bouton.textContent = choix.label || choix.valeur || "";
+      bouton.dataset.workflowChoix = choix.valeur || "";
+      bouton.setAttribute("aria-pressed", bouton.dataset.workflowChoix === valeur ? "true" : "false");
+
+      bouton.addEventListener("click", () => {
+        valeur = bouton.dataset.workflowChoix;
+        zoneChoix.querySelectorAll("[data-workflow-choix]").forEach((element) => {
+          element.setAttribute("aria-pressed", element === bouton ? "true" : "false");
+        });
+      });
+
+      zoneChoix.appendChild(bouton);
+    });
+
+    actions.appendChild(zoneChoix);
+
+    if (options.boutonRetour) {
+      actions.appendChild(creerBouton(options.boutonRetour, "lcdp-button-secondary", async () => {
+        if (typeof options.onRetour === "function") {
+          await options.onRetour();
+        }
+      }));
+    }
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer(resultat) {
+        if (resolu) return;
+        resolu = true;
+        if (resultat) slot.innerHTML = "";
+        resolve(resultat || null);
+      }
+
+      actions.appendChild(creerBouton(options.boutonSuivant || "Suivant", "lcdp-button-primary", () => fermer(valeur)));
+      boutonFermer.addEventListener("click", () => {
+        if (typeof options.onFermer === "function") options.onFermer();
+        fermer(null);
+      });
+      dialogue.addEventListener("click", (event) => {
+        if (event.target === dialogue) {
+          if (typeof options.onFermer === "function") options.onFermer();
+          fermer(null);
+        }
+      });
+    });
+  }
+
+  async function demanderQuitterWorkflow() {
+    await afficherAlerte("Quitter la demande d'abonnement ?");
+    window.location.href = PAGE_ABONNEMENT_MEMBRE;
+  }
+
   async function ouvrirFacture(card) {
     if (!card) {
       await afficherAlerte("Facture introuvable.");
@@ -248,9 +1429,7 @@
       return;
     }
 
-    const slot = document.getElementById("lcdp-lightbox-slot");
-    if (!slot) return null;
-
+    const slot = obtenirLightboxSlot();
     slot.innerHTML = "";
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-facture.html");
@@ -283,23 +1462,7 @@
           if (event.target === box) fermer();
         });
       }
-
-      document.addEventListener(
-        "keydown",
-        (event) => {
-          if (event.key === "Escape") fermer();
-        },
-        { once: true }
-      );
     });
-  }
-
-  function remplirTexte(racine, selecteur, valeur) {
-    const element = racine.querySelector(selecteur);
-
-    if (!element) return;
-
-    element.textContent = valeur || "Non renseigné";
   }
 
   function obtenirZoneListe() {
@@ -444,10 +1607,7 @@
   }
 
   async function afficherAlerte(message) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return null;
-
+    const slot = obtenirLightboxSlot();
     slot.innerHTML = "";
 
     const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
@@ -479,15 +1639,37 @@
       alerte.addEventListener("click", (event) => {
         if (event.target === alerte) fermer(false);
       });
-
-      document.addEventListener(
-        "keydown",
-        (event) => {
-          if (event.key === "Escape") fermer(false);
-        },
-        { once: true }
-      );
     });
+  }
+
+  function afficherErreurChamp(element, message) {
+    if (!element) return;
+
+    element.hidden = false;
+    element.textContent = message || "";
+  }
+
+  function afficherMessageInline(element, message) {
+    if (!element) return;
+
+    element.hidden = false;
+    element.textContent = message || "";
+  }
+
+  function creerBouton(label, style, action) {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "lcdp-button " + (style || "lcdp-button-primary");
+    bouton.textContent = label || "Valider";
+
+    bouton.addEventListener("click", () => {
+      Promise.resolve(action()).catch(async (error) => {
+        console.error(error);
+        await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
+      });
+    });
+
+    return bouton;
   }
 
   function appliquerRoutesSite(racine = document) {
@@ -637,6 +1819,16 @@
       encodeURIComponent(motif || "inactive");
   }
 
+  function obtenirLightboxSlot() {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) {
+      throw new Error("Slot lightbox introuvable.");
+    }
+
+    return slot;
+  }
+
   function lireCookie(nom) {
     return document.cookie
       .split(";")
@@ -669,16 +1861,118 @@
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
+  function lireDateLocale(valeur) {
+    const texte = String(valeur || "").trim();
+    const match = texte.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (!match) return lireDate(texte);
+
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  }
+
   function debutJour(date) {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  function debutJourDate(valeur) {
+    const date = lireDate(valeur);
+    return date ? debutJour(date) : null;
+  }
+
+  function finJourDate(valeur) {
+    const date = lireDate(valeur);
+    return date ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999) : null;
+  }
+
+  function debutMoisDate(valeur) {
+    const date = lireDate(valeur);
+    return date ? new Date(date.getFullYear(), date.getMonth(), 1) : null;
+  }
+
+  function finMoisDate(valeur) {
+    const date = lireDate(valeur);
+    return date ? new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999) : null;
+  }
+
+  function finAbonnementEnCours() {
+    const maintenant = new Date();
+    const abonnements = Array.isArray(etat.abonnements) ? etat.abonnements : [];
+    const abonnement = abonnements.find((ligne) => categorieAbonnement(ligne) === "encours");
+
+    if (!abonnement) return null;
+
+    const fin = lireDate(abonnement.fin);
+    return fin ? debutJour(fin) : debutJour(maintenant);
+  }
+
+  function finAbonnementDepuisDebut(debut, duree) {
+    if (!debut || !duree) return debut;
+
+    if (duree.type === "jour") {
+      return new Date(debut.getFullYear(), debut.getMonth(), debut.getDate());
+    }
+
+    return new Date(debut.getFullYear(), debut.getMonth() + duree.mois, 0);
+  }
+
+  function plagesSeChevauchent(debutA, finA, debutB, finB) {
+    return debutA <= finB && debutB <= finA;
+  }
+
+  function obtenirDuree(code) {
+    return DUREES_ABONNEMENT.find((duree) => duree.code === code) || DUREES_ABONNEMENT[1];
+  }
+
+  function libelleDuree(code) {
+    return obtenirDuree(code).label;
+  }
+
+  function libelleTypeAbonnement(value) {
+    return value === "famille" ? "Famille" : "Duo";
+  }
+
+  function normaliserListeEmails(source) {
+    return (Array.isArray(source) ? source : [])
+      .map(nettoyerEmail)
+      .filter(Boolean)
+      .filter((email, index, array) => array.indexOf(email) === index)
+      .slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille);
+  }
+
+  function nettoyerEmail(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase();
+  }
+
+  function emailValide(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function nettoyerCodeRemise(value) {
+    return String(value || "")
+      .trim()
+      .toUpperCase();
+  }
+
+  function nomMois(date) {
+    return date.toLocaleDateString("fr-FR", { month: "long" });
+  }
+
+  function dateIsoLocale(date) {
+    const annee = date.getFullYear();
+    const mois = String(date.getMonth() + 1).padStart(2, "0");
+    const jour = String(date.getDate()).padStart(2, "0");
+
+    return annee + "-" + mois + "-" + jour;
   }
 
   function formaterDate(valeur) {
     if (!valeur) return "Non renseigné";
 
-    const date = new Date(valeur);
+    const date = lireDateLocale(valeur);
 
-    if (Number.isNaN(date.getTime())) return String(valeur);
+    if (!date || Number.isNaN(date.getTime())) return String(valeur);
 
     return date.toLocaleDateString("fr-FR", {
       timeZone: "Europe/Paris",
@@ -688,25 +1982,65 @@
     });
   }
 
+  function remplirTexte(racine, selecteur, valeur) {
+    const element = racine.querySelector(selecteur);
+
+    if (!element) return;
+
+    element.textContent = valeur || "Non renseigné";
+  }
+
   function normaliserMontantBrut(valeur) {
     if (valeur === null || typeof valeur === "undefined") return "";
 
     return String(valeur).trim();
   }
 
-  function formaterMontant(valeur) {
-    if (valeur === null || typeof valeur === "undefined" || valeur === "") {
-      return "Non renseigné";
-    }
+  function nombreOuNull(valeur) {
+    if (valeur === null || typeof valeur === "undefined" || valeur === "") return null;
 
     const nombre = Number(String(valeur).replace(",", "."));
 
-    if (Number.isNaN(nombre)) return String(valeur);
+    return Number.isFinite(nombre) ? nombre : null;
+  }
+
+  function montantValide(valeur) {
+    const nombre = nombreOuNull(valeur);
+    return nombre !== null && nombre > 0;
+  }
+
+  function formaterMontant(valeur) {
+    const nombre = nombreOuNull(valeur);
+
+    if (nombre === null) return "Non renseigné";
 
     return nombre.toLocaleString("fr-FR", {
       style: "currency",
       currency: "EUR"
     });
+  }
+
+  function formaterMontantOuNonConfigure(valeur) {
+    const nombre = nombreOuNull(valeur);
+
+    if (nombre === null) return "Prix non configuré";
+
+    return formaterMontant(nombre);
+  }
+
+  function calculerEcheancesPaiement(nombreEcheances) {
+    const debut = lireDateLocale(etat.workflow.dateDebut) || new Date();
+    const montant = nombreOuNull(etat.workflow.prixNetTtc) || 0;
+    const montantEcheance = montant / nombreEcheances;
+    const lignes = [];
+
+    for (let index = 0; index < nombreEcheances; index += 1) {
+      const moisReference = index - 1;
+      const date = new Date(debut.getFullYear(), debut.getMonth() + moisReference + 1, 0);
+      lignes.push("mois " + String(index + 1) + " : " + formaterDate(dateIsoLocale(date)) + " - " + formaterMontant(montantEcheance));
+    }
+
+    return lignes;
   }
 
   function nettoyerBaseUrl(value) {
