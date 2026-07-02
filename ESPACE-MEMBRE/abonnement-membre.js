@@ -527,7 +527,7 @@
     message.hidden = true;
     message.textContent = "";
 
-    const emails = normaliserListeEmails(etat.workflow.emails);
+    const emails = preparerEmailsPourAffichageFamille(etat.workflow.emails, modeExistant);
     if (!emails.length) emails.push("");
     etat.workflow.emails = emails;
 
@@ -563,7 +563,7 @@
       const emailsValides = normaliserListeEmails(etat.workflow.emails);
 
       if (!emailsValides.length) {
-        await afficherAlerteSuperposee("Merci d'indiquer au moins un e-mail invité famille.");
+        await afficherAlerteSuperposee("Vous devez indiquer au moins un e-mail invité pour l'abonnement Famille.");
         return;
       }
 
@@ -634,6 +634,33 @@
     });
 
     etat.workflow.emails = emails;
+  }
+
+  function preparerEmailsPourAffichageFamille(source, modeExistant) {
+    if (modeExistant) {
+      return normaliserListeEmails(source);
+    }
+
+    const emails = Array.isArray(source)
+      ? source.map(nettoyerEmail).slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille)
+      : [];
+
+    const dejaVus = new Set();
+    const resultat = [];
+
+    emails.forEach((email) => {
+      if (!email) {
+        resultat.push("");
+        return;
+      }
+
+      if (dejaVus.has(email)) return;
+
+      dejaVus.add(email);
+      resultat.push(email);
+    });
+
+    return resultat.slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille);
   }
 
   async function ouvrirDialogueModifierEmail(valeurInitiale) {
@@ -2270,16 +2297,37 @@
   async function preparerTransitionWorkflow(slot) {
     if (!slot) return;
 
-    const contenuActuel = slot.firstElementChild;
-
-    if (!contenuActuel) {
+    if (!slot.firstElementChild) {
       slot.innerHTML = "";
       return;
     }
 
-    contenuActuel.classList.add("lcdp-workflow-abonnement-box--sortie");
-    await attendre(120);
+    const workflow = slot.closest("[data-lcdp-box-workflow-abonnement]");
+    const card = workflow?.querySelector("[data-lcdp-workflow-abonnement-card]");
+
+    if (card) {
+      const hauteurActuelle = card.getBoundingClientRect().height;
+      card.scrollTop = 0;
+
+      if (hauteurActuelle > 0) {
+        card.style.minHeight = Math.ceil(hauteurActuelle) + "px";
+      }
+    }
+
+    slot.classList.add("lcdp-box-workflow-abonnement__content--transition");
+    await attendre(70);
     slot.innerHTML = "";
+    slot.classList.remove("lcdp-box-workflow-abonnement__content--transition");
+
+    if (card) {
+      window.requestAnimationFrame(() => {
+        card.scrollTop = 0;
+
+        window.setTimeout(() => {
+          card.style.minHeight = "";
+        }, 140);
+      });
+    }
   }
 
   function appliquerClasseWorkflow(box, variante) {
