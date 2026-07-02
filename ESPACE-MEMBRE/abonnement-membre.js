@@ -401,7 +401,7 @@
   async function afficherEtapeEmailDuo() {
     etat.workflow.etape = "emails-duo";
 
-    const slot = obtenirLightboxSlot();
+    const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ-inviter.html");
@@ -468,7 +468,7 @@
     const modeExistant = etat.workflow.emailsMode === "famille-existant";
     const titre = modeExistant ? "Indiquez vos invités famille" : "Indiquez vos invités famille";
 
-    const slot = obtenirLightboxSlot();
+    const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-listemails.html");
@@ -698,7 +698,7 @@
   async function afficherEtapeCalendrierMois() {
     etat.workflow.etape = "calendrier-mois";
 
-    const slot = obtenirLightboxSlot();
+    const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-an.html");
@@ -833,7 +833,7 @@
   async function afficherEtapeCalendrierJour() {
     etat.workflow.etape = "calendrier-jour";
 
-    const slot = obtenirLightboxSlot();
+    const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
@@ -968,7 +968,7 @@
     etat.workflow.etape = "recap";
     calculerPrixWorkflow();
 
-    const slot = obtenirLightboxSlot();
+    const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-card-recaporder.html");
@@ -1105,7 +1105,7 @@
 
     etat.workflow.etape = "paiement";
 
-    const slot = obtenirLightboxSlot();
+    const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
@@ -1360,7 +1360,7 @@
   }
 
   async function ouvrirDialogueChoix(options) {
-    const slot = obtenirLightboxSlot();
+    const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
     const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
@@ -1914,6 +1914,36 @@
       encodeURIComponent(motif || "inactive");
   }
 
+  async function obtenirWorkflowAbonnementContenu() {
+    const slot = obtenirLightboxSlot();
+    let workflow = slot.querySelector("[data-lcdp-box-workflow-abonnement]");
+
+    if (!workflow) {
+      slot.innerHTML = "";
+
+      const fragment = await chargerFragmentObjet("/BOX/04-box-workflow-abonnement.html");
+      slot.appendChild(fragment);
+
+      workflow = slot.querySelector("[data-lcdp-box-workflow-abonnement]");
+
+      if (!workflow) {
+        throw new Error("Structure workflow abonnement incomplète.");
+      }
+
+      workflow.addEventListener("click", (event) => {
+        if (event.target === workflow) demanderQuitterWorkflow();
+      });
+    }
+
+    const contenu = slot.querySelector("[data-lcdp-workflow-abonnement-content]");
+
+    if (!contenu) {
+      throw new Error("Zone contenu workflow abonnement introuvable.");
+    }
+
+    return contenu;
+  }
+
   async function preparerTransitionWorkflow(slot) {
     if (!slot) return;
 
@@ -1936,6 +1966,20 @@
 
     if (variante) {
       box.classList.add("lcdp-workflow-abonnement-box--" + variante);
+    }
+
+    const workflow = box.closest("[data-lcdp-box-workflow-abonnement]");
+
+    if (!workflow) return;
+
+    Array.from(workflow.classList).forEach((nomClasse) => {
+      if (nomClasse.startsWith("lcdp-box-workflow-abonnement--")) {
+        workflow.classList.remove(nomClasse);
+      }
+    });
+
+    if (variante) {
+      workflow.classList.add("lcdp-box-workflow-abonnement--" + variante);
     }
   }
 
