@@ -102,7 +102,12 @@
       label: "Date d'acceptation du règlement (club)",
       type: "text",
       key: "reglementClub",
-      formatter: formaterDate
+      formatter: formaterDate,
+      lien: {
+        texteAvant: "Lire le ",
+        texteLien: "règlement du club",
+        href: "/ESPACE-PUBLIC/reglement-club.html"
+      }
     },
     {
       id: "champ-reglement-application",
@@ -110,7 +115,12 @@
       label: "Date d'acceptation du règlement (application)",
       type: "text",
       key: "reglementApplication",
-      formatter: formaterDate
+      formatter: formaterDate,
+      lien: {
+        texteAvant: "Lire le ",
+        texteLien: "règlement de l'application",
+        href: "/ESPACE-PUBLIC/reglement-app.html"
+      }
     }
   ];
 
@@ -141,8 +151,8 @@
     const form = await window.LCDP_creerFormulaire("lcdp-mes-informations-slot", {
       id: "form-mes-informations-membre",
       ariaLabel: "Informations du compte membre",
-      titre: "Mes informations",
-      sousTitre: "Consultez les informations liées à votre compte membre.",
+      titre: "",
+      sousTitre: "informations liées à votre compte membre",
       champs: champsCompte.map((champ) => ({
         id: champ.id,
         name: champ.name,
@@ -153,6 +163,12 @@
 
     if (!form) {
       throw new Error("Formulaire mes informations introuvable.");
+    }
+
+    const titreFormulaire = form.querySelector("[data-lcdp-formulaire-title]");
+    if (titreFormulaire) {
+      titreFormulaire.textContent = "";
+      titreFormulaire.hidden = true;
     }
 
     const zoneActions = form.querySelector("[data-lcdp-formulaire-actions]");
@@ -171,9 +187,32 @@
       if (champ.action) {
         ajouterBoutonModificationApresChamp(champ.id, champ.action);
       }
+
+      if (champ.lien) {
+        ajouterLienInformationApresChamp(champ.id, champ.lien);
+      }
     });
 
     initialiserActionsModification();
+  }
+
+  function ajouterLienInformationApresChamp(champId, lienConfig) {
+    const input = document.getElementById(champId);
+    const champ = input ? input.closest("[data-lcdp-box-champ-formulaire]") : null;
+
+    if (!champ) return;
+
+    const note = document.createElement("p");
+    note.className = "lcdp-box-formulaire__note";
+    note.append(lienConfig.texteAvant || "");
+
+    const lien = document.createElement("a");
+    lien.className = "lcdp-link-secondary";
+    lien.href = construireUrlPublic(lienConfig.href || "#");
+    lien.textContent = lienConfig.texteLien || "";
+
+    note.appendChild(lien);
+    champ.appendChild(note);
   }
 
   function ajouterBoutonModificationApresChamp(champId, action) {
