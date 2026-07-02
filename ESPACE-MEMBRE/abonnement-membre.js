@@ -827,6 +827,8 @@
       throw new Error("Structure calendrier mois incomplète.");
     }
 
+    box.classList.add("lcdp-box-calendrier-mois--abonnement");
+
     titre.textContent = "Début du nouvel abonnement";
     meta.textContent = "Sélectionnez le jour du nouvel abonnement.";
 
@@ -834,7 +836,7 @@
     etat.workflow.calendrierMoisAffiche = etat.workflow.calendrierMoisAffiche || new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
 
     const footer = document.createElement("div");
-    footer.className = "lcdp-box-calendrier-mois__footer-actions";
+    footer.className = "lcdp-box-calendrier-mois-abonnement__actions";
     footer.appendChild(creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeChoixDuree));
     footer.appendChild(creerBouton("Suivant", "lcdp-button-primary", async () => {
       if (!etat.workflow.dateDebut) {
@@ -860,7 +862,7 @@
         const vide = document.createElement("button");
         vide.type = "button";
         vide.disabled = true;
-        vide.className = "lcdp-box-calendrier-mois__day lcdp-box-calendrier-mois__day--empty";
+        vide.className = "lcdp-box-calendrier-mois-abonnement__day lcdp-box-calendrier-mois-abonnement__day--empty";
         vide.setAttribute("aria-hidden", "true");
         grid.appendChild(vide);
       }
@@ -870,7 +872,7 @@
         const statut = statutJourAbonnement(date);
         const bouton = document.createElement("button");
         bouton.type = "button";
-        bouton.className = "lcdp-box-calendrier-mois__day";
+        bouton.className = "lcdp-box-calendrier-mois-abonnement__day";
         bouton.textContent = String(jour);
         bouton.dataset.dateDebut = dateIsoLocale(date);
         bouton.disabled = statut.disabled;
@@ -880,7 +882,7 @@
           etat.workflow.dateDebut = bouton.dataset.dateDebut;
           etat.workflow.dateFin = bouton.dataset.dateDebut;
 
-          grid.querySelectorAll(".lcdp-box-calendrier-mois__day").forEach((element) => {
+          grid.querySelectorAll(".lcdp-box-calendrier-mois-abonnement__day").forEach((element) => {
             element.setAttribute("aria-pressed", element === bouton ? "true" : "false");
           });
         });
