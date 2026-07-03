@@ -18,6 +18,7 @@
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
+  const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
   const PAGE_REGLEMENT_CLUB = construireUrlPublic("/ESPACE-PUBLIC/reglement-club.html");
   const PAGE_REGLEMENT_APPLICATION = construireUrlPublic("/ESPACE-PUBLIC/reglement-app.html");
 
@@ -286,11 +287,14 @@
     const boutonVoirAvoir = event.target.closest("[data-action='voir-avoir']");
 
     if (boutonPayerAbonnement) {
-      await afficherAlerte("Le paiement depuis la card abonnement sera raccordé avec le workflow facturation.");
+      const card = boutonPayerAbonnement.closest("[data-lcdp-box-card-abonnement]");
+      await afficherEcheancesNonPayees(card);
       return;
     }
 
     if (boutonProlongerAbonnement) {
+      if (boutonProlongerAbonnement.getAttribute("aria-disabled") === "true") return;
+
       const card = boutonProlongerAbonnement.closest("[data-lcdp-box-card-abonnement]");
       await demarrerWorkflowProlongation(card);
       return;
@@ -1658,8 +1662,59 @@
     etat.workflow.paiement.echeancier = "comptant";
     etat.workflow.paiement.mode = "cb";
 
-    await afficherAlerteSuperposee("Le paiement Stripe sera raccordé ensuite.");
-    await afficherEtapeRecapitulatif();
+    try {
+      const commande = await enregistrerCommandeCb1x();
+      const orderid = String(commande.orderid || commande.abonnement?.orderid || "").trim();
+
+      if (!orderid) {
+        throw new Error("Numéro de commande introuvable après création.");
+      }
+
+      const urlPaiement = PAGE_PAIEMENT_CB +
+        (PAGE_PAIEMENT_CB.includes("?") ? "&" : "?") +
+        "orderid=" + encodeURIComponent(orderid) +
+        "&echeance=1";
+
+      window.location.href = urlPaiement;
+    } catch (error) {
+      console.error("Erreur paiement CB abonnement :", error);
+      await afficherAlerteSuperposee(error.message || "Impossible de préparer le paiement CB.");
+    }
+  }
+
+  async function enregistrerCommandeCb1x() {
+    if (!ENDPOINT_ABO_MEMBRE) {
+      throw new Error("Le service abonnement membre n’est pas configuré.");
+    }
+
+    const reponse = await fetch(ENDPOINT_ABO_MEMBRE + "/enregistrer-commande-cb-1x", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(creerPayloadCommande({
+        paiement: {
+          echeancier: "comptant",
+          mode: "cb"
+        }
+      }))
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      throw new Error("Session membre inactive.");
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Impossible d'enregistrer la commande CB."));
+    }
+
+    return data;
   }
 
   async function afficherEtapePaiement() {
@@ -1770,6 +1825,11 @@
       }
 
       if (etat.workflow.paiement.mode === "cb") {
+        if (etat.workflow.paiement.echeancier === "echelonne") {
+          await afficherAlerteSuperposee("Le paiement CB en plusieurs fois sera raccordé ensuite.");
+          return;
+        }
+
         await demarrerPaiementStripe();
         return;
       }
@@ -2211,6 +2271,111 @@
     return false;
   }
 
+  async function afficherEcheancesNonPayees(card) {
+    const abonnement = retrouverAbonnementDepuisCard(card);
+
+    if (!abonnement) {
+      await afficherAlerte("Abonnement introuvable.");
+      return;
+    }
+
+    const echeances = echeancesNonPayeesAbonnement(abonnement);
+
+    if (!echeances.length) {
+      await afficherAlerte("Aucune échéance non payée.");
+      return;
+    }
+
+    const slot = obtenirLightboxSlot();
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    slot.appendChild(fragment);
+
+    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
+    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
+    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
+
+    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
+      slot.innerHTML = "";
+      throw new Error("Structure dialogue bouton incomplète.");
+    }
+
+    titre.textContent = "Paiement en attente";
+    texte.textContent = "";
+    texte.hidden = true;
+    actions.innerHTML = "";
+    actions.classList.add("lcdp-dialogue-echeances-impayees");
+
+    echeances.forEach((echeance) => {
+      const ligne = document.createElement("div");
+      ligne.className = "lcdp-dialogue-echeances-impayees__row";
+
+      const description = document.createElement("p");
+      description.className = "lcdp-dialogue-echeances-impayees__text";
+      description.textContent = "Non payé le " + formaterDate(echeance.date) + " : " + formaterMontant(echeance.montant);
+
+      const boutonPayer = creerBouton("Payer", "lcdp-button-secondary lcdp-workflow-micro-action", () => {
+        ouvrirPagePaiementCb(abonnement, echeance.numero);
+      });
+
+      ligne.appendChild(description);
+      ligne.appendChild(boutonPayer);
+      actions.appendChild(ligne);
+    });
+
+    actions.appendChild(creerBouton("OK", "lcdp-button-primary", fermer));
+
+    function fermer() {
+      slot.innerHTML = "";
+    }
+
+    boutonFermer.addEventListener("click", fermer);
+    dialogue.addEventListener("click", (event) => {
+      if (event.target === dialogue) fermer();
+    });
+  }
+
+  function ouvrirPagePaiementCb(abonnement, numeroEcheance) {
+    const orderid = String(abonnement?.orderid || abonnement?.commande?.orderid || "").trim();
+
+    if (!orderid) {
+      afficherAlerte("Commande non renseignée.");
+      return;
+    }
+
+    const url = PAGE_PAIEMENT_CB +
+      (PAGE_PAIEMENT_CB.includes("?") ? "&" : "?") +
+      "orderid=" + encodeURIComponent(orderid) +
+      "&echeance=" + encodeURIComponent(String(numeroEcheance || 1));
+
+    window.location.href = url;
+  }
+
+  function echeancesNonPayeesAbonnement(abonnement) {
+    const echeances = [];
+
+    ajouterEcheanceNonPayee(echeances, 1, abonnement?.etatmois1, abonnement?.datemois1, abonnement?.valmois1);
+    ajouterEcheanceNonPayee(echeances, 2, abonnement?.etatmois2, abonnement?.datemois2, abonnement?.valmois2);
+    ajouterEcheanceNonPayee(echeances, 3, abonnement?.etatmois3, abonnement?.datemois3, abonnement?.valmois3);
+
+    return echeances;
+  }
+
+  function ajouterEcheanceNonPayee(liste, numero, etatEcheance, date, montant) {
+    const etatTexte = String(etatEcheance || "").trim().toLowerCase();
+
+    if (etatTexte !== "du" && etatTexte !== "impaye") return;
+
+    liste.push({
+      numero,
+      date: date || "",
+      montant: nombreOuNull(montant) ?? 0
+    });
+  }
+
   async function ouvrirFacture(card) {
     if (!card) {
       await afficherAlerte("Facture introuvable.");
@@ -2607,6 +2772,15 @@
     card.dataset.debut = String(abonnement.debut || "");
     card.dataset.fin = String(abonnement.fin || "");
     card.dataset.nbinvit = String(abonnement.nbinvit ?? abonnement.nbInvites ?? abonnement.nb_invites ?? 0);
+    card.dataset.etatmois1 = String(abonnement.etatmois1 || commande.etatmois1 || "");
+    card.dataset.etatmois2 = String(abonnement.etatmois2 || commande.etatmois2 || "");
+    card.dataset.etatmois3 = String(abonnement.etatmois3 || commande.etatmois3 || "");
+    card.dataset.datemois1 = String(abonnement.datemois1 || "");
+    card.dataset.datemois2 = String(abonnement.datemois2 || "");
+    card.dataset.datemois3 = String(abonnement.datemois3 || "");
+    card.dataset.valmois1 = String(abonnement.valmois1 ?? "");
+    card.dataset.valmois2 = String(abonnement.valmois2 ?? "");
+    card.dataset.valmois3 = String(abonnement.valmois3 ?? "");
     card.dataset.ht = normaliserMontantBrut(commande.ht);
     card.dataset.tva = normaliserMontantBrut(commande.tva);
     card.dataset.ttc = normaliserMontantBrut(commande.ttc);
@@ -2629,15 +2803,19 @@
       mentionSuspension.hidden = !texteSuspension;
     }
 
-    const boutonAction = card.querySelector("[data-action='prolonger-abonnement'], [data-action='payer-abonnement']");
+    const boutonNonPaye = card.querySelector("[data-action='payer-abonnement']");
+    const boutonAction = card.querySelector("[data-action='prolonger-abonnement']");
+    const nonPaye = abonnementAvecEcheanceNonPayee(abonnement);
+
+    if (boutonNonPaye) {
+      boutonNonPaye.hidden = !nonPaye;
+    }
+
     if (boutonAction) {
-      if (estAbonnementSuspenduImpaye(abonnement, commande)) {
-        boutonAction.textContent = "Payer";
-        boutonAction.dataset.action = "payer-abonnement";
-      } else {
-        boutonAction.textContent = "Prolonger";
-        boutonAction.dataset.action = "prolonger-abonnement";
-      }
+      boutonAction.textContent = "Prolonger";
+      boutonAction.dataset.action = "prolonger-abonnement";
+      boutonAction.classList.toggle("lcdp-box-card-abonnement__micro-action--disabled", nonPaye);
+      boutonAction.setAttribute("aria-disabled", nonPaye ? "true" : "false");
     }
 
     const metaPrixPaiement = card.querySelector("[data-lcdp-card-abonnement-prix-paiement]");
@@ -2840,6 +3018,12 @@
     if (ech > 1) return "CB " + String(ech) + "x";
 
     return "CB 1x";
+  }
+
+  function abonnementAvecEcheanceNonPayee(abonnement) {
+    return [abonnement?.etatmois1, abonnement?.etatmois2, abonnement?.etatmois3]
+      .map((etatEcheance) => String(etatEcheance || "").trim().toLowerCase())
+      .some((etatEcheance) => etatEcheance === "du" || etatEcheance === "impaye");
   }
 
   function estAbonnementSuspenduImpaye(abonnement, commande) {

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+
+  <title>Paiement CB - La Clé du Parc</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Paiement CB sécurisé La Clé du Parc.">
+
+  <script src="../config.js"></script>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const config = window.SITE_CONFIG || {};
+
+      function nettoyerBaseUrl(value) {
+        return String(value || "").replace(/\/+$/, "");
+      }
+
+      function buildUrl(base, path) {
+        return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
+      }
+
+      const membreBase = nettoyerBaseUrl(config.membreBaseUrl || config.MEMBRE_BASE || config.siteBase || "");
+      const publicBase = nettoyerBaseUrl(config.publicBaseUrl || config.PUBLIC_BASE || "");
+      const objetBase = nettoyerBaseUrl(config.objetBaseUrl || config.OBJET_BASE || buildUrl(publicBase, "/OBJET"));
+
+      window.SITE_BASE = membreBase;
+      window.LCDP_MEMBRE_BASE = membreBase;
+      window.LCDP_PUBLIC_BASE = publicBase;
+      window.LCDP_OBJET_BASE = objetBase;
+
+      window.LCDP_urlMembre = function LCDP_urlMembre(path) {
+        if (typeof config.membreUrl === "function") return config.membreUrl(path);
+        return buildUrl(membreBase, path);
+      };
+
+      window.LCDP_urlObjet = function LCDP_urlObjet(path) {
+        if (typeof config.objetUrl === "function") return config.objetUrl(path);
+        return buildUrl(objetBase, path);
+      };
+
+      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/cssbase.css') + '">');
+    })();
+  </script>
+
+  <style>
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: var(--lcdp-color-background, #f7f4ee);
+      color: var(--lcdp-color-text, #1f2a24);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .lcdp-paiement-cb {
+      width: min(100%, 560px);
+      background: var(--lcdp-color-surface, #fff);
+      border: 1px solid var(--lcdp-color-border, #ddd6cc);
+      border-radius: var(--lcdp-radius-large, 18px);
+      box-shadow: 0 20px 45px rgba(31, 42, 36, 0.12);
+      padding: clamp(24px, 5vw, 40px);
+      text-align: center;
+    }
+
+    .lcdp-paiement-cb h1 {
+      margin: 0 0 14px;
+      font-size: clamp(1.55rem, 4vw, 2rem);
+      line-height: 1.1;
+      color: var(--lcdp-color-title, #31473a);
+    }
+
+    .lcdp-paiement-cb__text,
+    .lcdp-paiement-cb__message {
+      margin: 0 auto 18px;
+      line-height: 1.55;
+      color: var(--lcdp-color-text, #1f2a24);
+    }
+
+    .lcdp-paiement-cb__details {
+      margin: 18px 0;
+      padding: 14px;
+      border: 1px solid var(--lcdp-color-border, #ddd6cc);
+      border-radius: var(--lcdp-radius-medium, 12px);
+      background: var(--lcdp-color-surface-soft, #fbfaf7);
+      text-align: left;
+      font-size: 0.95rem;
+    }
+
+    .lcdp-paiement-cb__actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    @media (min-width: 640px) {
+      .lcdp-paiement-cb__actions {
+        flex-direction: row;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="lcdp-paiement-cb" data-lcdp-paiement-cb>
+    <h1>Paiement CB</h1>
+
+    <p class="lcdp-paiement-cb__text" data-lcdp-paiement-cb-intro>
+      En cliquant sur le lien de paiement, vous serez dirigé(e) vers la solution de paiement CB sécurisée gérée par Stripe.
+    </p>
+
+    <div class="lcdp-paiement-cb__details" data-lcdp-paiement-cb-details hidden></div>
+
+    <p class="lcdp-paiement-cb__message" data-lcdp-paiement-cb-message>
+      Chargement du paiement...
+    </p>
+
+    <div class="lcdp-paiement-cb__actions">
+      <button class="lcdp-button lcdp-button-primary" type="button" data-lcdp-paiement-cb-payer hidden>
+        Accéder au paiement sécurisé Stripe
+      </button>
+
+      <button class="lcdp-button lcdp-button-secondary" type="button" data-lcdp-paiement-cb-recommencer hidden>
+        Recommencer
+      </button>
+
+      <button class="lcdp-button lcdp-button-secondary" type="button" data-lcdp-paiement-cb-quitter hidden>
+        Quitter la page
+      </button>
+    </div>
+  </main>
+
+  <script src="./paiement-cb.js"></script>
+</body>
+</html>
