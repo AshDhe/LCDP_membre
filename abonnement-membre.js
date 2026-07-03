@@ -10,6 +10,12 @@
     "abo-membre-api"
   );
 
+  const ENDPOINT_FACTUPAIEMENT = construireEndpointApi(
+    "workerFactuPaiementUrl",
+    "WORKER_FACTUPAIEMENT_URL",
+    "factupaiement-api"
+  );
+
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
   const PAGE_REGLEMENT_CLUB = construireUrlPublic("/ESPACE-PUBLIC/reglement-club.html");
@@ -272,11 +278,18 @@
   }
 
   async function gererClicDocument(event) {
-    const boutonProlonger = event.target.closest("[data-action='prolonger']");
+    const boutonPayerAbonnement = event.target.closest("[data-action='payer-abonnement']");
+    const boutonProlongerAbonnement = event.target.closest("[data-action='prolonger-abonnement']");
     const boutonFacture = event.target.closest("[data-action='voir-facture']");
 
-    if (boutonProlonger) {
-      await afficherAlerte("Le workflow de changement d'abonnement sera raccordé ensuite.");
+    if (boutonPayerAbonnement) {
+      await afficherAlerte("Le paiement depuis la card abonnement sera raccordé avec le workflow facturation.");
+      return;
+    }
+
+    if (boutonProlongerAbonnement) {
+      const card = boutonProlongerAbonnement.closest("[data-lcdp-box-card-abonnement]");
+      await demarrerWorkflowProlongation(card);
       return;
     }
 
@@ -293,12 +306,123 @@
     await afficherEtapeChoixTypeAbonnement();
   }
 
+  async function demarrerWorkflowProlongation(card) {
+    const abonnement = retrouverAbonnementDepuisCard(card);
+
+    if (!abonnement) {
+      await afficherAlerteSuperposee("Abonnement introuvable.");
+      return;
+    }
+
+    const confirmation = await afficherAlerte("Prolonger votre abonnement ?");
+
+    if (!confirmation) return;
+
+    const typeAbonnement = typeAbonnementDepuisTypabo(abonnement.typabo || abonnement.abonnement || "");
+    const dateDebut = debutProlongationDepuisAbonnement(abonnement);
+
+    if (!typeAbonnement || !dateDebut) {
+      await afficherAlerteSuperposee("Impossible de préparer la prolongation de cet abonnement.");
+      return;
+    }
+
+    etat.workflow = creerWorkflowVide();
+    etat.workflow.modeProlongation = true;
+    etat.workflow.idaboProlonge = String(abonnement.idabo || abonnement.id || "");
+    etat.workflow.abonnementProlonge = abonnement;
+    etat.workflow.typeAbonnement = typeAbonnement;
+    etat.workflow.nbinvitProlongation = nombreInvitesAbonnement(abonnement);
+    etat.workflow.emails = [];
+    etat.workflow.emailsMode = typeAbonnement === "famille" ? "famille-prolongation" : "duo-prolongation";
+    etat.workflow.dateDebut = dateIsoLocale(dateDebut);
+    etat.workflow.dateFin = "";
+    etat.workflow.etape = "duree";
+
+    await afficherEtapeChoixDuree();
+  }
+
+  function retrouverAbonnementDepuisCard(card) {
+    if (!card) return null;
+
+    const idabo = String(card.dataset.idabo || "").trim();
+    const abonnements = Array.isArray(etat.abonnements) ? etat.abonnements : [];
+    const abonnement = idabo
+      ? abonnements.find((ligne) => String(ligne.idabo || ligne.id || "") === idabo)
+      : null;
+
+    if (abonnement) return abonnement;
+
+    return {
+      idabo,
+      typabo: card.dataset.typabo || "",
+      debut: card.dataset.debut || "",
+      fin: card.dataset.fin || "",
+      nbinvit: entierOuDefaut(card.dataset.nbinvit, 0)
+    };
+  }
+
+  function typeAbonnementDepuisTypabo(value) {
+    const texte = String(value || "").trim().toUpperCase();
+
+    if (!texte) return "";
+    if (texte.includes("FAMILLE") || /F(4|7|10)$/.test(texte)) return "famille";
+    if (texte.includes("DUO") || /^(1J|1M|3M|6M|1A)$/.test(texte)) return "duo";
+
+    return "";
+  }
+
+  function nombreInvitesAbonnement(abonnement) {
+    return entierOuDefaut(abonnement?.nbinvit ?? abonnement?.nbInvites ?? abonnement?.nb_invites, 0);
+  }
+
+  function debutProlongationDepuisAbonnement(abonnement) {
+    const fin = lireDateLocale(abonnement?.fin || "");
+
+    if (!fin || Number.isNaN(fin.getTime())) return null;
+
+    return new Date(fin.getFullYear(), fin.getMonth() + 1, 1);
+  }
+
+  function prolongationIncompatibleAvecAbonnements() {
+    const debut = lireDateLocale(etat.workflow.dateDebut);
+    const fin = lireDateLocale(etat.workflow.dateFin);
+    const idaboProlonge = String(etat.workflow.idaboProlonge || "");
+
+    if (!debut || !fin) return true;
+
+    return (Array.isArray(etat.abonnements) ? etat.abonnements : []).some((abonnement) => {
+      const idabo = String(abonnement.idabo || abonnement.id || "");
+
+      if (idaboProlonge && idabo === idaboProlonge) return false;
+
+      const debutExistant = debutJourDate(abonnement.debut);
+      const finExistant = finJourDate(abonnement.fin);
+
+      if (!debutExistant || !finExistant) return false;
+
+      return plagesSeChevauchent(debut, fin, debutExistant, finExistant);
+    });
+  }
+
+  function nombreInvitesWorkflow() {
+    if (etat.workflow.modeProlongation && etat.workflow.typeAbonnement === "famille") {
+      return entierOuDefaut(etat.workflow.nbinvitProlongation, 0);
+    }
+
+    return normaliserListeEmails(etat.workflow.emails).length;
+  }
+
   function creerWorkflowVide() {
     return {
       etape: "type",
+      modeProlongation: false,
+      idaboProlonge: "",
+      abonnementProlonge: null,
+      nbinvitProlongation: 0,
       typeAbonnement: "",
       emails: [],
       emailsMode: "nouveau",
+      emailsFamillePrecharges: [],
       duree: "",
       dateDebut: "",
       dateFin: "",
@@ -306,13 +430,21 @@
       codeRemiseValide: false,
       dernierCodeRemiseValide: "",
       remise: null,
+      typeaboPrix: "",
+      tauxTva: PARAMETRES_ABONNEMENT.tauxTva,
       prixInitialTtc: null,
       prixNetTtc: null,
+      ech: 1,
+      mois1: null,
+      mois2: null,
+      mois3: null,
+      val1x: null,
+      valvrmt: null,
       calendrierMoisAffiche: null,
       calendrierAnneeAffiche: null,
       paiement: {
         echeancier: "comptant",
-        mode: "virement"
+        mode: "cb"
       }
     };
   }
@@ -355,7 +487,7 @@
 
     const valeur = await ouvrirDialogueChoix({
       titre: "",
-      texte: "Choisir un abonnement",
+      texte: "Choisir votre abonnement",
       choix: [
         { label: "Duo", valeur: "duo" },
         { label: "Famille", valeur: "famille" }
@@ -382,6 +514,7 @@
       etat.workflow.dateFin = "";
       etat.workflow.calendrierMoisAffiche = null;
       etat.workflow.calendrierAnneeAffiche = null;
+      reinitialiserPrixEtRemiseWorkflow();
     }
 
     if (valeur === "duo") {
@@ -397,22 +530,31 @@
   function preparerEmailsFamille() {
     const contexte = etat.contexteWorkflow || {};
     const dernierAbonnementFamille = contexte.dernierAbonnementFamille === true;
-    const emailsFamille = Array.isArray(contexte.emailsFamille) ? contexte.emailsFamille : [];
+    const emailsFamille = Array.isArray(contexte.emailsFamille)
+      ? contexte.emailsFamille.map(nettoyerEmail).filter(Boolean).slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille)
+      : [];
+
+    if (etat.workflow.emailsMode === "famille-nouveau" && etat.workflow.emails.length) {
+      etat.workflow.emailsFamillePrecharges = [];
+      return;
+    }
+
+    if (etat.workflow.emailsMode === "famille-existant") {
+      if (dernierAbonnementFamille && etat.workflow.emails.length) return;
+      etat.workflow.emails = [];
+      etat.workflow.emailsFamillePrecharges = [];
+    }
 
     if (dernierAbonnementFamille && emailsFamille.length) {
       etat.workflow.emailsMode = "famille-existant";
-      etat.workflow.emails = emailsFamille
-        .map(nettoyerEmail)
-        .filter(Boolean)
-        .slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille);
+      etat.workflow.emails = emailsFamille.slice();
+      etat.workflow.emailsFamillePrecharges = emailsFamille.slice();
       return;
     }
 
     etat.workflow.emailsMode = "famille-nouveau";
-
-    if (!etat.workflow.emails.length) {
-      etat.workflow.emails = [""];
-    }
+    etat.workflow.emailsFamillePrecharges = [];
+    etat.workflow.emails = etat.workflow.emails.length ? etat.workflow.emails : [""];
   }
 
   async function afficherEtapeEmailDuo() {
@@ -441,7 +583,9 @@
     appliquerClasseWorkflow(box, "email-duo");
     actions.classList.add("lcdp-workflow-abonnement__email-actions");
 
-    titre.textContent = "Indiquez votre invité(e)";
+    titre.textContent = "Membre invité";
+    boutonRetour.textContent = "Précédent";
+    boutonPasser.classList.add("lcdp-workflow-micro-action");
     input.value = etat.workflow.emails[0] || "";
     boutonPasser.hidden = false;
 
@@ -482,7 +626,7 @@
     etat.workflow.etape = "emails-famille";
 
     const modeExistant = etat.workflow.emailsMode === "famille-existant";
-    const titre = "Indiquez vos invités famille";
+    const titre = "Membres invités";
 
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
@@ -514,43 +658,41 @@
     message.hidden = true;
     message.textContent = "";
 
-    const emails = normaliserListeEmails(etat.workflow.emails);
+    const emails = preparerEmailsPourAffichageFamille(etat.workflow.emails, modeExistant);
     if (!emails.length) emails.push("");
     etat.workflow.emails = emails;
 
     for (let index = 0; index < etat.workflow.emails.length; index += 1) {
-      liste.appendChild(await creerCardEmail(index, modeExistant));
+      liste.appendChild(await creerCardEmail(index, modeExistant && index < etat.workflow.emailsFamillePrecharges.length));
     }
 
-    if (!modeExistant) {
-      const zoneAjouter = document.createElement("div");
-      zoneAjouter.className = "lcdp-workflow-abonnement__actions-full";
+    const zoneAjouter = document.createElement("div");
+    zoneAjouter.className = "lcdp-workflow-abonnement__actions-full";
 
-      zoneAjouter.appendChild(creerBouton("Ajouter un invité famille", "lcdp-button-secondary", async () => {
-        sauvegarderEmailsDepuisListe(liste);
+    zoneAjouter.appendChild(creerBouton("Ajouter un invité famille", "lcdp-button-secondary lcdp-workflow-micro-action", async () => {
+      sauvegarderEmailsDepuisListe(liste);
 
-        if (etat.workflow.emails.length >= PARAMETRES_ABONNEMENT.maxInvitesFamille) {
-          await afficherAlerteSuperposee("10 e-mails maximum.");
-          return;
-        }
+      if (etat.workflow.emails.length >= PARAMETRES_ABONNEMENT.maxInvitesFamille) {
+        await afficherAlerteSuperposee("10 e-mails maximum.");
+        return;
+      }
 
-        etat.workflow.emails.push("");
-        await afficherEtapeEmailsFamille();
-      }));
+      etat.workflow.emails.push("");
+      await afficherEtapeEmailsFamille();
+    }));
 
-      actions.appendChild(zoneAjouter);
-    }
+    actions.appendChild(zoneAjouter);
 
     const zoneNavigation = document.createElement("div");
     zoneNavigation.className = "lcdp-workflow-abonnement__actions-row";
-    zoneNavigation.appendChild(creerBouton("Retour", "lcdp-button-secondary", afficherEtapeChoixTypeAbonnement));
+    zoneNavigation.appendChild(creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeChoixTypeAbonnement));
     zoneNavigation.appendChild(creerBouton("Suivant", "lcdp-button-primary", async () => {
       sauvegarderEmailsDepuisListe(liste);
 
       const emailsValides = normaliserListeEmails(etat.workflow.emails);
 
       if (!emailsValides.length) {
-        await afficherAlerteSuperposee("Merci d'indiquer au moins un e-mail invité famille.");
+        await afficherAlerteSuperposee("Vous devez indiquer au moins un e-mail invité pour l'abonnement Famille.");
         return;
       }
 
@@ -585,6 +727,8 @@
     card.dataset.index = String(index);
     input.value = etat.workflow.emails[index] || "";
     input.placeholder = "E-mail du membre invité";
+    boutonModifier.classList.add("lcdp-workflow-micro-action");
+    boutonSupprimer.classList.add("lcdp-workflow-micro-action");
 
     if (modeExistant) {
       input.readOnly = true;
@@ -595,25 +739,26 @@
         if (nouveau === null) return;
         input.value = nettoyerEmail(nouveau);
         etat.workflow.emails[index] = input.value;
+        if (index < etat.workflow.emailsFamillePrecharges.length) {
+          etat.workflow.emailsFamillePrecharges[index] = input.value;
+        }
+      });
+
+      boutonSupprimer.addEventListener("click", async () => {
+        const ok = await afficherAlerteSuperposee("Supprimer cet invité famille ?");
+        if (!ok) return;
+
+        etat.workflow.emails.splice(index, 1);
+        if (index < etat.workflow.emailsFamillePrecharges.length) {
+          etat.workflow.emailsFamillePrecharges.splice(index, 1);
+        }
+        await afficherEtapeEmailsFamille();
       });
     } else {
       input.readOnly = false;
-      boutonModifier.hidden = true;
-      boutonSupprimer.hidden = true;
+      boutonModifier.remove();
+      boutonSupprimer.remove();
     }
-
-    boutonSupprimer.addEventListener("click", async () => {
-      const ok = await afficherAlerteSuperposee("Supprimer cet invité famille ?");
-      if (!ok) return;
-
-      etat.workflow.emails.splice(index, 1);
-
-      if (!etat.workflow.emails.length && !modeExistant) {
-        etat.workflow.emails.push("");
-      }
-
-      await afficherEtapeEmailsFamille();
-    });
 
     return card;
   }
@@ -626,6 +771,33 @@
     });
 
     etat.workflow.emails = emails;
+  }
+
+  function preparerEmailsPourAffichageFamille(source, modeExistant) {
+    const emails = Array.isArray(source)
+      ? source.map(nettoyerEmail).slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille)
+      : [];
+
+    const dejaVus = new Set();
+    const resultat = [];
+
+    emails.forEach((email) => {
+      if (!email) {
+        resultat.push("");
+        return;
+      }
+
+      if (dejaVus.has(email)) return;
+
+      dejaVus.add(email);
+      resultat.push(email);
+    });
+
+    if (!modeExistant) {
+      etat.workflow.emailsFamillePrecharges = [];
+    }
+
+    return resultat.slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille);
   }
 
   async function ouvrirDialogueModifierEmail(valeurInitiale) {
@@ -698,11 +870,12 @@
     const dureeAvant = etat.workflow.duree || "";
     const valeur = await ouvrirDialogueChoix({
       titre: "",
-      texte: "Durée du nouvel abonnement",
+      texte: etat.workflow.modeProlongation ? "Durée de la prolongation" : "Durée de votre abonnement",
       choix: DUREES_ABONNEMENT.map((duree) => ({ label: duree.label, valeur: duree.code })),
       valeurInitiale: dureeAvant,
       boutonSuivant: "Suivant",
-      boutonRetour: "Précédent",
+      boutonRetour: etat.workflow.modeProlongation ? "" : "Précédent",
+      choixMicro: true,
       selectionObligatoire: true,
       onRetour: retourDepuisDuree,
       onFermer: demanderQuitterWorkflow
@@ -714,10 +887,25 @@
     etat.workflow.duree = valeur;
 
     if (dureeChangee) {
-      etat.workflow.dateDebut = "";
+      if (!etat.workflow.modeProlongation) {
+        etat.workflow.dateDebut = "";
+      }
       etat.workflow.dateFin = "";
       etat.workflow.calendrierMoisAffiche = null;
       etat.workflow.calendrierAnneeAffiche = null;
+      reinitialiserPrixEtRemiseWorkflow();
+    }
+
+    if (etat.workflow.modeProlongation) {
+      calculerDatesWorkflow();
+
+      if (prolongationIncompatibleAvecAbonnements()) {
+        await afficherAlerteSuperposee("Durée incompatible avec votre prochain abonnement");
+        return;
+      }
+
+      await afficherEtapeRecapitulatif();
+      return;
     }
 
     if (valeur === "1J") {
@@ -762,8 +950,8 @@
     appliquerClasseWorkflow(box, "calendrier-an");
     boutonSuivant.textContent = "Récapitulatif";
 
-    titre.textContent = "Début du nouvel abonnement";
-    meta.textContent = "Sélectionnez le mois de début du nouvel abonnement.";
+    titre.textContent = "Démarrage";
+    meta.textContent = "Début du nouvel abonnement";
     years.innerHTML = "";
 
     const maintenant = new Date();
@@ -845,6 +1033,12 @@
       afficherAnnee();
     });
 
+    boutonFermer.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      demanderQuitterWorkflow();
+    });
+
     boutonRetour.addEventListener("click", afficherEtapeChoixDuree);
     boutonSuivant.addEventListener("click", async () => {
       if (!etat.workflow.dateDebut) {
@@ -852,8 +1046,13 @@
         return;
       }
 
-      calculerDatesWorkflow();
-      await afficherEtapeRecapitulatif();
+      try {
+        calculerDatesWorkflow();
+        await afficherEtapeRecapitulatif();
+      } catch (error) {
+        console.error(error);
+        await afficherErreurAction(error);
+      }
     });
 
     box.addEventListener("click", (event) => {
@@ -880,15 +1079,33 @@
       bouton.className = "lcdp-box-calendrier-an__month";
       bouton.textContent = nomMois(debutMois);
       bouton.dataset.dateDebut = dateIsoLocale(debutMois);
-      bouton.disabled = statut.disabled;
+      bouton.dataset.statutAbonnement = statut.type || "libre";
       bouton.title = statut.raison || "";
       bouton.setAttribute("aria-pressed", etat.workflow.dateDebut === bouton.dataset.dateDebut ? "true" : "false");
 
-      if (statut.type === "incompatible") {
-        bouton.classList.add("lcdp-box-calendrier-an__month--incompatible");
+      if (statut.type) {
+        bouton.classList.add("lcdp-box-calendrier-an__month--" + statut.type);
       }
 
-      bouton.addEventListener("click", () => {
+      if (statut.disabled) {
+        bouton.setAttribute("aria-disabled", "true");
+        if (statut.type !== "occupe" && statut.type !== "incompatible") {
+          bouton.disabled = true;
+        }
+      } else {
+        bouton.setAttribute("aria-disabled", "false");
+      }
+
+      bouton.addEventListener("click", async () => {
+        if (statut.disabled) {
+          if (statut.type === "occupe") {
+            await afficherAlerteSuperposee("Vous êtes déjà abonné(e) à cette date");
+          } else if (statut.type === "incompatible") {
+            await afficherAlerteSuperposee("Date incompatible avec votre prochain abonnement");
+          }
+          return;
+        }
+
         etat.workflow.dateDebut = bouton.dataset.dateDebut;
         etat.workflow.dateFin = "";
 
@@ -912,37 +1129,36 @@
     const premierMoisCourant = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
     const duree = obtenirDuree(etat.workflow.duree);
     const finCandidate = finAbonnementDepuisDebut(debutMois, duree);
-    const finCourante = finAbonnementEnCours();
     const abonnements = Array.isArray(etat.abonnements) ? etat.abonnements : [];
+    const finMoisCible = finMoisDate(debutMois);
 
     if (debutMois <= premierMoisCourant) {
       return { disabled: true, type: "passe", raison: debutMois < premierMoisCourant ? "Mois passé" : "Mois en cours" };
     }
 
-    if (finCourante && debutMois <= finCourante) {
-      return { disabled: true, type: "occupe", raison: "Abonnement en cours" };
+    const moisDejaAbonne = abonnements.some((abonnement) => {
+      const debut = debutMoisDate(abonnement.debut);
+      const fin = finMoisDate(abonnement.fin);
+      if (!debut || !fin || !finMoisCible) return false;
+      return plagesSeChevauchent(debutMois, finMoisCible, debut, fin);
+    });
+
+    if (moisDejaAbonne) {
+      return { disabled: true, type: "occupe", raison: "Mois déjà abonné" };
     }
 
-    const chevauchement = abonnements.find((abonnement) => {
+    const abonnementIncompatible = abonnements.some((abonnement) => {
       const debut = debutMoisDate(abonnement.debut);
       const fin = finMoisDate(abonnement.fin);
       if (!debut || !fin) return false;
       return plagesSeChevauchent(debutMois, finCandidate, debut, fin);
     });
 
-    if (!chevauchement) {
-      return { disabled: false, type: "libre", raison: "" };
+    if (abonnementIncompatible) {
+      return { disabled: true, type: "incompatible", raison: "Date incompatible avec votre prochain abonnement" };
     }
 
-    const debutChevauchement = debutMoisDate(chevauchement.debut);
-    const finChevauchement = finMoisDate(chevauchement.fin);
-    const moisLuiMemeOccupe = debutChevauchement && finChevauchement && plagesSeChevauchent(debutMois, finMoisDate(debutMois), debutChevauchement, finChevauchement);
-
-    return {
-      disabled: true,
-      type: moisLuiMemeOccupe ? "occupe" : "incompatible",
-      raison: moisLuiMemeOccupe ? "Mois déjà occupé" : "Durée incompatible avec un abonnement à venir"
-    };
+    return { disabled: false, type: "libre", raison: "" };
   }
 
   async function afficherEtapeCalendrierJour() {
@@ -971,8 +1187,8 @@
     appliquerClasseWorkflow(box, "calendrier-mois");
     box.classList.add("lcdp-box-calendrier-mois--abonnement");
 
-    titre.textContent = "Début du nouvel abonnement";
-    meta.textContent = "Sélectionnez le jour du nouvel abonnement.";
+    titre.textContent = "Démarrage";
+    meta.textContent = "Début du nouvel abonnement";
 
     const maintenant = new Date();
     const moisMinimum = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
@@ -1053,10 +1269,31 @@
         bouton.className = "lcdp-box-calendrier-mois-abonnement__day";
         bouton.textContent = String(jour);
         bouton.dataset.dateDebut = dateIsoLocale(date);
-        bouton.disabled = statut.disabled;
+        bouton.dataset.statutAbonnement = statut.type || "libre";
         bouton.title = statut.raison || "";
         bouton.setAttribute("aria-pressed", etat.workflow.dateDebut === bouton.dataset.dateDebut ? "true" : "false");
-        bouton.addEventListener("click", () => {
+
+        if (statut.type) {
+          bouton.classList.add("lcdp-box-calendrier-mois-abonnement__day--" + statut.type);
+        }
+
+        if (statut.disabled) {
+          bouton.setAttribute("aria-disabled", "true");
+          if (statut.type !== "occupe") {
+            bouton.disabled = true;
+          }
+        } else {
+          bouton.setAttribute("aria-disabled", "false");
+        }
+
+        bouton.addEventListener("click", async () => {
+          if (statut.disabled) {
+            if (statut.type === "occupe") {
+              await afficherAlerteSuperposee("Vous êtes déjà abonné(e) à cette date");
+            }
+            return;
+          }
+
           etat.workflow.dateDebut = bouton.dataset.dateDebut;
           etat.workflow.dateFin = bouton.dataset.dateDebut;
 
@@ -1087,6 +1324,12 @@
       afficherMois();
     });
 
+    boutonFermer.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      demanderQuitterWorkflow();
+    });
+
     box.addEventListener("click", (event) => {
       if (event.target === box) demanderQuitterWorkflow();
     });
@@ -1112,16 +1355,16 @@
     const finCourante = finAbonnementEnCours();
     const abonnements = Array.isArray(etat.abonnements) ? etat.abonnements : [];
 
-    if (date < aujourdHui) {
-      return { disabled: true, raison: "Date passée" };
+    if (date <= aujourdHui) {
+      return { disabled: true, type: "passe", raison: "Date passée ou jour en cours" };
     }
 
     if (date > dateMaximum) {
-      return { disabled: true, raison: "Date trop lointaine" };
+      return { disabled: true, type: "passe", raison: "Date trop lointaine" };
     }
 
     if (finCourante && date <= finCourante) {
-      return { disabled: true, raison: "Abonnement en cours" };
+      return { disabled: true, type: "occupe", raison: "Abonnement en cours" };
     }
 
     const occupe = abonnements.some((abonnement) => {
@@ -1132,15 +1375,15 @@
     });
 
     if (occupe) {
-      return { disabled: true, raison: "Date déjà occupée" };
+      return { disabled: true, type: "occupe", raison: "Date déjà occupée" };
     }
 
-    return { disabled: false, raison: "" };
+    return { disabled: false, type: "libre", raison: "" };
   }
 
   async function afficherEtapeRecapitulatif() {
     etat.workflow.etape = "recap";
-    calculerPrixWorkflow();
+    await calculerPrixWorkflow();
 
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
@@ -1164,28 +1407,43 @@
 
     remplirRecapitulatif(slot);
 
+    boutonValiderCode.textContent = "Calculer";
+    inputCode.maxLength = 10;
     inputCode.value = etat.workflow.codeRemise || "";
-    boutonValiderCode.disabled = etat.workflow.codeRemiseValide && etat.workflow.dernierCodeRemiseValide === nettoyerCodeRemise(inputCode.value);
+    actualiserBoutonCalculerRemise(inputCode, boutonValiderCode);
 
     inputCode.addEventListener("input", () => {
       const code = nettoyerCodeRemise(inputCode.value);
-      boutonValiderCode.disabled = etat.workflow.codeRemiseValide && etat.workflow.dernierCodeRemiseValide === code;
+
+      if (inputCode.value !== code) {
+        inputCode.value = code;
+      }
+
+      if (etat.workflow.codeRemiseValide && etat.workflow.dernierCodeRemiseValide !== code) {
+        reinitialiserRemiseWorkflow();
+      }
+
+      actualiserBoutonCalculerRemise(inputCode, boutonValiderCode);
     });
 
     boutonValiderCode.addEventListener("click", async () => {
       const code = nettoyerCodeRemise(inputCode.value);
 
-      if (!code) {
-        afficherMessageInline(message, "Merci de renseigner un code remise.");
-        return;
-      }
+      if (!code) return;
 
       try {
         await verifierCodeRemise(code);
-        boutonValiderCode.disabled = true;
+        inputCode.value = etat.workflow.codeRemise || code;
+        actualiserBoutonCalculerRemise(inputCode, boutonValiderCode);
         await afficherEtapeRecapitulatif();
       } catch (error) {
-        afficherMessageInline(message, error.message || "Code remise non applicable.");
+        await afficherAlerteSuperposee(error.message || "Code remise non applicable.");
+        inputCode.value = "";
+        reinitialiserRemiseWorkflow();
+        await calculerPrixWorkflow();
+        remplirRecapitulatif(slot);
+        actualiserBoutonCalculerRemise(inputCode, boutonValiderCode);
+        inputCode.focus();
       }
     });
 
@@ -1198,7 +1456,14 @@
 
       await afficherEtapeCalendrierMois();
     });
-    boutonPayer.addEventListener("click", afficherEtapePaiement);
+    boutonPayer.addEventListener("click", async () => {
+      if (paiementCbDirectDepuisRecapitulatif()) {
+        await demarrerPaiementStripe();
+        return;
+      }
+
+      await afficherEtapePaiement();
+    });
 
     box.addEventListener("click", (event) => {
       if (event.target === box) demanderQuitterWorkflow();
@@ -1209,7 +1474,8 @@
     const workflow = etat.workflow;
     const typeLabel = libelleTypeAbonnement(workflow.typeAbonnement);
     const dureeLabel = libelleDuree(workflow.duree);
-    const tvaLabel = "(TVA " + String(PARAMETRES_ABONNEMENT.tauxTva) + "%)";
+    const tauxTva = nombreOuNull(workflow.tauxTva) ?? PARAMETRES_ABONNEMENT.tauxTva;
+    const tvaLabel = "(TVA " + String(tauxTva).replace(".", ",") + "%)";
 
     remplirTexte(racine, "[data-lcdp-recaporder-abonnement]", typeLabel + " - " + dureeLabel);
     remplirTexte(racine, "[data-lcdp-recaporder-debut]", formaterDate(workflow.dateDebut));
@@ -1225,12 +1491,17 @@
 
     if (invitesLabel && invitesElement) {
       if (workflow.typeAbonnement === "famille") {
-        const nombre = emails.length;
+        const nombre = nombreInvitesWorkflow();
         const pluriel = nombre > 1 ? "s" : "";
         invitesLabel.textContent = "Invité(s) Famille";
-        invitesElement.textContent = nombre
-          ? String(nombre) + " invité" + pluriel + " : " + emails.join(", ")
-          : "-";
+
+        if (workflow.modeProlongation) {
+          invitesElement.textContent = nombre ? String(nombre) + " invité" + pluriel : "-";
+        } else {
+          invitesElement.textContent = nombre
+            ? String(nombre) + " invité" + pluriel + " : " + emails.join(", ")
+            : "-";
+        }
       } else {
         invitesLabel.textContent = "Invité Duo";
         invitesElement.textContent = emails[0] || "-";
@@ -1242,6 +1513,25 @@
 
     if (lienClub) lienClub.href = PAGE_REGLEMENT_CLUB;
     if (lienApplication) lienApplication.href = PAGE_REGLEMENT_APPLICATION;
+  }
+
+  function actualiserBoutonCalculerRemise(inputCode, boutonCalculer) {
+    if (!inputCode || !boutonCalculer) return;
+
+    const code = nettoyerCodeRemise(inputCode.value);
+    const dejaCalcule = etat.workflow.codeRemiseValide && etat.workflow.dernierCodeRemiseValide === code;
+    const desactive = !code || dejaCalcule;
+
+    boutonCalculer.disabled = desactive;
+    boutonCalculer.setAttribute("aria-disabled", desactive ? "true" : "false");
+  }
+
+  function reinitialiserRemiseWorkflow() {
+    etat.workflow.codeRemise = "";
+    etat.workflow.codeRemiseValide = false;
+    etat.workflow.dernierCodeRemiseValide = "";
+    etat.workflow.remise = null;
+    etat.workflow.prixNetTtc = etat.workflow.prixInitialTtc;
   }
 
   async function verifierCodeRemise(code) {
@@ -1275,7 +1565,30 @@
     etat.workflow.codeRemiseValide = true;
     etat.workflow.dernierCodeRemiseValide = code;
     etat.workflow.remise = data.remise || null;
-    etat.workflow.prixNetTtc = nombreOuNull(data.prixNetTtc ?? data.prix_net_ttc ?? etat.workflow.prixNetTtc);
+    etat.workflow.typeaboPrix = data.typeaboPrix || data.typeabo || etat.workflow.typeaboPrix || "";
+    etat.workflow.tauxTva = nombreOuNull(data.txtvafr ?? data.tauxTva ?? data.tva ?? etat.workflow.tauxTva) ?? PARAMETRES_ABONNEMENT.tauxTva;
+    etat.workflow.prixInitialTtc = nombreOuNull(data.prixInitialTtc ?? data.bruttc ?? data.prixabottc ?? etat.workflow.prixInitialTtc);
+    etat.workflow.prixNetTtc = nombreOuNull(data.prixNetTtc ?? data.nettc ?? data.prix_net_ttc ?? etat.workflow.prixNetTtc);
+    etat.workflow.ech = entierOuDefaut(data.ech ?? etat.workflow.ech, 1);
+    etat.workflow.mois1 = nombreOuNull(data.mois1 ?? etat.workflow.mois1);
+    etat.workflow.mois2 = nombreOuNull(data.mois2 ?? etat.workflow.mois2);
+    etat.workflow.mois3 = nombreOuNull(data.mois3 ?? etat.workflow.mois3);
+    etat.workflow.val1x = nombreOuNull(data.val1x ?? data["1xval"] ?? etat.workflow.val1x);
+    etat.workflow.valvrmt = nombreOuNull(data.valvrmt ?? data.vrmt ?? etat.workflow.valvrmt);
+  }
+
+  function paiementCbDirectDepuisRecapitulatif() {
+    const nbEcheances = Math.max(1, entierOuDefaut(etat.workflow.ech, 1));
+
+    return nbEcheances <= 1;
+  }
+
+  async function demarrerPaiementStripe() {
+    etat.workflow.paiement.echeancier = "comptant";
+    etat.workflow.paiement.mode = "cb";
+
+    await afficherAlerteSuperposee("Le paiement Stripe sera raccordé ensuite.");
+    await afficherEtapeRecapitulatif();
   }
 
   async function afficherEtapePaiement() {
@@ -1304,49 +1617,55 @@
 
     appliquerClasseWorkflow(dialogue, "paiement");
 
-    titre.textContent = "Paiement";
-    texte.textContent = "Choisissez les modalités de paiement.";
+    titre.textContent = "Mode de paiement";
+    texte.textContent = "";
+    texte.hidden = true;
     actions.innerHTML = "";
 
     const zone = document.createElement("div");
     zone.className = "lcdp-workflow-paiement";
 
-    const economie = PARAMETRES_ABONNEMENT.economiesPaiementComptantTtc[etat.workflow.typeAbonnement];
-    const nbEcheances = PARAMETRES_ABONNEMENT.echeancesPaiement[etat.workflow.typeAbonnement] || 2;
-    const echeances = calculerEcheancesPaiement(nbEcheances);
+    const nbEcheances = Math.max(1, entierOuDefaut(etat.workflow.ech, 1));
+    if (nbEcheances <= 1 && etat.workflow.paiement.echeancier === "echelonne") {
+      etat.workflow.paiement.echeancier = "comptant";
+    }
+
+    if (etat.workflow.paiement.mode === "virement" && !virementAutorisePourWorkflow()) {
+      etat.workflow.paiement.mode = "cb";
+    }
 
     zone.appendChild(creerOptionRadioPaiement({
       name: "echeancier-abonnement",
       value: "comptant",
-      checked: etat.workflow.paiement.echeancier === "comptant",
-      label: economie
-        ? "Payer en 1 fois et économiser " + formaterMontant(economie) + " TTC"
-        : "Payer en 1 fois",
-      detail: "Montant : " + formaterMontant(etat.workflow.prixNetTtc)
+      checked: etat.workflow.paiement.echeancier !== "echelonne",
+      label: libellePaiement1x(),
+      detail: "Montant : " + formaterMontant(montantPaiement1x())
     }));
 
-    zone.appendChild(creerOptionRadioPaiement({
-      name: "echeancier-abonnement",
-      value: "echelonne",
-      checked: etat.workflow.paiement.echeancier === "echelonne",
-      label: "Payer en " + nbEcheances + " fois sans frais",
-      detail: echeances.join(" / ")
-    }));
+    if (nbEcheances > 1) {
+      zone.appendChild(creerOptionRadioPaiement({
+        name: "echeancier-abonnement",
+        value: "echelonne",
+        checked: etat.workflow.paiement.echeancier === "echelonne",
+        label: "Payer en " + String(nbEcheances) + "x sans frais",
+        detail: calculerEcheancesPaiementDepuisPrix().join(" / ")
+      }));
+    }
 
     zone.appendChild(creerOptionRadioPaiement({
       name: "mode-paiement-abonnement",
       value: "virement",
       checked: etat.workflow.paiement.mode === "virement",
-      label: "Payer par virement dans les 15 jours",
-      detail: "Disponible uniquement pour le paiement en 1 fois."
+      label: "Payer par virement",
+      detail: detailPaiementVirement()
     }));
 
     zone.appendChild(creerOptionRadioPaiement({
       name: "mode-paiement-abonnement",
       value: "cb",
       checked: etat.workflow.paiement.mode === "cb",
-      label: "Payer par CB dès maintenant",
-      detail: "Sélectionné automatiquement en cas de paiement échelonné."
+      label: "Payer par CB",
+      detail: ""
     }));
 
     const confirmationLabel = document.createElement("label");
@@ -1356,7 +1675,7 @@
     confirmation.type = "checkbox";
     confirmation.dataset.confirmationPaiement = "1";
     confirmationLabel.appendChild(confirmation);
-    confirmationLabel.append("Je confirme que mon abonnement n'est pas utilisable tant que je ne respecte pas les règles de paiement de la somme due.");
+    confirmationLabel.append("Mon abonnement n'est pas utilisable tant que je ne respecte pas les échéances de paiement.");
     zone.appendChild(confirmationLabel);
 
     const message = document.createElement("p");
@@ -1365,34 +1684,48 @@
     zone.appendChild(message);
 
     actions.appendChild(zone);
-    actions.appendChild(creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeRecapitulatif));
-    actions.appendChild(creerBouton("Annuler", "lcdp-button-secondary", demanderQuitterWorkflow));
-    actions.appendChild(creerBouton("Confirmer", "lcdp-button-primary", async () => {
+    actions.appendChild(creerBouton("Payer", "lcdp-button-primary", async () => {
       lireOptionsPaiementDepuisDialogue(slot);
 
       if (!confirmation.checked) {
-        afficherMessageInline(message, "Merci de confirmer la règle de paiement.");
+        await afficherAlerteSuperposee("Vous devez cocher la case d'acceptation d'utilisation de l'abonnement.");
+        return;
+      }
+
+      if (etat.workflow.paiement.mode === "virement" && !virementAutorisePourWorkflow()) {
+        await afficherAlerteSuperposee("Vous n'avez plus assez de temps pour payer par virement avant le début de cet abonnement.");
+        basculerPaiementSurCb(slot);
         return;
       }
 
       if (etat.workflow.paiement.mode === "cb") {
-        await afficherAlerteSuperposee("Le paiement Stripe sera raccordé ensuite.");
-        await afficherEtapeRecapitulatif();
+        await demarrerPaiementStripe();
         return;
       }
 
       await enregistrerCommandeVirement();
     }));
+    actions.appendChild(creerBouton("Annuler", "lcdp-button-secondary lcdp-workflow-micro-action", demanderQuitterWorkflow));
+    actions.appendChild(creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeRecapitulatif));
 
     synchroniserOptionsPaiement(slot);
 
     slot.querySelectorAll("input[name='echeancier-abonnement'], input[name='mode-paiement-abonnement']").forEach((input) => {
-      input.addEventListener("change", () => {
+      input.addEventListener("change", async () => {
+        const demandeVirement = input.name === "mode-paiement-abonnement" && input.value === "virement" && input.checked;
+
+        if (demandeVirement && !virementAutorisePourWorkflow()) {
+          await afficherAlerteSuperposee("Vous n'avez plus assez de temps pour payer par virement avant le début de cet abonnement.");
+          basculerPaiementSurCb(slot);
+          return;
+        }
+
         lireOptionsPaiementDepuisDialogue(slot);
         synchroniserOptionsPaiement(slot);
       });
     });
 
+    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
     dialogue.addEventListener("click", (event) => {
       if (event.target === dialogue) demanderQuitterWorkflow();
     });
@@ -1424,7 +1757,7 @@
 
   function lireOptionsPaiementDepuisDialogue(racine) {
     const echeancier = racine.querySelector("input[name='echeancier-abonnement']:checked")?.value || "comptant";
-    let mode = racine.querySelector("input[name='mode-paiement-abonnement']:checked")?.value || "virement";
+    let mode = racine.querySelector("input[name='mode-paiement-abonnement']:checked")?.value || "cb";
 
     if (echeancier === "echelonne") {
       mode = "cb";
@@ -1435,26 +1768,67 @@
   }
 
   function synchroniserOptionsPaiement(racine) {
-    const echeancier = etat.workflow.paiement.echeancier || "comptant";
+    const nbEcheances = Math.max(1, entierOuDefaut(etat.workflow.ech, 1));
+    let echeancier = etat.workflow.paiement.echeancier || "comptant";
     const virement = racine.querySelector("input[name='mode-paiement-abonnement'][value='virement']");
     const cb = racine.querySelector("input[name='mode-paiement-abonnement'][value='cb']");
 
     if (!virement || !cb) return;
+
+    if (etat.workflow.paiement.mode === "virement" && !virementAutorisePourWorkflow()) {
+      virement.checked = false;
+      cb.checked = true;
+      etat.workflow.paiement.mode = "cb";
+    }
+
+    if (nbEcheances <= 1 && echeancier === "echelonne") {
+      echeancier = "comptant";
+      etat.workflow.paiement.echeancier = "comptant";
+    }
 
     if (echeancier === "echelonne") {
       virement.checked = false;
       virement.disabled = true;
       cb.checked = true;
       etat.workflow.paiement.mode = "cb";
-      return;
+    } else {
+      virement.disabled = false;
+
+      if (!virement.checked && !cb.checked) {
+        cb.checked = true;
+        etat.workflow.paiement.mode = "cb";
+      }
     }
 
-    virement.disabled = false;
+    racine.querySelectorAll(".lcdp-workflow-paiement__option").forEach((option) => {
+      const input = option.querySelector("input[type='radio']");
+      option.classList.toggle("lcdp-workflow-paiement__option--selected", Boolean(input && input.checked));
+      option.classList.toggle("lcdp-workflow-paiement__option--disabled", Boolean(input && input.disabled));
+    });
+  }
 
-    if (!virement.checked && !cb.checked) {
-      virement.checked = true;
-      etat.workflow.paiement.mode = "virement";
-    }
+  function basculerPaiementSurCb(racine) {
+    etat.workflow.paiement.mode = "cb";
+
+    const virement = racine?.querySelector("input[name='mode-paiement-abonnement'][value='virement']");
+    const cb = racine?.querySelector("input[name='mode-paiement-abonnement'][value='cb']");
+
+    if (virement) virement.checked = false;
+    if (cb) cb.checked = true;
+
+    synchroniserOptionsPaiement(racine || document);
+  }
+
+  function virementAutorisePourWorkflow() {
+    const debut = lireDateLocale(etat.workflow.dateDebut);
+
+    if (!debut) return false;
+
+    const aujourdHui = debutJour(new Date());
+    const debutAbonnement = debutJour(debut);
+    const diffJours = Math.floor((debutAbonnement.getTime() - aujourdHui.getTime()) / 86400000);
+
+    return diffJours >= 10;
   }
 
   async function enregistrerCommandeVirement() {
@@ -1484,18 +1858,76 @@
       throw new Error(messageErreurApi(data, "Impossible d'enregistrer la commande."));
     }
 
-    await afficherAlerte(
-      "La commande d'abonnement est enregistrée sous le n° " +
-      String(data.orderid || data.commande?.orderid || "") +
-      ". Le récapitulatif a été envoyé par mail avec le RIB de l'association et le rappel des règles de paiement par virement : 1. Indiquer le montant de la commande dans l'objet du virement. 2. Payer dans les 15 jours +/- 2 jours."
-    );
+    await afficherConfirmationCommande(data);
+  }
 
-    window.location.href = PAGE_ABONNEMENT_MEMBRE;
+  async function afficherConfirmationCommande(data) {
+    const slot = await obtenirWorkflowAbonnementContenu();
+    await preparerTransitionWorkflow(slot);
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    slot.appendChild(fragment);
+
+    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
+    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
+    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
+
+    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
+      throw new Error("Structure confirmation commande incomplète.");
+    }
+
+    appliquerClasseWorkflow(dialogue, "confirmation");
+
+    titre.textContent = "Confirmation de votre commande";
+    texte.textContent = "Votre commande est enregistrée. Merci de votre confiance. Un e-mail vous a été envoyé avec le récapitulatif et nos coordonnées bancaires pour le virement.\nÀ bientôt dans les parcs !";
+    actions.innerHTML = "";
+
+    const quitter = () => {
+      window.location.href = PAGE_ABONNEMENT_MEMBRE;
+    };
+
+    actions.appendChild(creerBouton("OK", "lcdp-button-primary", quitter));
+    boutonFermer.addEventListener("click", quitter);
+    dialogue.addEventListener("click", (event) => {
+      if (event.target === dialogue) quitter();
+    });
   }
 
   function creerPayloadCommande(extra = {}) {
     calculerDatesWorkflow();
-    calculerPrixWorkflow();
+
+    return {
+      typeAbonnement: etat.workflow.typeAbonnement,
+      typabo: etat.workflow.typeAbonnement,
+      typeaboPrix: etat.workflow.typeaboPrix,
+      duree: etat.workflow.duree,
+      debut: etat.workflow.dateDebut,
+      fin: etat.workflow.dateFin,
+      emails: normaliserListeEmails(etat.workflow.emails),
+      tva: etat.workflow.tauxTva,
+      txtvafr: etat.workflow.tauxTva,
+      prixInitialTtc: etat.workflow.prixInitialTtc,
+      prixNetTtc: etat.workflow.prixNetTtc,
+      ech: etat.workflow.ech,
+      mois1: etat.workflow.mois1,
+      mois2: etat.workflow.mois2,
+      mois3: etat.workflow.mois3,
+      val1x: etat.workflow.val1x,
+      valvrmt: etat.workflow.valvrmt,
+      codeRemise: etat.workflow.codeRemise,
+      remise: etat.workflow.remise,
+      paiement: etat.workflow.paiement,
+      modeProlongation: etat.workflow.modeProlongation === true,
+      idaboProlonge: etat.workflow.idaboProlonge || "",
+      nbinvit: nombreInvitesWorkflow(),
+      ...extra
+    };
+  }
+
+  function creerPayloadPrix(extra = {}) {
+    calculerDatesWorkflow();
 
     return {
       typeAbonnement: etat.workflow.typeAbonnement,
@@ -1503,13 +1935,11 @@
       duree: etat.workflow.duree,
       debut: etat.workflow.dateDebut,
       fin: etat.workflow.dateFin,
-      emails: etat.workflow.emails,
-      tva: PARAMETRES_ABONNEMENT.tauxTva,
-      prixInitialTtc: etat.workflow.prixInitialTtc,
-      prixNetTtc: etat.workflow.prixNetTtc,
-      codeRemise: etat.workflow.codeRemise,
-      remise: etat.workflow.remise,
-      paiement: etat.workflow.paiement,
+      emails: normaliserListeEmails(etat.workflow.emails),
+      codeRemise: etat.workflow.codeRemiseValide ? etat.workflow.dernierCodeRemiseValide : "",
+      modeProlongation: etat.workflow.modeProlongation === true,
+      idaboProlonge: etat.workflow.idaboProlonge || "",
+      nbinvit: nombreInvitesWorkflow(),
       ...extra
     };
   }
@@ -1525,18 +1955,65 @@
     etat.workflow.dateFin = dateIsoLocale(fin);
   }
 
-  function calculerPrixWorkflow() {
-    const tarifsType = PARAMETRES_ABONNEMENT.tarifsTtc[etat.workflow.typeAbonnement] || {};
-    const prixInitial = nombreOuNull(tarifsType[etat.workflow.duree]);
+  async function calculerPrixWorkflow() {
+    if (!ENDPOINT_ABO_MEMBRE) {
+      throw new Error("Le service abonnement membre n’est pas configuré.");
+    }
 
-    etat.workflow.prixInitialTtc = prixInitial;
+    const reponse = await fetch(ENDPOINT_ABO_MEMBRE + "/calculer-prix", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(creerPayloadPrix())
+    });
 
-    if (etat.workflow.remise && montantValide(etat.workflow.remise.prixNetTtc)) {
-      etat.workflow.prixNetTtc = nombreOuNull(etat.workflow.remise.prixNetTtc);
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
       return;
     }
 
-    etat.workflow.prixNetTtc = prixInitial;
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Impossible de calculer le prix de l'abonnement."));
+    }
+
+    const prixInitial = nombreOuNull(data.prixInitialTtc ?? data.bruttc ?? data.prixabottc);
+    const tauxTva = nombreOuNull(data.txtvafr ?? data.tauxTva ?? data.tva) ?? PARAMETRES_ABONNEMENT.tauxTva;
+
+    etat.workflow.typeaboPrix = data.typeaboPrix || data.typeabo || "";
+    etat.workflow.tauxTva = tauxTva;
+    etat.workflow.prixInitialTtc = prixInitial;
+    etat.workflow.ech = entierOuDefaut(data.ech, 1);
+    etat.workflow.mois1 = nombreOuNull(data.mois1);
+    etat.workflow.mois2 = nombreOuNull(data.mois2);
+    etat.workflow.mois3 = nombreOuNull(data.mois3);
+    etat.workflow.val1x = nombreOuNull(data.val1x ?? data["1xval"]);
+    etat.workflow.valvrmt = nombreOuNull(data.valvrmt ?? data.vrmt);
+
+    const prixNet = nombreOuNull(data.prixNetTtc ?? data.nettc);
+    etat.workflow.prixNetTtc = prixNet === null ? prixInitial : prixNet;
+  }
+
+  function reinitialiserPrixEtRemiseWorkflow() {
+    etat.workflow.codeRemise = "";
+    etat.workflow.codeRemiseValide = false;
+    etat.workflow.dernierCodeRemiseValide = "";
+    etat.workflow.remise = null;
+    etat.workflow.typeaboPrix = "";
+    etat.workflow.tauxTva = PARAMETRES_ABONNEMENT.tauxTva;
+    etat.workflow.prixInitialTtc = null;
+    etat.workflow.prixNetTtc = null;
+    etat.workflow.ech = 1;
+    etat.workflow.mois1 = null;
+    etat.workflow.mois2 = null;
+    etat.workflow.mois3 = null;
+    etat.workflow.val1x = null;
+    etat.workflow.valvrmt = null;
   }
 
   async function ouvrirDialogueChoix(options) {
@@ -1581,7 +2058,7 @@
     (options.choix || []).forEach((choix) => {
       const bouton = document.createElement("button");
       bouton.type = "button";
-      bouton.className = "lcdp-button lcdp-button-secondary";
+      bouton.className = "lcdp-button lcdp-button-secondary" + (options.choixMicro === true ? " lcdp-workflow-micro-action" : "");
       bouton.textContent = choix.label || choix.valeur || "";
       bouton.dataset.workflowChoix = choix.valeur || "";
       bouton.setAttribute("aria-pressed", bouton.dataset.workflowChoix === valeur ? "true" : "false");
@@ -1629,14 +2106,24 @@
       actions.appendChild(zoneNavigation);
       actualiserEtatSuivant();
 
-      boutonFermer.addEventListener("click", () => {
-        if (typeof options.onFermer === "function") options.onFermer();
+      async function gererDemandeFermeture() {
+        if (typeof options.onFermer === "function") {
+          const fermetureConfirmee = await options.onFermer();
+          if (fermetureConfirmee !== true) return;
+        }
+
         fermer(null);
+      }
+
+      boutonFermer.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        gererDemandeFermeture();
       });
       dialogue.addEventListener("click", (event) => {
         if (event.target === dialogue) {
-          if (typeof options.onFermer === "function") options.onFermer();
-          fermer(null);
+          event.stopPropagation();
+          gererDemandeFermeture();
         }
       });
     });
@@ -1647,7 +2134,10 @@
 
     if (ok) {
       window.location.href = PAGE_ABONNEMENT_MEMBRE;
+      return true;
     }
+
+    return false;
   }
 
   async function ouvrirFacture(card) {
@@ -1656,16 +2146,53 @@
       return;
     }
 
-    const facture = {
-      orderid: card.dataset.orderid || "",
-      orderdate: card.dataset.orderdate || "",
-      ht: card.dataset.ht || "",
-      tva: card.dataset.tva || "",
-      ttc: card.dataset.ttc || ""
-    };
+    const orderid = String(card.dataset.orderid || "").trim();
 
-    if (!facture.orderid) {
+    if (!orderid) {
       await afficherAlerte("Commande non renseignée.");
+      return;
+    }
+
+    if (!ENDPOINT_FACTUPAIEMENT) {
+      await afficherAlerte("Le service facturation n’est pas configuré.");
+      return;
+    }
+
+    let facture = null;
+
+    try {
+      const reponse = await fetch(
+        ENDPOINT_FACTUPAIEMENT + "/facture?orderid=" + encodeURIComponent(orderid),
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            "Accept": "application/json"
+          }
+        }
+      );
+
+      const data = await reponse.json().catch(() => null);
+
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+
+      if (!reponse.ok || !data || !reponseApiOk(data)) {
+        throw new Error(messageErreurApi(data, "Impossible de charger la facture."));
+      }
+
+      facture = data.facture || null;
+    } catch (error) {
+      console.error("Erreur chargement facture abonnement :", error);
+      await afficherAlerte(error.message || "Impossible de charger la facture.");
+      return;
+    }
+
+    if (!facture) {
+      await afficherAlerte("Facture introuvable.");
       return;
     }
 
@@ -1677,13 +2204,14 @@
 
     const box = slot.querySelector("[data-lcdp-box-facture]");
     const boutonFermer = slot.querySelector("[data-lcdp-facture-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-facture-ok]");
+    const boutonImprimer = slot.querySelector("[data-lcdp-facture-print]");
 
-    remplirTexte(slot, "[data-lcdp-facture-orderid]", facture.orderid);
-    remplirTexte(slot, "[data-lcdp-facture-orderdate]", formaterDate(facture.orderdate));
-    remplirTexte(slot, "[data-lcdp-facture-ht]", formaterMontant(facture.ht));
-    remplirTexte(slot, "[data-lcdp-facture-tva]", formaterMontant(facture.tva));
-    remplirTexte(slot, "[data-lcdp-facture-ttc]", formaterMontant(facture.ttc));
+    if (!box || !boutonFermer || !boutonImprimer) {
+      slot.innerHTML = "";
+      throw new Error("Structure facture incomplète.");
+    }
+
+    await remplirFacture(slot, facture);
 
     return new Promise((resolve) => {
       let resolu = false;
@@ -1691,18 +2219,194 @@
       function fermer() {
         if (resolu) return;
         resolu = true;
+        document.body.classList.remove("lcdp-print-facture-active");
         slot.innerHTML = "";
         resolve(true);
       }
 
-      if (boutonFermer) boutonFermer.addEventListener("click", fermer);
-      if (boutonOk) boutonOk.addEventListener("click", fermer);
-      if (box) {
-        box.addEventListener("click", (event) => {
-          if (event.target === box) fermer();
-        });
-      }
+      boutonFermer.addEventListener("click", fermer);
+      box.addEventListener("click", (event) => {
+        if (event.target === box) fermer();
+      });
+
+      boutonImprimer.addEventListener("click", () => {
+        document.body.classList.add("lcdp-print-facture-active");
+        window.print();
+      });
     });
+  }
+
+  async function remplirFacture(racine, facture) {
+    remplirTexte(racine, "[data-lcdp-facture-date]", formaterDate(facture.datefacture || facture.date || ""));
+
+    const slotEmetteur = racine.querySelector("[data-lcdp-facture-emetteur-slot]");
+    const slotDestinataire = racine.querySelector("[data-lcdp-facture-destinataire-slot]");
+    const slotCard = racine.querySelector("[data-lcdp-facture-card-slot]");
+    const slotMentions = racine.querySelector("[data-lcdp-facture-mentions-slot]");
+
+    if (!slotEmetteur || !slotDestinataire || !slotCard || !slotMentions) {
+      throw new Error("Slots facture incomplets.");
+    }
+
+    slotEmetteur.appendChild(await creerCardCoordonneesFacture("Émetteur", null));
+    slotDestinataire.appendChild(await creerCardCoordonneesFacture("Destinataire", facture.destinataire || {}));
+    slotCard.appendChild(await creerCardDetailFacture(facture));
+    slotMentions.appendChild(await creerCardMentionsFacture(facture));
+  }
+
+  async function creerCardCoordonneesFacture(titreCard, donnees) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-coordonnees-facture.html");
+    const card = fragment.querySelector("[data-lcdp-card-coordonnees-facture]");
+    const titre = fragment.querySelector("[data-lcdp-coordonnees-facture-title]");
+    const nom = fragment.querySelector("[data-lcdp-coordonnees-facture-nom]");
+    const lignes = fragment.querySelector("[data-lcdp-coordonnees-facture-lignes]");
+
+    if (!card || !titre || !nom || !lignes) {
+      throw new Error("Structure coordonnées facture incomplète.");
+    }
+
+    titre.textContent = titreCard || titre.textContent || "Coordonnées";
+
+    if (donnees) {
+      nom.textContent = donnees.nom || "Non renseigné";
+      lignes.innerHTML = "";
+
+      (Array.isArray(donnees.lignes) ? donnees.lignes : []).filter(Boolean).forEach((ligne) => {
+        const item = document.createElement("span");
+        item.textContent = ligne;
+        lignes.appendChild(item);
+      });
+    }
+
+    return card;
+  }
+
+  async function creerCardDetailFacture(facture) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-facture.html");
+    const card = fragment.querySelector("[data-lcdp-card-facture]");
+    const slotProduit = fragment.querySelector("[data-lcdp-facture-produit-slot]");
+    const slotPrix = fragment.querySelector("[data-lcdp-facture-prix-slot]");
+    const slotPaiement = fragment.querySelector("[data-lcdp-facture-paiement-slot]");
+
+    if (!card || !slotProduit || !slotPrix || !slotPaiement) {
+      throw new Error("Structure card facture incomplète.");
+    }
+
+    slotProduit.appendChild(await creerCardProduitFacture(facture.produit || {}));
+    slotPrix.appendChild(await creerCardPrixFacture(facture.prix || {}));
+    slotPaiement.appendChild(await creerCardPaiementFacture(facture.paiement || {}));
+
+    return card;
+  }
+
+  async function creerCardProduitFacture(produit) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-produit-in-facture.html");
+    remplirTexte(fragment, "[data-lcdp-facture-produit-orderid]", produit.orderid || "Non renseigné");
+    remplirTexte(fragment, "[data-lcdp-facture-produit-type]", produit.libelle || produit.typabo || "Non renseigné");
+    remplirTexte(fragment, "[data-lcdp-facture-produit-debut]", formaterDate(produit.debut));
+    remplirTexte(fragment, "[data-lcdp-facture-produit-fin]", formaterDate(produit.fin) + " inclus");
+
+    const rowInvites = fragment.querySelector("[data-lcdp-facture-produit-invites-row]");
+    const invites = fragment.querySelector("[data-lcdp-facture-produit-invites]");
+    const nbInvites = Number(produit.nbinvit || 0);
+
+    if (rowInvites && invites) {
+      rowInvites.hidden = nbInvites <= 0;
+      invites.textContent = nbInvites > 0 ? String(nbInvites) : "";
+    }
+
+    return fragment;
+  }
+
+  async function creerCardPrixFacture(prix) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-prix-in-facture.html");
+    const listeRemises = fragment.querySelector("[data-lcdp-facture-prix-remises]");
+
+    remplirTexte(fragment, "[data-lcdp-facture-prix-brut-label]", "Prix TTC (TVA " + formaterTaux(prix.tva1) + "%) €");
+    remplirTexte(fragment, "[data-lcdp-facture-prix-brut]", formaterMontant(prix.bruttc));
+    remplirTexte(fragment, "[data-lcdp-facture-prix-apayer]", formaterMontant(prix.netnettc));
+    remplirTexte(fragment, "[data-lcdp-facture-prix-ht]", formaterMontant(prix.ht));
+    remplirTexte(fragment, "[data-lcdp-facture-prix-tva]", formaterMontant(prix.tva));
+
+    if (listeRemises) {
+      listeRemises.innerHTML = "";
+      ajouterLigneRemiseFacture(listeRemises, "Remise (TTC) €", prix.valrembrut);
+      ajouterLigneRemiseFacture(listeRemises, "Remise paiement 1x (TTC) €", prix.val1x);
+      ajouterLigneRemiseFacture(listeRemises, "Remise virement (TTC) €", prix.valvrmt);
+    }
+
+    return fragment;
+  }
+
+  function ajouterLigneRemiseFacture(liste, libelle, montant) {
+    const valeur = nombreOuNull(montant);
+
+    if (!liste || valeur === null || valeur <= 0) return;
+
+    const row = document.createElement("div");
+    row.className = "lcdp-box-card-prix-in-facture__row";
+
+    const label = document.createElement("span");
+    label.textContent = libelle;
+
+    const prix = document.createElement("strong");
+    prix.textContent = "-" + formaterMontant(valeur);
+
+    row.appendChild(label);
+    row.appendChild(prix);
+    liste.appendChild(row);
+  }
+
+  async function creerCardPaiementFacture(paiement) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-paiement-in-facture.html");
+    const echeances = fragment.querySelector("[data-lcdp-facture-paiement-echeances]");
+    const ribRow = fragment.querySelector("[data-lcdp-facture-paiement-rib-row]");
+    const rib = fragment.querySelector("[data-lcdp-facture-paiement-rib]");
+
+    remplirTexte(fragment, "[data-lcdp-facture-paiement-mode]", paiement.mode || "Non renseigné");
+
+    if (echeances) {
+      echeances.innerHTML = "";
+      (Array.isArray(paiement.echeances) ? paiement.echeances : []).forEach((echeance) => {
+        const row = document.createElement("div");
+        row.className = "lcdp-box-card-paiement-in-facture__row";
+
+        const label = document.createElement("span");
+        label.textContent = "Échéance " + String(echeance.numero || "") + " :";
+
+        const valeur = document.createElement("strong");
+        valeur.textContent = formaterDate(echeance.date) + " - " + formaterMontant(echeance.montant);
+
+        row.appendChild(label);
+        row.appendChild(valeur);
+        echeances.appendChild(row);
+      });
+    }
+
+    if (ribRow && rib) {
+      const afficherRib = paiement.afficherRib === true;
+      ribRow.hidden = !afficherRib;
+    }
+
+    return fragment;
+  }
+
+  async function creerCardMentionsFacture(facture) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-mentions-facture.html");
+
+    if (facture && facture.mentions) {
+      remplirTexte(fragment, "[data-lcdp-facture-mentions]", facture.mentions);
+    }
+
+    return fragment;
+  }
+
+  function formaterTaux(valeur) {
+    const nombre = nombreOuNull(valeur);
+
+    if (nombre === null) return "20";
+
+    return Number.isInteger(nombre) ? String(nombre) : String(nombre).replace(".", ",");
   }
 
   function obtenirZoneListe() {
@@ -1812,6 +2516,7 @@
     const card = etat.templateAbonnement.cloneNode(true);
     const commande = normaliserCommande(abonnement);
     const categorie = categorieAbonnement(abonnement);
+    const libelles = analyserLibelleAbonnementCarte(abonnement);
 
     if (categorie === "passe") {
       card.classList.add("lcdp-box-card-abonnement--passe");
@@ -1820,30 +2525,203 @@
     card.dataset.idabo = String(abonnement.idabo || abonnement.id || "");
     card.dataset.orderid = commande.orderid;
     card.dataset.orderdate = commande.orderdate;
+    card.dataset.typabo = String(abonnement.typabo || abonnement.abonnement || "");
+    card.dataset.debut = String(abonnement.debut || "");
+    card.dataset.fin = String(abonnement.fin || "");
+    card.dataset.nbinvit = String(abonnement.nbinvit ?? abonnement.nbInvites ?? abonnement.nb_invites ?? 0);
     card.dataset.ht = normaliserMontantBrut(commande.ht);
     card.dataset.tva = normaliserMontantBrut(commande.tva);
     card.dataset.ttc = normaliserMontantBrut(commande.ttc);
 
-    remplirTexte(card, "[data-lcdp-card-abonnement-type]", abonnement.typabo || abonnement.abonnement || "Non renseigné");
+    remplirTexte(card, "[data-lcdp-card-abonnement-type]", libelles.nom);
     remplirTexte(card, "[data-lcdp-card-abonnement-debut]", formaterDate(abonnement.debut));
     remplirTexte(card, "[data-lcdp-card-abonnement-fin]", formaterDate(abonnement.fin));
     remplirTexte(card, "[data-lcdp-card-abonnement-orderid]", commande.orderid || "Non renseigné");
+
+    const mentionInvites = card.querySelector("[data-lcdp-card-abonnement-invites]");
+    if (mentionInvites) {
+      remplirMentionLibelleValeur(mentionInvites, "Nombre d'invités :", libelles.mentionInvites || "");
+      mentionInvites.hidden = !libelles.mentionInvites;
+    }
+
+    const mentionSuspension = card.querySelector("[data-lcdp-card-abonnement-suspension]");
+    if (mentionSuspension) {
+      const texteSuspension = construireMentionSuspension(abonnement, commande);
+      mentionSuspension.textContent = texteSuspension;
+      mentionSuspension.hidden = !texteSuspension;
+    }
+
+    const boutonAction = card.querySelector("[data-action='prolonger-abonnement'], [data-action='payer-abonnement']");
+    if (boutonAction) {
+      if (estAbonnementSuspenduImpaye(abonnement, commande)) {
+        boutonAction.textContent = "Payer";
+        boutonAction.dataset.action = "payer-abonnement";
+      } else {
+        boutonAction.textContent = "Prolonger";
+        boutonAction.dataset.action = "prolonger-abonnement";
+      }
+    }
+
+    const metaPrixPaiement = card.querySelector("[data-lcdp-card-abonnement-prix-paiement]");
+    if (metaPrixPaiement) {
+      remplirMetaPrixPaiementCarte(metaPrixPaiement, commande);
+    }
+
+    const metaCodeRemise = card.querySelector("[data-lcdp-card-abonnement-code-remise]");
+    if (metaCodeRemise) {
+      remplirMentionLibelleValeur(metaCodeRemise, "Code remise :", commande.codeRemise || "");
+      metaCodeRemise.hidden = !commande.codeRemise;
+    }
 
     appliquerRoutesSite(card);
 
     return card;
   }
 
+  function analyserLibelleAbonnementCarte(abonnement) {
+    const valeurBrute = String(abonnement.typabo || abonnement.abonnement || "").trim();
+    const valeur = valeurBrute.toUpperCase();
+    const match = valeur.match(/^(1J|1M|3M|6M|1A)(?:F(4|7|10))?$/);
+
+    if (match) {
+      const duree = match[1];
+      const palierFamille = match[2] || "";
+      const nbInvites = entierOuDefaut(abonnement.nbinvit ?? abonnement.nbInvites ?? abonnement.nb_invites, 0);
+      return {
+        nom: (palierFamille ? "Famille" : "Duo") + " - " + libelleDuree(duree),
+        mentionInvites: palierFamille && nbInvites > 0 ? String(nbInvites) : ""
+      };
+    }
+
+    const type = normaliserTypeAbonnementCarte(valeurBrute);
+    const nbInvites = entierOuDefaut(abonnement.nbinvit ?? abonnement.nbInvites ?? abonnement.nb_invites, 0);
+    return {
+      nom: type ? libelleTypeAbonnement(type) : (valeurBrute || "Non renseigné"),
+      mentionInvites: type === "famille" && nbInvites > 0 ? String(nbInvites) : ""
+    };
+  }
+
+  function normaliserTypeAbonnementCarte(value) {
+    const texte = String(value || "").trim().toLowerCase();
+    if (texte === "famille" || texte.includes("famille")) return "famille";
+    if (texte === "duo" || texte.includes("duo")) return "duo";
+    return "";
+  }
+
+  function remplirMetaPrixPaiementCarte(element, commande) {
+    if (!element) return;
+
+    element.innerHTML = "";
+
+    const taux = calculerTauxTvaCommande(commande);
+    const tvaLabel = taux === null ? "TVA" : "TVA " + formaterNombreTva(taux) + "%";
+    const prix = formaterMontant(commande.ttc);
+    const modePaiement = commande.modePaiement || "Virmt 1x";
+
+    ajouterTexteMention(element, "Prix net TTC (" + tvaLabel + ") : ", false);
+    ajouterTexteMention(element, prix, true);
+    ajouterTexteMention(element, " - Paiement par ", false);
+    ajouterTexteMention(element, modePaiement, true);
+  }
+
+  function remplirMentionLibelleValeur(element, libelle, valeur) {
+    if (!element) return;
+
+    element.innerHTML = "";
+
+    if (!valeur) return;
+
+    ajouterTexteMention(element, libelle + " ", false);
+    ajouterTexteMention(element, valeur, true);
+  }
+
+  function ajouterTexteMention(parent, texte, valeurForte) {
+    const span = document.createElement("span");
+    span.className = valeurForte
+      ? "lcdp-box-card-abonnement__mention-value"
+      : "lcdp-box-card-abonnement__mention-label";
+    span.textContent = texte || "";
+    parent.appendChild(span);
+  }
+
+  function calculerTauxTvaCommande(commande) {
+    const tauxDirect = nombreOuNull(commande.txtvafr ?? commande.tauxTva ?? commande.tvaPourcent);
+    if (tauxDirect !== null) return tauxDirect;
+
+    const ht = nombreOuNull(commande.ht);
+    const tva = nombreOuNull(commande.tva);
+    if (!ht || ht <= 0 || tva === null) return null;
+    return arrondirMontant((tva / ht) * 100);
+  }
+
+  function formaterNombreTva(value) {
+    const nombre = nombreOuNull(value);
+    if (nombre === null) return "";
+    return Number.isInteger(nombre) ? String(nombre) : String(nombre).replace(".", ",");
+  }
+
   function normaliserCommande(abonnement) {
     const commande = abonnement.commande || abonnement.ca || {};
+    const paiement1x = commande.paiement1x === true || abonnement.paiement1x === true || abonnement["1x"] === true;
+    const paiementVirement = commande.vrmt === true || abonnement.vrmt === true;
+    const ech = entierOuDefaut(commande.ech ?? abonnement.ech, 1);
 
     return {
       orderid: String(commande.orderid || abonnement.orderid || "").trim(),
-      orderdate: commande.orderdate || abonnement.orderdate || "",
+      orderdate: commande.orderdate || abonnement.created_at || abonnement.orderdate || "",
       ht: commande.ht ?? abonnement.ht ?? "",
       tva: commande.tva ?? abonnement.tva ?? "",
-      ttc: commande.ttc ?? abonnement.ttc ?? ""
+      ttc: commande.netnettc ?? commande.ttc ?? abonnement.netnettc ?? abonnement.ttc ?? "",
+      prixInitialTtc: commande.bruttc ?? commande.prixinitialttc ?? commande.prixInitialTtc ?? abonnement.bruttc ?? abonnement.prixinitialttc ?? abonnement.prixInitialTtc ?? "",
+      txtvafr: commande.tva1 ?? commande.txtvafr ?? commande.tauxTva ?? abonnement.tva1 ?? abonnement.txtvafr ?? abonnement.tauxTva ?? "",
+      modePaiement: construireLibellePaiementCarte({ paiement1x, paiementVirement, ech }),
+      codeRemise: nettoyerCodeRemise(
+        commande.idrembrut ||
+        commande.coderemise ||
+        commande.codeRemise ||
+        abonnement.idrembrut ||
+        abonnement.coderemise ||
+        abonnement.codeRemise ||
+        ""
+      ),
+      statutPaiement: String(commande.statutabo || abonnement.statutabo || commande.statutpaiement || commande.statutPaiement || abonnement.statutpaiement || abonnement.statutPaiement || "").trim().toLowerCase(),
+      dateSuspension: commande.datesuspension || abonnement.datesuspension || abonnement.dateSuspension || ""
     };
+  }
+
+  function construireLibellePaiementCarte(options) {
+    const ech = entierOuDefaut(options?.ech, 1);
+
+    if (options?.paiementVirement) return "Virmt 1x";
+    if (options?.paiement1x) return "CB 1x";
+    if (ech > 1) return "CB " + String(ech) + "x";
+
+    return "CB 1x";
+  }
+
+  function estAbonnementSuspenduImpaye(abonnement, commande) {
+    const statut = String(commande?.statutPaiement || abonnement?.statutpaiement || abonnement?.statutPaiement || "").trim().toLowerCase();
+    return Boolean(
+      abonnement?.suspendu === true ||
+      abonnement?.actif === false && statut.includes("impay") ||
+      statut.includes("suspend") ||
+      statut.includes("impay") ||
+      commande?.dateSuspension ||
+      abonnement?.datesuspension ||
+      abonnement?.dateSuspension
+    );
+  }
+
+  function construireMentionSuspension(abonnement, commande) {
+    if (!estAbonnementSuspenduImpaye(abonnement, commande)) return "";
+
+    const dateSuspension = commande?.dateSuspension || abonnement?.datesuspension || abonnement?.dateSuspension || "";
+
+    if (dateSuspension) {
+      return "Suspendu depuis le " + formaterDate(dateSuspension) + " pour impayé";
+    }
+
+    return "Suspendu pour impayé";
   }
 
   async function afficherAlerteSuperposee(message) {
@@ -1961,11 +2839,24 @@
     bouton.addEventListener("click", () => {
       Promise.resolve(action()).catch(async (error) => {
         console.error(error);
-        await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
+        await afficherErreurAction(error);
       });
     });
 
     return bouton;
+  }
+
+  async function afficherErreurAction(error) {
+    const message = error && error.message
+      ? error.message
+      : "Erreur technique. Merci de réessayer.";
+
+    if (document.querySelector("[data-lcdp-box-workflow-abonnement]")) {
+      await afficherAlerteSuperposee(message);
+      return;
+    }
+
+    await afficherAlerte(message);
   }
 
   function appliquerRoutesSite(racine = document) {
@@ -2148,16 +3039,37 @@
   async function preparerTransitionWorkflow(slot) {
     if (!slot) return;
 
-    const contenuActuel = slot.firstElementChild;
-
-    if (!contenuActuel) {
+    if (!slot.firstElementChild) {
       slot.innerHTML = "";
       return;
     }
 
-    contenuActuel.classList.add("lcdp-workflow-abonnement-box--sortie");
-    await attendre(120);
+    const workflow = slot.closest("[data-lcdp-box-workflow-abonnement]");
+    const card = workflow?.querySelector("[data-lcdp-workflow-abonnement-card]");
+
+    if (card) {
+      const hauteurActuelle = card.getBoundingClientRect().height;
+      card.scrollTop = 0;
+
+      if (hauteurActuelle > 0) {
+        card.style.minHeight = Math.ceil(hauteurActuelle) + "px";
+      }
+    }
+
+    slot.classList.add("lcdp-box-workflow-abonnement__content--transition");
+    await attendre(70);
     slot.innerHTML = "";
+    slot.classList.remove("lcdp-box-workflow-abonnement__content--transition");
+
+    if (card) {
+      window.requestAnimationFrame(() => {
+        card.scrollTop = 0;
+
+        window.setTimeout(() => {
+          card.style.minHeight = "";
+        }, 140);
+      });
+    }
   }
 
   function appliquerClasseWorkflow(box, variante) {
@@ -2323,7 +3235,8 @@
   function nettoyerCodeRemise(value) {
     return String(value || "")
       .trim()
-      .toUpperCase();
+      .toUpperCase()
+      .slice(0, 10);
   }
 
   function nomMois(date) {
@@ -2380,6 +3293,10 @@
     return nombre !== null && nombre > 0;
   }
 
+  function arrondirMontant(value) {
+    return Math.round(Number(value || 0) * 100) / 100;
+  }
+
   function formaterMontant(valeur) {
     const nombre = nombreOuNull(valeur);
 
@@ -2399,19 +3316,63 @@
     return formaterMontant(nombre);
   }
 
-  function calculerEcheancesPaiement(nombreEcheances) {
+  function calculerEcheancesPaiementDepuisPrix() {
     const debut = lireDateLocale(etat.workflow.dateDebut) || new Date();
-    const montant = nombreOuNull(etat.workflow.prixNetTtc) || 0;
-    const montantEcheance = montant / nombreEcheances;
-    const lignes = [];
+    const montants = [etat.workflow.mois1, etat.workflow.mois2, etat.workflow.mois3]
+      .map(nombreOuNull)
+      .filter((montant) => montant !== null && montant > 0);
 
-    for (let index = 0; index < nombreEcheances; index += 1) {
+    return montants.map((montant, index) => {
       const moisReference = index - 1;
       const date = new Date(debut.getFullYear(), debut.getMonth() + moisReference + 1, 0);
-      lignes.push("mois " + String(index + 1) + " : " + formaterDate(dateIsoLocale(date)) + " - " + formaterMontant(montantEcheance));
+      return "mois " + String(index + 1) + " : " + formaterDate(dateIsoLocale(date)) + " - " + formaterMontant(montant);
+    });
+  }
+
+  function libellePaiement1x() {
+    const valeur = nombreOuNull(etat.workflow.val1x) || 0;
+
+    if (valeur > 0) {
+      return "Payer en 1x - " + formaterMontantCourt(valeur) + " offerts";
     }
 
-    return lignes;
+    return "Payer en 1x";
+  }
+
+  function montantPaiement1x() {
+    const prixNet = nombreOuNull(etat.workflow.prixNetTtc) || 0;
+    const valeur = nombreOuNull(etat.workflow.val1x) || 0;
+
+    return Math.max(0, arrondirMontant(prixNet - valeur));
+  }
+
+  function detailPaiementVirement() {
+    const economieVirement = nombreOuNull(etat.workflow.valvrmt);
+    const suffixe = "Uniquement pour le paiement en 1x.";
+
+    if (economieVirement && economieVirement > 0) {
+      return "Economisez " + formaterMontantCourt(economieVirement) + " de plus en payant par virement dans les 10 jours. " + suffixe;
+    }
+
+    return suffixe;
+  }
+
+  function entierOuDefaut(value, defaut) {
+    const nombre = Number(value);
+
+    return Number.isInteger(nombre) ? nombre : defaut;
+  }
+
+  function formaterMontantCourt(value) {
+    const nombre = nombreOuNull(value);
+
+    if (nombre === null) return "0 €";
+
+    if (Number.isInteger(nombre)) {
+      return nombre.toLocaleString("fr-FR") + " €";
+    }
+
+    return formaterMontant(nombre);
   }
 
   function nettoyerBaseUrl(value) {
