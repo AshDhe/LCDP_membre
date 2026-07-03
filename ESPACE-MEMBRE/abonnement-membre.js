@@ -305,6 +305,7 @@
       typeAbonnement: "",
       emails: [],
       emailsMode: "nouveau",
+      emailsFamillePrecharges: [],
       duree: "",
       dateDebut: "",
       dateFin: "",
@@ -326,7 +327,7 @@
       calendrierAnneeAffiche: null,
       paiement: {
         echeancier: "comptant",
-        mode: "virement"
+        mode: "cb"
       }
     };
   }
@@ -417,21 +418,25 @@
       : [];
 
     if (etat.workflow.emailsMode === "famille-nouveau" && etat.workflow.emails.length) {
+      etat.workflow.emailsFamillePrecharges = [];
       return;
     }
 
     if (etat.workflow.emailsMode === "famille-existant") {
       if (dernierAbonnementFamille && etat.workflow.emails.length) return;
       etat.workflow.emails = [];
+      etat.workflow.emailsFamillePrecharges = [];
     }
 
     if (dernierAbonnementFamille && emailsFamille.length) {
       etat.workflow.emailsMode = "famille-existant";
-      etat.workflow.emails = emailsFamille;
+      etat.workflow.emails = emailsFamille.slice();
+      etat.workflow.emailsFamillePrecharges = emailsFamille.slice();
       return;
     }
 
     etat.workflow.emailsMode = "famille-nouveau";
+    etat.workflow.emailsFamillePrecharges = [];
     etat.workflow.emails = etat.workflow.emails.length ? etat.workflow.emails : [""];
   }
 
@@ -541,27 +546,25 @@
     etat.workflow.emails = emails;
 
     for (let index = 0; index < etat.workflow.emails.length; index += 1) {
-      liste.appendChild(await creerCardEmail(index, modeExistant));
+      liste.appendChild(await creerCardEmail(index, modeExistant && index < etat.workflow.emailsFamillePrecharges.length));
     }
 
-    if (!modeExistant) {
-      const zoneAjouter = document.createElement("div");
-      zoneAjouter.className = "lcdp-workflow-abonnement__actions-full";
+    const zoneAjouter = document.createElement("div");
+    zoneAjouter.className = "lcdp-workflow-abonnement__actions-full";
 
-      zoneAjouter.appendChild(creerBouton("Ajouter un invité famille", "lcdp-button-secondary lcdp-workflow-micro-action", async () => {
-        sauvegarderEmailsDepuisListe(liste);
+    zoneAjouter.appendChild(creerBouton("Ajouter un invité famille", "lcdp-button-secondary lcdp-workflow-micro-action", async () => {
+      sauvegarderEmailsDepuisListe(liste);
 
-        if (etat.workflow.emails.length >= PARAMETRES_ABONNEMENT.maxInvitesFamille) {
-          await afficherAlerteSuperposee("10 e-mails maximum.");
-          return;
-        }
+      if (etat.workflow.emails.length >= PARAMETRES_ABONNEMENT.maxInvitesFamille) {
+        await afficherAlerteSuperposee("10 e-mails maximum.");
+        return;
+      }
 
-        etat.workflow.emails.push("");
-        await afficherEtapeEmailsFamille();
-      }));
+      etat.workflow.emails.push("");
+      await afficherEtapeEmailsFamille();
+    }));
 
-      actions.appendChild(zoneAjouter);
-    }
+    actions.appendChild(zoneAjouter);
 
     const zoneNavigation = document.createElement("div");
     zoneNavigation.className = "lcdp-workflow-abonnement__actions-row";
@@ -619,6 +622,9 @@
         if (nouveau === null) return;
         input.value = nettoyerEmail(nouveau);
         etat.workflow.emails[index] = input.value;
+        if (index < etat.workflow.emailsFamillePrecharges.length) {
+          etat.workflow.emailsFamillePrecharges[index] = input.value;
+        }
       });
 
       boutonSupprimer.addEventListener("click", async () => {
@@ -626,6 +632,9 @@
         if (!ok) return;
 
         etat.workflow.emails.splice(index, 1);
+        if (index < etat.workflow.emailsFamillePrecharges.length) {
+          etat.workflow.emailsFamillePrecharges.splice(index, 1);
+        }
         await afficherEtapeEmailsFamille();
       });
     } else {
@@ -648,10 +657,6 @@
   }
 
   function preparerEmailsPourAffichageFamille(source, modeExistant) {
-    if (modeExistant) {
-      return normaliserListeEmails(source);
-    }
-
     const emails = Array.isArray(source)
       ? source.map(nettoyerEmail).slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille)
       : [];
@@ -670,6 +675,10 @@
       dejaVus.add(email);
       resultat.push(email);
     });
+
+    if (!modeExistant) {
+      etat.workflow.emailsFamillePrecharges = [];
+    }
 
     return resultat.slice(0, PARAMETRES_ABONNEMENT.maxInvitesFamille);
   }
@@ -989,37 +998,36 @@
     const premierMoisCourant = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
     const duree = obtenirDuree(etat.workflow.duree);
     const finCandidate = finAbonnementDepuisDebut(debutMois, duree);
-    const finCourante = finAbonnementEnCours();
     const abonnements = Array.isArray(etat.abonnements) ? etat.abonnements : [];
+    const finMoisCible = finMoisDate(debutMois);
 
     if (debutMois <= premierMoisCourant) {
       return { disabled: true, type: "passe", raison: debutMois < premierMoisCourant ? "Mois passé" : "Mois en cours" };
     }
 
-    if (finCourante && debutMois <= finCourante) {
-      return { disabled: true, type: "occupe", raison: "Abonnement en cours" };
+    const moisDejaAbonne = abonnements.some((abonnement) => {
+      const debut = debutMoisDate(abonnement.debut);
+      const fin = finMoisDate(abonnement.fin);
+      if (!debut || !fin || !finMoisCible) return false;
+      return plagesSeChevauchent(debutMois, finMoisCible, debut, fin);
+    });
+
+    if (moisDejaAbonne) {
+      return { disabled: true, type: "occupe", raison: "Mois déjà abonné" };
     }
 
-    const chevauchement = abonnements.find((abonnement) => {
+    const abonnementIncompatible = abonnements.some((abonnement) => {
       const debut = debutMoisDate(abonnement.debut);
       const fin = finMoisDate(abonnement.fin);
       if (!debut || !fin) return false;
       return plagesSeChevauchent(debutMois, finCandidate, debut, fin);
     });
 
-    if (!chevauchement) {
-      return { disabled: false, type: "libre", raison: "" };
+    if (abonnementIncompatible) {
+      return { disabled: true, type: "incompatible", raison: "Date incompatible avec votre prochain abonnement" };
     }
 
-    const debutChevauchement = debutMoisDate(chevauchement.debut);
-    const finChevauchement = finMoisDate(chevauchement.fin);
-    const moisLuiMemeOccupe = debutChevauchement && finChevauchement && plagesSeChevauchent(debutMois, finMoisDate(debutMois), debutChevauchement, finChevauchement);
-
-    return {
-      disabled: true,
-      type: moisLuiMemeOccupe ? "occupe" : "incompatible",
-      raison: moisLuiMemeOccupe ? "Mois déjà occupé" : "Durée incompatible avec un abonnement à venir"
-    };
+    return { disabled: false, type: "libre", raison: "" };
   }
 
   async function afficherEtapeCalendrierJour() {
@@ -1595,7 +1603,7 @@
 
   function lireOptionsPaiementDepuisDialogue(racine) {
     const echeancier = racine.querySelector("input[name='echeancier-abonnement']:checked")?.value || "comptant";
-    let mode = racine.querySelector("input[name='mode-paiement-abonnement']:checked")?.value || "virement";
+    let mode = racine.querySelector("input[name='mode-paiement-abonnement']:checked")?.value || "cb";
 
     if (echeancier === "echelonne") {
       mode = "cb";
@@ -1627,8 +1635,8 @@
       virement.disabled = false;
 
       if (!virement.checked && !cb.checked) {
-        virement.checked = true;
-        etat.workflow.paiement.mode = "virement";
+        cb.checked = true;
+        etat.workflow.paiement.mode = "cb";
       }
     }
 
