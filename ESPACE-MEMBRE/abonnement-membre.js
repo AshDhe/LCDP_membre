@@ -282,7 +282,8 @@
     }
 
     if (boutonProlongerAbonnement) {
-      await demarrerWorkflowNouvelAbonnement();
+      const card = boutonProlongerAbonnement.closest("[data-lcdp-box-card-abonnement]");
+      await demarrerWorkflowProlongation(card);
       return;
     }
 
@@ -299,9 +300,119 @@
     await afficherEtapeChoixTypeAbonnement();
   }
 
+  async function demarrerWorkflowProlongation(card) {
+    const abonnement = retrouverAbonnementDepuisCard(card);
+
+    if (!abonnement) {
+      await afficherAlerteSuperposee("Abonnement introuvable.");
+      return;
+    }
+
+    const confirmation = await afficherAlerte("Prolonger votre abonnement ?");
+
+    if (!confirmation) return;
+
+    const typeAbonnement = typeAbonnementDepuisTypabo(abonnement.typabo || abonnement.abonnement || "");
+    const dateDebut = debutProlongationDepuisAbonnement(abonnement);
+
+    if (!typeAbonnement || !dateDebut) {
+      await afficherAlerteSuperposee("Impossible de préparer la prolongation de cet abonnement.");
+      return;
+    }
+
+    etat.workflow = creerWorkflowVide();
+    etat.workflow.modeProlongation = true;
+    etat.workflow.idaboProlonge = String(abonnement.idabo || abonnement.id || "");
+    etat.workflow.abonnementProlonge = abonnement;
+    etat.workflow.typeAbonnement = typeAbonnement;
+    etat.workflow.nbinvitProlongation = nombreInvitesAbonnement(abonnement);
+    etat.workflow.emails = [];
+    etat.workflow.emailsMode = typeAbonnement === "famille" ? "famille-prolongation" : "duo-prolongation";
+    etat.workflow.dateDebut = dateIsoLocale(dateDebut);
+    etat.workflow.dateFin = "";
+    etat.workflow.etape = "duree";
+
+    await afficherEtapeChoixDuree();
+  }
+
+  function retrouverAbonnementDepuisCard(card) {
+    if (!card) return null;
+
+    const idabo = String(card.dataset.idabo || "").trim();
+    const abonnements = Array.isArray(etat.abonnements) ? etat.abonnements : [];
+    const abonnement = idabo
+      ? abonnements.find((ligne) => String(ligne.idabo || ligne.id || "") === idabo)
+      : null;
+
+    if (abonnement) return abonnement;
+
+    return {
+      idabo,
+      typabo: card.dataset.typabo || "",
+      debut: card.dataset.debut || "",
+      fin: card.dataset.fin || "",
+      nbinvit: entierOuDefaut(card.dataset.nbinvit, 0)
+    };
+  }
+
+  function typeAbonnementDepuisTypabo(value) {
+    const texte = String(value || "").trim().toUpperCase();
+
+    if (!texte) return "";
+    if (texte.includes("FAMILLE") || /F(4|7|10)$/.test(texte)) return "famille";
+    if (texte.includes("DUO") || /^(1J|1M|3M|6M|1A)$/.test(texte)) return "duo";
+
+    return "";
+  }
+
+  function nombreInvitesAbonnement(abonnement) {
+    return entierOuDefaut(abonnement?.nbinvit ?? abonnement?.nbInvites ?? abonnement?.nb_invites, 0);
+  }
+
+  function debutProlongationDepuisAbonnement(abonnement) {
+    const fin = lireDateLocale(abonnement?.fin || "");
+
+    if (!fin || Number.isNaN(fin.getTime())) return null;
+
+    return new Date(fin.getFullYear(), fin.getMonth() + 1, 1);
+  }
+
+  function prolongationIncompatibleAvecAbonnements() {
+    const debut = lireDateLocale(etat.workflow.dateDebut);
+    const fin = lireDateLocale(etat.workflow.dateFin);
+    const idaboProlonge = String(etat.workflow.idaboProlonge || "");
+
+    if (!debut || !fin) return true;
+
+    return (Array.isArray(etat.abonnements) ? etat.abonnements : []).some((abonnement) => {
+      const idabo = String(abonnement.idabo || abonnement.id || "");
+
+      if (idaboProlonge && idabo === idaboProlonge) return false;
+
+      const debutExistant = debutJourDate(abonnement.debut);
+      const finExistant = finJourDate(abonnement.fin);
+
+      if (!debutExistant || !finExistant) return false;
+
+      return plagesSeChevauchent(debut, fin, debutExistant, finExistant);
+    });
+  }
+
+  function nombreInvitesWorkflow() {
+    if (etat.workflow.modeProlongation && etat.workflow.typeAbonnement === "famille") {
+      return entierOuDefaut(etat.workflow.nbinvitProlongation, 0);
+    }
+
+    return normaliserListeEmails(etat.workflow.emails).length;
+  }
+
   function creerWorkflowVide() {
     return {
       etape: "type",
+      modeProlongation: false,
+      idaboProlonge: "",
+      abonnementProlonge: null,
+      nbinvitProlongation: 0,
       typeAbonnement: "",
       emails: [],
       emailsMode: "nouveau",
@@ -753,11 +864,11 @@
     const dureeAvant = etat.workflow.duree || "";
     const valeur = await ouvrirDialogueChoix({
       titre: "",
-      texte: "Durée de votre abonnement",
+      texte: etat.workflow.modeProlongation ? "Durée de la prolongation" : "Durée de votre abonnement",
       choix: DUREES_ABONNEMENT.map((duree) => ({ label: duree.label, valeur: duree.code })),
       valeurInitiale: dureeAvant,
       boutonSuivant: "Suivant",
-      boutonRetour: "Précédent",
+      boutonRetour: etat.workflow.modeProlongation ? "" : "Précédent",
       choixMicro: true,
       selectionObligatoire: true,
       onRetour: retourDepuisDuree,
@@ -770,11 +881,25 @@
     etat.workflow.duree = valeur;
 
     if (dureeChangee) {
-      etat.workflow.dateDebut = "";
+      if (!etat.workflow.modeProlongation) {
+        etat.workflow.dateDebut = "";
+      }
       etat.workflow.dateFin = "";
       etat.workflow.calendrierMoisAffiche = null;
       etat.workflow.calendrierAnneeAffiche = null;
       reinitialiserPrixEtRemiseWorkflow();
+    }
+
+    if (etat.workflow.modeProlongation) {
+      calculerDatesWorkflow();
+
+      if (prolongationIncompatibleAvecAbonnements()) {
+        await afficherAlerteSuperposee("Durée incompatible avec votre prochain abonnement");
+        return;
+      }
+
+      await afficherEtapeRecapitulatif();
+      return;
     }
 
     if (valeur === "1J") {
@@ -1360,12 +1485,17 @@
 
     if (invitesLabel && invitesElement) {
       if (workflow.typeAbonnement === "famille") {
-        const nombre = emails.length;
+        const nombre = nombreInvitesWorkflow();
         const pluriel = nombre > 1 ? "s" : "";
         invitesLabel.textContent = "Invité(s) Famille";
-        invitesElement.textContent = nombre
-          ? String(nombre) + " invité" + pluriel + " : " + emails.join(", ")
-          : "-";
+
+        if (workflow.modeProlongation) {
+          invitesElement.textContent = nombre ? String(nombre) + " invité" + pluriel : "-";
+        } else {
+          invitesElement.textContent = nombre
+            ? String(nombre) + " invité" + pluriel + " : " + emails.join(", ")
+            : "-";
+        }
       } else {
         invitesLabel.textContent = "Invité Duo";
         invitesElement.textContent = emails[0] || "-";
@@ -1783,6 +1913,9 @@
       codeRemise: etat.workflow.codeRemise,
       remise: etat.workflow.remise,
       paiement: etat.workflow.paiement,
+      modeProlongation: etat.workflow.modeProlongation === true,
+      idaboProlonge: etat.workflow.idaboProlonge || "",
+      nbinvit: nombreInvitesWorkflow(),
       ...extra
     };
   }
@@ -1798,6 +1931,9 @@
       fin: etat.workflow.dateFin,
       emails: normaliserListeEmails(etat.workflow.emails),
       codeRemise: etat.workflow.codeRemiseValide ? etat.workflow.dernierCodeRemiseValide : "",
+      modeProlongation: etat.workflow.modeProlongation === true,
+      idaboProlonge: etat.workflow.idaboProlonge || "",
+      nbinvit: nombreInvitesWorkflow(),
       ...extra
     };
   }
@@ -2169,6 +2305,10 @@
     card.dataset.idabo = String(abonnement.idabo || abonnement.id || "");
     card.dataset.orderid = commande.orderid;
     card.dataset.orderdate = commande.orderdate;
+    card.dataset.typabo = String(abonnement.typabo || abonnement.abonnement || "");
+    card.dataset.debut = String(abonnement.debut || "");
+    card.dataset.fin = String(abonnement.fin || "");
+    card.dataset.nbinvit = String(abonnement.nbinvit ?? abonnement.nbInvites ?? abonnement.nb_invites ?? 0);
     card.dataset.ht = normaliserMontantBrut(commande.ht);
     card.dataset.tva = normaliserMontantBrut(commande.tva);
     card.dataset.ttc = normaliserMontantBrut(commande.ttc);
