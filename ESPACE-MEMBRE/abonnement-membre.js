@@ -1239,7 +1239,14 @@
 
       await afficherEtapeCalendrierMois();
     });
-    boutonPayer.addEventListener("click", afficherEtapePaiement);
+    boutonPayer.addEventListener("click", async () => {
+      if (paiementCbDirectDepuisRecapitulatif()) {
+        await demarrerPaiementStripe();
+        return;
+      }
+
+      await afficherEtapePaiement();
+    });
 
     box.addEventListener("click", (event) => {
       if (event.target === box) demanderQuitterWorkflow();
@@ -1326,6 +1333,20 @@
     etat.workflow.mois2 = nombreOuNull(data.mois2 ?? etat.workflow.mois2);
     etat.workflow.mois3 = nombreOuNull(data.mois3 ?? etat.workflow.mois3);
     etat.workflow.vrmt = nombreOuNull(data.vrmt ?? etat.workflow.vrmt);
+  }
+
+  function paiementCbDirectDepuisRecapitulatif() {
+    const nbEcheances = Math.max(1, entierOuDefaut(etat.workflow.ech, 1));
+
+    return nbEcheances <= 1;
+  }
+
+  async function demarrerPaiementStripe() {
+    etat.workflow.paiement.echeancier = "comptant";
+    etat.workflow.paiement.mode = "cb";
+
+    await afficherAlerteSuperposee("Le paiement Stripe sera raccordé ensuite.");
+    await afficherEtapeRecapitulatif();
   }
 
   async function afficherEtapePaiement() {
@@ -1421,13 +1442,12 @@
       lireOptionsPaiementDepuisDialogue(slot);
 
       if (!confirmation.checked) {
-        await afficherAlerteSuperposee("Merci de confirmer la règle de paiement.");
+        await afficherAlerteSuperposee("Vous devez cocher la case d'acceptation d'utilisation de l'abonnement.");
         return;
       }
 
       if (etat.workflow.paiement.mode === "cb") {
-        await afficherAlerteSuperposee("Le paiement Stripe sera raccordé ensuite.");
-        await afficherEtapeRecapitulatif();
+        await demarrerPaiementStripe();
         return;
       }
 
@@ -1445,6 +1465,7 @@
       });
     });
 
+    boutonFermer.addEventListener("click", demanderQuitterWorkflow);
     dialogue.addEventListener("click", (event) => {
       if (event.target === dialogue) demanderQuitterWorkflow();
     });
