@@ -10,6 +10,12 @@
     "abo-membre-api"
   );
 
+  const ENDPOINT_FACTUPAIEMENT = construireEndpointApi(
+    "workerFactuPaiementUrl",
+    "WORKER_FACTUPAIEMENT_URL",
+    "factupaiement-api"
+  );
+
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
   const PAGE_REGLEMENT_CLUB = construireUrlPublic("/ESPACE-PUBLIC/reglement-club.html");
@@ -2140,16 +2146,53 @@
       return;
     }
 
-    const facture = {
-      orderid: card.dataset.orderid || "",
-      orderdate: card.dataset.orderdate || "",
-      ht: card.dataset.ht || "",
-      tva: card.dataset.tva || "",
-      ttc: card.dataset.ttc || ""
-    };
+    const orderid = String(card.dataset.orderid || "").trim();
 
-    if (!facture.orderid) {
+    if (!orderid) {
       await afficherAlerte("Commande non renseignée.");
+      return;
+    }
+
+    if (!ENDPOINT_FACTUPAIEMENT) {
+      await afficherAlerte("Le service facturation n’est pas configuré.");
+      return;
+    }
+
+    let facture = null;
+
+    try {
+      const reponse = await fetch(
+        ENDPOINT_FACTUPAIEMENT + "/facture?orderid=" + encodeURIComponent(orderid),
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            "Accept": "application/json"
+          }
+        }
+      );
+
+      const data = await reponse.json().catch(() => null);
+
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+
+      if (!reponse.ok || !data || !reponseApiOk(data)) {
+        throw new Error(messageErreurApi(data, "Impossible de charger la facture."));
+      }
+
+      facture = data.facture || null;
+    } catch (error) {
+      console.error("Erreur chargement facture abonnement :", error);
+      await afficherAlerte(error.message || "Impossible de charger la facture.");
+      return;
+    }
+
+    if (!facture) {
+      await afficherAlerte("Facture introuvable.");
       return;
     }
 
@@ -2161,13 +2204,14 @@
 
     const box = slot.querySelector("[data-lcdp-box-facture]");
     const boutonFermer = slot.querySelector("[data-lcdp-facture-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-facture-ok]");
+    const boutonImprimer = slot.querySelector("[data-lcdp-facture-print]");
 
-    remplirTexte(slot, "[data-lcdp-facture-orderid]", facture.orderid);
-    remplirTexte(slot, "[data-lcdp-facture-orderdate]", formaterDate(facture.orderdate));
-    remplirTexte(slot, "[data-lcdp-facture-ht]", formaterMontant(facture.ht));
-    remplirTexte(slot, "[data-lcdp-facture-tva]", formaterMontant(facture.tva));
-    remplirTexte(slot, "[data-lcdp-facture-ttc]", formaterMontant(facture.ttc));
+    if (!box || !boutonFermer || !boutonImprimer) {
+      slot.innerHTML = "";
+      throw new Error("Structure facture incomplète.");
+    }
+
+    await remplirFacture(slot, facture);
 
     return new Promise((resolve) => {
       let resolu = false;
@@ -2175,18 +2219,194 @@
       function fermer() {
         if (resolu) return;
         resolu = true;
+        document.body.classList.remove("lcdp-print-facture-active");
         slot.innerHTML = "";
         resolve(true);
       }
 
-      if (boutonFermer) boutonFermer.addEventListener("click", fermer);
-      if (boutonOk) boutonOk.addEventListener("click", fermer);
-      if (box) {
-        box.addEventListener("click", (event) => {
-          if (event.target === box) fermer();
-        });
-      }
+      boutonFermer.addEventListener("click", fermer);
+      box.addEventListener("click", (event) => {
+        if (event.target === box) fermer();
+      });
+
+      boutonImprimer.addEventListener("click", () => {
+        document.body.classList.add("lcdp-print-facture-active");
+        window.print();
+      });
     });
+  }
+
+  async function remplirFacture(racine, facture) {
+    remplirTexte(racine, "[data-lcdp-facture-date]", formaterDate(facture.datefacture || facture.date || ""));
+
+    const slotEmetteur = racine.querySelector("[data-lcdp-facture-emetteur-slot]");
+    const slotDestinataire = racine.querySelector("[data-lcdp-facture-destinataire-slot]");
+    const slotCard = racine.querySelector("[data-lcdp-facture-card-slot]");
+    const slotMentions = racine.querySelector("[data-lcdp-facture-mentions-slot]");
+
+    if (!slotEmetteur || !slotDestinataire || !slotCard || !slotMentions) {
+      throw new Error("Slots facture incomplets.");
+    }
+
+    slotEmetteur.appendChild(await creerCardCoordonneesFacture("Émetteur", null));
+    slotDestinataire.appendChild(await creerCardCoordonneesFacture("Destinataire", facture.destinataire || {}));
+    slotCard.appendChild(await creerCardDetailFacture(facture));
+    slotMentions.appendChild(await creerCardMentionsFacture(facture));
+  }
+
+  async function creerCardCoordonneesFacture(titreCard, donnees) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-coordonnees-facture.html");
+    const card = fragment.querySelector("[data-lcdp-card-coordonnees-facture]");
+    const titre = fragment.querySelector("[data-lcdp-coordonnees-facture-title]");
+    const nom = fragment.querySelector("[data-lcdp-coordonnees-facture-nom]");
+    const lignes = fragment.querySelector("[data-lcdp-coordonnees-facture-lignes]");
+
+    if (!card || !titre || !nom || !lignes) {
+      throw new Error("Structure coordonnées facture incomplète.");
+    }
+
+    titre.textContent = titreCard || titre.textContent || "Coordonnées";
+
+    if (donnees) {
+      nom.textContent = donnees.nom || "Non renseigné";
+      lignes.innerHTML = "";
+
+      (Array.isArray(donnees.lignes) ? donnees.lignes : []).filter(Boolean).forEach((ligne) => {
+        const item = document.createElement("span");
+        item.textContent = ligne;
+        lignes.appendChild(item);
+      });
+    }
+
+    return card;
+  }
+
+  async function creerCardDetailFacture(facture) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-facture.html");
+    const card = fragment.querySelector("[data-lcdp-card-facture]");
+    const slotProduit = fragment.querySelector("[data-lcdp-facture-produit-slot]");
+    const slotPrix = fragment.querySelector("[data-lcdp-facture-prix-slot]");
+    const slotPaiement = fragment.querySelector("[data-lcdp-facture-paiement-slot]");
+
+    if (!card || !slotProduit || !slotPrix || !slotPaiement) {
+      throw new Error("Structure card facture incomplète.");
+    }
+
+    slotProduit.appendChild(await creerCardProduitFacture(facture.produit || {}));
+    slotPrix.appendChild(await creerCardPrixFacture(facture.prix || {}));
+    slotPaiement.appendChild(await creerCardPaiementFacture(facture.paiement || {}));
+
+    return card;
+  }
+
+  async function creerCardProduitFacture(produit) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-produit-in-facture.html");
+    remplirTexte(fragment, "[data-lcdp-facture-produit-orderid]", produit.orderid || "Non renseigné");
+    remplirTexte(fragment, "[data-lcdp-facture-produit-type]", produit.libelle || produit.typabo || "Non renseigné");
+    remplirTexte(fragment, "[data-lcdp-facture-produit-debut]", formaterDate(produit.debut));
+    remplirTexte(fragment, "[data-lcdp-facture-produit-fin]", formaterDate(produit.fin) + " inclus");
+
+    const rowInvites = fragment.querySelector("[data-lcdp-facture-produit-invites-row]");
+    const invites = fragment.querySelector("[data-lcdp-facture-produit-invites]");
+    const nbInvites = Number(produit.nbinvit || 0);
+
+    if (rowInvites && invites) {
+      rowInvites.hidden = nbInvites <= 0;
+      invites.textContent = nbInvites > 0 ? String(nbInvites) : "";
+    }
+
+    return fragment;
+  }
+
+  async function creerCardPrixFacture(prix) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-prix-in-facture.html");
+    const listeRemises = fragment.querySelector("[data-lcdp-facture-prix-remises]");
+
+    remplirTexte(fragment, "[data-lcdp-facture-prix-brut-label]", "Prix TTC (TVA " + formaterTaux(prix.tva1) + "%) €");
+    remplirTexte(fragment, "[data-lcdp-facture-prix-brut]", formaterMontant(prix.bruttc));
+    remplirTexte(fragment, "[data-lcdp-facture-prix-apayer]", formaterMontant(prix.netnettc));
+    remplirTexte(fragment, "[data-lcdp-facture-prix-ht]", formaterMontant(prix.ht));
+    remplirTexte(fragment, "[data-lcdp-facture-prix-tva]", formaterMontant(prix.tva));
+
+    if (listeRemises) {
+      listeRemises.innerHTML = "";
+      ajouterLigneRemiseFacture(listeRemises, "Remise (TTC) €", prix.valrembrut);
+      ajouterLigneRemiseFacture(listeRemises, "Remise paiement 1x (TTC) €", prix.val1x);
+      ajouterLigneRemiseFacture(listeRemises, "Remise virement (TTC) €", prix.valvrmt);
+    }
+
+    return fragment;
+  }
+
+  function ajouterLigneRemiseFacture(liste, libelle, montant) {
+    const valeur = nombreOuNull(montant);
+
+    if (!liste || valeur === null || valeur <= 0) return;
+
+    const row = document.createElement("div");
+    row.className = "lcdp-box-card-prix-in-facture__row";
+
+    const label = document.createElement("span");
+    label.textContent = libelle;
+
+    const prix = document.createElement("strong");
+    prix.textContent = "-" + formaterMontant(valeur);
+
+    row.appendChild(label);
+    row.appendChild(prix);
+    liste.appendChild(row);
+  }
+
+  async function creerCardPaiementFacture(paiement) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-paiement-in-facture.html");
+    const echeances = fragment.querySelector("[data-lcdp-facture-paiement-echeances]");
+    const ribRow = fragment.querySelector("[data-lcdp-facture-paiement-rib-row]");
+    const rib = fragment.querySelector("[data-lcdp-facture-paiement-rib]");
+
+    remplirTexte(fragment, "[data-lcdp-facture-paiement-mode]", paiement.mode || "Non renseigné");
+
+    if (echeances) {
+      echeances.innerHTML = "";
+      (Array.isArray(paiement.echeances) ? paiement.echeances : []).forEach((echeance) => {
+        const row = document.createElement("div");
+        row.className = "lcdp-box-card-paiement-in-facture__row";
+
+        const label = document.createElement("span");
+        label.textContent = "Échéance " + String(echeance.numero || "") + " :";
+
+        const valeur = document.createElement("strong");
+        valeur.textContent = formaterDate(echeance.date) + " - " + formaterMontant(echeance.montant);
+
+        row.appendChild(label);
+        row.appendChild(valeur);
+        echeances.appendChild(row);
+      });
+    }
+
+    if (ribRow && rib) {
+      const afficherRib = paiement.afficherRib === true;
+      ribRow.hidden = !afficherRib;
+    }
+
+    return fragment;
+  }
+
+  async function creerCardMentionsFacture(facture) {
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-mentions-facture.html");
+
+    if (facture && facture.mentions) {
+      remplirTexte(fragment, "[data-lcdp-facture-mentions]", facture.mentions);
+    }
+
+    return fragment;
+  }
+
+  function formaterTaux(valeur) {
+    const nombre = nombreOuNull(valeur);
+
+    if (nombre === null) return "20";
+
+    return Number.isInteger(nombre) ? String(nombre) : String(nombre).replace(".", ",");
   }
 
   function obtenirZoneListe() {
