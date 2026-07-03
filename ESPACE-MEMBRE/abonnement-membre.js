@@ -811,7 +811,7 @@
     boutonSuivant.textContent = "Récapitulatif";
 
     titre.textContent = "Démarrage";
-    meta.textContent = "Sélectionnez le mois de début du nouvel abonnement.";
+    meta.textContent = "Début du nouvel abonnement";
     years.innerHTML = "";
 
     const maintenant = new Date();
@@ -893,6 +893,12 @@
       afficherAnnee();
     });
 
+    boutonFermer.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      demanderQuitterWorkflow();
+    });
+
     boutonRetour.addEventListener("click", afficherEtapeChoixDuree);
     boutonSuivant.addEventListener("click", async () => {
       if (!etat.workflow.dateDebut) {
@@ -933,15 +939,33 @@
       bouton.className = "lcdp-box-calendrier-an__month";
       bouton.textContent = nomMois(debutMois);
       bouton.dataset.dateDebut = dateIsoLocale(debutMois);
-      bouton.disabled = statut.disabled;
+      bouton.dataset.statutAbonnement = statut.type || "libre";
       bouton.title = statut.raison || "";
       bouton.setAttribute("aria-pressed", etat.workflow.dateDebut === bouton.dataset.dateDebut ? "true" : "false");
 
-      if (statut.type === "incompatible") {
-        bouton.classList.add("lcdp-box-calendrier-an__month--incompatible");
+      if (statut.type) {
+        bouton.classList.add("lcdp-box-calendrier-an__month--" + statut.type);
       }
 
-      bouton.addEventListener("click", () => {
+      if (statut.disabled) {
+        bouton.setAttribute("aria-disabled", "true");
+        if (statut.type !== "occupe" && statut.type !== "incompatible") {
+          bouton.disabled = true;
+        }
+      } else {
+        bouton.setAttribute("aria-disabled", "false");
+      }
+
+      bouton.addEventListener("click", async () => {
+        if (statut.disabled) {
+          if (statut.type === "occupe") {
+            await afficherAlerteSuperposee("Vous êtes déjà abonné(e) à cette date");
+          } else if (statut.type === "incompatible") {
+            await afficherAlerteSuperposee("Date incompatible avec votre prochain abonnement");
+          }
+          return;
+        }
+
         etat.workflow.dateDebut = bouton.dataset.dateDebut;
         etat.workflow.dateFin = "";
 
@@ -1025,7 +1049,7 @@
     box.classList.add("lcdp-box-calendrier-mois--abonnement");
 
     titre.textContent = "Démarrage";
-    meta.textContent = "Sélectionnez le jour du nouvel abonnement.";
+    meta.textContent = "Début du nouvel abonnement";
 
     const maintenant = new Date();
     const moisMinimum = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
@@ -1106,10 +1130,31 @@
         bouton.className = "lcdp-box-calendrier-mois-abonnement__day";
         bouton.textContent = String(jour);
         bouton.dataset.dateDebut = dateIsoLocale(date);
-        bouton.disabled = statut.disabled;
+        bouton.dataset.statutAbonnement = statut.type || "libre";
         bouton.title = statut.raison || "";
         bouton.setAttribute("aria-pressed", etat.workflow.dateDebut === bouton.dataset.dateDebut ? "true" : "false");
-        bouton.addEventListener("click", () => {
+
+        if (statut.type) {
+          bouton.classList.add("lcdp-box-calendrier-mois-abonnement__day--" + statut.type);
+        }
+
+        if (statut.disabled) {
+          bouton.setAttribute("aria-disabled", "true");
+          if (statut.type !== "occupe") {
+            bouton.disabled = true;
+          }
+        } else {
+          bouton.setAttribute("aria-disabled", "false");
+        }
+
+        bouton.addEventListener("click", async () => {
+          if (statut.disabled) {
+            if (statut.type === "occupe") {
+              await afficherAlerteSuperposee("Vous êtes déjà abonné(e) à cette date");
+            }
+            return;
+          }
+
           etat.workflow.dateDebut = bouton.dataset.dateDebut;
           etat.workflow.dateFin = bouton.dataset.dateDebut;
 
@@ -1140,6 +1185,12 @@
       afficherMois();
     });
 
+    boutonFermer.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      demanderQuitterWorkflow();
+    });
+
     box.addEventListener("click", (event) => {
       if (event.target === box) demanderQuitterWorkflow();
     });
@@ -1166,15 +1217,15 @@
     const abonnements = Array.isArray(etat.abonnements) ? etat.abonnements : [];
 
     if (date < aujourdHui) {
-      return { disabled: true, raison: "Date passée" };
+      return { disabled: true, type: "passe", raison: "Date passée" };
     }
 
     if (date > dateMaximum) {
-      return { disabled: true, raison: "Date trop lointaine" };
+      return { disabled: true, type: "passe", raison: "Date trop lointaine" };
     }
 
     if (finCourante && date <= finCourante) {
-      return { disabled: true, raison: "Abonnement en cours" };
+      return { disabled: true, type: "occupe", raison: "Abonnement en cours" };
     }
 
     const occupe = abonnements.some((abonnement) => {
@@ -1185,10 +1236,10 @@
     });
 
     if (occupe) {
-      return { disabled: true, raison: "Date déjà occupée" };
+      return { disabled: true, type: "occupe", raison: "Date déjà occupée" };
     }
 
-    return { disabled: false, raison: "" };
+    return { disabled: false, type: "libre", raison: "" };
   }
 
   async function afficherEtapeRecapitulatif() {
@@ -1217,28 +1268,43 @@
 
     remplirRecapitulatif(slot);
 
+    boutonValiderCode.textContent = "Calculer";
+    inputCode.maxLength = 10;
     inputCode.value = etat.workflow.codeRemise || "";
-    boutonValiderCode.disabled = etat.workflow.codeRemiseValide && etat.workflow.dernierCodeRemiseValide === nettoyerCodeRemise(inputCode.value);
+    actualiserBoutonCalculerRemise(inputCode, boutonValiderCode);
 
     inputCode.addEventListener("input", () => {
       const code = nettoyerCodeRemise(inputCode.value);
-      boutonValiderCode.disabled = etat.workflow.codeRemiseValide && etat.workflow.dernierCodeRemiseValide === code;
+
+      if (inputCode.value !== code) {
+        inputCode.value = code;
+      }
+
+      if (etat.workflow.codeRemiseValide && etat.workflow.dernierCodeRemiseValide !== code) {
+        reinitialiserRemiseWorkflow();
+      }
+
+      actualiserBoutonCalculerRemise(inputCode, boutonValiderCode);
     });
 
     boutonValiderCode.addEventListener("click", async () => {
       const code = nettoyerCodeRemise(inputCode.value);
 
-      if (!code) {
-        afficherMessageInline(message, "Merci de renseigner un code remise.");
-        return;
-      }
+      if (!code) return;
 
       try {
         await verifierCodeRemise(code);
-        boutonValiderCode.disabled = true;
+        inputCode.value = etat.workflow.codeRemise || code;
+        actualiserBoutonCalculerRemise(inputCode, boutonValiderCode);
         await afficherEtapeRecapitulatif();
       } catch (error) {
-        afficherMessageInline(message, error.message || "Code remise non applicable.");
+        await afficherAlerteSuperposee(error.message || "Code remise non applicable.");
+        inputCode.value = "";
+        reinitialiserRemiseWorkflow();
+        await calculerPrixWorkflow();
+        remplirRecapitulatif(slot);
+        actualiserBoutonCalculerRemise(inputCode, boutonValiderCode);
+        inputCode.focus();
       }
     });
 
@@ -1303,6 +1369,25 @@
 
     if (lienClub) lienClub.href = PAGE_REGLEMENT_CLUB;
     if (lienApplication) lienApplication.href = PAGE_REGLEMENT_APPLICATION;
+  }
+
+  function actualiserBoutonCalculerRemise(inputCode, boutonCalculer) {
+    if (!inputCode || !boutonCalculer) return;
+
+    const code = nettoyerCodeRemise(inputCode.value);
+    const dejaCalcule = etat.workflow.codeRemiseValide && etat.workflow.dernierCodeRemiseValide === code;
+    const desactive = !code || dejaCalcule;
+
+    boutonCalculer.disabled = desactive;
+    boutonCalculer.setAttribute("aria-disabled", desactive ? "true" : "false");
+  }
+
+  function reinitialiserRemiseWorkflow() {
+    etat.workflow.codeRemise = "";
+    etat.workflow.codeRemiseValide = false;
+    etat.workflow.dernierCodeRemiseValide = "";
+    etat.workflow.remise = null;
+    etat.workflow.prixNetTtc = etat.workflow.prixInitialTtc;
   }
 
   async function verifierCodeRemise(code) {
@@ -1823,14 +1908,24 @@
       actions.appendChild(zoneNavigation);
       actualiserEtatSuivant();
 
-      boutonFermer.addEventListener("click", () => {
-        if (typeof options.onFermer === "function") options.onFermer();
+      async function gererDemandeFermeture() {
+        if (typeof options.onFermer === "function") {
+          const fermetureConfirmee = await options.onFermer();
+          if (fermetureConfirmee !== true) return;
+        }
+
         fermer(null);
+      }
+
+      boutonFermer.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        gererDemandeFermeture();
       });
       dialogue.addEventListener("click", (event) => {
         if (event.target === dialogue) {
-          if (typeof options.onFermer === "function") options.onFermer();
-          fermer(null);
+          event.stopPropagation();
+          gererDemandeFermeture();
         }
       });
     });
@@ -1841,7 +1936,10 @@
 
     if (ok) {
       window.location.href = PAGE_ABONNEMENT_MEMBRE;
+      return true;
     }
+
+    return false;
   }
 
   async function ouvrirFacture(card) {
@@ -2026,7 +2124,7 @@
 
     const mentionInvites = card.querySelector("[data-lcdp-card-abonnement-invites]");
     if (mentionInvites) {
-      mentionInvites.textContent = libelles.mentionInvites || "";
+      remplirMentionLibelleValeur(mentionInvites, "Nombre d'invités :", libelles.mentionInvites || "");
       mentionInvites.hidden = !libelles.mentionInvites;
     }
 
@@ -2050,12 +2148,12 @@
 
     const metaPrixPaiement = card.querySelector("[data-lcdp-card-abonnement-prix-paiement]");
     if (metaPrixPaiement) {
-      metaPrixPaiement.textContent = construireMetaPrixPaiement(commande);
+      remplirMetaPrixPaiementCarte(metaPrixPaiement, commande);
     }
 
     const metaCodeRemise = card.querySelector("[data-lcdp-card-abonnement-code-remise]");
     if (metaCodeRemise) {
-      metaCodeRemise.textContent = commande.codeRemise ? "Code remise : " + commande.codeRemise : "";
+      remplirMentionLibelleValeur(metaCodeRemise, "Code remise :", commande.codeRemise || "");
       metaCodeRemise.hidden = !commande.codeRemise;
     }
 
@@ -2075,7 +2173,7 @@
       const nbInvites = entierOuDefaut(abonnement.nbinvit ?? abonnement.nbInvites ?? abonnement.nb_invites, 0);
       return {
         nom: (palierFamille ? "Famille" : "Duo") + " - " + libelleDuree(duree),
-        mentionInvites: palierFamille && nbInvites > 0 ? String(nbInvites) + " invité" + (nbInvites > 1 ? "s" : "") : ""
+        mentionInvites: palierFamille && nbInvites > 0 ? String(nbInvites) : ""
       };
     }
 
@@ -2083,7 +2181,7 @@
     const nbInvites = entierOuDefaut(abonnement.nbinvit ?? abonnement.nbInvites ?? abonnement.nb_invites, 0);
     return {
       nom: type ? libelleTypeAbonnement(type) : (valeurBrute || "Non renseigné"),
-      mentionInvites: type === "famille" && nbInvites > 0 ? String(nbInvites) + " invité" + (nbInvites > 1 ? "s" : "") : ""
+      mentionInvites: type === "famille" && nbInvites > 0 ? String(nbInvites) : ""
     };
   }
 
@@ -2094,13 +2192,40 @@
     return "";
   }
 
-  function construireMetaPrixPaiement(commande) {
+  function remplirMetaPrixPaiementCarte(element, commande) {
+    if (!element) return;
+
+    element.innerHTML = "";
+
     const taux = calculerTauxTvaCommande(commande);
     const tvaLabel = taux === null ? "TVA" : "TVA " + formaterNombreTva(taux) + "%";
     const prix = formaterMontant(commande.ttc);
     const modePaiement = commande.modePaiement || "Virmt 1x";
 
-    return "Prix net TTC (" + tvaLabel + ") : " + prix + " // paiement par " + modePaiement;
+    ajouterTexteMention(element, "Prix net TTC (" + tvaLabel + ") : ", false);
+    ajouterTexteMention(element, prix, true);
+    ajouterTexteMention(element, " // - // Paiement par ", false);
+    ajouterTexteMention(element, modePaiement, true);
+  }
+
+  function remplirMentionLibelleValeur(element, libelle, valeur) {
+    if (!element) return;
+
+    element.innerHTML = "";
+
+    if (!valeur) return;
+
+    ajouterTexteMention(element, libelle + " ", false);
+    ajouterTexteMention(element, valeur, true);
+  }
+
+  function ajouterTexteMention(parent, texte, valeurForte) {
+    const span = document.createElement("span");
+    span.className = valeurForte
+      ? "lcdp-box-card-abonnement__mention-value"
+      : "lcdp-box-card-abonnement__mention-label";
+    span.textContent = texte || "";
+    parent.appendChild(span);
   }
 
   function calculerTauxTvaCommande(commande) {
@@ -2694,7 +2819,8 @@
   function nettoyerCodeRemise(value) {
     return String(value || "")
       .trim()
-      .toUpperCase();
+      .toUpperCase()
+      .slice(0, 10);
   }
 
   function nomMois(date) {
