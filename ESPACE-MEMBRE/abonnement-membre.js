@@ -1224,8 +1224,8 @@
     const finCourante = finAbonnementEnCours();
     const abonnements = Array.isArray(etat.abonnements) ? etat.abonnements : [];
 
-    if (date < aujourdHui) {
-      return { disabled: true, type: "passe", raison: "Date passée" };
+    if (date <= aujourdHui) {
+      return { disabled: true, type: "passe", raison: "Date passée ou jour en cours" };
     }
 
     if (date > dateMaximum) {
@@ -1494,6 +1494,10 @@
       etat.workflow.paiement.echeancier = "comptant";
     }
 
+    if (etat.workflow.paiement.mode === "virement" && !virementAutorisePourWorkflow()) {
+      etat.workflow.paiement.mode = "cb";
+    }
+
     zone.appendChild(creerOptionRadioPaiement({
       name: "echeancier-abonnement",
       value: "comptant",
@@ -1552,6 +1556,12 @@
         return;
       }
 
+      if (etat.workflow.paiement.mode === "virement" && !virementAutorisePourWorkflow()) {
+        await afficherAlerteSuperposee("Vous n'avez plus assez de temps pour payer par virement avant le début de cet abonnement.");
+        basculerPaiementSurCb(slot);
+        return;
+      }
+
       if (etat.workflow.paiement.mode === "cb") {
         await demarrerPaiementStripe();
         return;
@@ -1565,7 +1575,15 @@
     synchroniserOptionsPaiement(slot);
 
     slot.querySelectorAll("input[name='echeancier-abonnement'], input[name='mode-paiement-abonnement']").forEach((input) => {
-      input.addEventListener("change", () => {
+      input.addEventListener("change", async () => {
+        const demandeVirement = input.name === "mode-paiement-abonnement" && input.value === "virement" && input.checked;
+
+        if (demandeVirement && !virementAutorisePourWorkflow()) {
+          await afficherAlerteSuperposee("Vous n'avez plus assez de temps pour payer par virement avant le début de cet abonnement.");
+          basculerPaiementSurCb(slot);
+          return;
+        }
+
         lireOptionsPaiementDepuisDialogue(slot);
         synchroniserOptionsPaiement(slot);
       });
@@ -1621,6 +1639,12 @@
 
     if (!virement || !cb) return;
 
+    if (etat.workflow.paiement.mode === "virement" && !virementAutorisePourWorkflow()) {
+      virement.checked = false;
+      cb.checked = true;
+      etat.workflow.paiement.mode = "cb";
+    }
+
     if (nbEcheances <= 1 && echeancier === "echelonne") {
       echeancier = "comptant";
       etat.workflow.paiement.echeancier = "comptant";
@@ -1645,6 +1669,30 @@
       option.classList.toggle("lcdp-workflow-paiement__option--selected", Boolean(input && input.checked));
       option.classList.toggle("lcdp-workflow-paiement__option--disabled", Boolean(input && input.disabled));
     });
+  }
+
+  function basculerPaiementSurCb(racine) {
+    etat.workflow.paiement.mode = "cb";
+
+    const virement = racine?.querySelector("input[name='mode-paiement-abonnement'][value='virement']");
+    const cb = racine?.querySelector("input[name='mode-paiement-abonnement'][value='cb']");
+
+    if (virement) virement.checked = false;
+    if (cb) cb.checked = true;
+
+    synchroniserOptionsPaiement(racine || document);
+  }
+
+  function virementAutorisePourWorkflow() {
+    const debut = lireDateLocale(etat.workflow.dateDebut);
+
+    if (!debut) return false;
+
+    const aujourdHui = debutJour(new Date());
+    const debutAbonnement = debutJour(debut);
+    const diffJours = Math.floor((debutAbonnement.getTime() - aujourdHui.getTime()) / 86400000);
+
+    return diffJours >= 10;
   }
 
   async function enregistrerCommandeVirement() {
@@ -2212,7 +2260,7 @@
 
     ajouterTexteMention(element, "Prix net TTC (" + tvaLabel + ") : ", false);
     ajouterTexteMention(element, prix, true);
-    ajouterTexteMention(element, " // - // Paiement par ", false);
+    ajouterTexteMention(element, " - Paiement par ", false);
     ajouterTexteMention(element, modePaiement, true);
   }
 
