@@ -272,11 +272,17 @@
   }
 
   async function gererClicDocument(event) {
-    const boutonProlonger = event.target.closest("[data-action='prolonger']");
+    const boutonPayerAbonnement = event.target.closest("[data-action='payer-abonnement']");
+    const boutonProlongerAbonnement = event.target.closest("[data-action='prolonger-abonnement']");
     const boutonFacture = event.target.closest("[data-action='voir-facture']");
 
-    if (boutonProlonger) {
-      await afficherAlerte("Le workflow de changement d'abonnement sera raccordé ensuite.");
+    if (boutonPayerAbonnement) {
+      await afficherAlerte("Le paiement depuis la card abonnement sera raccordé avec le workflow facturation.");
+      return;
+    }
+
+    if (boutonProlongerAbonnement) {
+      await demarrerWorkflowNouvelAbonnement();
       return;
     }
 
@@ -314,7 +320,8 @@
       mois1: null,
       mois2: null,
       mois3: null,
-      vrmt: null,
+      val1x: null,
+      valvrmt: null,
       calendrierMoisAffiche: null,
       calendrierAnneeAffiche: null,
       paiement: {
@@ -362,7 +369,7 @@
 
     const valeur = await ouvrirDialogueChoix({
       titre: "",
-      texte: "Choisir un abonnement",
+      texte: "Choisir votre abonnement",
       choix: [
         { label: "Duo", valeur: "duo" },
         { label: "Famille", valeur: "famille" }
@@ -454,7 +461,9 @@
     appliquerClasseWorkflow(box, "email-duo");
     actions.classList.add("lcdp-workflow-abonnement__email-actions");
 
-    titre.textContent = "Indiquez votre invité(e)";
+    titre.textContent = "Membre invité";
+    boutonRetour.textContent = "Précédent";
+    boutonPasser.classList.add("lcdp-workflow-micro-action");
     input.value = etat.workflow.emails[0] || "";
     boutonPasser.hidden = false;
 
@@ -495,7 +504,7 @@
     etat.workflow.etape = "emails-famille";
 
     const modeExistant = etat.workflow.emailsMode === "famille-existant";
-    const titre = "Indiquez vos invités famille";
+    const titre = "Membres invités";
 
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
@@ -539,7 +548,7 @@
       const zoneAjouter = document.createElement("div");
       zoneAjouter.className = "lcdp-workflow-abonnement__actions-full";
 
-      zoneAjouter.appendChild(creerBouton("Ajouter un invité famille", "lcdp-button-secondary", async () => {
+      zoneAjouter.appendChild(creerBouton("Ajouter un invité famille", "lcdp-button-secondary lcdp-workflow-micro-action", async () => {
         sauvegarderEmailsDepuisListe(liste);
 
         if (etat.workflow.emails.length >= PARAMETRES_ABONNEMENT.maxInvitesFamille) {
@@ -556,7 +565,7 @@
 
     const zoneNavigation = document.createElement("div");
     zoneNavigation.className = "lcdp-workflow-abonnement__actions-row";
-    zoneNavigation.appendChild(creerBouton("Retour", "lcdp-button-secondary", afficherEtapeChoixTypeAbonnement));
+    zoneNavigation.appendChild(creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeChoixTypeAbonnement));
     zoneNavigation.appendChild(creerBouton("Suivant", "lcdp-button-primary", async () => {
       sauvegarderEmailsDepuisListe(liste);
 
@@ -598,6 +607,8 @@
     card.dataset.index = String(index);
     input.value = etat.workflow.emails[index] || "";
     input.placeholder = "E-mail du membre invité";
+    boutonModifier.classList.add("lcdp-workflow-micro-action");
+    boutonSupprimer.classList.add("lcdp-workflow-micro-action");
 
     if (modeExistant) {
       input.readOnly = true;
@@ -733,11 +744,12 @@
     const dureeAvant = etat.workflow.duree || "";
     const valeur = await ouvrirDialogueChoix({
       titre: "",
-      texte: "Durée du nouvel abonnement",
+      texte: "Durée de votre abonnement",
       choix: DUREES_ABONNEMENT.map((duree) => ({ label: duree.label, valeur: duree.code })),
       valeurInitiale: dureeAvant,
       boutonSuivant: "Suivant",
       boutonRetour: "Précédent",
+      choixMicro: true,
       selectionObligatoire: true,
       onRetour: retourDepuisDuree,
       onFermer: demanderQuitterWorkflow
@@ -798,7 +810,7 @@
     appliquerClasseWorkflow(box, "calendrier-an");
     boutonSuivant.textContent = "Récapitulatif";
 
-    titre.textContent = "Début du nouvel abonnement";
+    titre.textContent = "Démarrage";
     meta.textContent = "Sélectionnez le mois de début du nouvel abonnement.";
     years.innerHTML = "";
 
@@ -1012,7 +1024,7 @@
     appliquerClasseWorkflow(box, "calendrier-mois");
     box.classList.add("lcdp-box-calendrier-mois--abonnement");
 
-    titre.textContent = "Début du nouvel abonnement";
+    titre.textContent = "Démarrage";
     meta.textContent = "Sélectionnez le jour du nouvel abonnement.";
 
     const maintenant = new Date();
@@ -1326,13 +1338,14 @@
     etat.workflow.remise = data.remise || null;
     etat.workflow.typeaboPrix = data.typeaboPrix || data.typeabo || etat.workflow.typeaboPrix || "";
     etat.workflow.tauxTva = nombreOuNull(data.txtvafr ?? data.tauxTva ?? data.tva ?? etat.workflow.tauxTva) ?? PARAMETRES_ABONNEMENT.tauxTva;
-    etat.workflow.prixInitialTtc = nombreOuNull(data.prixInitialTtc ?? data.prixabottc ?? etat.workflow.prixInitialTtc);
-    etat.workflow.prixNetTtc = nombreOuNull(data.prixNetTtc ?? data.prix_net_ttc ?? etat.workflow.prixNetTtc);
+    etat.workflow.prixInitialTtc = nombreOuNull(data.prixInitialTtc ?? data.bruttc ?? data.prixabottc ?? etat.workflow.prixInitialTtc);
+    etat.workflow.prixNetTtc = nombreOuNull(data.prixNetTtc ?? data.nettc ?? data.prix_net_ttc ?? etat.workflow.prixNetTtc);
     etat.workflow.ech = entierOuDefaut(data.ech ?? etat.workflow.ech, 1);
     etat.workflow.mois1 = nombreOuNull(data.mois1 ?? etat.workflow.mois1);
     etat.workflow.mois2 = nombreOuNull(data.mois2 ?? etat.workflow.mois2);
     etat.workflow.mois3 = nombreOuNull(data.mois3 ?? etat.workflow.mois3);
-    etat.workflow.vrmt = nombreOuNull(data.vrmt ?? etat.workflow.vrmt);
+    etat.workflow.val1x = nombreOuNull(data.val1x ?? data["1xval"] ?? etat.workflow.val1x);
+    etat.workflow.valvrmt = nombreOuNull(data.valvrmt ?? data.vrmt ?? etat.workflow.valvrmt);
   }
 
   function paiementCbDirectDepuisRecapitulatif() {
@@ -1392,8 +1405,8 @@
       name: "echeancier-abonnement",
       value: "comptant",
       checked: etat.workflow.paiement.echeancier !== "echelonne",
-      label: "Payer en 1x",
-      detail: "Montant : " + formaterMontant(etat.workflow.prixNetTtc)
+      label: libellePaiement1x(),
+      detail: "Montant : " + formaterMontant(montantPaiement1x())
     }));
 
     if (nbEcheances > 1) {
@@ -1453,7 +1466,7 @@
 
       await enregistrerCommandeVirement();
     }));
-    actions.appendChild(creerBouton("Annuler", "lcdp-button-secondary", demanderQuitterWorkflow));
+    actions.appendChild(creerBouton("Annuler", "lcdp-button-secondary lcdp-workflow-micro-action", demanderQuitterWorkflow));
     actions.appendChild(creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeRecapitulatif));
 
     synchroniserOptionsPaiement(slot);
@@ -1568,13 +1581,41 @@
       throw new Error(messageErreurApi(data, "Impossible d'enregistrer la commande."));
     }
 
-    await afficherAlerte(
-      "La commande d'abonnement est enregistrée sous le n° " +
-      String(data.orderid || data.commande?.orderid || "") +
-      ". Le récapitulatif a été envoyé par mail avec le RIB de l'association et le rappel des règles de paiement par virement : 1. Indiquer le montant de la commande dans l'objet du virement. 2. Payer dans les 10 jours."
-    );
+    await afficherConfirmationCommande(data);
+  }
 
-    window.location.href = PAGE_ABONNEMENT_MEMBRE;
+  async function afficherConfirmationCommande(data) {
+    const slot = await obtenirWorkflowAbonnementContenu();
+    await preparerTransitionWorkflow(slot);
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    slot.appendChild(fragment);
+
+    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
+    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
+    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
+
+    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
+      throw new Error("Structure confirmation commande incomplète.");
+    }
+
+    appliquerClasseWorkflow(dialogue, "confirmation");
+
+    titre.textContent = "Confirmation de votre commande";
+    texte.textContent = "Votre commande est enregistrée. Merci de votre confiance. Un e-mail vous a été envoyé avec le récapitulatif et nos coordonnées bancaires pour le virement.\nÀ bientôt dans les parcs !";
+    actions.innerHTML = "";
+
+    const quitter = () => {
+      window.location.href = PAGE_ABONNEMENT_MEMBRE;
+    };
+
+    actions.appendChild(creerBouton("OK", "lcdp-button-primary", quitter));
+    boutonFermer.addEventListener("click", quitter);
+    dialogue.addEventListener("click", (event) => {
+      if (event.target === dialogue) quitter();
+    });
   }
 
   function creerPayloadCommande(extra = {}) {
@@ -1596,7 +1637,8 @@
       mois1: etat.workflow.mois1,
       mois2: etat.workflow.mois2,
       mois3: etat.workflow.mois3,
-      vrmt: etat.workflow.vrmt,
+      val1x: etat.workflow.val1x,
+      valvrmt: etat.workflow.valvrmt,
       codeRemise: etat.workflow.codeRemise,
       remise: etat.workflow.remise,
       paiement: etat.workflow.paiement,
@@ -1657,7 +1699,7 @@
       throw new Error(messageErreurApi(data, "Impossible de calculer le prix de l'abonnement."));
     }
 
-    const prixInitial = nombreOuNull(data.prixInitialTtc ?? data.prixabottc);
+    const prixInitial = nombreOuNull(data.prixInitialTtc ?? data.bruttc ?? data.prixabottc);
     const tauxTva = nombreOuNull(data.txtvafr ?? data.tauxTva ?? data.tva) ?? PARAMETRES_ABONNEMENT.tauxTva;
 
     etat.workflow.typeaboPrix = data.typeaboPrix || data.typeabo || "";
@@ -1667,17 +1709,11 @@
     etat.workflow.mois1 = nombreOuNull(data.mois1);
     etat.workflow.mois2 = nombreOuNull(data.mois2);
     etat.workflow.mois3 = nombreOuNull(data.mois3);
-    etat.workflow.vrmt = nombreOuNull(data.vrmt);
+    etat.workflow.val1x = nombreOuNull(data.val1x ?? data["1xval"]);
+    etat.workflow.valvrmt = nombreOuNull(data.valvrmt ?? data.vrmt);
 
-    if (etat.workflow.remise && montantValide(etat.workflow.remise.prixNetTtc)) {
-      etat.workflow.prixNetTtc = nombreOuNull(etat.workflow.remise.prixNetTtc);
-      return;
-    }
-
-    const pourcentRemise = nombreOuNull(etat.workflow.remise?.pourcent ?? etat.workflow.remise?.pourcentage) || 0;
-    etat.workflow.prixNetTtc = prixInitial === null
-      ? null
-      : arrondirMontant(prixInitial * (1 - pourcentRemise / 100));
+    const prixNet = nombreOuNull(data.prixNetTtc ?? data.nettc);
+    etat.workflow.prixNetTtc = prixNet === null ? prixInitial : prixNet;
   }
 
   function reinitialiserPrixEtRemiseWorkflow() {
@@ -1693,7 +1729,8 @@
     etat.workflow.mois1 = null;
     etat.workflow.mois2 = null;
     etat.workflow.mois3 = null;
-    etat.workflow.vrmt = null;
+    etat.workflow.val1x = null;
+    etat.workflow.valvrmt = null;
   }
 
   async function ouvrirDialogueChoix(options) {
@@ -1738,7 +1775,7 @@
     (options.choix || []).forEach((choix) => {
       const bouton = document.createElement("button");
       bouton.type = "button";
-      bouton.className = "lcdp-button lcdp-button-secondary";
+      bouton.className = "lcdp-button lcdp-button-secondary" + (options.choixMicro === true ? " lcdp-workflow-micro-action" : "");
       bouton.textContent = choix.label || choix.valeur || "";
       bouton.dataset.workflowChoix = choix.valeur || "";
       bouton.setAttribute("aria-pressed", bouton.dataset.workflowChoix === valeur ? "true" : "false");
@@ -1969,6 +2006,7 @@
     const card = etat.templateAbonnement.cloneNode(true);
     const commande = normaliserCommande(abonnement);
     const categorie = categorieAbonnement(abonnement);
+    const libelles = analyserLibelleAbonnementCarte(abonnement);
 
     if (categorie === "passe") {
       card.classList.add("lcdp-box-card-abonnement--passe");
@@ -1981,26 +2019,168 @@
     card.dataset.tva = normaliserMontantBrut(commande.tva);
     card.dataset.ttc = normaliserMontantBrut(commande.ttc);
 
-    remplirTexte(card, "[data-lcdp-card-abonnement-type]", abonnement.typabo || abonnement.abonnement || "Non renseigné");
+    remplirTexte(card, "[data-lcdp-card-abonnement-type]", libelles.nom);
     remplirTexte(card, "[data-lcdp-card-abonnement-debut]", formaterDate(abonnement.debut));
     remplirTexte(card, "[data-lcdp-card-abonnement-fin]", formaterDate(abonnement.fin));
     remplirTexte(card, "[data-lcdp-card-abonnement-orderid]", commande.orderid || "Non renseigné");
+
+    const mentionInvites = card.querySelector("[data-lcdp-card-abonnement-invites]");
+    if (mentionInvites) {
+      mentionInvites.textContent = libelles.mentionInvites || "";
+      mentionInvites.hidden = !libelles.mentionInvites;
+    }
+
+    const mentionSuspension = card.querySelector("[data-lcdp-card-abonnement-suspension]");
+    if (mentionSuspension) {
+      const texteSuspension = construireMentionSuspension(abonnement, commande);
+      mentionSuspension.textContent = texteSuspension;
+      mentionSuspension.hidden = !texteSuspension;
+    }
+
+    const boutonAction = card.querySelector("[data-action='prolonger-abonnement'], [data-action='payer-abonnement']");
+    if (boutonAction) {
+      if (estAbonnementSuspenduImpaye(abonnement, commande)) {
+        boutonAction.textContent = "Payer";
+        boutonAction.dataset.action = "payer-abonnement";
+      } else {
+        boutonAction.textContent = "Prolonger";
+        boutonAction.dataset.action = "prolonger-abonnement";
+      }
+    }
+
+    const metaPrixPaiement = card.querySelector("[data-lcdp-card-abonnement-prix-paiement]");
+    if (metaPrixPaiement) {
+      metaPrixPaiement.textContent = construireMetaPrixPaiement(commande);
+    }
+
+    const metaCodeRemise = card.querySelector("[data-lcdp-card-abonnement-code-remise]");
+    if (metaCodeRemise) {
+      metaCodeRemise.textContent = commande.codeRemise ? "Code remise : " + commande.codeRemise : "";
+      metaCodeRemise.hidden = !commande.codeRemise;
+    }
 
     appliquerRoutesSite(card);
 
     return card;
   }
 
+  function analyserLibelleAbonnementCarte(abonnement) {
+    const valeurBrute = String(abonnement.typabo || abonnement.abonnement || "").trim();
+    const valeur = valeurBrute.toUpperCase();
+    const match = valeur.match(/^(1J|1M|3M|6M|1A)(?:F(4|7|10))?$/);
+
+    if (match) {
+      const duree = match[1];
+      const palierFamille = match[2] || "";
+      const nbInvites = entierOuDefaut(abonnement.nbinvit ?? abonnement.nbInvites ?? abonnement.nb_invites, 0);
+      return {
+        nom: (palierFamille ? "Famille" : "Duo") + " - " + libelleDuree(duree),
+        mentionInvites: palierFamille && nbInvites > 0 ? String(nbInvites) + " invité" + (nbInvites > 1 ? "s" : "") : ""
+      };
+    }
+
+    const type = normaliserTypeAbonnementCarte(valeurBrute);
+    const nbInvites = entierOuDefaut(abonnement.nbinvit ?? abonnement.nbInvites ?? abonnement.nb_invites, 0);
+    return {
+      nom: type ? libelleTypeAbonnement(type) : (valeurBrute || "Non renseigné"),
+      mentionInvites: type === "famille" && nbInvites > 0 ? String(nbInvites) + " invité" + (nbInvites > 1 ? "s" : "") : ""
+    };
+  }
+
+  function normaliserTypeAbonnementCarte(value) {
+    const texte = String(value || "").trim().toLowerCase();
+    if (texte === "famille" || texte.includes("famille")) return "famille";
+    if (texte === "duo" || texte.includes("duo")) return "duo";
+    return "";
+  }
+
+  function construireMetaPrixPaiement(commande) {
+    const taux = calculerTauxTvaCommande(commande);
+    const tvaLabel = taux === null ? "TVA" : "TVA " + formaterNombreTva(taux) + "%";
+    const prix = formaterMontant(commande.ttc);
+    const modePaiement = commande.modePaiement || "Virmt 1x";
+
+    return "Prix net TTC (" + tvaLabel + ") : " + prix + " // paiement par " + modePaiement;
+  }
+
+  function calculerTauxTvaCommande(commande) {
+    const tauxDirect = nombreOuNull(commande.txtvafr ?? commande.tauxTva ?? commande.tvaPourcent);
+    if (tauxDirect !== null) return tauxDirect;
+
+    const ht = nombreOuNull(commande.ht);
+    const tva = nombreOuNull(commande.tva);
+    if (!ht || ht <= 0 || tva === null) return null;
+    return arrondirMontant((tva / ht) * 100);
+  }
+
+  function formaterNombreTva(value) {
+    const nombre = nombreOuNull(value);
+    if (nombre === null) return "";
+    return Number.isInteger(nombre) ? String(nombre) : String(nombre).replace(".", ",");
+  }
+
   function normaliserCommande(abonnement) {
     const commande = abonnement.commande || abonnement.ca || {};
+    const paiement1x = commande.paiement1x === true || abonnement.paiement1x === true || abonnement["1x"] === true;
+    const paiementVirement = commande.vrmt === true || abonnement.vrmt === true;
+    const ech = entierOuDefaut(commande.ech ?? abonnement.ech, 1);
 
     return {
       orderid: String(commande.orderid || abonnement.orderid || "").trim(),
-      orderdate: commande.orderdate || abonnement.orderdate || "",
+      orderdate: commande.orderdate || abonnement.created_at || abonnement.orderdate || "",
       ht: commande.ht ?? abonnement.ht ?? "",
       tva: commande.tva ?? abonnement.tva ?? "",
-      ttc: commande.ttc ?? abonnement.ttc ?? ""
+      ttc: commande.netnettc ?? commande.ttc ?? abonnement.netnettc ?? abonnement.ttc ?? "",
+      prixInitialTtc: commande.bruttc ?? commande.prixinitialttc ?? commande.prixInitialTtc ?? abonnement.bruttc ?? abonnement.prixinitialttc ?? abonnement.prixInitialTtc ?? "",
+      txtvafr: commande.tva1 ?? commande.txtvafr ?? commande.tauxTva ?? abonnement.tva1 ?? abonnement.txtvafr ?? abonnement.tauxTva ?? "",
+      modePaiement: construireLibellePaiementCarte({ paiement1x, paiementVirement, ech }),
+      codeRemise: nettoyerCodeRemise(
+        commande.idrembrut ||
+        commande.coderemise ||
+        commande.codeRemise ||
+        abonnement.idrembrut ||
+        abonnement.coderemise ||
+        abonnement.codeRemise ||
+        ""
+      ),
+      statutPaiement: String(commande.statutabo || abonnement.statutabo || commande.statutpaiement || commande.statutPaiement || abonnement.statutpaiement || abonnement.statutPaiement || "").trim().toLowerCase(),
+      dateSuspension: commande.datesuspension || abonnement.datesuspension || abonnement.dateSuspension || ""
     };
+  }
+
+  function construireLibellePaiementCarte(options) {
+    const ech = entierOuDefaut(options?.ech, 1);
+
+    if (options?.paiementVirement) return "Virmt 1x";
+    if (options?.paiement1x) return "CB 1x";
+    if (ech > 1) return "CB " + String(ech) + "x";
+
+    return "CB 1x";
+  }
+
+  function estAbonnementSuspenduImpaye(abonnement, commande) {
+    const statut = String(commande?.statutPaiement || abonnement?.statutpaiement || abonnement?.statutPaiement || "").trim().toLowerCase();
+    return Boolean(
+      abonnement?.suspendu === true ||
+      abonnement?.actif === false && statut.includes("impay") ||
+      statut.includes("suspend") ||
+      statut.includes("impay") ||
+      commande?.dateSuspension ||
+      abonnement?.datesuspension ||
+      abonnement?.dateSuspension
+    );
+  }
+
+  function construireMentionSuspension(abonnement, commande) {
+    if (!estAbonnementSuspenduImpaye(abonnement, commande)) return "";
+
+    const dateSuspension = commande?.dateSuspension || abonnement?.datesuspension || abonnement?.dateSuspension || "";
+
+    if (dateSuspension) {
+      return "Suspendu depuis le " + formaterDate(dateSuspension) + " pour impayé";
+    }
+
+    return "Suspendu pour impayé";
   }
 
   async function afficherAlerteSuperposee(message) {
@@ -2607,9 +2787,26 @@
     });
   }
 
+  function libellePaiement1x() {
+    const valeur = nombreOuNull(etat.workflow.val1x) || 0;
+
+    if (valeur > 0) {
+      return "Payer en 1x - " + formaterMontantCourt(valeur) + " offerts";
+    }
+
+    return "Payer en 1x";
+  }
+
+  function montantPaiement1x() {
+    const prixNet = nombreOuNull(etat.workflow.prixNetTtc) || 0;
+    const valeur = nombreOuNull(etat.workflow.val1x) || 0;
+
+    return Math.max(0, arrondirMontant(prixNet - valeur));
+  }
+
   function detailPaiementVirement() {
-    const economieVirement = nombreOuNull(etat.workflow.vrmt);
-    const suffixe = "Disponible uniquement pour le paiement en 1x.";
+    const economieVirement = nombreOuNull(etat.workflow.valvrmt);
+    const suffixe = "Uniquement pour le paiement en 1x.";
 
     if (economieVirement && economieVirement > 0) {
       return "Economisez " + formaterMontantCourt(economieVirement) + " de plus en payant par virement dans les 10 jours. " + suffixe;
