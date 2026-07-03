@@ -2230,8 +2230,13 @@
       });
 
       boutonImprimer.addEventListener("click", () => {
-        document.body.classList.add("lcdp-print-facture-active");
-        window.print();
+        const urlFacture = construireUrlMembre(
+          "/ESPACE-MEMBRE/facture-abonnement.html?orderid=" +
+          encodeURIComponent(orderid) +
+          "&print=1"
+        );
+
+        window.open(urlFacture, "_blank", "noopener");
       });
     });
   }
