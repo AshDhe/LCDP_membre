@@ -1375,7 +1375,7 @@
 
     appliquerClasseWorkflow(dialogue, "paiement");
 
-    titre.textContent = "Paiement";
+    titre.textContent = "Mode de paiement";
     texte.textContent = "";
     texte.hidden = true;
     actions.innerHTML = "";
