@@ -281,6 +281,9 @@
     const boutonPayerAbonnement = event.target.closest("[data-action='payer-abonnement']");
     const boutonProlongerAbonnement = event.target.closest("[data-action='prolonger-abonnement']");
     const boutonFacture = event.target.closest("[data-action='voir-facture']");
+    const boutonAvoir = event.target.closest("[data-action='demander-avoir']");
+    const boutonAvoirDepasse = event.target.closest("[data-action='avoir-delai-depasse']");
+    const boutonVoirAvoir = event.target.closest("[data-action='voir-avoir']");
 
     if (boutonPayerAbonnement) {
       await afficherAlerte("Le paiement depuis la card abonnement sera raccordé avec le workflow facturation.");
@@ -296,6 +299,22 @@
     if (boutonFacture) {
       const card = boutonFacture.closest("[data-lcdp-box-card-abonnement]");
       await ouvrirFacture(card);
+      return;
+    }
+
+    if (boutonAvoir) {
+      const card = boutonAvoir.closest("[data-lcdp-box-card-abonnement]");
+      await demanderAnnulationAvoir(card);
+      return;
+    }
+
+    if (boutonAvoirDepasse) {
+      await afficherAlerte("Le délai d'avoir est dépassé");
+      return;
+    }
+
+    if (boutonVoirAvoir) {
+      await afficherAlerte("L'avoir sera disponible ensuite.");
     }
   }
 
@@ -339,6 +358,58 @@
     etat.workflow.etape = "duree";
 
     await afficherEtapeChoixDuree();
+  }
+
+  async function demanderAnnulationAvoir(card) {
+    if (!card) {
+      await afficherAlerte("Abonnement introuvable.");
+      return;
+    }
+
+    const confirmation = await afficherAlerte("Voulez-vous annuler l'abonnement ?");
+    if (!confirmation) return;
+
+    const confirmationRetenue = await afficherAlerte("Une retenue de 140€ s'applique conformément à nos Conditions Générales de Vente.");
+    if (!confirmationRetenue) return;
+
+    await enregistrerAnnulationAvoir(card);
+
+    await afficherAlerte("Votre annulation est enregistrée. Vous serez remboursé sous 10 jours conformément aux Conditions Générales de Vente.");
+    await chargerAbonnements();
+  }
+
+  async function enregistrerAnnulationAvoir(card) {
+    if (!ENDPOINT_ABO_MEMBRE) {
+      throw new Error("Le service abonnement membre n’est pas configuré.");
+    }
+
+    const idabo = String(card.dataset.idabo || "").trim();
+
+    if (!idabo) {
+      throw new Error("Abonnement introuvable.");
+    }
+
+    const reponse = await fetch(ENDPOINT_ABO_MEMBRE + "/annuler-avoir", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ idabo })
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return;
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Impossible d'enregistrer l'annulation."));
+    }
   }
 
   function retrouverAbonnementDepuisCard(card) {
@@ -2500,6 +2571,8 @@
   }
 
   function categorieAbonnement(abonnement) {
+    if (estAbonnementAnnule(abonnement)) return "passe";
+
     const maintenant = new Date();
     const debut = lireDate(abonnement.debut);
     const fin = lireDate(abonnement.fin);
@@ -2578,9 +2651,74 @@
       metaCodeRemise.hidden = !commande.codeRemise;
     }
 
+    configurerBoutonAvoir(card, abonnement, commande);
+
     appliquerRoutesSite(card);
 
     return card;
+  }
+
+  function configurerBoutonAvoir(card, abonnement, commande) {
+    const bouton = card.querySelector("[data-lcdp-card-abonnement-avoir]");
+
+    if (!bouton) return;
+
+    const etatAvoir = determinerEtatAvoirAbonnement(abonnement, commande);
+
+    if (etatAvoir.invisible) {
+      bouton.hidden = true;
+      return;
+    }
+
+    bouton.hidden = false;
+    bouton.textContent = etatAvoir.label;
+    bouton.dataset.action = etatAvoir.action;
+    bouton.classList.toggle("lcdp-box-card-abonnement__micro-action--disabled", etatAvoir.grise === true);
+    bouton.setAttribute("aria-disabled", etatAvoir.grise ? "true" : "false");
+  }
+
+  function determinerEtatAvoirAbonnement(abonnement, commande) {
+    if (estAbonnementUnJour(abonnement)) {
+      return { invisible: true, label: "", action: "", grise: false };
+    }
+
+    if (estAbonnementAnnule(abonnement, commande)) {
+      return { invisible: false, label: "Annulé", action: "voir-avoir", grise: true };
+    }
+
+    if (!estDansDelaiAvoirAbonnement(abonnement)) {
+      return { invisible: false, label: "Avoir", action: "avoir-delai-depasse", grise: true };
+    }
+
+    return { invisible: false, label: "Avoir", action: "demander-avoir", grise: false };
+  }
+
+  function estAbonnementUnJour(abonnement) {
+    const typabo = String(abonnement?.typabo || abonnement?.abonnement || "").trim().toUpperCase();
+    return typabo === "1J" || typabo.startsWith("1JF");
+  }
+
+  function estDansDelaiAvoirAbonnement(abonnement) {
+    const debut = debutJourDate(abonnement?.debut);
+    if (!debut) return false;
+
+    const aujourdHui = debutJour(new Date());
+    const finDelai = new Date(debut.getFullYear(), debut.getMonth(), debut.getDate() + 14);
+
+    return aujourdHui <= finDelai;
+  }
+
+  function estAbonnementAnnule(abonnement, commande) {
+    const statut = String(
+      commande?.statutPaiement ||
+      commande?.statutabo ||
+      abonnement?.statutabo ||
+      abonnement?.statutpaiement ||
+      abonnement?.statutPaiement ||
+      ""
+    ).trim().toLowerCase();
+
+    return statut === "cancd" || statut === "annule" || statut === "annulé" || statut.includes("annul");
   }
 
   function analyserLibelleAbonnementCarte(abonnement) {
