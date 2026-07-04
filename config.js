@@ -272,6 +272,14 @@
         verifierSiNecessaire();
       }
     });
+
+    window.addEventListener("pageshow", verifierSiNecessaire);
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", verifierSiNecessaire, { once: true });
+    } else {
+      window.setTimeout(verifierSiNecessaire, 0);
+    }
   }
 
   function programmerProchaineVerificationSessionMembre(delaiSecondes) {
