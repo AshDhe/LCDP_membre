@@ -169,7 +169,7 @@
     }
 
     if (String(facture?.typeDocument || "").trim().toLowerCase() === "avoir") {
-      remplacerTexteExact(card, "Commande", "Annulation de commande");
+      remplacerTexteExact(card, "Commande", "Commande annulée");
     }
 
     slotProduit.appendChild(await creerCardProduitFacture(facture.produit || {}));
@@ -204,20 +204,20 @@
     const estAvoir = String(prix.type || "").trim().toLowerCase() === "avoir";
 
     if (estAvoir) {
-      remplacerTexteExact(fragment, "Prix", "Remboursement");
+      remplacerTexteExact(fragment, "Prix", "Annulation");
       remplirTexte(fragment, "[data-lcdp-facture-prix-brut-label]", "Avoir TTC (TVA " + formaterTaux(prix.tva1) + "%) €");
       remplirTexte(fragment, "[data-lcdp-facture-prix-brut]", formaterMontant(prix.montantAvoirTtc ?? prix.montantFactureTtc ?? prix.bruttc));
       remplirTexte(fragment, "[data-lcdp-facture-prix-apayer]", formaterMontant(prix.montantRembourseTtc ?? prix.netnettc));
       remplirTexte(fragment, "[data-lcdp-facture-prix-ht]", formaterMontant(prix.montantRembourseHt ?? prix.ht));
       remplirTexte(fragment, "[data-lcdp-facture-prix-tva]", formaterMontant(prix.montantRembourseTva ?? prix.tva));
       renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-apayer]", "À rembourser (TTC) € *");
-      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-ht]", "Remboursement HT €");
-      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-tva]", "TVA remboursement €");
+      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-ht]", "HT €");
+      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-tva]", "TVA €");
 
       if (listeRemises) {
         listeRemises.innerHTML = "";
-        ajouterLignePrixAvoir(listeRemises, "Avoir HT €", prix.montantAvoirHt);
-        ajouterLignePrixAvoir(listeRemises, "Retenue de garantie (TTC) €", prix.retenueGarantieTtc ?? prix.retenueTtc, { negatif: true });
+        ajouterLignePrixAvoir(listeRemises, "HT €", prix.montantAvoirHt);
+        ajouterLignePrixAvoir(listeRemises, "TVA €", prix.montantAvoirTva);
       }
 
       return fragment;
