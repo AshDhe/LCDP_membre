@@ -146,4 +146,277 @@
       return "https://" + workerSubdomain + ".lacleduparc.fr";
     }
   };
+
+  const COOKIE_RETOUR_MEMBRE = "retour_membre";
+  const COOKIE_SESSION_MEMBRE_NEXT_REFRESH = "lcdp_session_membre_next_refresh";
+  const DUREE_SESSION_MEMBRE_SECONDES = 60 * 60 * 10;
+  const SEUIL_RENOUVELLEMENT_SESSION_MEMBRE_SECONDES = 60 * 60 * 2;
+  const DELAI_VERIFICATION_SESSION_MEMBRE_SECONDES =
+    DUREE_SESSION_MEMBRE_SECONDES - SEUIL_RENOUVELLEMENT_SESSION_MEMBRE_SECONDES;
+  const DELAI_REESSAI_REFRESH_ERREUR_SECONDES = 60 * 10;
+  const DUREE_MEMOIRE_RETOUR_MEMBRE_SECONDES = 60 * 60 * 24 * 30;
+
+  memoriserRetourMembreSiNecessaire();
+  initialiserRenouvellementSessionMembre();
+
+  window.LCDP_estUrlRetourMembreValide = estUrlRetourMembreValide;
+  window.LCDP_lireRetourMembre = lireRetourMembre;
+  window.LCDP_effacerRetourMembre = effacerRetourMembre;
+  window.LCDP_programmerProchaineVerificationSessionMembre = programmerProchaineVerificationSessionMembre;
+  window.LCDP_redirigerConnexionMembre = function LCDP_redirigerConnexionMembre(source, motif) {
+    const retour = estUrlRetourMembreValide(window.location.href)
+      ? window.location.href
+      : lireRetourMembre();
+
+    if (retour) {
+      ecrireCookiePartage(
+        COOKIE_RETOUR_MEMBRE,
+        retour,
+        DUREE_MEMOIRE_RETOUR_MEMBRE_SECONDES
+      );
+    }
+
+    const params = new URLSearchParams();
+    params.set("source", source || "espace-membre");
+    params.set("session", motif || "inactive");
+
+    if (retour) {
+      params.set("retour", retour);
+    }
+
+    window.location.href = buildUrl(
+      active.publicBase,
+      "/ESPACE-PUBLIC/connexion-membre.html?" + params.toString()
+    );
+  };
+
+  function memoriserRetourMembreSiNecessaire() {
+    if (!estUrlRetourMembreValide(window.location.href)) return;
+
+    const urlCourante = normaliserUrlRetourMembre(window.location.href);
+    const urlMemorisee = lireRetourMembre();
+
+    if (!urlCourante || urlCourante === urlMemorisee) return;
+
+    ecrireCookiePartage(
+      COOKIE_RETOUR_MEMBRE,
+      urlCourante,
+      DUREE_MEMOIRE_RETOUR_MEMBRE_SECONDES
+    );
+  }
+
+  function initialiserRenouvellementSessionMembre() {
+    if (!estUrlDansSiteMembre(window.location.href)) return;
+    if (!WORKERS.indexMembre) return;
+
+    let refreshEnCours = false;
+    let dernierSignalActivite = 0;
+
+    async function verifierSiNecessaire() {
+      const maintenant = Date.now();
+
+      if (document.visibilityState === "hidden") return;
+      if (refreshEnCours) return;
+      if (maintenant - dernierSignalActivite < 30000) return;
+
+      dernierSignalActivite = maintenant;
+
+      const prochaineVerification = Number(lireCookie(COOKIE_SESSION_MEMBRE_NEXT_REFRESH) || "0");
+
+      if (Number.isFinite(prochaineVerification) && prochaineVerification > maintenant) {
+        return;
+      }
+
+      refreshEnCours = true;
+
+      try {
+        const reponse = await fetch(nettoyerBaseUrl(WORKERS.indexMembre) + "/session-refresh", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            "Accept": "application/json"
+          }
+        });
+
+        const data = await reponse.json().catch(() => null);
+
+        if (reponse.status === 401) {
+          supprimerCookiePartage(COOKIE_SESSION_MEMBRE_NEXT_REFRESH);
+          window.LCDP_redirigerConnexionMembre("session-refresh", "inactive");
+          return;
+        }
+
+        if (!reponse.ok || !data || data.success !== true) {
+          programmerProchaineVerificationSessionMembre(DELAI_REESSAI_REFRESH_ERREUR_SECONDES);
+          return;
+        }
+
+        programmerProchaineVerificationSessionMembre(
+          nombreSecondesValide(data.nextRefreshInSeconds, DELAI_VERIFICATION_SESSION_MEMBRE_SECONDES)
+        );
+      } catch (error) {
+        console.error("Refresh session membre :", error);
+        programmerProchaineVerificationSessionMembre(DELAI_REESSAI_REFRESH_ERREUR_SECONDES);
+      } finally {
+        refreshEnCours = false;
+      }
+    }
+
+    ["pointerdown", "keydown", "touchstart", "scroll"].forEach((nomEvenement) => {
+      window.addEventListener(nomEvenement, verifierSiNecessaire, { passive: true });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        verifierSiNecessaire();
+      }
+    });
+  }
+
+  function programmerProchaineVerificationSessionMembre(delaiSecondes) {
+    const delai = nombreSecondesValide(delaiSecondes, DELAI_VERIFICATION_SESSION_MEMBRE_SECONDES);
+    const timestamp = Date.now() + delai * 1000;
+
+    ecrireCookiePartage(
+      COOKIE_SESSION_MEMBRE_NEXT_REFRESH,
+      String(timestamp),
+      DUREE_SESSION_MEMBRE_SECONDES
+    );
+  }
+
+  function lireRetourMembre() {
+    return normaliserUrlRetourMembre(lireCookie(COOKIE_RETOUR_MEMBRE));
+  }
+
+  function effacerRetourMembre() {
+    supprimerCookiePartage(COOKIE_RETOUR_MEMBRE);
+  }
+
+  function estUrlRetourMembreValide(value) {
+    return Boolean(normaliserUrlRetourMembre(value));
+  }
+
+  function normaliserUrlRetourMembre(value) {
+    const texte = String(value || "").trim();
+
+    if (!texte) return "";
+
+    let url;
+
+    try {
+      url = new URL(texte, window.location.href);
+    } catch {
+      return "";
+    }
+
+    const cheminMembre = extraireCheminMembre(url);
+
+    if (!cheminMembre) return "";
+    if (!cheminMembre.startsWith("/ESPACE-MEMBRE/")) return "";
+    if (cheminMembre === "/ESPACE-MEMBRE/accueil-membre.html") return "";
+    if (cheminMembre === "/index.html" || cheminMembre === "/") return "";
+
+    return url.href;
+  }
+
+  function estUrlDansSiteMembre(value) {
+    let url;
+
+    try {
+      url = new URL(String(value || ""), window.location.href);
+    } catch {
+      return false;
+    }
+
+    return Boolean(extraireCheminMembre(url));
+  }
+
+  function extraireCheminMembre(url) {
+    let baseMembre;
+
+    try {
+      baseMembre = new URL(active.membreBase);
+    } catch {
+      return "";
+    }
+
+    if (url.origin !== baseMembre.origin) return "";
+
+    const basePath = baseMembre.pathname.replace(/\/+$/, "");
+    let chemin = url.pathname;
+
+    if (basePath) {
+      if (chemin !== basePath && !chemin.startsWith(basePath + "/")) {
+        return "";
+      }
+
+      chemin = chemin.slice(basePath.length) || "/";
+    }
+
+    return chemin || "/";
+  }
+
+  function ecrireCookiePartage(nom, valeur, maxAgeSecondes) {
+    const attributs = attributsCookiePartage(maxAgeSecondes);
+    document.cookie = nom + "=" + encodeURIComponent(valeur) + attributs;
+  }
+
+  function supprimerCookiePartage(nom) {
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    const domaine = attributDomaineCookie();
+
+    document.cookie = nom + "=; Path=/; Max-Age=0; SameSite=Lax" + secure;
+
+    if (domaine) {
+      document.cookie = nom + "=; Path=/; Max-Age=0; SameSite=Lax" + secure + domaine;
+    }
+  }
+
+  function attributsCookiePartage(maxAgeSecondes) {
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    const domaine = attributDomaineCookie();
+    const maxAge = Number.isFinite(Number(maxAgeSecondes))
+      ? "; Max-Age=" + String(Math.max(0, Math.floor(Number(maxAgeSecondes))))
+      : "";
+
+    return "; Path=/; SameSite=Lax" + secure + domaine + maxAge;
+  }
+
+  function attributDomaineCookie() {
+    const hostname = window.location.hostname;
+
+    if (hostname === "lacleduparc.fr" || hostname.endsWith(".lacleduparc.fr")) {
+      return "; Domain=.lacleduparc.fr";
+    }
+
+    return "";
+  }
+
+  function lireCookie(nom) {
+    const valeur = document.cookie
+      .split(";")
+      .map((cookie) => cookie.trim())
+      .find((cookie) => cookie.startsWith(nom + "="))
+      ?.split("=")
+      .slice(1)
+      .join("=") || "";
+
+    try {
+      return decodeURIComponent(valeur);
+    } catch {
+      return valeur;
+    }
+  }
+
+  function nombreSecondesValide(value, defaut) {
+    const nombre = Number(value);
+
+    if (!Number.isFinite(nombre) || nombre <= 0) {
+      return defaut;
+    }
+
+    return Math.floor(nombre);
+  }
+
 })();
