@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+
+  <title>Avoir abonnement - La Clé du Parc</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Avoir d'abonnement La Clé du Parc.">
+
+  <script src="../config.js"></script>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const config = window.SITE_CONFIG || {};
+
+      function nettoyerBaseUrl(value) {
+        return String(value || "").replace(/\/+$/, "");
+      }
+
+      function buildUrl(base, path) {
+        return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
+      }
+
+      const membreBase = nettoyerBaseUrl(
+        config.membreBaseUrl ||
+        config.MEMBRE_BASE ||
+        config.siteBase ||
+        ""
+      );
+
+      const publicBase = nettoyerBaseUrl(
+        config.publicBaseUrl ||
+        config.PUBLIC_BASE ||
+        ""
+      );
+
+      const objetBase = nettoyerBaseUrl(
+        config.objetBaseUrl ||
+        config.OBJET_BASE ||
+        buildUrl(publicBase, "/OBJET")
+      );
+
+      window.SITE_BASE = membreBase;
+      window.LCDP_MEMBRE_BASE = membreBase;
+      window.LCDP_PUBLIC_BASE = publicBase;
+      window.LCDP_OBJET_BASE = objetBase;
+
+      window.LCDP_urlPublic = function LCDP_urlPublic(path) {
+        if (typeof config.publicUrl === "function") return config.publicUrl(path);
+        return buildUrl(publicBase, path);
+      };
+
+      window.LCDP_urlMembre = function LCDP_urlMembre(path) {
+        if (typeof config.membreUrl === "function") return config.membreUrl(path);
+        return buildUrl(membreBase, path);
+      };
+
+      window.LCDP_urlObjet = function LCDP_urlObjet(path) {
+        if (typeof config.objetUrl === "function") return config.objetUrl(path);
+        return buildUrl(objetBase, path);
+      };
+
+      const feuillesCssObjet = [
+        "/CSSBASE/cssbase.css",
+        "/BOX/04-box-card-coordonnees-facture.css",
+        "/BOX/04-box-card-facture.css",
+        "/BOX/04-box-card-produit-in-facture.css",
+        "/BOX/04-box-card-prix-in-facture.css",
+        "/BOX/04-box-card-paiement-in-facture.css",
+        "/BOX/04-box-card-mentions-facture.css",
+        "/BOX/04-box-facture-a4.css"
+      ];
+
+      feuillesCssObjet.forEach((chemin) => {
+        document.write(
+          '<link rel="stylesheet" href="' +
+          window.LCDP_urlObjet(chemin) +
+          '">'
+        );
+      });
+    })();
+  </script>
+</head>
+
+<body class="lcdp-page-facture-a4">
+  <main class="lcdp-page-facture-a4__main" id="lcdp-avoir-a4-root">
+    <p class="lcdp-page-facture-a4__message" data-lcdp-facture-a4-message>
+      Chargement de l'avoir...
+    </p>
+  </main>
+
+  <script src="./avoir-abonnement.js"></script>
+</body>
+</html>

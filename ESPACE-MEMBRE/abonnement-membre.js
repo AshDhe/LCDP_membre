@@ -45,10 +45,6 @@
       duo: null,
       famille: null
     },
-    echeancesPaiement: {
-      duo: 2,
-      famille: 3
-    }
   };
 
   const DUREES_ABONNEMENT = [
@@ -217,7 +213,10 @@
   function actualiserTitreListe() {
     const titre = document.querySelector("[data-lcdp-liste-card-title]");
 
-    if (titre) titre.textContent = titresFiltres[etat.filtre] || titresFiltres.encours;
+    if (!titre) return;
+
+    titre.textContent = titresFiltres[etat.filtre] || titresFiltres.encours;
+    titre.style.color = etat.filtre === "encours" ? "#d97300" : "";
   }
 
   function actualiserBoutonsFiltre() {
@@ -318,7 +317,9 @@
     }
 
     if (boutonVoirAvoir) {
-      await afficherAlerte("L'avoir sera disponible ensuite.");
+      const card = boutonVoirAvoir.closest("[data-lcdp-box-card-abonnement]");
+      await ouvrirAvoir(card);
+      return;
     }
   }
 
@@ -378,7 +379,7 @@
 
     await enregistrerAnnulationAvoir(card);
 
-    await afficherAlerte("Votre annulation est enregistrée. Vous serez remboursé sous 10 jours conformément aux Conditions Générales de Vente.");
+    await afficherAlerte("Votre annulation est enregistrée. Votre avoir a été établi et vous sera envoyé par e-mail. Vous serez remboursé sous 10 jours conformément aux Conditions Générales de Vente.");
     await chargerAbonnements();
   }
 
@@ -414,6 +415,8 @@
     if (!reponse.ok || !data || !reponseApiOk(data)) {
       throw new Error(messageErreurApi(data, "Impossible d'enregistrer l'annulation."));
     }
+
+    return data;
   }
 
   function retrouverAbonnementDepuisCard(card) {
@@ -2410,6 +2413,107 @@
     });
   }
 
+  async function ouvrirAvoir(card) {
+    if (!card) {
+      await afficherAlerte("Avoir introuvable.");
+      return;
+    }
+
+    const idabo = String(card.dataset.idabo || "").trim();
+
+    if (!idabo) {
+      await afficherAlerte("Abonnement non renseigné.");
+      return;
+    }
+
+    if (!ENDPOINT_ABO_MEMBRE) {
+      await afficherAlerte("Le service abonnement membre n’est pas configuré.");
+      return;
+    }
+
+    let avoir = null;
+
+    try {
+      const reponse = await fetch(
+        ENDPOINT_ABO_MEMBRE + "/avoir?idabo=" + encodeURIComponent(idabo),
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            "Accept": "application/json"
+          }
+        }
+      );
+
+      const data = await reponse.json().catch(() => null);
+
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+
+      if (!reponse.ok || !data || !reponseApiOk(data)) {
+        throw new Error(messageErreurApi(data, "Impossible de charger l'avoir."));
+      }
+
+      avoir = data.avoir || null;
+    } catch (error) {
+      console.error("Erreur chargement avoir abonnement :", error);
+      await afficherAlerte(error.message || "Impossible de charger l'avoir.");
+      return;
+    }
+
+    if (!avoir) {
+      await afficherAlerte("Avoir introuvable.");
+      return;
+    }
+
+    const slot = obtenirLightboxSlot();
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/04-box-facture.html");
+    slot.appendChild(fragment);
+
+    const box = slot.querySelector("[data-lcdp-box-facture]");
+    const boutonFermer = slot.querySelector("[data-lcdp-facture-close]");
+    const boutonImprimer = slot.querySelector("[data-lcdp-facture-print]");
+
+    if (!box || !boutonFermer || !boutonImprimer) {
+      slot.innerHTML = "";
+      throw new Error("Structure avoir incomplète.");
+    }
+
+    await remplirFacture(slot, avoir);
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer() {
+        if (resolu) return;
+        resolu = true;
+        document.body.classList.remove("lcdp-print-facture-active");
+        slot.innerHTML = "";
+        resolve(true);
+      }
+
+      boutonFermer.addEventListener("click", fermer);
+      box.addEventListener("click", (event) => {
+        if (event.target === box) fermer();
+      });
+
+      boutonImprimer.addEventListener("click", () => {
+        const urlAvoir = construireUrlMembre(
+          "/ESPACE-MEMBRE/avoir-abonnement.html?idabo=" +
+          encodeURIComponent(idabo) +
+          "&print=1"
+        );
+
+        window.open(urlAvoir, "_blank", "noopener");
+      });
+    });
+  }
+
   async function ouvrirFacture(card) {
     if (!card) {
       await afficherAlerte("Facture introuvable.");
@@ -2596,6 +2700,22 @@
   async function creerCardPrixFacture(prix) {
     const fragment = await chargerFragmentObjet("/BOX/04-box-card-prix-in-facture.html");
     const listeRemises = fragment.querySelector("[data-lcdp-facture-prix-remises]");
+    const estAvoir = String(prix.type || "").trim().toLowerCase() === "avoir";
+
+    if (estAvoir) {
+      remplirTexte(fragment, "[data-lcdp-facture-prix-brut-label]", "Facture annulée TTC (TVA " + formaterTaux(prix.tva1) + "%) €");
+      remplirTexte(fragment, "[data-lcdp-facture-prix-brut]", formaterMontant(prix.montantFactureTtc ?? prix.bruttc));
+      remplirTexte(fragment, "[data-lcdp-facture-prix-apayer]", formaterMontant(prix.montantRembourseTtc ?? prix.netnettc));
+      remplirTexte(fragment, "[data-lcdp-facture-prix-ht]", formaterMontant(prix.ht));
+      remplirTexte(fragment, "[data-lcdp-facture-prix-tva]", formaterMontant(prix.tva));
+
+      if (listeRemises) {
+        listeRemises.innerHTML = "";
+        ajouterLigneRemiseFacture(listeRemises, "Retenue de garantie (TTC) €", prix.retenueGarantieTtc ?? prix.retenueTtc);
+      }
+
+      return fragment;
+    }
 
     remplirTexte(fragment, "[data-lcdp-facture-prix-brut-label]", "Prix TTC (TVA " + formaterTaux(prix.tva1) + "%) €");
     remplirTexte(fragment, "[data-lcdp-facture-prix-brut]", formaterMontant(prix.bruttc));
@@ -2647,7 +2767,7 @@
         row.className = "lcdp-box-card-paiement-in-facture__row";
 
         const label = document.createElement("span");
-        label.textContent = "Échéance " + String(echeance.numero || "") + " :";
+        label.textContent = echeance.libelle || ("Échéance " + String(echeance.numero || "") + " :");
 
         const valeur = document.createElement("strong");
         valeur.textContent = formaterDate(echeance.date) + " - " + formaterMontant(echeance.montant);
@@ -2895,7 +3015,7 @@
     }
 
     if (estAbonnementAnnule(abonnement, commande)) {
-      return { invisible: false, label: "Annulé", action: "voir-avoir", grise: true };
+      return { invisible: false, label: "Annulé", action: "voir-avoir", grise: false };
     }
 
     if (!estDansDelaiAvoirAbonnement(abonnement)) {
