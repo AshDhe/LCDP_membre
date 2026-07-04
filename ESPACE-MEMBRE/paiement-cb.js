@@ -19,6 +19,8 @@
   const retour = String(params.get("retour") || "").trim().toLowerCase();
   const sourcePaiement = String(params.get("source") || "").trim().toLowerCase();
 
+  let redirectionPaiementValideProgrammee = false;
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
   } else {
@@ -98,8 +100,8 @@
     }
 
     if (statustripe === "paye") {
-      afficherMessage("Votre paiement est validé.", "succes");
-      afficherQuitter();
+      afficherMessage("Votre paiement est validé. Retour vers votre abonnement...", "succes");
+      programmerRedirectionAbonnement();
       return;
     }
 
@@ -179,23 +181,44 @@
       "[data-lcdp-paiement-cb-quitter]"
     ].forEach((selecteur) => {
       const bouton = document.querySelector(selecteur);
-      if (bouton) bouton.hidden = true;
+
+      if (!bouton) return;
+
+      bouton.hidden = true;
+      bouton.style.display = "none";
     });
   }
 
   function afficherPayer() {
     const bouton = document.querySelector("[data-lcdp-paiement-cb-payer]");
-    if (bouton) bouton.hidden = false;
+    afficherBoutonAction(bouton);
   }
 
   function afficherRecommencer() {
     const bouton = document.querySelector("[data-lcdp-paiement-cb-recommencer]");
-    if (bouton) bouton.hidden = false;
+    afficherBoutonAction(bouton);
   }
 
   function afficherQuitter() {
     const bouton = document.querySelector("[data-lcdp-paiement-cb-quitter]");
-    if (bouton) bouton.hidden = false;
+    afficherBoutonAction(bouton);
+  }
+
+  function afficherBoutonAction(bouton) {
+    if (!bouton) return;
+
+    bouton.hidden = false;
+    bouton.style.display = "";
+  }
+
+  function programmerRedirectionAbonnement() {
+    if (redirectionPaiementValideProgrammee) return;
+
+    redirectionPaiementValideProgrammee = true;
+
+    window.setTimeout(() => {
+      window.location.replace(PAGE_ABONNEMENT_MEMBRE);
+    }, 900);
   }
 
   function construireEndpointApi(cleModerne, cleLegacy, sousDomaineWorker) {

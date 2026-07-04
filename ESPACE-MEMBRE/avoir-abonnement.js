@@ -23,7 +23,6 @@
     const racine = document.getElementById("lcdp-avoir-a4-root");
     const params = new URLSearchParams(window.location.search);
     const idabo = String(params.get("idabo") || "").trim();
-    const impressionAuto = params.get("print") === "1";
 
     if (!racine) return;
 
@@ -43,12 +42,6 @@
 
       document.title = "Avoir " + (avoir?.numeroavoir || avoir?.orderid || idabo) + " - La Clé du Parc";
 
-      if (impressionAuto) {
-        window.setTimeout(() => {
-          window.focus();
-          window.print();
-        }, 350);
-      }
     } catch (error) {
       console.error("Erreur avoir abonnement :", error);
       afficherMessage(racine, error.message || "Impossible de charger l'avoir.");

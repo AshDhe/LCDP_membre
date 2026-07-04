@@ -374,7 +374,7 @@
     const confirmation = await afficherAlerte("Voulez-vous annuler l'abonnement ?");
     if (!confirmation) return;
 
-    const confirmationRetenue = await afficherAlerte("Une retenue de 140€ s'applique conformément à nos Conditions Générales de Vente.");
+    const confirmationRetenue = await afficherAlerte("Une retenue de garantie s'applique conformément aux Conditions Générales de Vente.");
     if (!confirmationRetenue) return;
 
     await enregistrerAnnulationAvoir(card);
@@ -2505,8 +2505,7 @@
       boutonImprimer.addEventListener("click", () => {
         const urlAvoir = construireUrlMembre(
           "/ESPACE-MEMBRE/avoir-abonnement.html?idabo=" +
-          encodeURIComponent(idabo) +
-          "&print=1"
+          encodeURIComponent(idabo)
         );
 
         window.open(urlAvoir, "_blank", "noopener");
@@ -2606,8 +2605,7 @@
       boutonImprimer.addEventListener("click", () => {
         const urlFacture = construireUrlMembre(
           "/ESPACE-MEMBRE/facture-abonnement.html?orderid=" +
-          encodeURIComponent(orderid) +
-          "&print=1"
+          encodeURIComponent(orderid)
         );
 
         window.open(urlFacture, "_blank", "noopener");
@@ -2819,14 +2817,22 @@
     }
 
     if (ribRow && rib) {
-      const afficherRib = paiement.afficherRib === true;
-      ribRow.hidden = !afficherRib;
-      if (afficherRib && paiement.rib) {
+      const afficherRib = paiementParCarteBancaire(paiement) ? false : paiement.afficherRib === true;
+
+      if (!afficherRib) {
+        ribRow.remove();
+      } else if (paiement.rib) {
+        ribRow.hidden = false;
+        ribRow.style.display = "";
         rib.textContent = paiement.rib;
       }
     }
 
     return fragment;
+  }
+
+  function paiementParCarteBancaire(paiement) {
+    return /^CB\b/i.test(String(paiement?.mode || "").trim());
   }
 
   async function creerCardMentionsFacture(facture) {

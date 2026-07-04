@@ -23,7 +23,6 @@
     const racine = document.getElementById("lcdp-facture-a4-root");
     const params = new URLSearchParams(window.location.search);
     const orderid = String(params.get("orderid") || "").trim();
-    const impressionAuto = params.get("print") === "1";
 
     if (!racine) return;
 
@@ -43,12 +42,6 @@
 
       document.title = "Facture " + (facture?.orderid || orderid) + " - La Clé du Parc";
 
-      if (impressionAuto) {
-        window.setTimeout(() => {
-          window.focus();
-          window.print();
-        }, 350);
-      }
     } catch (error) {
       console.error("Erreur facture abonnement :", error);
       afficherMessage(racine, error.message || "Impossible de charger la facture.");
@@ -233,6 +226,7 @@
     const fragment = await chargerFragmentObjet("/BOX/04-box-card-paiement-in-facture.html");
     const echeances = fragment.querySelector("[data-lcdp-facture-paiement-echeances]");
     const ribRow = fragment.querySelector("[data-lcdp-facture-paiement-rib-row]");
+    const rib = fragment.querySelector("[data-lcdp-facture-paiement-rib]");
 
     remplirTexte(fragment, "[data-lcdp-facture-paiement-mode]", paiement.mode || "Non renseigné");
 
@@ -243,10 +237,13 @@
         row.className = "lcdp-box-card-paiement-in-facture__row";
 
         const label = document.createElement("span");
-        label.textContent = "Échéance " + String(echeance.numero || "") + " :";
+        label.textContent = echeance.libelle || ("Échéance " + String(echeance.numero || "") + " :");
 
         const valeur = document.createElement("strong");
-        valeur.textContent = formaterDate(echeance.date) + " - " + formaterMontant(echeance.montant);
+        const montant = nombreOuNull(echeance.montant);
+        valeur.textContent = montant === null
+          ? formaterDate(echeance.date)
+          : formaterDate(echeance.date) + " - " + formaterMontant(montant);
 
         row.appendChild(label);
         row.appendChild(valeur);
@@ -255,10 +252,22 @@
     }
 
     if (ribRow) {
-      ribRow.hidden = paiement.afficherRib !== true;
+      const afficherRib = paiementParCarteBancaire(paiement) ? false : paiement.afficherRib === true;
+
+      if (!afficherRib) {
+        ribRow.remove();
+      } else if (rib && paiement.rib) {
+        ribRow.hidden = false;
+        ribRow.style.display = "";
+        rib.textContent = paiement.rib;
+      }
     }
 
     return fragment;
+  }
+
+  function paiementParCarteBancaire(paiement) {
+    return /^CB\b/i.test(String(paiement?.mode || "").trim());
   }
 
   async function creerCardMentionsFacture(facture) {
