@@ -111,6 +111,10 @@
   async function remplirFacture(racine, facture) {
     remplirTexte(racine, "[data-lcdp-facture-date]", formaterDate(facture.datefacture || facture.date || ""));
 
+    if (String(facture?.typeDocument || "").trim().toLowerCase() === "avoir") {
+      remplacerTexteExact(racine, "FACTURE", "AVOIR");
+    }
+
     const slotEmetteur = racine.querySelector("[data-lcdp-facture-emetteur-slot]");
     const slotDestinataire = racine.querySelector("[data-lcdp-facture-destinataire-slot]");
     const slotCard = racine.querySelector("[data-lcdp-facture-card-slot]");
@@ -164,6 +168,10 @@
       throw new Error("Structure card facture incomplète.");
     }
 
+    if (String(facture?.typeDocument || "").trim().toLowerCase() === "avoir") {
+      remplacerTexteExact(card, "Commande", "Annulation de commande");
+    }
+
     slotProduit.appendChild(await creerCardProduitFacture(facture.produit || {}));
     slotPaiement.appendChild(await creerCardPaiementFacture(facture.paiement || {}));
     slotPrix.appendChild(await creerCardPrixFacture(facture.prix || {}));
@@ -196,15 +204,20 @@
     const estAvoir = String(prix.type || "").trim().toLowerCase() === "avoir";
 
     if (estAvoir) {
-      remplirTexte(fragment, "[data-lcdp-facture-prix-brut-label]", "Facture annulée TTC (TVA " + formaterTaux(prix.tva1) + "%) €");
-      remplirTexte(fragment, "[data-lcdp-facture-prix-brut]", formaterMontant(prix.montantFactureTtc ?? prix.bruttc));
+      remplacerTexteExact(fragment, "Prix", "Remboursement");
+      remplirTexte(fragment, "[data-lcdp-facture-prix-brut-label]", "Avoir TTC (TVA " + formaterTaux(prix.tva1) + "%) €");
+      remplirTexte(fragment, "[data-lcdp-facture-prix-brut]", formaterMontant(prix.montantAvoirTtc ?? prix.montantFactureTtc ?? prix.bruttc));
       remplirTexte(fragment, "[data-lcdp-facture-prix-apayer]", formaterMontant(prix.montantRembourseTtc ?? prix.netnettc));
-      remplirTexte(fragment, "[data-lcdp-facture-prix-ht]", formaterMontant(prix.ht));
-      remplirTexte(fragment, "[data-lcdp-facture-prix-tva]", formaterMontant(prix.tva));
+      remplirTexte(fragment, "[data-lcdp-facture-prix-ht]", formaterMontant(prix.montantRembourseHt ?? prix.ht));
+      remplirTexte(fragment, "[data-lcdp-facture-prix-tva]", formaterMontant(prix.montantRembourseTva ?? prix.tva));
+      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-apayer]", "À rembourser (TTC) € *");
+      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-ht]", "Remboursement HT €");
+      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-tva]", "TVA remboursement €");
 
       if (listeRemises) {
         listeRemises.innerHTML = "";
-        ajouterLigneRemiseFacture(listeRemises, "Retenue de garantie (TTC) €", prix.retenueGarantieTtc ?? prix.retenueTtc);
+        ajouterLignePrixAvoir(listeRemises, "Avoir HT €", prix.montantAvoirHt);
+        ajouterLignePrixAvoir(listeRemises, "Retenue de garantie (TTC) €", prix.retenueGarantieTtc ?? prix.retenueTtc, { negatif: true });
       }
 
       return fragment;
@@ -245,10 +258,30 @@
     liste.appendChild(row);
   }
 
+  function ajouterLignePrixAvoir(liste, libelle, montant, options = {}) {
+    const valeur = nombreOuNull(montant);
+
+    if (!liste || valeur === null) return;
+
+    const row = document.createElement("div");
+    row.className = "lcdp-box-card-prix-in-facture__row";
+
+    const label = document.createElement("span");
+    label.textContent = libelle;
+
+    const prix = document.createElement("strong");
+    prix.textContent = options.negatif ? "-" + formaterMontant(valeur) : formaterMontant(valeur);
+
+    row.appendChild(label);
+    row.appendChild(prix);
+    liste.appendChild(row);
+  }
+
   async function creerCardPaiementFacture(paiement) {
     const fragment = await chargerFragmentObjet("/BOX/04-box-card-paiement-in-facture.html");
     const echeances = fragment.querySelector("[data-lcdp-facture-paiement-echeances]");
     const ribRow = fragment.querySelector("[data-lcdp-facture-paiement-rib-row]");
+    const rib = fragment.querySelector("[data-lcdp-facture-paiement-rib]");
 
     remplirTexte(fragment, "[data-lcdp-facture-paiement-mode]", paiement.mode || "Non renseigné");
 
@@ -262,7 +295,10 @@
         label.textContent = echeance.libelle || ("Échéance " + String(echeance.numero || "") + " :");
 
         const valeur = document.createElement("strong");
-        valeur.textContent = formaterDate(echeance.date) + " - " + formaterMontant(echeance.montant);
+        const montant = nombreOuNull(echeance.montant);
+        valeur.textContent = montant === null
+          ? formaterDate(echeance.date)
+          : formaterDate(echeance.date) + " - " + formaterMontant(montant);
 
         row.appendChild(label);
         row.appendChild(valeur);
@@ -270,8 +306,12 @@
       });
     }
 
-    if (ribRow) {
-      ribRow.hidden = paiement.afficherRib !== true;
+    if (ribRow && rib) {
+      const afficherRib = paiement.afficherRib === true;
+      ribRow.hidden = !afficherRib;
+      if (afficherRib && paiement.rib) {
+        rib.textContent = paiement.rib;
+      }
     }
 
     return fragment;
@@ -408,6 +448,29 @@
     if (!element) return;
 
     element.textContent = valeur || "Non renseigné";
+  }
+
+  function remplacerTexteExact(racine, ancien, nouveau) {
+    if (!racine) return;
+
+    racine.querySelectorAll("h1, h2, h3, h4, p, span, strong").forEach((element) => {
+      if (String(element.textContent || "").trim() === ancien) {
+        element.textContent = nouveau;
+      }
+    });
+  }
+
+  function renommerLibelleLigne(racine, selecteurValeur, nouveauLibelle) {
+    const valeur = racine.querySelector(selecteurValeur);
+    const ligne = valeur?.closest(".lcdp-box-card-prix-in-facture__row, .lcdp-box-card-paiement-in-facture__row, div");
+
+    if (!ligne) return;
+
+    const label = Array.from(ligne.children).find((element) => element !== valeur && element.tagName !== "STRONG");
+
+    if (label) {
+      label.textContent = nouveauLibelle;
+    }
   }
 
   function lireDateLocale(valeur) {
