@@ -17,6 +17,7 @@
   const orderid = String(params.get("orderid") || "").trim();
   const echeance = String(params.get("echeance") || "1").trim() || "1";
   const retour = String(params.get("retour") || "").trim().toLowerCase();
+  const sourcePaiement = String(params.get("source") || "").trim().toLowerCase();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -141,7 +142,7 @@
           "Accept": "application/json",
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ orderid, echeance })
+        body: JSON.stringify({ orderid, echeance, source: sourcePaiement })
       });
 
       const data = await reponse.json().catch(() => null);
@@ -223,14 +224,9 @@
   }
 
   function redirigerConnexionMembre(motif) {
-    if (typeof window.LCDP_redirigerConnexionMembre === "function") {
-      window.LCDP_redirigerConnexionMembre(SOURCE_PAGE, motif || "inactive");
-      return;
-    }
-
     const page = PAGE_CONNEXION_MEMBRE;
     const separateur = page.includes("?") ? "&" : "?";
-    window.location.href = page + separateur + "source=" + encodeURIComponent(SOURCE_PAGE) + "&session=" + encodeURIComponent(motif || "inactive") + "&retour=" + encodeURIComponent(window.location.href);
+    window.location.href = page + separateur + "source=" + encodeURIComponent(SOURCE_PAGE) + "&session=" + encodeURIComponent(motif || "inactive");
   }
 
   function reponseApiOk(data) {

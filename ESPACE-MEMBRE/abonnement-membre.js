@@ -1533,7 +1533,7 @@
     });
     boutonPayer.addEventListener("click", async () => {
       if (paiementCbDirectDepuisRecapitulatif()) {
-        await demarrerPaiementStripe();
+        await demarrerPaiementStripe({ echeancier: "comptant" });
         return;
       }
 
@@ -1658,12 +1658,16 @@
     return nbEcheances <= 1;
   }
 
-  async function demarrerPaiementStripe() {
-    etat.workflow.paiement.echeancier = "comptant";
+  async function demarrerPaiementStripe(options) {
+    const source = options && typeof options === "object" ? options : {};
+    const echeancier = String(source.echeancier || etat.workflow.paiement.echeancier || "comptant").trim().toLowerCase();
     etat.workflow.paiement.mode = "cb";
+    etat.workflow.paiement.echeancier = echeancier === "echelonne" ? "echelonne" : "comptant";
 
     try {
-      const commande = await enregistrerCommandeCb1x();
+      const commande = etat.workflow.paiement.echeancier === "echelonne"
+        ? await enregistrerCommandeCbEcheances()
+        : await enregistrerCommandeCb1x();
       const orderid = String(commande.orderid || commande.abonnement?.orderid || "").trim();
 
       if (!orderid) {
@@ -1712,6 +1716,41 @@
 
     if (!reponse.ok || !data || !reponseApiOk(data)) {
       throw new Error(messageErreurApi(data, "Impossible d'enregistrer la commande CB."));
+    }
+
+    return data;
+  }
+
+  async function enregistrerCommandeCbEcheances() {
+    if (!ENDPOINT_ABO_MEMBRE) {
+      throw new Error("Le service abonnement membre n’est pas configuré.");
+    }
+
+    const reponse = await fetch(ENDPOINT_ABO_MEMBRE + "/enregistrer-commande-cb-echeances", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(creerPayloadCommande({
+        paiement: {
+          echeancier: "echelonne",
+          mode: "cb"
+        }
+      }))
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      throw new Error("Session membre inactive.");
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Impossible d'enregistrer la commande CB échelonnée."));
     }
 
     return data;
@@ -1825,12 +1864,7 @@
       }
 
       if (etat.workflow.paiement.mode === "cb") {
-        if (etat.workflow.paiement.echeancier === "echelonne") {
-          await afficherAlerteSuperposee("Le paiement CB en plusieurs fois sera raccordé ensuite.");
-          return;
-        }
-
-        await demarrerPaiementStripe();
+        await demarrerPaiementStripe({ echeancier: etat.workflow.paiement.echeancier });
         return;
       }
 
@@ -2315,7 +2349,7 @@
 
       const description = document.createElement("p");
       description.className = "lcdp-dialogue-echeances-impayees__text";
-      description.textContent = "Non payé le " + formaterDate(echeance.date) + " : " + formaterMontant(echeance.montant);
+      description.textContent = "Échéance " + String(echeance.numero) + " du " + formaterDate(echeance.date) + " : " + formaterMontant(echeance.montant) + " TTC\nNon payée";
 
       const boutonPayer = creerBouton("Payer", "lcdp-button-secondary lcdp-workflow-micro-action", () => {
         ouvrirPagePaiementCb(abonnement, echeance.numero);
@@ -3323,19 +3357,14 @@
   }
 
   function redirigerConnexionMembre(motif) {
-    if (typeof window.LCDP_redirigerConnexionMembre === "function") {
-      window.LCDP_redirigerConnexionMembre(SOURCE_PAGE, motif || "inactive");
-      return;
-    }
-
     const separateur = PAGE_CONNEXION_MEMBRE.includes("?") ? "&" : "?";
 
     window.location.href =
       PAGE_CONNEXION_MEMBRE +
       separateur +
       "source=" + encodeURIComponent(SOURCE_PAGE) +
-      "&session=" + encodeURIComponent(motif || "inactive") +
-      "&retour=" + encodeURIComponent(window.location.href);
+      "&session=" +
+      encodeURIComponent(motif || "inactive");
   }
 
   async function obtenirWorkflowAbonnementContenu() {
