@@ -2680,6 +2680,11 @@
     }
 
     slotProduit.appendChild(await creerCardProduitFacture(facture.produit || {}));
+
+    if (String(facture?.typeDocument || "").trim().toLowerCase() === "avoir") {
+      remplacerTexteExact(slotProduit, "Commande", "Commande annulée");
+    }
+
     slotPrix.appendChild(await creerCardPrixFacture(facture.prix || {}));
     slotPaiement.appendChild(await creerCardPaiementFacture(facture.paiement || {}));
 
