@@ -223,9 +223,14 @@
   }
 
   function redirigerConnexionMembre(motif) {
+    if (typeof window.LCDP_redirigerConnexionMembre === "function") {
+      window.LCDP_redirigerConnexionMembre(SOURCE_PAGE, motif || "inactive");
+      return;
+    }
+
     const page = PAGE_CONNEXION_MEMBRE;
     const separateur = page.includes("?") ? "&" : "?";
-    window.location.href = page + separateur + "source=" + encodeURIComponent(SOURCE_PAGE) + "&session=" + encodeURIComponent(motif || "inactive");
+    window.location.href = page + separateur + "source=" + encodeURIComponent(SOURCE_PAGE) + "&session=" + encodeURIComponent(motif || "inactive") + "&retour=" + encodeURIComponent(window.location.href);
   }
 
   function reponseApiOk(data) {
