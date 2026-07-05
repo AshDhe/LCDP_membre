@@ -34,13 +34,7 @@
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
 
   let pageInitialisee = false;
-  let etatMembre = {
-    abonne: false,
-    abonnementDebut: "",
-    abonnementFin: "",
-    abonnementSuspendu: false,
-    paiementSuspension: null
-  };
+  let etatMembre = { abonne: false, abonnementSuspendu: false, paiementSuspension: null };
 
   const etatPage = {
     departement: "",
@@ -105,8 +99,6 @@
 
     return {
       abonne: valeurBooleenneVraie(resultat.abonne),
-      abonnementDebut: nettoyerDateIso(resultat.abonnementDebut || resultat.abonnementReservable?.debut || ""),
-      abonnementFin: nettoyerDateIso(resultat.abonnementFin || resultat.abonnementReservable?.fin || ""),
       abonnementSuspendu: valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu),
       paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null
     };
@@ -314,12 +306,6 @@
     const nombre = Number(String(value ?? "").replace(",", "."));
     if (!Number.isFinite(nombre)) return "Non renseigné";
     return nombre.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
-  }
-
-  function nettoyerDateIso(value) {
-    const texte = String(value || "").trim().slice(0, 10);
-
-    return /^\d{4}-\d{2}-\d{2}$/.test(texte) ? texte : "";
   }
 
   function valeurBooleenneVraie(valeur) {
@@ -826,11 +812,10 @@
     const ouvert = Boolean(planningJour && planningJour.ouvert);
     const estPasse = dateIso < dateAujourdhuiIso();
     const estAujourdhui = dateIso === dateAujourdhuiIso();
-    const horsAbonnement = Boolean(planningJour && planningJour.horsAbonnement);
 
     card.dataset.date = dateIso;
     card.dataset.idparc = String(etatCalendrier.parc.idparc || etatCalendrier.parc.id || "");
-    card.setAttribute("aria-label", construireLibelleJour(dateIso, ouvert, planningJour?.motif || ""));
+    card.setAttribute("aria-label", construireLibelleJour(dateIso, ouvert));
 
     if (numero) {
       numero.textContent = String(numeroJour);
@@ -843,10 +828,9 @@
     if (estPasse) {
       card.classList.add("lcdp-box-card-jour-in-calendrier-mois--past");
       card.disabled = true;
-    } else if (horsAbonnement) {
-      card.classList.add("lcdp-box-card-jour-in-calendrier-mois--hors-abonnement");
-      card.disabled = true;
-    } else if (!ouvert) {
+    }
+
+    if (!ouvert) {
       card.classList.add("lcdp-box-card-jour-in-calendrier-mois--closed");
       card.disabled = true;
     }
@@ -1800,7 +1784,7 @@
     return String(heure || "").replace(":", "h");
   }
 
-  function construireLibelleJour(dateIso, ouvert, motif) {
+  function construireLibelleJour(dateIso, ouvert) {
     const date = new Date(dateIso + "T00:00:00");
     const libelleDate = Number.isNaN(date.getTime())
       ? dateIso
@@ -1810,10 +1794,6 @@
           month: "long",
           year: "numeric"
         });
-
-    if (motif === "hors_abonnement") {
-      return libelleDate + " hors période d'abonnement";
-    }
 
     return libelleDate + (ouvert ? " disponible" : " indisponible");
   }
