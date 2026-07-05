@@ -63,7 +63,9 @@
     templateAbonnement: null,
     contexteWorkflow: null,
     calendrierMoisAffiche: null,
-    workflow: creerWorkflowVide()
+    workflow: creerWorkflowVide(),
+    abonnementSuspendu: false,
+    paiementSuspension: null
   };
 
   const titresFiltres = {
@@ -97,7 +99,7 @@
     }
   }
 
-  function afficherEtatMembre(abonneDepuisApi) {
+  function afficherEtatMembre(abonneDepuisApi, options = {}) {
     const mention = document.getElementById("mention-statut-membre");
 
     if (!mention) return;
@@ -107,6 +109,67 @@
     mention.textContent = abonne
       ? "[Vous êtes membre abonné]"
       : "[Vous êtes membre invité]";
+
+    afficherSuspensionMembre({
+      abonnementSuspendu: options.abonnementSuspendu === true,
+      paiementSuspension: options.paiementSuspension || null
+    });
+  }
+
+  function afficherSuspensionMembre(options = {}) {
+    const mention = document.getElementById("mention-statut-membre");
+    if (!mention || !mention.parentNode) return;
+
+    let bloc = document.getElementById("mention-suspension-abonnement-membre");
+
+    if (options.abonnementSuspendu !== true) {
+      if (bloc) bloc.remove();
+      return;
+    }
+
+    if (!bloc) {
+      bloc = document.createElement("div");
+      bloc.id = "mention-suspension-abonnement-membre";
+      bloc.className = "lcdp-mention-connexion";
+      bloc.style.display = "flex";
+      bloc.style.flexWrap = "wrap";
+      bloc.style.alignItems = "center";
+      bloc.style.justifyContent = "center";
+      bloc.style.gap = "0.5rem";
+      mention.insertAdjacentElement("afterend", bloc);
+    }
+
+    bloc.innerHTML = "";
+
+    const texte = document.createElement("span");
+    texte.textContent = "[Votre abonnement est suspendu (non payé)]";
+    bloc.appendChild(texte);
+
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
+    bouton.textContent = "Payer";
+    bouton.addEventListener("click", () => {
+      gererPaiementSuspensionMembre(options.paiementSuspension).catch(console.error);
+    });
+    bloc.appendChild(bouton);
+  }
+
+  async function gererPaiementSuspensionMembre(paiementSuspension) {
+    const paiement = paiementSuspension || etat.paiementSuspension || null;
+    const abonnement = trouverAbonnementSuspenduEnCours();
+
+    if (abonnement) {
+      await afficherEcheancesNonPayeesDepuisAbonnement(abonnement);
+      return;
+    }
+
+    if (!paiement || !paiement.orderid) {
+      await afficherAlerte("Paiement introuvable.");
+      return;
+    }
+
+    await ouvrirPagePaiementCb({ orderid: paiement.orderid }, paiement.echeance || 1);
   }
 
   async function initialiserBandeau() {
@@ -135,7 +198,7 @@
     if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
       await window.LCDP_initialiserMenuBurgerMembre({
         etatMembre: {
-          abonne: abonne === true && membreAbonne()
+          abonne: abonne === true
         }
       });
     }
@@ -275,12 +338,18 @@
         throw new Error(messageErreurApi(data, "Impossible de charger votre abonnement."));
       }
 
+      etat.abonnements = Array.isArray(data.abonnements) ? data.abonnements : [];
+      etat.abonnementSuspendu = valeurBooleenneVraie(data.abonnementSuspendu || data.suspendu);
+      etat.paiementSuspension = data.paiementSuspension || null;
+
       if (typeof data.abonne === "boolean") {
-        afficherEtatMembre(data.abonne);
+        afficherEtatMembre(data.abonne, {
+          abonnementSuspendu: etat.abonnementSuspendu,
+          paiementSuspension: etat.paiementSuspension
+        });
         await actualiserBurgerMembre(data.abonne);
       }
 
-      etat.abonnements = Array.isArray(data.abonnements) ? data.abonnements : [];
       afficherAbonnements(etat.abonnements);
     } catch (error) {
       console.error("Erreur chargement abonnement membre :", error);
@@ -2365,9 +2434,7 @@
       description.className = "lcdp-dialogue-echeances-impayees__text";
       description.textContent = "Échéance " + String(echeance.numero) + " du " + formaterDate(echeance.date) + " : " + formaterMontant(echeance.montant) + " TTC\nNon payée";
 
-      const boutonPayer = creerBouton("Payer", "lcdp-button-secondary lcdp-workflow-micro-action", () => {
-        ouvrirPagePaiementCb(abonnement, echeance.numero);
-      });
+      const boutonPayer = creerBouton("Payer", "lcdp-button-secondary lcdp-workflow-micro-action", () => ouvrirPagePaiementCb(abonnement, echeance.numero));
 
       ligne.appendChild(description);
       ligne.appendChild(boutonPayer);
@@ -2386,13 +2453,16 @@
     });
   }
 
-  function ouvrirPagePaiementCb(abonnement, numeroEcheance) {
+  async function ouvrirPagePaiementCb(abonnement, numeroEcheance) {
     const orderid = String(abonnement?.orderid || abonnement?.commande?.orderid || "").trim();
 
     if (!orderid) {
-      afficherAlerte("Commande non renseignée.");
+      await afficherAlerte("Commande non renseignée.");
       return;
     }
+
+    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
+    if (!ok) return;
 
     const url = PAGE_PAIEMENT_CB +
       (PAGE_PAIEMENT_CB.includes("?") ? "&" : "?") +
@@ -2400,6 +2470,28 @@
       "&echeance=" + encodeURIComponent(String(numeroEcheance || 1));
 
     window.location.href = url;
+  }
+
+  async function afficherEcheancesNonPayeesDepuisAbonnement(abonnement) {
+    const card = abonnement ? { dataset: {} } : null;
+
+    if (card) {
+      Object.assign(card.dataset, {
+        idabo: String(abonnement.idabo || abonnement.id || ""),
+        orderid: String(abonnement.orderid || abonnement.commande?.orderid || ""),
+        etatmois1: String(abonnement.etatmois1 || ""),
+        etatmois2: String(abonnement.etatmois2 || ""),
+        etatmois3: String(abonnement.etatmois3 || ""),
+        datemois1: String(abonnement.datemois1 || ""),
+        datemois2: String(abonnement.datemois2 || ""),
+        datemois3: String(abonnement.datemois3 || ""),
+        valmois1: String(abonnement.valmois1 ?? ""),
+        valmois2: String(abonnement.valmois2 ?? ""),
+        valmois3: String(abonnement.valmois3 ?? "")
+      });
+    }
+
+    await afficherEcheancesNonPayees(card);
   }
 
   function echeancesNonPayeesAbonnement(abonnement) {
@@ -3234,6 +3326,12 @@
     return "CB 1x";
   }
 
+  function trouverAbonnementSuspenduEnCours() {
+    return (Array.isArray(etat.abonnements) ? etat.abonnements : []).find((abonnement) => {
+      return categorieAbonnement(abonnement) === "encours" && String(abonnement?.statutabo || "").trim().toLowerCase() === "impaye";
+    }) || null;
+  }
+
   function abonnementAvecEcheanceNonPayee(abonnement) {
     return [abonnement?.etatmois1, abonnement?.etatmois2, abonnement?.etatmois3]
       .map((etatEcheance) => String(etatEcheance || "").trim().toLowerCase())
@@ -3241,28 +3339,14 @@
   }
 
   function estAbonnementSuspenduImpaye(abonnement, commande) {
-    const statut = String(commande?.statutPaiement || abonnement?.statutpaiement || abonnement?.statutPaiement || "").trim().toLowerCase();
-    return Boolean(
-      abonnement?.suspendu === true ||
-      abonnement?.actif === false && statut.includes("impay") ||
-      statut.includes("suspend") ||
-      statut.includes("impay") ||
-      commande?.dateSuspension ||
-      abonnement?.datesuspension ||
-      abonnement?.dateSuspension
-    );
+    const statut = String(commande?.statutPaiement || abonnement?.statutabo || abonnement?.statutpaiement || abonnement?.statutPaiement || "").trim().toLowerCase();
+    return statut === "impaye";
   }
 
   function construireMentionSuspension(abonnement, commande) {
     if (!estAbonnementSuspenduImpaye(abonnement, commande)) return "";
 
-    const dateSuspension = commande?.dateSuspension || abonnement?.datesuspension || abonnement?.dateSuspension || "";
-
-    if (dateSuspension) {
-      return "Suspendu depuis le " + formaterDate(dateSuspension) + " pour impayé";
-    }
-
-    return "Suspendu pour impayé";
+    return "Votre abonnement est suspendu (non payé)";
   }
 
   async function afficherAlerteSuperposee(message) {
@@ -3665,6 +3749,10 @@
 
   function membreAbonne() {
     return Boolean(lireCookie("abonne"));
+  }
+
+  function valeurBooleenneVraie(valeur) {
+    return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
   }
 
   function reponseApiOk(data) {
