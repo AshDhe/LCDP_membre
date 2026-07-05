@@ -317,7 +317,7 @@
 
     afficherSuspensionMembre({
       abonnementSuspendu: valeurBooleenneVraie(compte?.abonnementSuspendu || compte?.suspendu),
-      paiementSuspension: compte?.paiementSuspension || null
+      paiementSuspension: compte?.paiementSuspension || compte?.paiementRegularisation || null
     });
   }
 
