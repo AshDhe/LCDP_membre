@@ -35,6 +35,7 @@
     try {
       await initialiserBandeau();
       await initialiserFooter();
+      afficherStatutMembrePlanning();
       await initialiserListeReservations("Mes réservations");
       initialiserBoutonNouvelleDate();
       initialiserActionsListePlanning();
@@ -44,6 +45,16 @@
       console.error("Erreur planning membre :", error);
       afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
     }
+  }
+
+  function afficherStatutMembrePlanning() {
+    const mention = document.getElementById("mention-statut-membre");
+
+    if (!mention) return;
+
+    mention.textContent = membreAbonne()
+      ? "[Vous êtes membre abonné]"
+      : "[Vous êtes membre invité]";
   }
 
   function initialiserBoutonNouvelleDate() {
@@ -84,13 +95,21 @@
   function actualiserBoutonFiltrePlanning(bouton) {
     if (!bouton) return;
 
-    const afficheAvenir = etat.filtre === "passe";
+    const afficheAvenir = etat.filtre === "avenir";
 
-    bouton.textContent = afficheAvenir ? "Planning à venir" : "Planning passé";
-    bouton.classList.toggle("lcdp-button-secondary", !afficheAvenir);
-    bouton.classList.toggle("lcdp-button-orange", afficheAvenir);
-    bouton.classList.toggle("lcdp-button-filtre-planning-passe", !afficheAvenir);
-    bouton.classList.toggle("lcdp-button-filtre-planning-avenir", afficheAvenir);
+    bouton.textContent = afficheAvenir ? "Avenir / Passé" : "Passé";
+    bouton.dataset.filtrePlanningEtat = afficheAvenir ? "avenir" : "passe";
+    bouton.classList.remove(
+      "lcdp-button-secondary",
+      "lcdp-button-orange",
+      "lcdp-button-filtre-planning-passe",
+      "lcdp-button-filtre-planning-avenir"
+    );
+    bouton.classList.add(
+      afficheAvenir
+        ? "lcdp-button-filtre-planning-avenir"
+        : "lcdp-button-filtre-planning-passe"
+    );
   }
 
   async function chargerReservations() {
@@ -383,6 +402,7 @@
 
     if (options.premiereReservationAvenir === true && !estPasse) {
       card.classList.add("lcdp-box-card-reservation-membre--prochaine");
+      card.dataset.lcdpProchaineReservation = "true";
     }
 
     if (reservation.invitation === true) {
