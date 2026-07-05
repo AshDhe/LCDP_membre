@@ -19,6 +19,7 @@
   );
 
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
+  const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
 
   let pageInitialisee = false;
   let etatMembre = {
@@ -151,7 +152,7 @@
 
     const bouton = document.createElement("button");
     bouton.type = "button";
-    bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
+    bouton.className = "lcdp-button lcdp-button-secondary";
     bouton.textContent = "Payer";
     bouton.addEventListener("click", () => {
       gererPaiementSuspensionMembre(etat).catch(console.error);
@@ -159,21 +160,8 @@
     bloc.appendChild(bouton);
   }
 
-  async function gererPaiementSuspensionMembre(etat) {
-    const paiement = etat && etat.paiementSuspension ? etat.paiementSuspension : null;
-    const orderid = String(paiement?.orderid || "").trim();
-    const echeance = String(paiement?.echeance || "1").trim() || "1";
-
-    if (!orderid) {
-      await afficherAlerte("Paiement introuvable.");
-      return;
-    }
-
-    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
-    if (!ok) return;
-
-    const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
-    window.location.href = PAGE_PAIEMENT_CB + separateur + "orderid=" + encodeURIComponent(orderid) + "&echeance=" + encodeURIComponent(echeance) + "&source=suspension";
+  async function gererPaiementSuspensionMembre() {
+    window.location.href = PAGE_ABONNEMENT_MEMBRE;
   }
 
   async function initialiserBandeau() {
