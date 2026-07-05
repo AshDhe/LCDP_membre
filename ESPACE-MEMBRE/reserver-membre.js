@@ -43,7 +43,8 @@
     templateCardParc: null,
     templateJourMois: null,
     templateHeureJour: null,
-    calendrierMoisActif: null
+    calendrierMoisActif: null,
+    calendrierJourActif: null
   };
 
   if (document.readyState === "loading") {
@@ -141,13 +142,19 @@
 
     bloc.innerHTML = "";
 
+    const delaiPaiementDepasse = paiementSuspensionDelaiDepasse(etat?.paiementSuspension);
+
     const texte = document.createElement("span");
-    texte.textContent = "[Votre abonnement est suspendu (non payé)]";
+    texte.textContent = delaiPaiementDepasse
+      ? "[Votre abonnement est annulé (non payé)]"
+      : "[Votre abonnement est suspendu (non payé)]";
     bloc.appendChild(texte);
 
     const bouton = document.createElement("button");
     bouton.type = "button";
     bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
+    bouton.classList.toggle("lcdp-workflow-micro-action--paiement-depasse", delaiPaiementDepasse);
+    bouton.setAttribute("aria-disabled", delaiPaiementDepasse ? "true" : "false");
     bouton.textContent = "Payer";
     bouton.addEventListener("click", () => {
       gererPaiementSuspensionMembre(etat).catch(console.error);
@@ -163,6 +170,11 @@
     const paiement = etat && etat.paiementSuspension ? etat.paiementSuspension : null;
     const orderid = String(paiement?.orderid || "").trim();
     const echeances = echeancesPaiementSuspension(paiement);
+
+    if (paiementSuspensionDelaiDepasse(paiement)) {
+      await afficherAlerte(messageDelaiPaiementDepasse());
+      return;
+    }
 
     if (!orderid) {
       await afficherAlerte("Paiement introuvable.");
@@ -274,11 +286,80 @@
       return;
     }
 
+    if (paiementSuspensionDelaiDepasse(paiement)) {
+      await afficherAlerte(messageDelaiPaiementDepasse());
+      return;
+    }
+
     const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
     if (!ok) return;
 
     const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
     window.location.href = PAGE_PAIEMENT_CB + separateur + "orderid=" + encodeURIComponent(orderid) + "&echeance=" + encodeURIComponent(String(numeroEcheance || 1)) + "&source=suspension";
+  }
+
+
+  function messageDelaiPaiementDepasse() {
+    return "Le délai de paiement est dépassé. Cet abonnement est annulé.";
+  }
+
+  function paiementSuspensionDelaiDepasse(paiement) {
+    if (!paiement || typeof paiement !== "object") return false;
+
+    if (valeurBooleenneVraie(paiement.delaiPaiementDepasse) || valeurBooleenneVraie(paiement.abonnementAnnuleNonPaye)) {
+      return true;
+    }
+
+    return delaiPaiementDepasseDepuisFin(paiement.fin || paiement.dateFin || paiement.finabo || "");
+  }
+
+  function delaiPaiementDepasseDepuisFin(value) {
+    const fin = dateIsoPaiementDepuisValeur(value);
+
+    if (!fin) return false;
+
+    const maintenantParis = dateHeureParisPaiement(new Date());
+
+    if (maintenantParis.dateIso > fin) return true;
+    if (maintenantParis.dateIso < fin) return false;
+
+    return maintenantParis.heure >= 14;
+  }
+
+  function dateIsoPaiementDepuisValeur(value) {
+    const texte = String(value || "").trim();
+    const match = texte.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+    if (match) {
+      return match[1] + "-" + match[2] + "-" + match[3];
+    }
+
+    const date = new Date(texte);
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    return dateHeureParisPaiement(date).dateIso;
+  }
+
+  function dateHeureParisPaiement(date) {
+    const morceaux = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      hourCycle: "h23"
+    }).formatToParts(date);
+
+    const valeur = (type) => morceaux.find((item) => item.type === type)?.value || "";
+
+    return {
+      dateIso: valeur("year") + "-" + valeur("month") + "-" + valeur("day"),
+      heure: Number(valeur("hour") || 0),
+      minute: Number(valeur("minute") || 0)
+    };
   }
 
   function formaterDatePaiementSuspension(value) {
@@ -630,25 +711,24 @@
   }
 
   async function ouvrirCalendrierMoisParc(parc) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return;
-
-    slot.innerHTML = "";
+    const contenu = await obtenirWorkflowReservationContenu();
+    await preparerTransitionWorkflowReservation(contenu);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
-    slot.appendChild(fragment);
+    contenu.appendChild(fragment);
 
-    const calendrier = slot.querySelector("[data-lcdp-box-calendrier-mois]");
-    const titre = slot.querySelector("[data-lcdp-calendrier-mois-title]");
-    const meta = slot.querySelector("[data-lcdp-calendrier-mois-meta]");
-    const boutonFermer = slot.querySelector("[data-lcdp-calendrier-mois-close]");
-    const boutonPrecedent = slot.querySelector("[data-lcdp-calendrier-mois-prev]");
-    const boutonSuivant = slot.querySelector("[data-lcdp-calendrier-mois-next]");
+    const calendrier = contenu.querySelector("[data-lcdp-box-calendrier-mois]");
+    const titre = contenu.querySelector("[data-lcdp-calendrier-mois-title]");
+    const meta = contenu.querySelector("[data-lcdp-calendrier-mois-meta]");
+    const boutonFermer = contenu.querySelector("[data-lcdp-calendrier-mois-close]");
+    const boutonPrecedent = contenu.querySelector("[data-lcdp-calendrier-mois-prev]");
+    const boutonSuivant = contenu.querySelector("[data-lcdp-calendrier-mois-next]");
 
     if (!calendrier || !titre || !meta || !boutonFermer || !boutonPrecedent || !boutonSuivant) {
       throw new Error("Structure calendrier mois incomplète.");
     }
+
+    appliquerClasseWorkflowReservation(calendrier, "calendrier-mois");
 
     const nomParc = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
     const departement = String(parc.dptmt || parc.departement || "").trim();
@@ -661,35 +741,31 @@
       parc,
       annee: maintenant.getFullYear(),
       mois: maintenant.getMonth() + 1,
-      planning: []
+      planning: [],
+      chargement: false
     };
 
     etatPage.calendrierMoisActif = etatCalendrier;
+    etatPage.calendrierJourActif = null;
 
-    async function fermer() {
-      slot.innerHTML = "";
-    }
-
-    boutonFermer.addEventListener("click", fermer);
-
-    calendrier.addEventListener("click", (event) => {
-      if (event.target === calendrier) fermer();
-    });
+    boutonFermer.addEventListener("click", fermerWorkflowReservation);
 
     document.addEventListener(
       "keydown",
       (event) => {
-        if (event.key === "Escape") fermer();
+        if (event.key === "Escape") fermerWorkflowReservation();
       },
       { once: true }
     );
 
     boutonPrecedent.addEventListener("click", () => {
+      if (etatCalendrier.chargement || boutonPrecedent.disabled) return;
       changerMois(etatCalendrier, -1);
       afficherCalendrierMois(etatCalendrier).catch(console.error);
     });
 
     boutonSuivant.addEventListener("click", () => {
+      if (etatCalendrier.chargement || boutonSuivant.disabled) return;
       changerMois(etatCalendrier, 1);
       afficherCalendrierMois(etatCalendrier).catch(console.error);
     });
@@ -701,24 +777,45 @@
     const moisCourant = document.querySelector("[data-lcdp-calendrier-mois-current]");
     const message = document.querySelector("[data-lcdp-calendrier-mois-message]");
     const grille = document.querySelector("[data-lcdp-calendrier-mois-grid]");
+    const boutonPrecedent = document.querySelector("[data-lcdp-calendrier-mois-prev]");
+    const boutonSuivant = document.querySelector("[data-lcdp-calendrier-mois-next]");
 
     if (!moisCourant || !message || !grille) return;
 
-    moisCourant.textContent = formaterMoisAnnee(etatCalendrier.annee, etatCalendrier.mois);
-    grille.innerHTML = "";
-    message.hidden = false;
-    message.textContent = "Chargement du planning...";
+    if (etatCalendrier.chargement) return;
+
+    const libelleMois = formaterMoisAnnee(etatCalendrier.annee, etatCalendrier.mois);
+    const avaitContenu = grille.children.length > 0;
+
+    etatCalendrier.chargement = true;
+    activerChargementWorkflowReservation(true);
+    verrouillerNavigationCalendrierMois(boutonPrecedent, boutonSuivant, true);
+
+    if (!avaitContenu) {
+      moisCourant.textContent = libelleMois;
+    }
+
+    message.hidden = true;
+    message.textContent = "";
 
     try {
       const planning = await chargerPlanningParcMois(etatCalendrier);
       etatCalendrier.planning = planning;
+      moisCourant.textContent = libelleMois;
+      remplirGrilleCalendrier(grille, etatCalendrier, planning);
       message.hidden = true;
       message.textContent = "";
-      remplirGrilleCalendrier(grille, etatCalendrier, planning);
     } catch (error) {
       console.error("Erreur planning parc mois :", error);
+      if (!avaitContenu) {
+        grille.innerHTML = "";
+      }
       message.hidden = false;
       message.textContent = error.message || "Impossible de charger le planning du parc.";
+    } finally {
+      etatCalendrier.chargement = false;
+      activerChargementWorkflowReservation(false);
+      verrouillerNavigationCalendrierMois(boutonPrecedent, boutonSuivant, false);
     }
   }
 
@@ -864,25 +961,25 @@
   }
 
   async function ouvrirCalendrierJourParc(contexte) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return;
-
-    slot.innerHTML = "";
+    const contenu = await obtenirWorkflowReservationContenu();
+    await preparerTransitionWorkflowReservation(contenu);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-jour.html");
-    slot.appendChild(fragment);
+    contenu.appendChild(fragment);
 
-    const calendrier = slot.querySelector("[data-lcdp-box-calendrier-jour]");
-    const titre = slot.querySelector("[data-lcdp-calendrier-jour-title]");
-    const meta = slot.querySelector("[data-lcdp-calendrier-jour-meta]");
-    const message = slot.querySelector("[data-lcdp-calendrier-jour-message]");
-    const grille = slot.querySelector("[data-lcdp-calendrier-jour-grid]");
-    const boutonFermer = slot.querySelector("[data-lcdp-calendrier-jour-close]");
+    const calendrier = contenu.querySelector("[data-lcdp-box-calendrier-jour]");
+    const titre = contenu.querySelector("[data-lcdp-calendrier-jour-title]");
+    const meta = contenu.querySelector("[data-lcdp-calendrier-jour-meta]");
+    const message = contenu.querySelector("[data-lcdp-calendrier-jour-message]");
+    const grille = contenu.querySelector("[data-lcdp-calendrier-jour-grid]");
+    const boutonFermer = contenu.querySelector("[data-lcdp-calendrier-jour-close]");
 
     if (!calendrier || !titre || !meta || !message || !grille || !boutonFermer) {
       throw new Error("Structure calendrier jour incomplète.");
     }
+
+    appliquerClasseWorkflowReservation(calendrier, "calendrier-jour");
+    etatPage.calendrierJourActif = contexte;
 
     const nomParc = String(contexte.parc.nom || contexte.parc.nomparc || "Parc").trim() || "Parc";
     const departement = String(contexte.parc.dptmt || contexte.parc.departement || "").trim();
@@ -890,18 +987,12 @@
     titre.textContent = "Votre heure d'arrivée";
     meta.textContent = formaterDateFr(contexte.dateIso) + " · " + nomParc + (departement ? " · " + departement : "");
 
-    boutonFermer.addEventListener("click", () => {
-      slot.innerHTML = "";
-    });
-
-    calendrier.addEventListener("click", (event) => {
-      if (event.target === calendrier) slot.innerHTML = "";
-    });
+    boutonFermer.addEventListener("click", fermerWorkflowReservation);
 
     document.addEventListener(
       "keydown",
       (event) => {
-        if (event.key === "Escape") slot.innerHTML = "";
+        if (event.key === "Escape") fermerWorkflowReservation();
       },
       { once: true }
     );
@@ -1037,6 +1128,7 @@
       ? extraireHeureFranceReservation(reservationPlage.datebookd)
       : "";
     const estHeureReservee = reservationPlage && heureReservee === heure;
+    const estHeurePassee = heureEstPasseePourDate(contexte.dateIso, heure);
 
     card.classList.add("lcdp-box-card-heure-in-calendrier-jour--" + couleur);
     card.dataset.idparc = String(contexte.parc.idparc || contexte.parc.id || "");
@@ -1055,6 +1147,11 @@
         card.classList.add("lcdp-box-card-heure-in-calendrier-jour--plage-bloquee");
         card.setAttribute("aria-label", formaterHeureAffichee(heure) + " indisponible car une réservation existe déjà sur cette plage");
       }
+    } else if (estHeurePassee) {
+      card.disabled = true;
+      card.dataset.indisponible = "heure-passee";
+      card.classList.add("lcdp-box-card-heure-in-calendrier-jour--passee");
+      card.setAttribute("aria-label", formaterHeureAffichee(heure) + " déjà passé");
     }
 
     if (label) {
@@ -1151,26 +1248,17 @@
       return;
     }
 
-    const confirmation = await ouvrirDialogueBoutonsSuperpose({
+    if (heureEstPasseePourDate(dateIso, heure)) {
+      await afficherAlerteSuperposee("Cette heure est déjà passée.");
+      return;
+    }
+
+    const confirmation = await ouvrirConfirmationReservation({
       titre: "Confirmer l'heure d'arrivée",
-      texte: "Vous avez choisi le " + formaterDateFr(dateIso) + " à " + formaterHeureAffichee(heure) + ".",
-      boutons: [
-        {
-          label: "Annuler",
-          valeur: "annuler",
-          style: "lcdp-button-secondary"
-        },
-        {
-          label: "Confirmer",
-          valeur: "confirmer",
-          style: "lcdp-button-primary"
-        }
-      ]
+      texte: "Vous avez choisi le " + formaterDateFr(dateIso) + " à " + formaterHeureAffichee(heure) + "."
     });
 
     if (confirmation !== "confirmer") return;
-
-    boutonHeure.disabled = true;
 
     try {
       await enregistrerReservation({
@@ -1179,14 +1267,15 @@
         plagebookd
       });
 
-      const slot = document.getElementById("lcdp-lightbox-slot");
-      if (slot) slot.innerHTML = "";
-
+      fermerWorkflowReservation();
       await afficherAlerte("Votre nouvelle date a bien été enregistrée.");
       window.location.href = PAGE_PLANNING_MEMBRE;
     } catch (error) {
-      boutonHeure.disabled = false;
       await afficherAlerteSuperposee(error.message || "Impossible d'enregistrer la réservation.");
+
+      if (etatPage.calendrierJourActif) {
+        await ouvrirCalendrierJourParc(etatPage.calendrierJourActif);
+      }
     }
   }
 
@@ -1224,6 +1313,73 @@
     const dateLocale = new Date(dateIso + "T" + heure + ":00");
 
     return dateLocale.toISOString();
+  }
+
+  async function ouvrirConfirmationReservation(options) {
+    const contenu = await obtenirWorkflowReservationContenu();
+    await preparerTransitionWorkflowReservation(contenu);
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    contenu.appendChild(fragment);
+
+    const dialogue = contenu.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = contenu.querySelector("[data-lcdp-dialogue-title]");
+    const texte = contenu.querySelector("[data-lcdp-dialogue-text]");
+    const actions = contenu.querySelector("[data-lcdp-dialogue-actions]");
+    const boutonFermer = contenu.querySelector("[data-lcdp-dialogue-close]");
+
+    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
+      throw new Error("Structure dialogue confirmation réservation incomplète.");
+    }
+
+    appliquerClasseWorkflowReservation(dialogue, "confirmation");
+
+    titre.textContent = options.titre || "";
+    texte.textContent = options.texte || "";
+    actions.innerHTML = "";
+    actions.classList.add("lcdp-workflow-reservation__actions-row");
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      async function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+
+        if (valeur === "annuler" && etatPage.calendrierJourActif) {
+          await ouvrirCalendrierJourParc(etatPage.calendrierJourActif);
+        }
+
+        resolve(valeur || null);
+      }
+
+      actions.appendChild(creerBoutonWorkflowReservation("Annuler", "lcdp-button-secondary", () => fermer("annuler")));
+      actions.appendChild(creerBoutonWorkflowReservation("Confirmer", "lcdp-button-primary", () => fermer("confirmer")));
+
+      boutonFermer.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        fermer("annuler").catch(console.error);
+      });
+
+      dialogue.addEventListener("click", (event) => {
+        if (event.target === dialogue) {
+          event.stopPropagation();
+          fermer("annuler").catch(console.error);
+        }
+      });
+    });
+  }
+
+  function creerBoutonWorkflowReservation(label, style, action) {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "lcdp-button " + (style || "lcdp-button-primary");
+    bouton.textContent = label || "Valider";
+    bouton.addEventListener("click", () => {
+      Promise.resolve(action()).catch(console.error);
+    });
+    return bouton;
   }
 
   async function ouvrirDialogueBoutonsSuperpose(options) {
@@ -1734,12 +1890,46 @@
   }
 
   function dateAujourdhuiIso() {
-    const maintenant = new Date();
-    return construireDateIso(
-      maintenant.getFullYear(),
-      maintenant.getMonth() + 1,
-      maintenant.getDate()
-    );
+    const parties = partiesDateHeureParis(new Date());
+
+    return construireDateIso(parties.annee, parties.mois, parties.jour);
+  }
+
+  function heureEstPasseePourDate(dateIso, heure) {
+    const aujourdHui = dateAujourdhuiIso();
+
+    if (dateIso < aujourdHui) return true;
+    if (dateIso > aujourdHui) return false;
+
+    const parties = partiesDateHeureParis(new Date());
+    const minutesMaintenant = parties.heure * 60 + parties.minute;
+
+    return convertirHeureEnMinutes(heure) <= minutesMaintenant;
+  }
+
+  function partiesDateHeureParis(date) {
+    const morceaux = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      hourCycle: "h23"
+    }).formatToParts(date);
+
+    const valeur = (type) => Number(morceaux.find((item) => item.type === type)?.value || 0);
+
+    return {
+      annee: valeur("year"),
+      mois: valeur("month"),
+      jour: valeur("day"),
+      heure: valeur("hour"),
+      minute: valeur("minute"),
+      seconde: valeur("second")
+    };
   }
 
   function formaterMoisAnnee(annee, mois) {
@@ -1794,6 +1984,129 @@
     if (valeur === "gris_fonce" || valeur === "gris-fonce" || valeur === "fonce") return "gris-fonce";
 
     return "gris-clair";
+  }
+
+  async function obtenirWorkflowReservationContenu() {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) {
+      throw new Error("Slot lightbox introuvable.");
+    }
+
+    let workflow = slot.querySelector("[data-lcdp-box-workflow-reservation]");
+
+    if (!workflow) {
+      slot.innerHTML = "";
+
+      const fragment = await chargerFragmentObjet("/BOX/04-box-workflow-reservation.html");
+      slot.appendChild(fragment);
+
+      workflow = slot.querySelector("[data-lcdp-box-workflow-reservation]");
+
+      if (!workflow) {
+        throw new Error("Structure workflow réservation incomplète.");
+      }
+
+      workflow.addEventListener("click", (event) => {
+        if (event.target === workflow) {
+          fermerWorkflowReservation();
+        }
+      });
+    }
+
+    const contenu = workflow.querySelector("[data-lcdp-workflow-reservation-content]");
+
+    if (!contenu) {
+      throw new Error("Zone contenu workflow réservation introuvable.");
+    }
+
+    return contenu;
+  }
+
+  async function preparerTransitionWorkflowReservation(contenu) {
+    if (!contenu) return;
+
+    const workflow = contenu.closest("[data-lcdp-box-workflow-reservation]");
+    const card = workflow?.querySelector("[data-lcdp-workflow-reservation-card]");
+
+    if (!contenu.firstElementChild) {
+      contenu.innerHTML = "";
+      if (card) card.scrollTop = 0;
+      return;
+    }
+
+    if (card) {
+      card.scrollTop = 0;
+    }
+
+    contenu.classList.add("lcdp-box-workflow-reservation__content--transition");
+    await attendre(70);
+    contenu.innerHTML = "";
+    contenu.classList.remove("lcdp-box-workflow-reservation__content--transition");
+
+    if (card) {
+      window.requestAnimationFrame(() => {
+        card.scrollTop = 0;
+      });
+    }
+  }
+
+  function appliquerClasseWorkflowReservation(box, variante) {
+    if (!box) return;
+
+    box.classList.add("lcdp-workflow-reservation-box");
+
+    if (variante) {
+      box.classList.add("lcdp-workflow-reservation-box--" + variante);
+    }
+
+    const workflow = box.closest("[data-lcdp-box-workflow-reservation]");
+
+    if (!workflow) return;
+
+    Array.from(workflow.classList).forEach((nomClasse) => {
+      if (nomClasse.startsWith("lcdp-box-workflow-reservation--")) {
+        workflow.classList.remove(nomClasse);
+      }
+    });
+
+    if (variante) {
+      workflow.classList.add("lcdp-box-workflow-reservation--" + variante);
+    }
+  }
+
+  function activerChargementWorkflowReservation(actif) {
+    const workflow = document.querySelector("[data-lcdp-box-workflow-reservation]");
+
+    if (!workflow) return;
+
+    workflow.classList.toggle("lcdp-box-workflow-reservation--loading", actif === true);
+    workflow.setAttribute("aria-busy", actif === true ? "true" : "false");
+  }
+
+  function verrouillerNavigationCalendrierMois(boutonPrecedent, boutonSuivant, verrouille) {
+    [boutonPrecedent, boutonSuivant].forEach((bouton) => {
+      if (!bouton) return;
+      bouton.disabled = verrouille === true;
+      bouton.setAttribute("aria-disabled", verrouille === true ? "true" : "false");
+    });
+  }
+
+  function fermerWorkflowReservation() {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (slot) {
+      slot.innerHTML = "";
+    }
+
+    etatPage.calendrierMoisActif = null;
+    etatPage.calendrierJourActif = null;
+  }
+
+  function attendre(delaiMs) {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, delaiMs);
+    });
   }
 
   function lireCookie(nom) {

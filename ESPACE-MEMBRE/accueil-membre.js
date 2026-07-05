@@ -141,13 +141,19 @@
 
     bloc.innerHTML = "";
 
+    const delaiPaiementDepasse = paiementSuspensionDelaiDepasse(etat?.paiementSuspension);
+
     const texte = document.createElement("span");
-    texte.textContent = "[Votre abonnement est suspendu (non payé)]";
+    texte.textContent = delaiPaiementDepasse
+      ? "[Votre abonnement est annulé (non payé)]"
+      : "[Votre abonnement est suspendu (non payé)]";
     bloc.appendChild(texte);
 
     const bouton = document.createElement("button");
     bouton.type = "button";
     bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
+    bouton.classList.toggle("lcdp-workflow-micro-action--paiement-depasse", delaiPaiementDepasse);
+    bouton.setAttribute("aria-disabled", delaiPaiementDepasse ? "true" : "false");
     bouton.textContent = "Payer";
     bouton.addEventListener("click", () => {
       gererPaiementSuspensionMembre(etat).catch(console.error);
@@ -178,6 +184,11 @@
     const paiement = etat && etat.paiementSuspension ? etat.paiementSuspension : null;
     const orderid = String(paiement?.orderid || "").trim();
     const echeances = echeancesPaiementSuspension(paiement);
+
+    if (paiementSuspensionDelaiDepasse(paiement)) {
+      await afficherAlerte(messageDelaiPaiementDepasse());
+      return;
+    }
 
     if (!orderid) {
       await afficherAlerte("Paiement introuvable.");
@@ -289,11 +300,80 @@
       return;
     }
 
+    if (paiementSuspensionDelaiDepasse(paiement)) {
+      await afficherAlerte(messageDelaiPaiementDepasse());
+      return;
+    }
+
     const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
     if (!ok) return;
 
     const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
     window.location.href = PAGE_PAIEMENT_CB + separateur + "orderid=" + encodeURIComponent(orderid) + "&echeance=" + encodeURIComponent(String(numeroEcheance || 1)) + "&source=suspension";
+  }
+
+
+  function messageDelaiPaiementDepasse() {
+    return "Le délai de paiement est dépassé. Cet abonnement est annulé.";
+  }
+
+  function paiementSuspensionDelaiDepasse(paiement) {
+    if (!paiement || typeof paiement !== "object") return false;
+
+    if (valeurBooleenneVraie(paiement.delaiPaiementDepasse) || valeurBooleenneVraie(paiement.abonnementAnnuleNonPaye)) {
+      return true;
+    }
+
+    return delaiPaiementDepasseDepuisFin(paiement.fin || paiement.dateFin || paiement.finabo || "");
+  }
+
+  function delaiPaiementDepasseDepuisFin(value) {
+    const fin = dateIsoPaiementDepuisValeur(value);
+
+    if (!fin) return false;
+
+    const maintenantParis = dateHeureParisPaiement(new Date());
+
+    if (maintenantParis.dateIso > fin) return true;
+    if (maintenantParis.dateIso < fin) return false;
+
+    return maintenantParis.heure >= 14;
+  }
+
+  function dateIsoPaiementDepuisValeur(value) {
+    const texte = String(value || "").trim();
+    const match = texte.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+    if (match) {
+      return match[1] + "-" + match[2] + "-" + match[3];
+    }
+
+    const date = new Date(texte);
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    return dateHeureParisPaiement(date).dateIso;
+  }
+
+  function dateHeureParisPaiement(date) {
+    const morceaux = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      hourCycle: "h23"
+    }).formatToParts(date);
+
+    const valeur = (type) => morceaux.find((item) => item.type === type)?.value || "";
+
+    return {
+      dateIso: valeur("year") + "-" + valeur("month") + "-" + valeur("day"),
+      heure: Number(valeur("hour") || 0),
+      minute: Number(valeur("minute") || 0)
+    };
   }
 
   function formaterDatePaiementSuspension(value) {

@@ -137,7 +137,9 @@
     bloc.innerHTML = "";
 
     const texte = document.createElement("span");
-    texte.textContent = "[Votre abonnement est suspendu (non payé)]";
+    texte.textContent = paiementSuspensionDelaiDepasse(options.paiementSuspension || etat.paiementSuspension)
+      ? "[Votre abonnement est annulé (non payé)]"
+      : "[Votre abonnement est suspendu (non payé)]";
     bloc.appendChild(texte);
 
   }
@@ -352,6 +354,7 @@
     const boutonFacture = event.target.closest("[data-action='voir-facture']");
     const boutonAvoir = event.target.closest("[data-action='demander-avoir']");
     const boutonAvoirDepasse = event.target.closest("[data-action='avoir-delai-depasse']");
+    const boutonAnnuleCreeTermine = event.target.closest("[data-action='annule-cree-termine']");
     const boutonVoirAvoir = event.target.closest("[data-action='voir-avoir']");
 
     if (boutonPayerAbonnement) {
@@ -381,7 +384,12 @@
     }
 
     if (boutonAvoirDepasse) {
-      await afficherAlerte("Le délai d'avoir est dépassé");
+      await afficherAlerte("Le délai d’annulation est dépassé.");
+      return;
+    }
+
+    if (boutonAnnuleCreeTermine) {
+      await afficherAlerte("L'abonnement est annulé (non payé). L'avoir est édité le 1er du mois suivant");
       return;
     }
 
@@ -2385,6 +2393,11 @@
       return;
     }
 
+    if (delaiPaiementDepasseAbonnement(abonnement)) {
+      await afficherAlerte(messageDelaiPaiementDepasse());
+      return;
+    }
+
     const echeances = echeancesNonPayeesAbonnement(abonnement);
 
     if (!echeances.length) {
@@ -2449,6 +2462,11 @@
       return;
     }
 
+    if (delaiPaiementDepasseAbonnement(abonnement)) {
+      await afficherAlerte(messageDelaiPaiementDepasse());
+      return;
+    }
+
     const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
     if (!ok) return;
 
@@ -2475,11 +2493,80 @@
         datemois3: String(abonnement.datemois3 || ""),
         valmois1: String(abonnement.valmois1 ?? ""),
         valmois2: String(abonnement.valmois2 ?? ""),
-        valmois3: String(abonnement.valmois3 ?? "")
+        valmois3: String(abonnement.valmois3 ?? ""),
+        fin: String(abonnement.fin || "")
       });
     }
 
     await afficherEcheancesNonPayees(card);
+  }
+
+
+  function messageDelaiPaiementDepasse() {
+    return "Le délai de paiement est dépassé. Cet abonnement est annulé.";
+  }
+
+  function paiementSuspensionDelaiDepasse(paiement) {
+    if (!paiement || typeof paiement !== "object") return false;
+
+    if (valeurBooleenneVraie(paiement.delaiPaiementDepasse) || valeurBooleenneVraie(paiement.abonnementAnnuleNonPaye)) {
+      return true;
+    }
+
+    return delaiPaiementDepasseDepuisFin(paiement.fin || paiement.dateFin || paiement.finabo || "");
+  }
+
+  function delaiPaiementDepasseAbonnement(abonnement) {
+    return delaiPaiementDepasseDepuisFin(abonnement?.fin || abonnement?.dateFin || abonnement?.finabo || "");
+  }
+
+  function delaiPaiementDepasseDepuisFin(value) {
+    const fin = dateIsoPaiementDepuisValeur(value);
+
+    if (!fin) return false;
+
+    const maintenantParis = dateHeureParisPaiement(new Date());
+
+    if (maintenantParis.dateIso > fin) return true;
+    if (maintenantParis.dateIso < fin) return false;
+
+    return maintenantParis.heure >= 14;
+  }
+
+  function dateIsoPaiementDepuisValeur(value) {
+    const texte = String(value || "").trim();
+    const match = texte.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+    if (match) {
+      return match[1] + "-" + match[2] + "-" + match[3];
+    }
+
+    const date = new Date(texte);
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    return dateHeureParisPaiement(date).dateIso;
+  }
+
+  function dateHeureParisPaiement(date) {
+    const morceaux = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      hourCycle: "h23"
+    }).formatToParts(date);
+
+    const valeur = (type) => morceaux.find((item) => item.type === type)?.value || "";
+
+    return {
+      dateIso: valeur("year") + "-" + valeur("month") + "-" + valeur("day"),
+      heure: Number(valeur("hour") || 0),
+      minute: Number(valeur("minute") || 0)
+    };
   }
 
   function echeancesNonPayeesAbonnement(abonnement) {
@@ -3099,9 +3186,12 @@
     const boutonNonPaye = card.querySelector("[data-action='payer-abonnement']");
     const boutonAction = card.querySelector("[data-action='prolonger-abonnement']");
     const nonPaye = abonnementAvecEcheanceNonPayee(abonnement);
+    const paiementDepasse = delaiPaiementDepasseAbonnement(abonnement);
 
     if (boutonNonPaye) {
       boutonNonPaye.hidden = !nonPaye;
+      boutonNonPaye.classList.toggle("lcdp-box-card-abonnement__micro-action--paiement-depasse", nonPaye && paiementDepasse);
+      boutonNonPaye.setAttribute("aria-disabled", nonPaye && paiementDepasse ? "true" : "false");
     }
 
     if (boutonAction) {
@@ -3149,19 +3239,28 @@
   }
 
   function determinerEtatAvoirAbonnement(abonnement, commande) {
+    if (estAbonnementCreeTermineEnAffichage(abonnement)) {
+      return { invisible: false, label: "Annulé", action: "annule-cree-termine", grise: true };
+    }
+
+    if (estAbonnementAnnule(abonnement, commande)) {
+      return { invisible: false, label: "Avoir", action: "voir-avoir", grise: false };
+    }
+
     if (estAbonnementUnJour(abonnement)) {
       return { invisible: true, label: "", action: "", grise: false };
     }
 
-    if (estAbonnementAnnule(abonnement, commande)) {
-      return { invisible: false, label: "Annulé", action: "voir-avoir", grise: false };
-    }
-
     if (!estDansDelaiAvoirAbonnement(abonnement)) {
-      return { invisible: false, label: "Avoir", action: "avoir-delai-depasse", grise: true };
+      return { invisible: false, label: "Annuler", action: "avoir-delai-depasse", grise: true };
     }
 
-    return { invisible: false, label: "Avoir", action: "demander-avoir", grise: false };
+    return { invisible: false, label: "Annuler", action: "demander-avoir", grise: false };
+  }
+
+  function estAbonnementCreeTermineEnAffichage(abonnement) {
+    const statut = String(abonnement?.statutabo || abonnement?.statutpaiement || abonnement?.statutPaiement || "").trim().toLowerCase();
+    return statut === "cree" && delaiPaiementDepasseAbonnement(abonnement);
   }
 
   function estAbonnementUnJour(abonnement) {
@@ -3315,7 +3414,7 @@
 
   function trouverAbonnementSuspenduEnCours() {
     return (Array.isArray(etat.abonnements) ? etat.abonnements : []).find((abonnement) => {
-      return categorieAbonnement(abonnement) === "encours" && String(abonnement?.statutabo || "").trim().toLowerCase() === "impaye";
+      return categorieAbonnement(abonnement) === "encours" && abonnementAvecEcheanceNonPayee(abonnement);
     }) || null;
   }
 
@@ -3327,13 +3426,15 @@
 
   function estAbonnementSuspenduImpaye(abonnement, commande) {
     const statut = String(commande?.statutPaiement || abonnement?.statutabo || abonnement?.statutpaiement || abonnement?.statutPaiement || "").trim().toLowerCase();
-    return statut === "impaye";
+    return statut === "impaye" || abonnementAvecEcheanceNonPayee(abonnement) || abonnementAvecEcheanceNonPayee(commande);
   }
 
   function construireMentionSuspension(abonnement, commande) {
     if (!estAbonnementSuspenduImpaye(abonnement, commande)) return "";
 
-    return "Votre abonnement est suspendu (non payé)";
+    return delaiPaiementDepasseAbonnement(abonnement)
+      ? "Votre abonnement est annulé (non payé)"
+      : "Votre abonnement est suspendu (non payé)";
   }
 
   async function afficherAlerteSuperposee(message) {

@@ -105,6 +105,12 @@
       return;
     }
 
+    if (paiement.delaiPaiementDepasse === true || paiement.abonnementAnnuleNonPaye === true) {
+      afficherMessage(paiement.messageDelaiPaiement || "Le délai de paiement est dépassé. Cet abonnement est annulé.", "erreur");
+      afficherQuitter();
+      return;
+    }
+
     if (statustripe === "impaye") {
       afficherMessage("Votre paiement a échoué.", "erreur");
       if (paiement.peutRecommencer) afficherRecommencer();
@@ -185,7 +191,6 @@
       if (!bouton) return;
 
       bouton.hidden = true;
-      bouton.style.display = "none";
     });
   }
 
@@ -208,7 +213,6 @@
     if (!bouton) return;
 
     bouton.hidden = false;
-    bouton.style.display = "";
   }
 
   function programmerRedirectionAbonnement() {
