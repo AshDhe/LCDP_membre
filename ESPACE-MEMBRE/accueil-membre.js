@@ -152,7 +152,7 @@
 
     const bouton = document.createElement("button");
     bouton.type = "button";
-    bouton.className = "lcdp-button lcdp-button-secondary";
+    bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
     bouton.textContent = "Payer";
     bouton.addEventListener("click", () => {
       gererPaiementSuspensionMembre(etat).catch(console.error);
@@ -160,7 +160,25 @@
     bloc.appendChild(bouton);
   }
 
-  async function gererPaiementSuspensionMembre() {
+  async function gererPaiementSuspensionMembre(etat) {
+    if (suspensionPourNonPaiement(etat)) {
+      await redirigerVersAbonnementPourRegularisation();
+      return;
+    }
+
+    await afficherAlerte("Votre abonnement est suspendu.");
+  }
+
+  function suspensionPourNonPaiement(etat) {
+    return etat &&
+      etat.abonnementSuspendu === true &&
+      etat.paiementSuspension;
+  }
+
+  async function redirigerVersAbonnementPourRegularisation() {
+    const ok = await afficherAlerte("Vous allez être redirigé vers votre page abonnement.");
+    if (!ok) return;
+
     window.location.href = PAGE_ABONNEMENT_MEMBRE;
   }
 
@@ -379,24 +397,24 @@
     return new Promise((resolve) => {
       let resolu = false;
 
-      function fermer() {
+      function fermer(valeur) {
         if (resolu) return;
         resolu = true;
         slot.innerHTML = "";
-        resolve(true);
+        resolve(valeur);
       }
 
-      boutonFermer.addEventListener("click", fermer);
-      boutonOk.addEventListener("click", fermer);
+      boutonFermer.addEventListener("click", () => fermer(false));
+      boutonOk.addEventListener("click", () => fermer(true));
 
       alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) fermer();
+        if (event.target === alerte) fermer(false);
       });
 
       document.addEventListener(
         "keydown",
         (event) => {
-          if (event.key === "Escape") fermer();
+          if (event.key === "Escape") fermer(false);
         },
         { once: true }
       );
