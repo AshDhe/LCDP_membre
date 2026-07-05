@@ -244,7 +244,7 @@
   }
 
   async function ouvrirPageAbonne(etat, fonction, chemin) {
-    if (!etat.abonne) {
+    if (!etat.abonne || !membreAbonne()) {
       await afficherAlerte("Vous devez être membre abonné pour utiliser la fonction " + fonction);
       return;
     }
@@ -598,6 +598,20 @@
     return String(value || "")
       .trim()
       .toLowerCase();
+  }
+
+  function lireCookie(nom) {
+    return document.cookie
+      .split(";")
+      .map((cookie) => cookie.trim())
+      .find((cookie) => cookie.startsWith(nom + "="))
+      ?.split("=")
+      .slice(1)
+      .join("=") || "";
+  }
+
+  function membreAbonne() {
+    return Boolean(lireCookie("abonne"));
   }
 
   function valeurBooleenneVraie(valeur) {

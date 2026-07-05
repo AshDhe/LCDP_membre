@@ -131,6 +131,16 @@
     }
   }
 
+  async function actualiserBurgerMembre(abonne) {
+    if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
+      await window.LCDP_initialiserMenuBurgerMembre({
+        etatMembre: {
+          abonne: abonne === true && membreAbonne()
+        }
+      });
+    }
+  }
+
   async function initialiserFooter() {
     const slot = document.getElementById("lcdp-footer-slot");
 
@@ -267,6 +277,7 @@
 
       if (typeof data.abonne === "boolean") {
         afficherEtatMembre(data.abonne);
+        await actualiserBurgerMembre(data.abonne);
       }
 
       etat.abonnements = Array.isArray(data.abonnements) ? data.abonnements : [];

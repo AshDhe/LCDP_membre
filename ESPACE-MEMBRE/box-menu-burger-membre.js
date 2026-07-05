@@ -105,6 +105,38 @@
     ouvrirMenu(boutonBurger, navBurger);
   }
 
+  function lireCookie(nom) {
+    if (typeof window.LCDP_lireCookie === "function") {
+      return window.LCDP_lireCookie(nom);
+    }
+
+    const valeur = document.cookie
+      .split(";")
+      .map((cookie) => cookie.trim())
+      .find((cookie) => cookie.startsWith(nom + "="))
+      ?.split("=")
+      .slice(1)
+      .join("=") || "";
+
+    try {
+      return decodeURIComponent(valeur);
+    } catch {
+      return valeur;
+    }
+  }
+
+  function membreAbonneDepuisCookie() {
+    if (typeof window.LCDP_membreAbonne === "function") {
+      return window.LCDP_membreAbonne() === true;
+    }
+
+    return Boolean(lireCookie("abonne"));
+  }
+
+  function valeurBooleenneVraie(valeur) {
+    return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
+  }
+
   function creerLienMenu(item, boutonBurger, navBurger) {
     if (item.action === "etre-invite") {
       const bouton = document.createElement("button");
@@ -143,7 +175,9 @@
     if (!slot) return;
 
     const etatMembre = options.etatMembre || {};
-    const abonne = etatMembre.abonne === true;
+    const abonne = Object.prototype.hasOwnProperty.call(etatMembre, "abonne")
+      ? valeurBooleenneVraie(etatMembre.abonne)
+      : membreAbonneDepuisCookie();
 
     slot.innerHTML = "";
 

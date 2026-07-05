@@ -182,7 +182,7 @@
     remplirTexte(fragment, "[data-lcdp-facture-produit-orderid]", produit.orderid || "Non renseigné");
     remplirTexte(fragment, "[data-lcdp-facture-produit-type]", produit.libelle || produit.typabo || "Non renseigné");
     remplirTexte(fragment, "[data-lcdp-facture-produit-debut]", formaterDate(produit.debut));
-    remplirTexte(fragment, "[data-lcdp-facture-produit-fin]", formaterDate(produit.fin) + " inclus");
+    remplirTexte(fragment, "[data-lcdp-facture-produit-fin]", libelleFinProduitFacture(produit));
 
     const rowInvites = fragment.querySelector("[data-lcdp-facture-produit-invites-row]");
     const invites = fragment.querySelector("[data-lcdp-facture-produit-invites]");
@@ -194,6 +194,17 @@
     }
 
     return fragment;
+  }
+
+  function libelleFinProduitFacture(produit) {
+    const dateFin = formaterDate(produit?.fin);
+
+    if (String(produit?.typeDocument || "").trim().toLowerCase() === "avoir") {
+      const mention = String(produit?.mentionFinAvoir || "").trim();
+      return mention ? dateFin + " " + mention : dateFin + " inclus (date d'annulation)";
+    }
+
+    return dateFin + " inclus";
   }
 
   async function creerCardPrixFacture(prix) {
@@ -277,6 +288,11 @@
 
   async function creerCardPaiementFacture(paiement) {
     const fragment = await chargerFragmentObjet("/BOX/04-box-card-paiement-in-facture.html");
+
+    if (String(paiement?.type || "").trim().toLowerCase() === "avoir") {
+      remplacerTexteExact(fragment, "Paiement", paiement.titre || "Paiement *");
+    }
+
     const echeances = fragment.querySelector("[data-lcdp-facture-paiement-echeances]");
     const ribRow = fragment.querySelector("[data-lcdp-facture-paiement-rib-row]");
     const rib = fragment.querySelector("[data-lcdp-facture-paiement-rib]");

@@ -55,6 +55,12 @@
 
     bouton.addEventListener("click", (event) => {
       event.preventDefault();
+
+      if (!membreAbonne()) {
+        afficherAlerte("Vous devez être membre abonné pour réserver une nouvelle date.").catch(console.error);
+        return;
+      }
+
       window.location.href = PAGE_RESERVER_MEMBRE;
     });
   }

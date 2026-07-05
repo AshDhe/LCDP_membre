@@ -273,6 +273,27 @@
     }
 
     afficherCompteMembre(resultat.compte);
+    await actualiserBurgerMembre(compteIndiqueAbonne(resultat.compte));
+  }
+
+  async function actualiserBurgerMembre(abonne) {
+    if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
+      await window.LCDP_initialiserMenuBurgerMembre({
+        etatMembre: {
+          abonne: abonne === true
+        }
+      });
+    }
+  }
+
+  function compteIndiqueAbonne(compte) {
+    const statut = String(compte?.statut || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "");
+
+    return statut === "abonne";
   }
 
   function afficherCompteMembre(compte) {

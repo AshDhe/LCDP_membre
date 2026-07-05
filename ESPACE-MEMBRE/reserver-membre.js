@@ -880,6 +880,11 @@
   }
 
   async function traiterChoixHeure(boutonHeure) {
+    if (!membreAbonne()) {
+      await afficherAlerteSuperposee("Vous devez être membre abonné pour réserver une nouvelle date.");
+      return;
+    }
+
     const heure = String(boutonHeure.dataset.heure || "").trim();
     const dateIso = String(boutonHeure.dataset.date || "").trim();
     const idparc = String(boutonHeure.dataset.idparc || "").trim();
@@ -1231,7 +1236,7 @@
     if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
       await window.LCDP_initialiserMenuBurgerMembre({
         etatMembre: {
-          abonne: true
+          abonne: membreAbonne()
         }
       });
     }
@@ -1533,6 +1538,20 @@
     if (valeur === "gris_fonce" || valeur === "gris-fonce" || valeur === "fonce") return "gris-fonce";
 
     return "gris-clair";
+  }
+
+  function lireCookie(nom) {
+    return document.cookie
+      .split(";")
+      .map((cookie) => cookie.trim())
+      .find((cookie) => cookie.startsWith(nom + "="))
+      ?.split("=")
+      .slice(1)
+      .join("=") || "";
+  }
+
+  function membreAbonne() {
+    return Boolean(lireCookie("abonne"));
   }
 
   function reponseApiOk(data) {

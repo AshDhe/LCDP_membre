@@ -308,7 +308,11 @@
     await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js");
 
     if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
-      await window.LCDP_initialiserMenuBurgerMembre();
+      await window.LCDP_initialiserMenuBurgerMembre({
+        etatMembre: {
+          abonne: membreAbonne()
+        }
+      });
     }
   }
 
@@ -333,6 +337,10 @@
   }
 
   function membreAbonne() {
+    if (typeof window.LCDP_membreAbonne === "function") {
+      return window.LCDP_membreAbonne() === true;
+    }
+
     return Boolean(lireCookie("abonne"));
   }
 
