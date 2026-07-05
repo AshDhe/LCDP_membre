@@ -29,6 +29,7 @@
   );
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
+  const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
 
   let pageInitialisee = false;
   let emailMembreActuel = "";
@@ -273,6 +274,7 @@
     }
 
     afficherCompteMembre(resultat.compte);
+    afficherEtatMembreCompte(resultat.compte);
     await actualiserBurgerMembre(compteIndiqueAbonne(resultat.compte));
   }
 
@@ -294,6 +296,89 @@
       .replace(/[̀-ͯ]/g, "");
 
     return statut === "abonne";
+  }
+
+  function afficherEtatMembreCompte(compte) {
+    let mention = document.getElementById("mention-statut-membre");
+
+    if (!mention) {
+      const titre = document.querySelector(".lcdp-title-page-center");
+      if (!titre || !titre.parentNode) return;
+
+      mention = document.createElement("p");
+      mention.id = "mention-statut-membre";
+      mention.className = "lcdp-mention-connexion";
+      titre.insertAdjacentElement("afterend", mention);
+    }
+
+    mention.textContent = compteIndiqueAbonne(compte)
+      ? "[Vous êtes membre abonné]"
+      : "[Vous êtes membre invité]";
+
+    afficherSuspensionMembre({
+      abonnementSuspendu: valeurBooleenneVraie(compte?.abonnementSuspendu || compte?.suspendu),
+      paiementSuspension: compte?.paiementSuspension || null
+    });
+  }
+
+  function afficherSuspensionMembre(etat) {
+    const mention = document.getElementById("mention-statut-membre");
+    if (!mention || !mention.parentNode) return;
+
+    let bloc = document.getElementById("mention-suspension-abonnement-membre");
+
+    if (!etat || etat.abonnementSuspendu !== true) {
+      if (bloc) bloc.remove();
+      return;
+    }
+
+    if (!bloc) {
+      bloc = document.createElement("div");
+      bloc.id = "mention-suspension-abonnement-membre";
+      bloc.className = "lcdp-mention-connexion";
+      bloc.style.display = "flex";
+      bloc.style.flexWrap = "wrap";
+      bloc.style.alignItems = "center";
+      bloc.style.justifyContent = "center";
+      bloc.style.gap = "0.5rem";
+      mention.insertAdjacentElement("afterend", bloc);
+    }
+
+    bloc.innerHTML = "";
+
+    const texte = document.createElement("span");
+    texte.textContent = "[Votre abonnement est suspendu (non payé)]";
+    bloc.appendChild(texte);
+
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
+    bouton.textContent = "Payer";
+    bouton.addEventListener("click", () => {
+      gererPaiementSuspensionMembre(etat).catch(console.error);
+    });
+    bloc.appendChild(bouton);
+  }
+
+  async function gererPaiementSuspensionMembre(etat) {
+    const paiement = etat && etat.paiementSuspension ? etat.paiementSuspension : null;
+    const orderid = String(paiement?.orderid || "").trim();
+    const echeance = String(paiement?.echeance || "1").trim() || "1";
+
+    if (!orderid) {
+      await afficherAlerte("Paiement introuvable.");
+      return;
+    }
+
+    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
+    if (!ok) return;
+
+    const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
+    window.location.href = PAGE_PAIEMENT_CB + separateur + "orderid=" + encodeURIComponent(orderid) + "&echeance=" + encodeURIComponent(echeance) + "&source=suspension";
+  }
+
+  function valeurBooleenneVraie(valeur) {
+    return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
   }
 
   function afficherCompteMembre(compte) {
