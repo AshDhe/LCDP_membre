@@ -145,14 +145,6 @@
     texte.textContent = "[Votre abonnement est suspendu (non payé)]";
     bloc.appendChild(texte);
 
-    const bouton = document.createElement("button");
-    bouton.type = "button";
-    bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
-    bouton.textContent = "Payer";
-    bouton.addEventListener("click", () => {
-      gererPaiementSuspensionMembre(options.paiementSuspension).catch(console.error);
-    });
-    bloc.appendChild(bouton);
   }
 
   async function gererPaiementSuspensionMembre(paiementSuspension) {
