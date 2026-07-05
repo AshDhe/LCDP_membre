@@ -97,7 +97,7 @@
       aReservationEnCours: valeurBooleenneVraie(resultat.aReservationEnCours || resultat.aReservationValidable),
       reservationEnCours: resultat.reservationEnCours || resultat.reservationValidable || null,
       abonnementSuspendu: valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu),
-      paiementSuspension: resultat.paiementSuspension || null
+      paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null
     };
   }
 
@@ -314,7 +314,7 @@
     }
 
     if (etat.abonnementSuspendu === true) {
-      await afficherAlerte("Votre abonnement est suspendu (non payé).");
+      await gererPaiementSuspensionMembre(etat);
       return;
     }
 

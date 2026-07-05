@@ -72,7 +72,7 @@
 
   async function chargerEtatMembre() {
     if (!ENDPOINT_INDEX_MEMBRE) {
-      return { abonne: membreAbonne(), abonnementSuspendu: false, paiementSuspension: null };
+      throw new Error("Le service d’état membre n’est pas configuré.");
     }
 
     const reponse = await fetch(ENDPOINT_INDEX_MEMBRE + "/index", {
@@ -90,13 +90,13 @@
     }
 
     if (!reponse.ok || !resultat || !reponseApiOk(resultat)) {
-      return { abonne: membreAbonne(), abonnementSuspendu: false, paiementSuspension: null };
+      throw new Error(messageErreurApi(resultat, "Impossible de vérifier l’état membre."));
     }
 
     return {
       abonne: valeurBooleenneVraie(resultat.abonne),
       abonnementSuspendu: valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu),
-      paiementSuspension: resultat.paiementSuspension || null
+      paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null
     };
   }
 
@@ -752,13 +752,13 @@
   }
 
   async function ouvrirDialogueInvitation(idflux) {
-    if (!etatMembre.abonne && !membreAbonne()) {
-      await afficherAlerte("Cette fonction est réservée aux membres abonnés.");
+    if (etatMembre.abonnementSuspendu === true) {
+      await gererPaiementSuspensionMembre(etatMembre);
       return;
     }
 
-    if (etatMembre.abonnementSuspendu === true) {
-      await afficherAlerte("Votre abonnement est suspendu (non payé).");
+    if (!etatMembre.abonne && !membreAbonne()) {
+      await afficherAlerte("Cette fonction est réservée aux membres abonnés.");
       return;
     }
 
