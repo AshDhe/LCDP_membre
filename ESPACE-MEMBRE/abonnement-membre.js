@@ -3320,7 +3320,7 @@
 
   function trouverAbonnementSuspenduEnCours() {
     return (Array.isArray(etat.abonnements) ? etat.abonnements : []).find((abonnement) => {
-      return categorieAbonnement(abonnement) === "encours" && String(abonnement?.statutabo || "").trim().toLowerCase() === "impaye";
+      return categorieAbonnement(abonnement) === "encours" && abonnementAvecEcheanceNonPayee(abonnement);
     }) || null;
   }
 
@@ -3331,8 +3331,8 @@
   }
 
   function estAbonnementSuspenduImpaye(abonnement, commande) {
-    const statut = String(commande?.statutPaiement || abonnement?.statutabo || abonnement?.statutpaiement || abonnement?.statutPaiement || "").trim().toLowerCase();
-    return statut === "impaye";
+    void commande;
+    return abonnementAvecEcheanceNonPayee(abonnement);
   }
 
   function construireMentionSuspension(abonnement, commande) {
