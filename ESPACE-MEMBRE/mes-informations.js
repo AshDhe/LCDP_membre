@@ -185,6 +185,10 @@
         input.value = "Chargement...";
       }
 
+      if (champ.id === "champ-statut-membre") {
+        marquerChampLectureSeuleInfo(champ.id);
+      }
+
       if (champ.action) {
         ajouterBoutonModificationApresChamp(champ.id, champ.action);
       }
@@ -195,6 +199,16 @@
     });
 
     initialiserActionsModification();
+  }
+
+  function marquerChampLectureSeuleInfo(champId) {
+    const input = document.getElementById(champId);
+    const champ = input ? input.closest("[data-lcdp-box-champ-formulaire]") : null;
+
+    if (!input || !champ) return;
+
+    champ.classList.add("lcdp-box-champ-formulaire--lecture-seule-info");
+    input.setAttribute("aria-readonly", "true");
   }
 
   function ajouterLienInformationApresChamp(champId, lienConfig) {
