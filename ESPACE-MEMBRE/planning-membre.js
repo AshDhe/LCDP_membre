@@ -157,7 +157,7 @@
   }
 
   async function redirigerVersAbonnementPourRegularisation() {
-    const ok = await afficherAlerte("Vous allez être redirigé vers votre page abonnement.");
+    const ok = await afficherAlerte("Votre abonnement est suspendu (non payé). Vous allez être redirigé vers la page d’abonnement.");
     if (!ok) return;
 
     window.location.href = PAGE_ABONNEMENT_MEMBRE;
