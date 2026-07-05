@@ -10,6 +10,12 @@
     "planning-membre-api"
   );
 
+  const ENDPOINT_INDEX_MEMBRE = construireEndpointApi(
+    "workerIndexMembreUrl",
+    "WORKER_INDEX_MEMBRE_URL",
+    "index-membre-api"
+  );
+
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_RESERVER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html");
   const PAGE_INVITER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html");
@@ -19,7 +25,13 @@
   const etat = {
     reservations: [],
     filtre: "avenir",
-    templateReservation: null
+    templateReservation: null,
+    membre: {
+      abonne: false,
+      abonnementSuspendu: false,
+      abonnementAnnuleNonPaye: false,
+      paiementSuspension: null
+    }
   };
 
   if (document.readyState === "loading") {
@@ -35,8 +47,10 @@
     try {
       await initialiserBandeau();
       await initialiserFooter();
-      afficherStatutMembrePlanning();
-      await initialiserListeReservations("Mes réservations");
+      etat.membre = await chargerEtatMembrePlanning();
+      if (!etat.membre) return;
+      afficherStatutMembrePlanning(etat.membre);
+      await initialiserListeReservations();
       initialiserBoutonNouvelleDate();
       initialiserActionsListePlanning();
       document.addEventListener("click", gererClicDocument);
@@ -47,12 +61,52 @@
     }
   }
 
-  function afficherStatutMembrePlanning() {
+  async function chargerEtatMembrePlanning() {
+    if (!ENDPOINT_INDEX_MEMBRE) {
+      return {
+        abonne: membreAbonne(),
+        abonnementSuspendu: false,
+        abonnementAnnuleNonPaye: false,
+        paiementSuspension: null,
+        sourceApi: false
+      };
+    }
+
+    const reponse = await fetch(ENDPOINT_INDEX_MEMBRE + "/index", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return null;
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Impossible de vérifier votre statut membre."));
+    }
+
+    return {
+      abonne: valeurBooleenneVraie(data.abonne),
+      abonnementSuspendu: valeurBooleenneVraie(data.abonnementSuspendu || data.suspendu),
+      abonnementAnnuleNonPaye: valeurBooleenneVraie(data.abonnementAnnuleNonPaye || data.abonnementAnnule || data.annuleNonPaye),
+      paiementSuspension: data.paiementSuspension || data.paiementRegularisation || null,
+      sourceApi: true
+    };
+  }
+
+  function afficherStatutMembrePlanning(membre) {
     const mention = document.getElementById("mention-statut-membre");
 
     if (!mention) return;
 
-    mention.textContent = membreAbonne()
+    mention.textContent = membre && membre.abonne
       ? "[Vous êtes membre abonné]"
       : "[Vous êtes membre invité]";
   }
@@ -63,9 +117,14 @@
     if (!bouton) return;
 
     bouton.href = PAGE_RESERVER_MEMBRE;
+    bouton.classList.add("lcdp-button-planning-nouvelle-date");
 
-    bouton.addEventListener("click", (event) => {
+    bouton.addEventListener("click", async (event) => {
       event.preventDefault();
+
+      const acces = await verifierAccesReservationPlanning();
+      if (!acces) return;
+
       window.location.href = PAGE_RESERVER_MEMBRE;
     });
   }
@@ -76,10 +135,24 @@
     if (!zoneActions) return;
 
     zoneActions.innerHTML = "";
+    zoneActions.dataset.lcdpPlanningActions = "true";
+
+    const boutonNouvelleDate = document.getElementById("bouton-nouvelle-date-planning");
+    const ancienConteneurNouvelleDate = boutonNouvelleDate
+      ? boutonNouvelleDate.closest(".lcdp-box-menu-bouton__list")
+      : null;
+
+    if (boutonNouvelleDate) {
+      zoneActions.appendChild(boutonNouvelleDate);
+
+      if (ancienConteneurNouvelleDate && !ancienConteneurNouvelleDate.querySelector("a, button")) {
+        ancienConteneurNouvelleDate.remove();
+      }
+    }
 
     const bouton = document.createElement("button");
     bouton.type = "button";
-    bouton.className = "lcdp-button lcdp-button-secondary";
+    bouton.className = "lcdp-button lcdp-button-secondary lcdp-button-planning-toggle";
     bouton.dataset.filtrePlanningToggle = "1";
     actualiserBoutonFiltrePlanning(bouton);
 
@@ -149,6 +222,102 @@
     }
   }
 
+  async function verifierAccesReservationPlanning() {
+    const blocage = determinerBlocageReservationPlanning(etat.membre);
+
+    if (!blocage) return true;
+
+    await afficherAlerte(blocage);
+    return false;
+  }
+
+  function determinerBlocageReservationPlanning(membre) {
+    const donnees = membre || {};
+
+    if (
+      donnees.abonnementAnnuleNonPaye === true ||
+      paiementSuspensionDelaiDepasse(donnees.paiementSuspension)
+    ) {
+      return "Votre abonnement est annulé (non payé).";
+    }
+
+    if (donnees.abonnementSuspendu === true) {
+      return "Votre abonnement est suspendu (non payé).";
+    }
+
+    const estAbonne = donnees.sourceApi === true
+      ? donnees.abonne === true
+      : donnees.abonne === true || membreAbonne();
+
+    if (!estAbonne) {
+      return "Vous devez être membre abonné.";
+    }
+
+    return "";
+  }
+
+  function paiementSuspensionDelaiDepasse(paiement) {
+    if (!paiement || typeof paiement !== "object") return false;
+
+    if (
+      valeurBooleenneVraie(paiement.delaiPaiementDepasse) ||
+      valeurBooleenneVraie(paiement.abonnementAnnuleNonPaye)
+    ) {
+      return true;
+    }
+
+    return delaiPaiementDepasseDepuisFin(paiement.fin || paiement.dateFin || paiement.finabo || "");
+  }
+
+  function delaiPaiementDepasseDepuisFin(value) {
+    const fin = dateIsoDepuisValeur(value);
+
+    if (!fin) return false;
+
+    const maintenantParis = dateHeureParis(new Date());
+
+    if (maintenantParis.dateIso > fin) return true;
+    if (maintenantParis.dateIso < fin) return false;
+
+    return maintenantParis.heure >= 14;
+  }
+
+  function dateIsoDepuisValeur(value) {
+    const texte = String(value || "").trim();
+    const match = texte.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+    if (match) {
+      return match[1] + "-" + match[2] + "-" + match[3];
+    }
+
+    const date = new Date(texte);
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    return dateHeureParis(date).dateIso;
+  }
+
+  function dateHeureParis(date) {
+    const morceaux = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      hourCycle: "h23"
+    }).formatToParts(date);
+
+    const valeur = (type) => morceaux.find((item) => item.type === type)?.value || "";
+
+    return {
+      dateIso: valeur("year") + "-" + valeur("month") + "-" + valeur("day"),
+      heure: Number(valeur("hour") || 0),
+      minute: Number(valeur("minute") || 0)
+    };
+  }
+
   async function gererClicDocument(event) {
     const boutonAdresse = event.target.closest("[data-action='adresse']");
     const boutonInvitation = event.target.closest("[data-action='invitation']");
@@ -177,10 +346,8 @@
       return;
     }
 
-    if (!membreAbonne()) {
-      await afficherAlerte("Cette fonction est réservée aux membres abonnés.");
-      return;
-    }
+    const acces = await verifierAccesReservationPlanning();
+    if (!acces) return;
 
     const separateur = PAGE_INVITER_MEMBRE.includes("?") ? "&" : "?";
     window.location.href = PAGE_INVITER_MEMBRE + separateur + "idflux=" + encodeURIComponent(idReservation);
@@ -277,7 +444,13 @@
     }
 
     const titre = slot.querySelector("[data-lcdp-liste-card-title]");
-    if (titre) titre.textContent = titreListe || "Mes réservations";
+    const blocTitre = titre ? titre.closest(".lcdp-box-liste-card__heading") : null;
+
+    if (blocTitre) {
+      blocTitre.remove();
+    } else if (titre) {
+      titre.remove();
+    }
   }
 
   function obtenirZoneListe() {
