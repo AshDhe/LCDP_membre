@@ -340,7 +340,7 @@
 
       etat.abonnements = Array.isArray(data.abonnements) ? data.abonnements : [];
       etat.abonnementSuspendu = valeurBooleenneVraie(data.abonnementSuspendu || data.suspendu);
-      etat.paiementSuspension = data.paiementSuspension || null;
+      etat.paiementSuspension = data.paiementSuspension || data.paiementRegularisation || null;
 
       if (typeof data.abonne === "boolean") {
         afficherEtatMembre(data.abonne, {
