@@ -23,10 +23,18 @@
     "planning-membre-api"
   );
 
+  const ENDPOINT_INDEX_MEMBRE = construireEndpointApi(
+    "workerIndexMembreUrl",
+    "WORKER_INDEX_MEMBRE_URL",
+    "index-membre-api"
+  );
+
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_PLANNING_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/planning-membre.html");
+  const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
 
   let pageInitialisee = false;
+  let etatMembre = { abonne: false, abonnementSuspendu: false, paiementSuspension: null };
 
   const etatPage = {
     departement: "",
@@ -51,6 +59,9 @@
     try {
       await initialiserBandeau();
       await initialiserFooter();
+      etatMembre = await chargerEtatMembre();
+      afficherEtatMembre(etatMembre);
+      await actualiserBurgerMembre(etatMembre.abonne);
       await initialiserListeParcs();
       initialiserBoutonIa();
       initialiserActionsListeParcs();
@@ -60,6 +71,123 @@
     } catch (error) {
       console.error("Erreur réserver membre :", error);
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
+    }
+  }
+
+  async function chargerEtatMembre() {
+    if (!ENDPOINT_INDEX_MEMBRE) {
+      return { abonne: membreAbonne(), abonnementSuspendu: false, paiementSuspension: null };
+    }
+
+    const reponse = await fetch(ENDPOINT_INDEX_MEMBRE + "/index", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: { "Accept": "application/json" }
+    });
+
+    const resultat = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return { abonne: false, abonnementSuspendu: false, paiementSuspension: null };
+    }
+
+    if (!reponse.ok || !resultat || !reponseApiOk(resultat)) {
+      return { abonne: membreAbonne(), abonnementSuspendu: false, paiementSuspension: null };
+    }
+
+    return {
+      abonne: valeurBooleenneVraie(resultat.abonne),
+      abonnementSuspendu: valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu),
+      paiementSuspension: resultat.paiementSuspension || null
+    };
+  }
+
+  function afficherEtatMembre(etat) {
+    let mention = document.getElementById("mention-statut-membre");
+
+    if (!mention) {
+      const titre = document.querySelector(".lcdp-title-page-center");
+      if (!titre || !titre.parentNode) return;
+
+      mention = document.createElement("p");
+      mention.id = "mention-statut-membre";
+      mention.className = "lcdp-mention-connexion";
+      titre.insertAdjacentElement("afterend", mention);
+    }
+
+    mention.textContent = etat && etat.abonne ? "[Vous êtes membre abonné]" : "[Vous êtes membre invité]";
+    afficherSuspensionMembre(etat);
+  }
+
+  function afficherSuspensionMembre(etat) {
+    const mention = document.getElementById("mention-statut-membre");
+    if (!mention || !mention.parentNode) return;
+
+    let bloc = document.getElementById("mention-suspension-abonnement-membre");
+
+    if (!etat || etat.abonnementSuspendu !== true) {
+      if (bloc) bloc.remove();
+      return;
+    }
+
+    if (!bloc) {
+      bloc = document.createElement("div");
+      bloc.id = "mention-suspension-abonnement-membre";
+      bloc.className = "lcdp-mention-connexion";
+      bloc.style.display = "flex";
+      bloc.style.flexWrap = "wrap";
+      bloc.style.alignItems = "center";
+      bloc.style.justifyContent = "center";
+      bloc.style.gap = "0.5rem";
+      mention.insertAdjacentElement("afterend", bloc);
+    }
+
+    bloc.innerHTML = "";
+
+    const texte = document.createElement("span");
+    texte.textContent = "[Votre abonnement est suspendu (non payé)]";
+    bloc.appendChild(texte);
+
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
+    bouton.textContent = "Payer";
+    bouton.addEventListener("click", () => {
+      gererPaiementSuspensionMembre(etat).catch(console.error);
+    });
+    bloc.appendChild(bouton);
+  }
+
+  async function gererPaiementSuspensionMembre(etat) {
+    const paiement = etat && etat.paiementSuspension ? etat.paiementSuspension : null;
+    const orderid = String(paiement?.orderid || "").trim();
+    const echeance = String(paiement?.echeance || "1").trim() || "1";
+
+    if (!orderid) {
+      await afficherAlerte("Paiement introuvable.");
+      return;
+    }
+
+    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
+    if (!ok) return;
+
+    const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
+    window.location.href = PAGE_PAIEMENT_CB + separateur + "orderid=" + encodeURIComponent(orderid) + "&echeance=" + encodeURIComponent(echeance) + "&source=suspension";
+  }
+
+  function valeurBooleenneVraie(valeur) {
+    return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
+  }
+
+  async function actualiserBurgerMembre(abonne) {
+    if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
+      await window.LCDP_initialiserMenuBurgerMembre({
+        etatMembre: {
+          abonne: abonne === true
+        }
+      });
     }
   }
 
@@ -349,6 +477,12 @@
 
     if (boutonReserver) {
       event.preventDefault();
+
+      if (etatMembre.abonnementSuspendu === true) {
+        await afficherAlerte("Votre abonnement est suspendu (non payé).");
+        return;
+      }
+
       const parc = trouverParcParId(boutonReserver.dataset.idparc);
 
       if (!parc) {
@@ -880,8 +1014,13 @@
   }
 
   async function traiterChoixHeure(boutonHeure) {
-    if (!membreAbonne()) {
+    if (!etatMembre.abonne && !membreAbonne()) {
       await afficherAlerteSuperposee("Vous devez être membre abonné pour réserver une nouvelle date.");
+      return;
+    }
+
+    if (etatMembre.abonnementSuspendu === true) {
+      await afficherAlerteSuperposee("Votre abonnement est suspendu (non payé).");
       return;
     }
 
