@@ -54,8 +54,12 @@
     majDepartementMembre: "https://maj-dptmt-membre-api.lacleduparc.fr"
   };
 
+  function nettoyerBaseUrl(value) {
+    return String(value || "").replace(/\/+$/, "");
+  }
+
   function buildUrl(base, path) {
-    return String(base || "").replace(/\/+$/, "") + "/" + String(path || "").replace(/^\/+/, "");
+    return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
   }
 
   const objetBase = buildUrl(active.publicBase, "/OBJET");
