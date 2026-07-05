@@ -752,6 +752,21 @@
 
     if (Number.isNaN(date.getTime())) return "Date non renseignée";
 
+    const dateLongue = formaterJourMoisParis(date);
+    const ecartJours = calculerEcartJoursParis(new Date(), date);
+
+    if (ecartJours === 0) {
+      return "Aujourd'hui " + dateLongue;
+    }
+
+    if (ecartJours === 1) {
+      return "Demain " + dateLongue;
+    }
+
+    if (ecartJours === 2) {
+      return "Après-demain " + dateLongue;
+    }
+
     const dateFormatee = date.toLocaleDateString("fr-FR", {
       timeZone: "Europe/Paris",
       weekday: "long",
@@ -760,6 +775,41 @@
     });
 
     return majusculePremiereLettre(dateFormatee);
+  }
+
+  function formaterJourMoisParis(date) {
+    return date.toLocaleDateString("fr-FR", {
+      timeZone: "Europe/Paris",
+      day: "numeric",
+      month: "long"
+    });
+  }
+
+  function calculerEcartJoursParis(dateReference, dateCible) {
+    const reference = obtenirJourCivilParis(dateReference);
+    const cible = obtenirJourCivilParis(dateCible);
+    const millisecondesParJour = 24 * 60 * 60 * 1000;
+
+    return Math.round((cible - reference) / millisecondesParJour);
+  }
+
+  function obtenirJourCivilParis(date) {
+    const parties = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(date);
+
+    const valeurs = parties.reduce((accumulateur, partie) => {
+      if (partie.type !== "literal") {
+        accumulateur[partie.type] = Number(partie.value);
+      }
+
+      return accumulateur;
+    }, {});
+
+    return Date.UTC(valeurs.year, valeurs.month - 1, valeurs.day);
   }
 
   function formaterHeureReservation(dateIso) {
