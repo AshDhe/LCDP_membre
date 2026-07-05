@@ -119,12 +119,7 @@
     if (!bloc) {
       bloc = document.createElement("div");
       bloc.id = "mention-suspension-abonnement-membre";
-      bloc.className = "lcdp-mention-connexion";
-      bloc.style.display = "flex";
-      bloc.style.flexWrap = "wrap";
-      bloc.style.alignItems = "center";
-      bloc.style.justifyContent = "center";
-      bloc.style.gap = "0.5rem";
+      bloc.className = "lcdp-mention-connexion lcdp-mention-suspension-abonnement";
       mention.insertAdjacentElement("afterend", bloc);
     }
 
@@ -207,20 +202,12 @@
     echeances.forEach((echeance) => {
       const ligne = document.createElement("div");
       ligne.className = "lcdp-dialogue-echeances-impayees__row";
-      ligne.style.display = "flex";
-      ligne.style.flexWrap = "wrap";
-      ligne.style.alignItems = "center";
-      ligne.style.justifyContent = "space-between";
-      ligne.style.gap = "0.75rem";
-      ligne.style.width = "100%";
 
       const description = document.createElement("p");
       description.className = "lcdp-dialogue-echeances-impayees__text";
-      description.style.margin = "0";
-      description.style.whiteSpace = "pre-line";
       description.textContent = "Échéance " + String(echeance.numero) + " du " + formaterDatePaiementSuspension(echeance.date) + " : " + formaterMontantPaiementSuspension(echeance.montant) + " TTC\nNon payée";
 
-      const boutonPayer = creerBoutonPaiementSuspension("Payer", "lcdp-button-secondary lcdp-workflow-micro-action", () => {
+      const boutonPayer = creerBoutonPaiementSuspension("Payer", "lcdp-button-secondary lcdp-workflow-micro-action lcdp-workflow-micro-action--alerte-paiement", () => {
         ouvrirPagePaiementSuspension(paiement, echeance.numero).catch(console.error);
       });
 
@@ -229,7 +216,6 @@
       actions.appendChild(ligne);
     });
 
-    actions.appendChild(creerBoutonPaiementSuspension("OK", "lcdp-button-primary", fermer));
 
     function fermer() {
       slot.innerHTML = "";
