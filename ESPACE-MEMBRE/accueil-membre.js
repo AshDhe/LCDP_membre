@@ -161,18 +161,15 @@
   }
 
   async function gererPaiementSuspensionMembre(etat) {
-    if (suspensionPourNonPaiement(etat)) {
-      await redirigerVersAbonnementPourRegularisation();
-      return;
-    }
-
-    await afficherAlerte("Votre abonnement est suspendu.");
+    await afficherEcheancesPaiementSuspension(etat);
   }
 
   function suspensionPourNonPaiement(etat) {
-    return etat &&
+    return Boolean(
+      etat &&
       etat.abonnementSuspendu === true &&
-      etat.paiementSuspension;
+      etat.paiementSuspension
+    );
   }
 
   async function redirigerVersAbonnementPourRegularisation() {
@@ -180,6 +177,150 @@
     if (!ok) return;
 
     window.location.href = PAGE_ABONNEMENT_MEMBRE;
+  }
+
+  async function afficherEcheancesPaiementSuspension(etat) {
+    const paiement = etat && etat.paiementSuspension ? etat.paiementSuspension : null;
+    const orderid = String(paiement?.orderid || "").trim();
+    const echeances = echeancesPaiementSuspension(paiement);
+
+    if (!orderid) {
+      await afficherAlerte("Paiement introuvable.");
+      return;
+    }
+
+    if (!echeances.length) {
+      await afficherAlerte("Aucune échéance non payée.");
+      return;
+    }
+
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    slot.appendChild(fragment);
+
+    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
+    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
+    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
+
+    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
+      slot.innerHTML = "";
+      throw new Error("Structure dialogue bouton incomplète.");
+    }
+
+    titre.textContent = "Paiement en attente";
+    texte.textContent = "";
+    texte.hidden = true;
+    actions.innerHTML = "";
+    actions.classList.add("lcdp-dialogue-echeances-impayees");
+
+    echeances.forEach((echeance) => {
+      const ligne = document.createElement("div");
+      ligne.className = "lcdp-dialogue-echeances-impayees__row";
+      ligne.style.display = "flex";
+      ligne.style.flexWrap = "wrap";
+      ligne.style.alignItems = "center";
+      ligne.style.justifyContent = "space-between";
+      ligne.style.gap = "0.75rem";
+      ligne.style.width = "100%";
+
+      const description = document.createElement("p");
+      description.className = "lcdp-dialogue-echeances-impayees__text";
+      description.style.margin = "0";
+      description.style.whiteSpace = "pre-line";
+      description.textContent = "Échéance " + String(echeance.numero) + " du " + formaterDatePaiementSuspension(echeance.date) + " : " + formaterMontantPaiementSuspension(echeance.montant) + " TTC\nNon payée";
+
+      const boutonPayer = creerBoutonPaiementSuspension("Payer", "lcdp-button-secondary lcdp-workflow-micro-action", () => {
+        ouvrirPagePaiementSuspension(paiement, echeance.numero).catch(console.error);
+      });
+
+      ligne.appendChild(description);
+      ligne.appendChild(boutonPayer);
+      actions.appendChild(ligne);
+    });
+
+    actions.appendChild(creerBoutonPaiementSuspension("OK", "lcdp-button-primary", fermer));
+
+    function fermer() {
+      slot.innerHTML = "";
+    }
+
+    boutonFermer.addEventListener("click", fermer);
+    dialogue.addEventListener("click", (event) => {
+      if (event.target === dialogue) fermer();
+    });
+
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Escape") fermer();
+      },
+      { once: true }
+    );
+  }
+
+  function echeancesPaiementSuspension(paiement) {
+    const source = Array.isArray(paiement?.echeances) ? paiement.echeances : [];
+    const echeances = source
+      .map((echeance) => ({
+        numero: Number(echeance?.numero || echeance?.echeance || 0),
+        date: echeance?.date || "",
+        montant: echeance?.montant ?? ""
+      }))
+      .filter((echeance) => echeance.numero >= 1);
+
+    if (!echeances.length && paiement?.echeance) {
+      echeances.push({
+        numero: Number(paiement.echeance || 1),
+        date: paiement.date || "",
+        montant: paiement.montant ?? ""
+      });
+    }
+
+    return echeances;
+  }
+
+  function creerBoutonPaiementSuspension(label, style, action) {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "lcdp-button " + (style || "lcdp-button-primary");
+    bouton.textContent = label || "OK";
+    bouton.addEventListener("click", action);
+    return bouton;
+  }
+
+  async function ouvrirPagePaiementSuspension(paiement, numeroEcheance) {
+    const orderid = String(paiement?.orderid || "").trim();
+
+    if (!orderid) {
+      await afficherAlerte("Commande non renseignée.");
+      return;
+    }
+
+    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
+    if (!ok) return;
+
+    const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
+    window.location.href = PAGE_PAIEMENT_CB + separateur + "orderid=" + encodeURIComponent(orderid) + "&echeance=" + encodeURIComponent(String(numeroEcheance || 1)) + "&source=suspension";
+  }
+
+  function formaterDatePaiementSuspension(value) {
+    if (!value) return "Non renseignée";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+
+  function formaterMontantPaiementSuspension(value) {
+    const nombre = Number(String(value ?? "").replace(",", "."));
+    if (!Number.isFinite(nombre)) return "Non renseigné";
+    return nombre.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
   }
 
   async function initialiserBandeau() {
@@ -319,8 +460,13 @@
       return;
     }
 
+    if (suspensionPourNonPaiement(etat)) {
+      await redirigerVersAbonnementPourRegularisation();
+      return;
+    }
+
     if (etat.abonnementSuspendu === true) {
-      await gererPaiementSuspensionMembre(etat);
+      await afficherAlerte("Votre abonnement est suspendu.");
       return;
     }
 
