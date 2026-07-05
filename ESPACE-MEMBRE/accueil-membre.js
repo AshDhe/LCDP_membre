@@ -444,7 +444,7 @@
       {
         label: "RÉSERVER",
         style: "lcdp-button-primary",
-        action: () => ouvrirPageAbonne(etat, "RESERVER", "/ESPACE-MEMBRE/reserver-membre.html")
+        action: () => redirigerMembre("/ESPACE-MEMBRE/reserver-membre.html")
       },
       {
         label: "PLANNING",
