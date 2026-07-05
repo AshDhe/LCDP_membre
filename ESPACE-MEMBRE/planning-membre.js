@@ -47,17 +47,45 @@
     try {
       await initialiserBandeau();
       await initialiserFooter();
-      etat.membre = await chargerEtatMembrePlanning();
-      if (!etat.membre) return;
+
+      etat.membre = creerEtatMembreFallback();
       afficherStatutMembrePlanning(etat.membre);
+
       await initialiserListeReservations();
       initialiserBoutonNouvelleDate();
       initialiserActionsListePlanning();
       document.addEventListener("click", gererClicDocument);
+
+      await actualiserEtatMembrePlanningSilencieux();
       await chargerReservations();
     } catch (error) {
       console.error("Erreur planning membre :", error);
       afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
+    }
+  }
+
+  function creerEtatMembreFallback() {
+    return {
+      abonne: membreAbonne(),
+      abonnementSuspendu: false,
+      abonnementAnnuleNonPaye: false,
+      paiementSuspension: null,
+      sourceApi: false
+    };
+  }
+
+  async function actualiserEtatMembrePlanningSilencieux() {
+    try {
+      const membre = await chargerEtatMembrePlanning();
+
+      if (!membre) return false;
+
+      etat.membre = membre;
+      afficherStatutMembrePlanning(etat.membre);
+      return true;
+    } catch (error) {
+      console.warn("Statut membre indisponible sur le planning.", error);
+      return false;
     }
   }
 
@@ -223,6 +251,15 @@
   }
 
   async function verifierAccesReservationPlanning() {
+    if (!etat.membre || etat.membre.sourceApi !== true) {
+      const statutActualise = await actualiserEtatMembrePlanningSilencieux();
+
+      if (!statutActualise) {
+        await afficherAlerte("Impossible de vérifier votre statut membre.");
+        return false;
+      }
+    }
+
     const blocage = determinerBlocageReservationPlanning(etat.membre);
 
     if (!blocage) return true;
