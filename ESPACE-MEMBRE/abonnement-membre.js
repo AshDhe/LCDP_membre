@@ -130,12 +130,7 @@
     if (!bloc) {
       bloc = document.createElement("div");
       bloc.id = "mention-suspension-abonnement-membre";
-      bloc.className = "lcdp-mention-connexion";
-      bloc.style.display = "flex";
-      bloc.style.flexWrap = "wrap";
-      bloc.style.alignItems = "center";
-      bloc.style.justifyContent = "center";
-      bloc.style.gap = "0.5rem";
+      bloc.className = "lcdp-mention-connexion lcdp-mention-suspension-abonnement";
       mention.insertAdjacentElement("afterend", bloc);
     }
 
@@ -281,7 +276,7 @@
     if (!titre) return;
 
     titre.textContent = titresFiltres[etat.filtre] || titresFiltres.encours;
-    titre.style.color = etat.filtre === "encours" ? "#d97300" : "";
+    titre.classList.toggle("lcdp-box-liste-card__title--filtre-actif", etat.filtre === "encours");
   }
 
   function actualiserBoutonsFiltre() {
@@ -2428,14 +2423,13 @@
       description.className = "lcdp-dialogue-echeances-impayees__text";
       description.textContent = "Échéance " + String(echeance.numero) + " du " + formaterDate(echeance.date) + " : " + formaterMontant(echeance.montant) + " TTC\nNon payée";
 
-      const boutonPayer = creerBouton("Payer", "lcdp-button-secondary lcdp-workflow-micro-action", () => ouvrirPagePaiementCb(abonnement, echeance.numero));
+      const boutonPayer = creerBouton("Payer", "lcdp-button-secondary lcdp-workflow-micro-action lcdp-workflow-micro-action--alerte-paiement", () => ouvrirPagePaiementCb(abonnement, echeance.numero));
 
       ligne.appendChild(description);
       ligne.appendChild(boutonPayer);
       actions.appendChild(ligne);
     });
 
-    actions.appendChild(creerBouton("OK", "lcdp-button-primary", fermer));
 
     function fermer() {
       slot.innerHTML = "";
@@ -2920,7 +2914,6 @@
         ribRow.remove();
       } else if (paiement.rib) {
         ribRow.hidden = false;
-        ribRow.style.display = "";
         rib.textContent = paiement.rib;
       }
     }
@@ -3667,12 +3660,7 @@
     const card = workflow?.querySelector("[data-lcdp-workflow-abonnement-card]");
 
     if (card) {
-      const hauteurActuelle = card.getBoundingClientRect().height;
       card.scrollTop = 0;
-
-      if (hauteurActuelle > 0) {
-        card.style.minHeight = Math.ceil(hauteurActuelle) + "px";
-      }
     }
 
     slot.classList.add("lcdp-box-workflow-abonnement__content--transition");
@@ -3683,10 +3671,6 @@
     if (card) {
       window.requestAnimationFrame(() => {
         card.scrollTop = 0;
-
-        window.setTimeout(() => {
-          card.style.minHeight = "";
-        }, 140);
       });
     }
   }
