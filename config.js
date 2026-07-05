@@ -46,6 +46,7 @@
     inviterMembre: "https://inviter-membre-api.lacleduparc.fr",
     invitationMembre: "https://invitation-membre-api.lacleduparc.fr",
     aboMembre: "https://abo-membre-api.lacleduparc.fr",
+    factuPaiement: "https://factupaiement-api.lacleduparc.fr",
 
     monCompteMembre: "https://mon-compte-membre-api.lacleduparc.fr",
     majEmailMembre: "https://maj-email-membre-api.lacleduparc.fr",
@@ -84,6 +85,7 @@
     workerInviterMembreUrl: WORKERS.inviterMembre,
     workerInvitationMembreUrl: WORKERS.invitationMembre,
     workerAboMembreUrl: WORKERS.aboMembre,
+    workerFactuPaiementUrl: WORKERS.factuPaiement,
 
     workerMonCompteMembreUrl: WORKERS.monCompteMembre,
     workerMajEmailMembreUrl: WORKERS.majEmailMembre,
@@ -112,6 +114,7 @@
     WORKER_INVITER_MEMBRE_URL: WORKERS.inviterMembre,
     WORKER_INVITATION_MEMBRE_URL: WORKERS.invitationMembre,
     WORKER_ABO_MEMBRE_URL: WORKERS.aboMembre,
+    WORKER_FACTUPAIEMENT_URL: WORKERS.factuPaiement,
 
     WORKER_MON_COMPTE_MEMBRE_URL: WORKERS.monCompteMembre,
     WORKER_MAJ_EMAIL_MEMBRE_URL: WORKERS.majEmailMembre,
@@ -163,6 +166,10 @@
   window.LCDP_lireRetourMembre = lireRetourMembre;
   window.LCDP_effacerRetourMembre = effacerRetourMembre;
   window.LCDP_programmerProchaineVerificationSessionMembre = programmerProchaineVerificationSessionMembre;
+  window.LCDP_lireCookie = lireCookie;
+  window.LCDP_membreAbonne = function LCDP_membreAbonne() {
+    return Boolean(lireCookie("abonne"));
+  };
   window.LCDP_redirigerConnexionMembre = function LCDP_redirigerConnexionMembre(source, motif) {
     const retour = estUrlRetourMembreValide(window.location.href)
       ? window.location.href
@@ -209,59 +216,75 @@
     if (!estUrlDansSiteMembre(window.location.href)) return;
     if (!WORKERS.indexMembre) return;
 
-    let refreshEnCours = false;
+    const fetchNatif = window.fetch.bind(window);
+    let refreshPromiseEnCours = null;
     let dernierSignalActivite = 0;
 
-    async function verifierSiNecessaire() {
+    async function verifierSiNecessaire(options = {}) {
       const maintenant = Date.now();
+      const verificationAvantFetch = options && options.avantFetch === true;
 
-      if (document.visibilityState === "hidden") return;
-      if (refreshEnCours) return;
-      if (maintenant - dernierSignalActivite < 30000) return;
+      if (document.visibilityState === "hidden") return true;
+
+      if (refreshPromiseEnCours) {
+        return await refreshPromiseEnCours;
+      }
+
+      if (!verificationAvantFetch && maintenant - dernierSignalActivite < 30000) {
+        return true;
+      }
 
       dernierSignalActivite = maintenant;
 
       const prochaineVerification = Number(lireCookie(COOKIE_SESSION_MEMBRE_NEXT_REFRESH) || "0");
 
       if (Number.isFinite(prochaineVerification) && prochaineVerification > maintenant) {
-        return;
+        return true;
       }
 
-      refreshEnCours = true;
+      refreshPromiseEnCours = (async () => {
+        try {
+          const reponse = await fetchNatif(nettoyerBaseUrl(WORKERS.indexMembre) + "/session-refresh", {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+            headers: {
+              "Accept": "application/json"
+            }
+          });
 
-      try {
-        const reponse = await fetch(nettoyerBaseUrl(WORKERS.indexMembre) + "/session-refresh", {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-          headers: {
-            "Accept": "application/json"
+          const data = await reponse.json().catch(() => null);
+
+          if (reponse.status === 401) {
+            supprimerCookiePartage(COOKIE_SESSION_MEMBRE_NEXT_REFRESH);
+            window.LCDP_redirigerConnexionMembre("session-refresh", "inactive");
+            return false;
           }
-        });
 
-        const data = await reponse.json().catch(() => null);
+          if (!reponse.ok || !data || data.success !== true) {
+            programmerProchaineVerificationSessionMembre(DELAI_REESSAI_REFRESH_ERREUR_SECONDES);
+            return true;
+          }
 
-        if (reponse.status === 401) {
-          supprimerCookiePartage(COOKIE_SESSION_MEMBRE_NEXT_REFRESH);
-          window.LCDP_redirigerConnexionMembre("session-refresh", "inactive");
-          return;
-        }
+          programmerProchaineVerificationSessionMembre(
+            nombreSecondesValide(data.nextRefreshInSeconds, DELAI_VERIFICATION_SESSION_MEMBRE_SECONDES)
+          );
 
-        if (!reponse.ok || !data || data.success !== true) {
+          return true;
+        } catch (error) {
+          console.error("Refresh session membre :", error);
           programmerProchaineVerificationSessionMembre(DELAI_REESSAI_REFRESH_ERREUR_SECONDES);
-          return;
+          return true;
+        } finally {
+          refreshPromiseEnCours = null;
         }
+      })();
 
-        programmerProchaineVerificationSessionMembre(
-          nombreSecondesValide(data.nextRefreshInSeconds, DELAI_VERIFICATION_SESSION_MEMBRE_SECONDES)
-        );
-      } catch (error) {
-        console.error("Refresh session membre :", error);
-        programmerProchaineVerificationSessionMembre(DELAI_REESSAI_REFRESH_ERREUR_SECONDES);
-      } finally {
-        refreshEnCours = false;
-      }
+      return await refreshPromiseEnCours;
     }
+
+    window.LCDP_verifierSessionMembreSiNecessaire = verifierSiNecessaire;
+    installerVerificationSessionAvantFetch(fetchNatif, verifierSiNecessaire);
 
     ["pointerdown", "keydown", "touchstart", "scroll"].forEach((nomEvenement) => {
       window.addEventListener(nomEvenement, verifierSiNecessaire, { passive: true });
@@ -280,6 +303,47 @@
     } else {
       window.setTimeout(verifierSiNecessaire, 0);
     }
+  }
+
+  function installerVerificationSessionAvantFetch(fetchNatif, verifierSiNecessaire) {
+    if (window.LCDP_verificationSessionAvantFetchInstallee === true) return;
+
+    window.LCDP_verificationSessionAvantFetchInstallee = true;
+
+    window.fetch = async function LCDP_fetchAvecVerificationSession(input, init) {
+      if (requeteFetchDoitVerifierSessionMembre(input, init)) {
+        await verifierSiNecessaire({ avantFetch: true });
+      }
+
+      return fetchNatif(input, init);
+    };
+  }
+
+  function requeteFetchDoitVerifierSessionMembre(input, init) {
+    const credentials = String(
+      (init && init.credentials) ||
+      (typeof Request !== "undefined" && input instanceof Request ? input.credentials : "") ||
+      ""
+    ).toLowerCase();
+
+    if (credentials !== "include") return false;
+
+    let url;
+
+    try {
+      url = new URL(
+        typeof input === "string" ? input : input && input.url ? input.url : "",
+        window.location.href
+      );
+    } catch {
+      return false;
+    }
+
+    if (url.href === nettoyerBaseUrl(WORKERS.indexMembre) + "/session-refresh") {
+      return false;
+    }
+
+    return url.hostname.endsWith("-api.lacleduparc.fr");
   }
 
   function programmerProchaineVerificationSessionMembre(delaiSecondes) {
