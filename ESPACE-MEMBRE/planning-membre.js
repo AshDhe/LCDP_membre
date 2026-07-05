@@ -148,6 +148,21 @@
     window.location.href = PAGE_ABONNEMENT_MEMBRE;
   }
 
+  function suspensionPourNonPaiement(etat) {
+    return Boolean(
+      etat &&
+      etat.abonnementSuspendu === true &&
+      etat.paiementSuspension
+    );
+  }
+
+  async function redirigerVersAbonnementPourRegularisation() {
+    const ok = await afficherAlerte("Vous allez être redirigé vers votre page abonnement.");
+    if (!ok) return;
+
+    window.location.href = PAGE_ABONNEMENT_MEMBRE;
+  }
+
   function valeurBooleenneVraie(valeur) {
     return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
   }
@@ -177,8 +192,13 @@
         return;
       }
 
+      if (suspensionPourNonPaiement(etatMembre)) {
+        redirigerVersAbonnementPourRegularisation().catch(console.error);
+        return;
+      }
+
       if (etatMembre.abonnementSuspendu === true) {
-        gererPaiementSuspensionMembre(etatMembre).catch(console.error);
+        afficherAlerte("Votre abonnement est suspendu.").catch(console.error);
         return;
       }
 
