@@ -3145,6 +3145,10 @@
       card.classList.add("lcdp-box-card-abonnement--passe");
     }
 
+    if (categorie === "encours") {
+      card.classList.add("lcdp-box-card-abonnement--encours");
+    }
+
     card.dataset.idabo = String(abonnement.idabo || abonnement.id || "");
     card.dataset.orderid = commande.orderid;
     card.dataset.orderdate = commande.orderdate;

@@ -10,20 +10,11 @@
     "planning-membre-api"
   );
 
-  const ENDPOINT_INDEX_MEMBRE = construireEndpointApi(
-    "workerIndexMembreUrl",
-    "WORKER_INDEX_MEMBRE_URL",
-    "index-membre-api"
-  );
-
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
-  const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
   const PAGE_RESERVER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html");
   const PAGE_INVITER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html");
-  const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
 
   let pageInitialisee = false;
-  let etatMembre = { abonne: false, abonnementSuspendu: false, paiementSuspension: null };
 
   const etat = {
     reservations: [],
@@ -44,9 +35,6 @@
     try {
       await initialiserBandeau();
       await initialiserFooter();
-      etatMembre = await chargerEtatMembre();
-      afficherEtatMembre(etatMembre);
-      await actualiserBurgerMembre(etatMembre.abonne);
       await initialiserListeReservations("Mes réservations");
       initialiserBoutonNouvelleDate();
       initialiserActionsListePlanning();
@@ -55,335 +43,6 @@
     } catch (error) {
       console.error("Erreur planning membre :", error);
       afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
-    }
-  }
-
-  async function chargerEtatMembre() {
-    if (!ENDPOINT_INDEX_MEMBRE) {
-      throw new Error("Le service d’état membre n’est pas configuré.");
-    }
-
-    const reponse = await fetch(ENDPOINT_INDEX_MEMBRE + "/index", {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-      headers: { "Accept": "application/json" }
-    });
-
-    const resultat = await reponse.json().catch(() => null);
-
-    if (reponse.status === 401) {
-      redirigerConnexionMembre("inactive");
-      return { abonne: false, abonnementSuspendu: false, paiementSuspension: null };
-    }
-
-    if (!reponse.ok || !resultat || !reponseApiOk(resultat)) {
-      throw new Error(messageErreurApi(resultat, "Impossible de vérifier l’état membre."));
-    }
-
-    return {
-      abonne: valeurBooleenneVraie(resultat.abonne),
-      abonnementSuspendu: valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu),
-      paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null
-    };
-  }
-
-  function afficherEtatMembre(etat) {
-    let mention = document.getElementById("mention-statut-membre");
-
-    if (!mention) {
-      const titre = document.querySelector(".lcdp-title-page-center");
-      if (!titre || !titre.parentNode) return;
-
-      mention = document.createElement("p");
-      mention.id = "mention-statut-membre";
-      mention.className = "lcdp-mention-connexion";
-      titre.insertAdjacentElement("afterend", mention);
-    }
-
-    mention.textContent = etat && etat.abonne ? "[Vous êtes membre abonné]" : "[Vous êtes membre invité]";
-    afficherSuspensionMembre(etat);
-  }
-
-  function afficherSuspensionMembre(etat) {
-    const mention = document.getElementById("mention-statut-membre");
-    if (!mention || !mention.parentNode) return;
-
-    let bloc = document.getElementById("mention-suspension-abonnement-membre");
-
-    if (!etat || etat.abonnementSuspendu !== true) {
-      if (bloc) bloc.remove();
-      return;
-    }
-
-    if (!bloc) {
-      bloc = document.createElement("div");
-      bloc.id = "mention-suspension-abonnement-membre";
-      bloc.className = "lcdp-mention-connexion lcdp-mention-suspension-abonnement";
-      mention.insertAdjacentElement("afterend", bloc);
-    }
-
-    bloc.innerHTML = "";
-
-    const delaiPaiementDepasse = paiementSuspensionDelaiDepasse(etat?.paiementSuspension);
-
-    const texte = document.createElement("span");
-    texte.textContent = delaiPaiementDepasse
-      ? "[Votre abonnement est annulé (non payé)]"
-      : "[Votre abonnement est suspendu (non payé)]";
-    bloc.appendChild(texte);
-
-    const bouton = document.createElement("button");
-    bouton.type = "button";
-    bouton.className = "lcdp-button lcdp-button-secondary";
-    bouton.classList.toggle("lcdp-workflow-micro-action--paiement-depasse", delaiPaiementDepasse);
-    bouton.setAttribute("aria-disabled", delaiPaiementDepasse ? "true" : "false");
-    bouton.textContent = "Payer";
-    bouton.addEventListener("click", () => {
-      gererPaiementSuspensionMembre(etat).catch(console.error);
-    });
-    bloc.appendChild(bouton);
-  }
-
-  async function gererPaiementSuspensionMembre(etat) {
-    await afficherEcheancesPaiementSuspension(etat);
-  }
-
-  function suspensionPourNonPaiement(etat) {
-    return Boolean(
-      etat &&
-      etat.abonnementSuspendu === true &&
-      etat.paiementSuspension
-    );
-  }
-
-  async function redirigerVersAbonnementPourRegularisation() {
-    const ok = await afficherAlerte("Votre abonnement est suspendu (non payé). Vous allez être redirigé vers la page d’abonnement.");
-    if (!ok) return;
-
-    window.location.href = PAGE_ABONNEMENT_MEMBRE;
-  }
-
-  async function afficherEcheancesPaiementSuspension(etat) {
-    const paiement = etat && etat.paiementSuspension ? etat.paiementSuspension : null;
-    const orderid = String(paiement?.orderid || "").trim();
-    const echeances = echeancesPaiementSuspension(paiement);
-
-    if (paiementSuspensionDelaiDepasse(paiement)) {
-      await afficherAlerte(messageDelaiPaiementDepasse());
-      return;
-    }
-
-    if (!orderid) {
-      await afficherAlerte("Paiement introuvable.");
-      return;
-    }
-
-    if (!echeances.length) {
-      await afficherAlerte("Aucune échéance non payée.");
-      return;
-    }
-
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return;
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
-    slot.appendChild(fragment);
-
-    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
-    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
-    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
-    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
-    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
-
-    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
-      slot.innerHTML = "";
-      throw new Error("Structure dialogue bouton incomplète.");
-    }
-
-    titre.textContent = "Paiement en attente";
-    texte.textContent = "";
-    texte.hidden = true;
-    actions.innerHTML = "";
-    actions.classList.add("lcdp-dialogue-echeances-impayees");
-
-    echeances.forEach((echeance) => {
-      const ligne = document.createElement("div");
-      ligne.className = "lcdp-dialogue-echeances-impayees__row";
-
-      const description = document.createElement("p");
-      description.className = "lcdp-dialogue-echeances-impayees__text";
-      description.textContent = "Échéance " + String(echeance.numero) + " du " + formaterDatePaiementSuspension(echeance.date) + " : " + formaterMontantPaiementSuspension(echeance.montant) + " TTC\nNon payée";
-
-      const boutonPayer = creerBoutonPaiementSuspension("Payer", "lcdp-button-secondary lcdp-workflow-micro-action lcdp-workflow-micro-action--alerte-paiement", () => {
-        ouvrirPagePaiementSuspension(paiement, echeance.numero).catch(console.error);
-      });
-
-      ligne.appendChild(description);
-      ligne.appendChild(boutonPayer);
-      actions.appendChild(ligne);
-    });
-
-
-    function fermer() {
-      slot.innerHTML = "";
-    }
-
-    boutonFermer.addEventListener("click", fermer);
-    dialogue.addEventListener("click", (event) => {
-      if (event.target === dialogue) fermer();
-    });
-
-    document.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.key === "Escape") fermer();
-      },
-      { once: true }
-    );
-  }
-
-  function echeancesPaiementSuspension(paiement) {
-    const source = Array.isArray(paiement?.echeances) ? paiement.echeances : [];
-    const echeances = source
-      .map((echeance) => ({
-        numero: Number(echeance?.numero || echeance?.echeance || 0),
-        date: echeance?.date || "",
-        montant: echeance?.montant ?? ""
-      }))
-      .filter((echeance) => echeance.numero >= 1);
-
-    if (!echeances.length && paiement?.echeance) {
-      echeances.push({
-        numero: Number(paiement.echeance || 1),
-        date: paiement.date || "",
-        montant: paiement.montant ?? ""
-      });
-    }
-
-    return echeances;
-  }
-
-  function creerBoutonPaiementSuspension(label, style, action) {
-    const bouton = document.createElement("button");
-    bouton.type = "button";
-    bouton.className = "lcdp-button " + (style || "lcdp-button-primary");
-    bouton.textContent = label || "OK";
-    bouton.addEventListener("click", action);
-    return bouton;
-  }
-
-  async function ouvrirPagePaiementSuspension(paiement, numeroEcheance) {
-    const orderid = String(paiement?.orderid || "").trim();
-
-    if (!orderid) {
-      await afficherAlerte("Commande non renseignée.");
-      return;
-    }
-
-    if (paiementSuspensionDelaiDepasse(paiement)) {
-      await afficherAlerte(messageDelaiPaiementDepasse());
-      return;
-    }
-
-    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
-    if (!ok) return;
-
-    const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
-    window.location.href = PAGE_PAIEMENT_CB + separateur + "orderid=" + encodeURIComponent(orderid) + "&echeance=" + encodeURIComponent(String(numeroEcheance || 1)) + "&source=suspension";
-  }
-
-
-  function messageDelaiPaiementDepasse() {
-    return "Le délai de paiement est dépassé. Cet abonnement est annulé.";
-  }
-
-  function paiementSuspensionDelaiDepasse(paiement) {
-    if (!paiement || typeof paiement !== "object") return false;
-
-    if (valeurBooleenneVraie(paiement.delaiPaiementDepasse) || valeurBooleenneVraie(paiement.abonnementAnnuleNonPaye)) {
-      return true;
-    }
-
-    return delaiPaiementDepasseDepuisFin(paiement.fin || paiement.dateFin || paiement.finabo || "");
-  }
-
-  function delaiPaiementDepasseDepuisFin(value) {
-    const fin = dateIsoPaiementDepuisValeur(value);
-
-    if (!fin) return false;
-
-    const maintenantParis = dateHeureParisPaiement(new Date());
-
-    if (maintenantParis.dateIso > fin) return true;
-    if (maintenantParis.dateIso < fin) return false;
-
-    return maintenantParis.heure >= 14;
-  }
-
-  function dateIsoPaiementDepuisValeur(value) {
-    const texte = String(value || "").trim();
-    const match = texte.match(/^(\d{4})-(\d{2})-(\d{2})/);
-
-    if (match) {
-      return match[1] + "-" + match[2] + "-" + match[3];
-    }
-
-    const date = new Date(texte);
-
-    if (Number.isNaN(date.getTime())) return "";
-
-    return dateHeureParisPaiement(date).dateIso;
-  }
-
-  function dateHeureParisPaiement(date) {
-    const morceaux = new Intl.DateTimeFormat("fr-FR", {
-      timeZone: "Europe/Paris",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-      hourCycle: "h23"
-    }).formatToParts(date);
-
-    const valeur = (type) => morceaux.find((item) => item.type === type)?.value || "";
-
-    return {
-      dateIso: valeur("year") + "-" + valeur("month") + "-" + valeur("day"),
-      heure: Number(valeur("hour") || 0),
-      minute: Number(valeur("minute") || 0)
-    };
-  }
-
-  function formaterDatePaiementSuspension(value) {
-    if (!value) return "Non renseignée";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
-  }
-
-  function formaterMontantPaiementSuspension(value) {
-    const nombre = Number(String(value ?? "").replace(",", "."));
-    if (!Number.isFinite(nombre)) return "Non renseigné";
-    return nombre.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
-  }
-
-  function valeurBooleenneVraie(valeur) {
-    return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
-  }
-
-  async function actualiserBurgerMembre(abonne) {
-    if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
-      await window.LCDP_initialiserMenuBurgerMembre({
-        etatMembre: {
-          abonne: abonne === true
-        }
-      });
     }
   }
 
@@ -396,22 +55,6 @@
 
     bouton.addEventListener("click", (event) => {
       event.preventDefault();
-
-      if (!etatMembre.abonne && !membreAbonne()) {
-        afficherAlerte("Vous devez être membre abonné pour réserver une nouvelle date.").catch(console.error);
-        return;
-      }
-
-      if (suspensionPourNonPaiement(etatMembre)) {
-        redirigerVersAbonnementPourRegularisation().catch(console.error);
-        return;
-      }
-
-      if (etatMembre.abonnementSuspendu === true) {
-        afficherAlerte("Votre abonnement est suspendu.").catch(console.error);
-        return;
-      }
-
       window.location.href = PAGE_RESERVER_MEMBRE;
     });
   }
@@ -502,18 +145,8 @@
       return;
     }
 
-    if (!etatMembre.abonne && !membreAbonne()) {
+    if (!membreAbonne()) {
       await afficherAlerte("Cette fonction est réservée aux membres abonnés.");
-      return;
-    }
-
-    if (suspensionPourNonPaiement(etatMembre)) {
-      await redirigerVersAbonnementPourRegularisation();
-      return;
-    }
-
-    if (etatMembre.abonnementSuspendu === true) {
-      await afficherAlerte("Votre abonnement est suspendu.");
       return;
     }
 
@@ -670,7 +303,7 @@
 
     if (!reservationsFiltrees.length) {
       afficherMessageListe(
-        etat.filtre === "avenir" ? "Aucune date à venir" : "Aucune date passée",
+        etat.filtre === "avenir" ? "Aucune date à venir." : "Aucune date passée.",
         "information"
       );
       return;
@@ -678,8 +311,10 @@
 
     masquerMessageListe();
 
-    reservationsFiltrees.forEach((reservation) => {
-      zoneListe.appendChild(creerCardReservation(reservation));
+    reservationsFiltrees.forEach((reservation, index) => {
+      zoneListe.appendChild(creerCardReservation(reservation, {
+        premiereReservationAvenir: etat.filtre === "avenir" && index === 0
+      }));
     });
   }
 
@@ -706,7 +341,7 @@
       });
   }
 
-  function creerCardReservation(reservation) {
+  function creerCardReservation(reservation, options = {}) {
     const card = etat.templateReservation.cloneNode(true);
 
     const dateReservation = new Date(reservation.datebookd);
@@ -731,6 +366,10 @@
 
     if (estPasse) {
       card.classList.add("lcdp-box-card-reservation-membre--passe");
+    }
+
+    if (options.premiereReservationAvenir === true && !estPasse) {
+      card.classList.add("lcdp-box-card-reservation-membre--prochaine");
     }
 
     if (reservation.invitation === true) {
