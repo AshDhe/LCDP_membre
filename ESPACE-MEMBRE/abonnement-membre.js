@@ -145,6 +145,14 @@
     texte.textContent = "[Votre abonnement est suspendu (non payé)]";
     bloc.appendChild(texte);
 
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
+    bouton.textContent = "Payer";
+    bouton.addEventListener("click", () => {
+      gererPaiementSuspensionMembre(options.paiementSuspension).catch(console.error);
+    });
+    bloc.appendChild(bouton);
   }
 
   async function gererPaiementSuspensionMembre(paiementSuspension) {
@@ -290,6 +298,8 @@
       const actif = filtre === etat.filtre;
 
       bouton.setAttribute("aria-pressed", actif ? "true" : "false");
+      bouton.classList.toggle("lcdp-button-secondary", !actif);
+      bouton.classList.toggle("lcdp-button-filtre-abonnement-actif", actif);
 
       if (actif) {
         bouton.textContent = "En cours";
@@ -3320,7 +3330,7 @@
 
   function trouverAbonnementSuspenduEnCours() {
     return (Array.isArray(etat.abonnements) ? etat.abonnements : []).find((abonnement) => {
-      return categorieAbonnement(abonnement) === "encours" && abonnementAvecEcheanceNonPayee(abonnement);
+      return categorieAbonnement(abonnement) === "encours" && String(abonnement?.statutabo || "").trim().toLowerCase() === "impaye";
     }) || null;
   }
 
@@ -3331,8 +3341,8 @@
   }
 
   function estAbonnementSuspenduImpaye(abonnement, commande) {
-    void commande;
-    return abonnementAvecEcheanceNonPayee(abonnement);
+    const statut = String(commande?.statutPaiement || abonnement?.statutabo || abonnement?.statutpaiement || abonnement?.statutPaiement || "").trim().toLowerCase();
+    return statut === "impaye";
   }
 
   function construireMentionSuspension(abonnement, commande) {
