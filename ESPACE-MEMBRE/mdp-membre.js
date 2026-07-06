@@ -105,7 +105,7 @@
       try {
         const response = await fetch(endpointMdptokenz, {
           method: "POST",
-          credentials: "include",
+          credentials: "omit",
           cache: "no-store",
           headers: {
             "Accept": "application/json",
