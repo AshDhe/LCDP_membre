@@ -21,6 +21,7 @@
   const PAGE_INVITER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html");
 
   let pageInitialisee = false;
+  let promesseActualisationEtatMembre = null;
 
   const etat = {
     reservations: [],
@@ -56,7 +57,7 @@
       initialiserActionsListePlanning();
       document.addEventListener("click", gererClicDocument);
 
-      await actualiserEtatMembrePlanningSilencieux();
+      lancerActualisationEtatMembrePlanning();
       await chargerReservations();
     } catch (error) {
       console.error("Erreur planning membre :", error);
@@ -72,6 +73,22 @@
       paiementSuspension: null,
       sourceApi: false
     };
+  }
+
+
+  function lancerActualisationEtatMembrePlanning() {
+    if (!promesseActualisationEtatMembre) {
+      promesseActualisationEtatMembre = actualiserEtatMembrePlanningSilencieux()
+        .catch((error) => {
+          console.warn("Statut membre indisponible sur le planning.", error);
+          return false;
+        })
+        .finally(() => {
+          promesseActualisationEtatMembre = null;
+        });
+    }
+
+    return promesseActualisationEtatMembre;
   }
 
   async function actualiserEtatMembrePlanningSilencieux() {
