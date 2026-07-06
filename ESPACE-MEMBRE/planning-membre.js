@@ -269,15 +269,10 @@
 
   async function verifierAccesReservationPlanning() {
     if (!etat.membre || etat.membre.sourceApi !== true) {
-      const statutActualise = await actualiserEtatMembrePlanningSilencieux();
-
-      if (!statutActualise) {
-        await afficherAlerte("Impossible de vérifier votre statut membre.");
-        return false;
-      }
+      await actualiserEtatMembrePlanningSilencieux();
     }
 
-    const blocage = determinerBlocageReservationPlanning(etat.membre);
+    const blocage = determinerBlocageReservationPlanning(etat.membre || creerEtatMembreFallback());
 
     if (!blocage) return true;
 
