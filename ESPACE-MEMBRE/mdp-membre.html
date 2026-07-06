@@ -63,6 +63,24 @@
       chargerCssObjet("/BOX/03-box-champ-formulaire.css");
     })();
   </script>
+
+
+  <style>
+    .lcdp-box-formulaire-page--compact .lcdp-box-formulaire-page__inner {
+      max-width: 440px;
+    }
+
+    @media (min-width: 768px) {
+      .lcdp-box-formulaire-page--compact .lcdp-box-formulaire-page__inner {
+        max-width: 440px;
+      }
+
+      .lcdp-box-formulaire-page--compact .lcdp-box-formulaire__actions .lcdp-button {
+        width: 100%;
+        max-width: 260px;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -76,7 +94,7 @@
         <div class="lcdp-page-container">
 
           <section
-            class="lcdp-component lcdp-box-formulaire-page"
+            class="lcdp-component lcdp-box-formulaire-page lcdp-box-formulaire-page--compact"
             data-lcdp-box-formulaire-page
           >
             <div class="lcdp-box-formulaire-page__inner">
