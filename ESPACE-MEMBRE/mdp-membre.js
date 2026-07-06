@@ -32,8 +32,8 @@
     if (texteModeMdp) {
       texteModeMdp.textContent =
         mode === "change"
-          ? "Choisissez le mot de passe de votre compte membre"
-          : "Choisissez le mot de passe de votre compte membre";
+          ? "Mettez à jour votre mot de passe"
+          : "Mettez à jour votre mot de passe";
     }
 
     if (!formulaire || !champMotDePasse || !boutonValider) {
