@@ -1103,7 +1103,7 @@
     }
 
     appliquerClasseWorkflow(box, "calendrier-an");
-    boutonSuivant.textContent = "Récapitulatif";
+    boutonSuivant.textContent = "ABONNEMENT";
 
     titre.textContent = "Démarrage";
     meta.textContent = "Début du nouvel abonnement";
@@ -1367,7 +1367,7 @@
     footer.className = "lcdp-box-calendrier-mois-abonnement__actions";
 
     const boutonRetour = creerBouton("Précédent", "lcdp-button-secondary", afficherEtapeChoixDuree);
-    const boutonSuivant = creerBouton("Récapitulatif", "lcdp-button-primary", async () => {
+    const boutonSuivant = creerBouton("ABONNEMENT", "lcdp-button-primary", async () => {
       if (!etat.workflow.dateDebut) {
         await afficherAlerteSuperposee("Merci de sélectionner un jour de début.");
         return;
@@ -1559,6 +1559,7 @@
     }
 
     appliquerClasseWorkflow(box, "recapitulatif");
+    renommerEtapeRecapitulatifEnAbonnement(slot);
 
     remplirRecapitulatif(slot);
 
@@ -1613,6 +1614,10 @@
     });
     boutonPayer.addEventListener("click", async () => {
       if (paiementCbDirectDepuisRecapitulatif()) {
+        const confirmation = await confirmerCommandeAvantPaiement();
+
+        if (!confirmation) return;
+
         await demarrerPaiementStripe({ echeancier: "comptant" });
         return;
       }
@@ -1623,6 +1628,19 @@
     box.addEventListener("click", (event) => {
       if (event.target === box) demanderQuitterWorkflow();
     });
+  }
+
+  function renommerEtapeRecapitulatifEnAbonnement(racine) {
+    remplacerTexteExact(racine, "Récapitulatif", "ABONNEMENT");
+    remplacerTexteExact(racine, "RÉCAPITULATIF", "ABONNEMENT");
+    remplacerTexteExact(racine, "RECAPITULATIF", "ABONNEMENT");
+  }
+
+  async function confirmerCommandeAvantPaiement() {
+    return afficherAlerteSuperposee(
+      "Vous allez être dirigé vers la page de paiement. Confirmez-vous votre commande ?",
+      { boutonOk: "Je confirme" }
+    );
   }
 
   function remplirRecapitulatif(racine) {
@@ -1944,6 +1962,10 @@
       }
 
       if (etat.workflow.paiement.mode === "cb") {
+        const confirmation = await confirmerCommandeAvantPaiement();
+
+        if (!confirmation) return;
+
         await demarrerPaiementStripe({ echeancier: etat.workflow.paiement.echeancier });
         return;
       }
@@ -3441,7 +3463,8 @@
       : "Votre abonnement est suspendu (non payé)";
   }
 
-  async function afficherAlerteSuperposee(message) {
+  async function afficherAlerteSuperposee(message, options = {}) {
+    const config = options && typeof options === "object" ? options : {};
     const container = document.createElement("div");
     container.className = "lcdp-workflow-abonnement-alerte";
     document.body.appendChild(container);
@@ -3460,6 +3483,7 @@
     }
 
     texte.textContent = message || "";
+    boutonOk.textContent = config.boutonOk || boutonOk.textContent || "OK";
 
     return new Promise((resolve) => {
       let resolu = false;
