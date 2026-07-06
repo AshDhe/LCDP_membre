@@ -268,10 +268,6 @@
   }
 
   async function verifierAccesReservationPlanning() {
-    if (!etat.membre || etat.membre.sourceApi !== true) {
-      await actualiserEtatMembrePlanningSilencieux();
-    }
-
     const blocage = determinerBlocageReservationPlanning(etat.membre || creerEtatMembreFallback());
 
     if (!blocage) return true;
