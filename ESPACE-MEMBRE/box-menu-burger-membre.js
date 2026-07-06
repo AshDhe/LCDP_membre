@@ -2,6 +2,8 @@
   "use strict";
 
   const CONFIG_BURGER_MEMBRE = window.SITE_CONFIG || {};
+  const PAGE_ABONNEMENT_MEMBRE = "/ESPACE-MEMBRE/abonnement-membre.html";
+
 
   function construireUrlPublic(chemin) {
     const valeur = String(chemin || "");
@@ -82,6 +84,105 @@
     return template.content.cloneNode(true);
   }
 
+  function chargerScriptMembreUneFois(chemin) {
+    const src = construireUrlMembre(chemin);
+
+    if (document.querySelector(`script[data-lcdp-script-membre="${chemin}"]`)) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.defer = true;
+      script.dataset.lcdpScriptMembre = chemin;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("Script membre introuvable : " + chemin));
+      document.body.appendChild(script);
+    });
+  }
+
+  function normaliserStatuda(value) {
+    const statut = String(value || "").trim().toLowerCase();
+
+    return ["encours", "oui", "non"].includes(statut) ? statut : null;
+  }
+
+  function formaterDateDa(value) {
+    if (!value) return "une date communiquée par le club";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+
+    return date.toLocaleDateString("fr-FR", {
+      timeZone: "Europe/Paris",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    });
+  }
+
+  function obtenirLightboxSlotBurger() {
+    let slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) {
+      slot = document.createElement("div");
+      slot.id = "lcdp-lightbox-slot";
+      document.body.appendChild(slot);
+    }
+
+    return slot;
+  }
+
+  async function afficherAlerteBurger(message, options = {}) {
+    const container = document.createElement("div");
+    container.className = "lcdp-burger-alerte";
+    document.body.appendChild(container);
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    container.appendChild(fragment);
+
+    const alerte = container.querySelector("[data-lcdp-box-alerte]");
+    const texte = container.querySelector("[data-lcdp-alerte-message]");
+    const boutonFermer = container.querySelector("[data-lcdp-alerte-close]");
+    const boutonOk = container.querySelector("[data-lcdp-alerte-ok]");
+
+    if (!alerte || !texte || !boutonFermer || !boutonOk) {
+      container.remove();
+      alert(message || "");
+      return true;
+    }
+
+    texte.textContent = message || "";
+    boutonOk.textContent = options.boutonOk || "OK";
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        container.remove();
+        resolve(valeur);
+      }
+
+      boutonFermer.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        fermer(false);
+      });
+      boutonOk.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        fermer(true);
+      });
+      alerte.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (event.target === alerte) fermer(false);
+      });
+    });
+  }
+
   function ouvrirMenu(boutonBurger, navBurger) {
     boutonBurger.setAttribute("aria-expanded", "true");
     navBurger.hidden = false;
@@ -137,7 +238,7 @@
     return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
   }
 
-  function creerLienMenu(item, boutonBurger, navBurger) {
+  function creerLienMenu(item, boutonBurger, navBurger, contexte) {
     if (item.action === "etre-invite") {
       const bouton = document.createElement("button");
       bouton.type = "button";
@@ -150,6 +251,20 @@
         if (typeof window.LCDP_gererEtreInviteMembre === "function") {
           window.LCDP_gererEtreInviteMembre().catch(console.error);
         }
+      });
+
+      return bouton;
+    }
+
+    if (item.action === "abonnement") {
+      const bouton = document.createElement("button");
+      bouton.type = "button";
+      bouton.className = "lcdp-box-menu-burger__button-link";
+      bouton.textContent = item.label;
+
+      bouton.addEventListener("click", async () => {
+        fermerMenu(boutonBurger, navBurger);
+        await gererClicAbonnementBurger(contexte, boutonBurger, navBurger);
       });
 
       return bouton;
@@ -169,6 +284,56 @@
     return lien;
   }
 
+  async function gererClicAbonnementBurger(contexte, boutonBurger, navBurger) {
+    const statudaConnue = contexte && contexte.statudaConnue === true;
+    const statuda = normaliserStatuda(contexte?.statuda);
+
+    if (!statudaConnue || statuda === "oui") {
+      window.location.href = construireUrlMembre(PAGE_ABONNEMENT_MEMBRE);
+      return;
+    }
+
+    if (statuda === "encours") {
+      await afficherAlerteBurger("Vous avez une DA en cours.");
+      return;
+    }
+
+    if (statuda === "non") {
+      await afficherAlerteBurger("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(contexte.datenext) + ".");
+      return;
+    }
+
+    await ouvrirPremiereDaDepuisBurger(contexte, boutonBurger, navBurger);
+  }
+
+  async function ouvrirPremiereDaDepuisBurger(contexte, boutonBurger, navBurger) {
+    try {
+      if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
+        await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js");
+      }
+
+      if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
+        throw new Error("Module DA membre introuvable.");
+      }
+
+      await window.LCDP_ouvrirPremiereDaMembre({
+        contexte,
+        onStatudaChange: (donnees = {}) => {
+          if (!contexte) return;
+          contexte.statudaConnue = true;
+          contexte.statuda = normaliserStatuda(donnees.statuda);
+          contexte.datenext = donnees.datenext || contexte.datenext || null;
+        },
+        onTerminee: () => {
+          ouvrirMenu(boutonBurger, navBurger);
+        }
+      });
+    } catch (error) {
+      console.error("Erreur ouverture DA membre :", error);
+      await afficherAlerteBurger(error.message || "Erreur technique. Merci de réessayer.");
+    }
+  }
+
   async function initialiserMenuBurgerMembre(options = {}) {
     const slot = document.querySelector("[data-lcdp-burger-slot]");
 
@@ -178,6 +343,11 @@
     const abonne = Object.prototype.hasOwnProperty.call(etatMembre, "abonne")
       ? valeurBooleenneVraie(etatMembre.abonne)
       : membreAbonneDepuisCookie();
+    const contexte = {
+      statudaConnue: Object.prototype.hasOwnProperty.call(etatMembre, "statuda"),
+      statuda: normaliserStatuda(etatMembre.statuda),
+      datenext: etatMembre.datenext || null
+    };
 
     slot.innerHTML = "";
 
@@ -227,8 +397,7 @@
       },
       {
         label: "Abonnement",
-        espace: "membre",
-        href: "/ESPACE-MEMBRE/abonnement-membre.html"
+        action: "abonnement"
       },
       {
         label: "Actualité du club",
@@ -240,7 +409,7 @@
     listeBurger.innerHTML = "";
 
     liens.forEach((item) => {
-      listeBurger.appendChild(creerLienMenu(item, boutonBurger, navBurger));
+      listeBurger.appendChild(creerLienMenu(item, boutonBurger, navBurger, contexte));
     });
 
     boutonBurger.addEventListener("click", (event) => {

@@ -65,7 +65,11 @@
     calendrierMoisAffiche: null,
     workflow: creerWorkflowVide(),
     abonnementSuspendu: false,
-    paiementSuspension: null
+    paiementSuspension: null,
+    statuda: null,
+    dateda: null,
+    datenext: null,
+    daChargee: false
   };
 
   const titresFiltres = {
@@ -177,17 +181,21 @@
     if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
       await window.LCDP_initialiserMenuBurgerMembre({
         etatMembre: {
-          abonne: membreAbonne()
+          abonne: membreAbonne(),
+          statuda: etat.statuda,
+          datenext: etat.datenext
         }
       });
     }
   }
 
-  async function actualiserBurgerMembre(abonne) {
+  async function actualiserBurgerMembre(abonne, donnees = {}) {
     if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
       await window.LCDP_initialiserMenuBurgerMembre({
         etatMembre: {
-          abonne: abonne === true
+          abonne: abonne === true,
+          statuda: normaliserStatuda(donnees.statuda ?? etat.statuda),
+          datenext: donnees.datenext ?? etat.datenext ?? null
         }
       });
     }
@@ -233,6 +241,11 @@
 
     bouton.textContent = "Choisir mon nouvel abonnement";
     bouton.addEventListener("click", () => {
+      if (etat.daChargee === true && !autorisationDaAbonnementLocale()) {
+        afficherMessageBlocageDaAbonnement().catch(console.error);
+        return;
+      }
+
       demarrerWorkflowNouvelAbonnement().catch(async (error) => {
         console.error("Erreur workflow abonnement :", error);
         await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -332,13 +345,17 @@
       etat.abonnements = Array.isArray(data.abonnements) ? data.abonnements : [];
       etat.abonnementSuspendu = valeurBooleenneVraie(data.abonnementSuspendu || data.suspendu);
       etat.paiementSuspension = data.paiementSuspension || data.paiementRegularisation || null;
+      etat.statuda = normaliserStatuda(data.statuda);
+      etat.dateda = data.dateda || null;
+      etat.datenext = data.datenext || null;
+      etat.daChargee = true;
 
       if (typeof data.abonne === "boolean") {
         afficherEtatMembre(data.abonne, {
           abonnementSuspendu: etat.abonnementSuspendu,
           paiementSuspension: etat.paiementSuspension
         });
-        await actualiserBurgerMembre(data.abonne);
+        await actualiserBurgerMembre(data.abonne, data);
       }
 
       afficherAbonnements(etat.abonnements);
@@ -401,6 +418,11 @@
   }
 
   async function demarrerWorkflowNouvelAbonnement() {
+    if (!autorisationDaAbonnementLocale()) {
+      await afficherMessageBlocageDaAbonnement();
+      return;
+    }
+
     etat.workflow = creerWorkflowVide();
     etat.workflow.etape = "type";
     await chargerContexteWorkflow();
@@ -408,6 +430,11 @@
   }
 
   async function demarrerWorkflowProlongation(card) {
+    if (!autorisationDaAbonnementLocale()) {
+      await afficherMessageBlocageDaAbonnement();
+      return;
+    }
+
     const abonnement = retrouverAbonnementDepuisCard(card);
 
     if (!abonnement) {
@@ -630,6 +657,12 @@
     }
 
     etat.contexteWorkflow = data.contexte || {};
+    if (Object.prototype.hasOwnProperty.call(etat.contexteWorkflow, "statuda")) {
+      etat.statuda = normaliserStatuda(etat.contexteWorkflow.statuda);
+      etat.dateda = etat.contexteWorkflow.dateda || etat.dateda || null;
+      etat.datenext = etat.contexteWorkflow.datenext || etat.datenext || null;
+      etat.daChargee = true;
+    }
 
     if (Array.isArray(etat.contexteWorkflow.abonnements)) {
       etat.abonnements = etat.contexteWorkflow.abonnements;
@@ -1613,6 +1646,11 @@
       await afficherEtapeCalendrierMois();
     });
     boutonPayer.addEventListener("click", async () => {
+      if (!autorisationDaAbonnementLocale()) {
+        await afficherMessageBlocageDaAbonnement();
+        return;
+      }
+
       if (paiementCbDirectDepuisRecapitulatif()) {
         const confirmation = await confirmerCommandeAvantPaiement();
 
@@ -1948,6 +1986,11 @@
 
     actions.appendChild(zone);
     actions.appendChild(creerBouton("Payer", "lcdp-button-primary", async () => {
+      if (!autorisationDaAbonnementLocale()) {
+        await afficherMessageBlocageDaAbonnement();
+        return;
+      }
+
       lireOptionsPaiementDepuisDialogue(slot);
 
       if (!confirmation.checked) {
@@ -3461,6 +3504,56 @@
     return delaiPaiementDepasseAbonnement(abonnement)
       ? "Votre abonnement est annulé (non payé)"
       : "Votre abonnement est suspendu (non payé)";
+  }
+
+
+  function autorisationDaAbonnementLocale() {
+    return normaliserStatuda(etat.statuda) === "oui";
+  }
+
+  async function afficherMessageBlocageDaAbonnement() {
+    const message = messageBlocageDaAbonnement();
+
+    if (document.querySelector("[data-lcdp-box-workflow-abonnement]")) {
+      await afficherAlerteSuperposee(message);
+      return;
+    }
+
+    await afficherAlerte(message);
+  }
+
+  function messageBlocageDaAbonnement() {
+    const statut = normaliserStatuda(etat.statuda);
+
+    if (statut === "encours") {
+      return "Vous avez une DA en cours.";
+    }
+
+    if (statut === "non") {
+      return "Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(etat.datenext) + ".";
+    }
+
+    return "Vous devez faire une DA avant de souscrire un abonnement.";
+  }
+
+  function normaliserStatuda(value) {
+    const statut = String(value || "").trim().toLowerCase();
+
+    return ["encours", "oui", "non"].includes(statut) ? statut : null;
+  }
+
+  function formaterDateDa(value) {
+    if (!value) return "une date communiquée par le club";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+
+    return date.toLocaleDateString("fr-FR", {
+      timeZone: "Europe/Paris",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    });
   }
 
   async function afficherAlerteSuperposee(message, options = {}) {
