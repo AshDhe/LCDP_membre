@@ -12,27 +12,6 @@
     "da-membre-api"
   );
 
-  const MOTS_INTERDITS_DA = [
-    "connard",
-    "connasse",
-    "con",
-    "conne",
-    "encule",
-    "enculee",
-    "enculé",
-    "enculée",
-    "fdp",
-    "merde",
-    "putain",
-    "pute",
-    "salope",
-    "salaud",
-    "batard",
-    "bâtard",
-    "nique",
-    "ta gueule"
-  ];
-
   function construireEndpointApi(cleModerne, cleLegacy, sousDomaineWorker) {
     const depuisConfig =
       CONFIG_DA_MEMBRE?.[cleModerne] ||
@@ -184,25 +163,6 @@
       day: "2-digit",
       month: "2-digit",
       year: "numeric"
-    });
-  }
-
-  function normaliserTexteControle(value) {
-    return String(value || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function contientMotInterdit(value) {
-    const texte = " " + normaliserTexteControle(value) + " ";
-
-    return MOTS_INTERDITS_DA.some((mot) => {
-      const interdit = normaliserTexteControle(mot);
-      return interdit && texte.includes(" " + interdit + " ");
     });
   }
 
@@ -714,10 +674,6 @@
     if (!payload.rib) return "Le nom du titulaire selon RIB est obligatoire.";
     if (!payload.regleclub_v1) return "Le règlement du club doit être accepté.";
     if (!payload.regleapp_v1) return "Le règlement de l’application doit être accepté.";
-
-    if ([payload.alias, payload.autoquali, payload.autoloisir, payload.autonouschoisir, payload.rib].some(contientMotInterdit)) {
-      return "Votre DA contient des mots interdits.";
-    }
 
     return "";
   }
