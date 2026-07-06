@@ -3,7 +3,29 @@
 
   const CONFIG_BURGER_MEMBRE = window.SITE_CONFIG || {};
   const PAGE_ABONNEMENT_MEMBRE = "/ESPACE-MEMBRE/abonnement-membre.html";
+  const ENDPOINT_INDEX_MEMBRE = construireEndpointApiBurger(
+    "workerIndexMembreUrl",
+    "WORKER_INDEX_MEMBRE_URL",
+    "W_INDEX_MEMBRE_URL",
+    "index-membre-api"
+  );
 
+
+  function construireEndpointApiBurger(cleModerne, cleLegacy, cleCourte, sousDomaineWorker) {
+    const depuisConfig =
+      (cleModerne ? CONFIG_BURGER_MEMBRE?.[cleModerne] : "") ||
+      (cleLegacy ? CONFIG_BURGER_MEMBRE?.[cleLegacy] : "") ||
+      (cleCourte ? CONFIG_BURGER_MEMBRE?.[cleCourte] : "") ||
+      "";
+
+    if (depuisConfig) return String(depuisConfig).replace(/\/+$/, "");
+
+    if (typeof CONFIG_BURGER_MEMBRE.apiUrl === "function") {
+      return CONFIG_BURGER_MEMBRE.apiUrl(sousDomaineWorker).replace(/\/+$/, "");
+    }
+
+    return "";
+  }
 
   function construireUrlPublic(chemin) {
     const valeur = String(chemin || "");
@@ -285,10 +307,27 @@
   }
 
   async function gererClicAbonnementBurger(contexte, boutonBurger, navBurger) {
-    const statudaConnue = contexte && contexte.statudaConnue === true;
-    const statuda = normaliserStatuda(contexte?.statuda);
+    let statudaConnue = contexte && contexte.statudaConnue === true;
+    let statuda = normaliserStatuda(contexte?.statuda);
+    let datenext = contexte?.datenext || null;
 
-    if (!statudaConnue || statuda === "oui") {
+    if (!statudaConnue) {
+      const statutCharge = await chargerStatutDaDepuisIndexBurger();
+
+      if (statutCharge && statutCharge.statudaConnue === true) {
+        statudaConnue = true;
+        statuda = normaliserStatuda(statutCharge.statuda);
+        datenext = statutCharge.datenext || null;
+
+        if (contexte) {
+          contexte.statudaConnue = true;
+          contexte.statuda = statuda;
+          contexte.datenext = datenext;
+        }
+      }
+    }
+
+    if (statuda === "oui") {
       window.location.href = construireUrlMembre(PAGE_ABONNEMENT_MEMBRE);
       return;
     }
@@ -299,11 +338,46 @@
     }
 
     if (statuda === "non") {
-      await afficherAlerteBurger("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(contexte.datenext) + ".");
+      await afficherAlerteBurger("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(datenext) + ".");
+      return;
+    }
+
+    if (!statudaConnue) {
+      await afficherAlerteBurger("Impossible de vérifier votre droit d'accès à l'abonnement. Merci de repasser par l'accueil membre.");
       return;
     }
 
     await ouvrirPremiereDaDepuisBurger(contexte, boutonBurger, navBurger);
+  }
+
+  async function chargerStatutDaDepuisIndexBurger() {
+    if (!ENDPOINT_INDEX_MEMBRE) return null;
+
+    try {
+      const reponse = await fetch(ENDPOINT_INDEX_MEMBRE + "/index", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+      const data = await reponse.json().catch(() => null);
+
+      if (!reponse.ok || !data || data.success !== true || data.connected !== true) {
+        return null;
+      }
+
+      return {
+        statudaConnue: Object.prototype.hasOwnProperty.call(data, "statuda"),
+        statuda: normaliserStatuda(data.statuda),
+        datenext: data.datenext || null
+      };
+    } catch (error) {
+      console.error("Erreur vérification DA burger :", error);
+      return null;
+    }
   }
 
   async function ouvrirPremiereDaDepuisBurger(contexte, boutonBurger, navBurger) {

@@ -17,6 +17,7 @@
   );
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
+  const PAGE_ACCUEIL_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html");
   const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
   const PAGE_REGLEMENT_CLUB = construireUrlPublic("/ESPACE-PUBLIC/reglement-club.html");
@@ -356,6 +357,11 @@
           paiementSuspension: etat.paiementSuspension
         });
         await actualiserBurgerMembre(data.abonne, data);
+      }
+
+      if (!autorisationDaAbonnementLocale()) {
+        await bloquerAccesPageAbonnementDa();
+        return;
       }
 
       afficherAbonnements(etat.abonnements);
@@ -3506,6 +3512,11 @@
       : "Votre abonnement est suspendu (non payé)";
   }
 
+
+  async function bloquerAccesPageAbonnementDa() {
+    await afficherMessageBlocageDaAbonnement();
+    window.location.href = PAGE_ACCUEIL_MEMBRE;
+  }
 
   function autorisationDaAbonnementLocale() {
     return normaliserStatuda(etat.statuda) === "oui";

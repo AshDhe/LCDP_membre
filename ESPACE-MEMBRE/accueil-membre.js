@@ -29,7 +29,10 @@
     parrainRenseigne: false,
     aReservationEnCours: false,
     abonnementSuspendu: false,
-    paiementSuspension: null
+    paiementSuspension: null,
+    statuda: null,
+    dateda: null,
+    datenext: null
   };
 
   window.LCDP_gererEtreInviteMembre = function LCDP_gererEtreInviteMembre() {
@@ -98,7 +101,10 @@
       aReservationEnCours: valeurBooleenneVraie(resultat.aReservationEnCours || resultat.aReservationValidable),
       reservationEnCours: resultat.reservationEnCours || resultat.reservationValidable || null,
       abonnementSuspendu: valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu),
-      paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null
+      paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null,
+      statuda: resultat.statuda || null,
+      dateda: resultat.dateda || null,
+      datenext: resultat.datenext || null
     };
   }
 
