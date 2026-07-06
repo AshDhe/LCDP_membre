@@ -152,8 +152,8 @@
     if (!mention) return;
 
     mention.textContent = membre && membre.abonne
-      ? "[Vous êtes membre abonné]"
-      : "[Vous êtes membre invité]";
+      ? "MEMBRE ABONNÉ"
+      : "MEMBRE INVITÉ";
   }
 
   function initialiserBoutonNouvelleDate() {

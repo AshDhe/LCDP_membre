@@ -107,8 +107,8 @@
     const abonne = typeof abonneDepuisApi === "boolean" ? abonneDepuisApi : membreAbonne();
 
     mention.textContent = abonne
-      ? "[Vous êtes membre abonné]"
-      : "[Vous êtes membre invité]";
+      ? "MEMBRE ABONNÉ"
+      : "MEMBRE INVITÉ";
 
     afficherSuspensionMembre({
       abonnementSuspendu: options.abonnementSuspendu === true,

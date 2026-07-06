@@ -108,8 +108,8 @@
 
     if (mention) {
       mention.textContent = etat.abonne
-        ? "[Vous êtes membre abonné]"
-        : "[Vous êtes membre invité]";
+        ? "MEMBRE ABONNÉ"
+        : "MEMBRE INVITÉ";
     }
 
     if (message) {

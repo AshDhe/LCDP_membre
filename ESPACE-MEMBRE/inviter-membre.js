@@ -113,7 +113,7 @@
       titre.insertAdjacentElement("afterend", mention);
     }
 
-    mention.textContent = etat && etat.abonne ? "[Vous êtes membre abonné]" : "[Vous êtes membre invité]";
+    mention.textContent = etat && etat.abonne ? "MEMBRE ABONNÉ" : "MEMBRE INVITÉ";
     afficherSuspensionMembre(etat);
   }
 

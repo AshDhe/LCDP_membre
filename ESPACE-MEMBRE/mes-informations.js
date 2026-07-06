@@ -326,8 +326,8 @@
     }
 
     mention.textContent = compteIndiqueAbonne(compte)
-      ? "[Vous êtes membre abonné]"
-      : "[Vous êtes membre invité]";
+      ? "MEMBRE ABONNÉ"
+      : "MEMBRE INVITÉ";
 
     afficherSuspensionMembre({
       abonnementSuspendu: valeurBooleenneVraie(compte?.abonnementSuspendu || compte?.suspendu),
