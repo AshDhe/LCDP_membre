@@ -454,14 +454,14 @@
       titre: "Faire la 1ère demande d'abonnement (DA)",
       sousTitre: "La Clé du Parc | Demande d'abonnement",
       champs: [
-        champLectureSeule("da-nom-membre", "nommembre", "Nom"),
-        champLectureSeule("da-prenom-membre", "prenommembre", "Prénom"),
-        champTexte("da-alias", "alias", "Alias", true, "Alias"),
-        champLectureSeule("da-email-membre", "emailmembre", "E-mail", "email"),
-        champTexte("da-tel", "tel", "N° de mobile personnel", true, "0600000000", "tel", "numeric"),
-        champTexte("da-autoquali", "autoquali", "Vos trois qualités", true, "100 caractères maximum", "text", "text", 100),
-        champTexte("da-autoloisir", "autoloisir", "Vos trois hobbies", true, "100 caractères maximum", "text", "text", 100),
-        champTexte("da-autonouschoisir", "autonouschoisir", "Pourquoi La Clé du Parc ?", true, "100 caractères maximum", "text", "text", 100),
+        champLectureSeule("da-nom-membre", "nommembre", "Nom", "text", "Nom d'état civil"),
+        champLectureSeule("da-prenom-membre", "prenommembre", "Prénom", "text", "Prénom d'état civil"),
+        champTexte("da-alias", "alias", "Alias", true, "Alias souhaité"),
+        champLectureSeule("da-email-membre", "emailmembre", "E-mail", "email", "E-mail de membre"),
+        champTexte("da-tel", "tel", "N° de mobile personnel", true, "Mobile personnel", "tel", "numeric"),
+        champTexte("da-autoquali", "autoquali", "Vos trois qualités", true, "Vos 3 qualités", "text", "text", 100),
+        champTexte("da-autoloisir", "autoloisir", "Vos trois hobbies", true, "Vos 3 loisirs", "text", "text", 100),
+        champTexte("da-autonouschoisir", "autonouschoisir", "Pourquoi La Clé du Parc ?", true, "Votre motivation", "text", "text", 100),
         {
           type: "checkbox",
           id: "da-checkboxvaleurs",
@@ -478,28 +478,10 @@
           checkboxLabel: "Recherchez-vous un abonnement Famille ?",
           required: false
         },
-        champLectureSeule("da-emailparrain", "emailparrain", "Avez-vous déjà un parrain ?", "email"),
-        champTexte("da-iban", "iban", "Votre IBAN", true, "IBAN", "text", "text"),
+        champEmailParrain(),
+        champTexte("da-iban", "iban", "Votre IBAN", true, "IBAN remboursement", "text", "text"),
         champTexte("da-swift", "swift", "SWIFT de votre banque", true, "BIC / SWIFT", "text", "text"),
-        champTexte("da-rib", "rib", "Nom du titulaire selon RIB", true, "Nom du titulaire"),
-        {
-          type: "checkbox",
-          id: "da-regleclub-v1",
-          name: "regleclub_v1",
-          label: "Règlement du club",
-          checkboxLabel: "J'accepte le règlement du club",
-          required: true,
-          descriptionHtml: `Vous devez accepter le <a href="${construireUrlPublic(PAGE_REGLEMENT_CLUB)}" target="_blank" rel="noopener noreferrer">règlement du club</a> pour transmettre votre DA.`
-        },
-        {
-          type: "checkbox",
-          id: "da-regleapp-v1",
-          name: "regleapp_v1",
-          label: "Règlement de l’application",
-          checkboxLabel: "J'accepte le règlement de l'application",
-          required: true,
-          descriptionHtml: `Vous devez accepter le <a href="${construireUrlPublic(PAGE_REGLEMENT_APPLICATION)}" target="_blank" rel="noopener noreferrer">règlement de l'application</a> pour transmettre votre DA.`
-        }
+        champTexte("da-rib", "rib", "Nom du titulaire selon RIB", true, "Titulaire du RIB")
       ],
       bouton: {
         id: "bouton-transmettre-da",
@@ -511,14 +493,28 @@
     };
   }
 
-  function champLectureSeule(id, name, label, type = "text") {
+  function champLectureSeule(id, name, label, type = "text", placeholder = "") {
     return {
       type,
       id,
       name,
       label,
       required: false,
-      placeholder: label
+      placeholder: placeholder || label
+    };
+  }
+
+  function champEmailParrain() {
+    return {
+      type: "email",
+      id: "da-emailparrain",
+      name: "emailparrain",
+      label: "Êtes-vous parrainé ?",
+      required: false,
+      placeholder: "E-mail de votre parrain",
+      autocomplete: "email",
+      autocapitalize: "none",
+      spellcheck: "false"
     };
   }
 
@@ -544,7 +540,7 @@
     remplirInput(form, "nommembre", membre.nommembre || "", true);
     remplirInput(form, "prenommembre", membre.prenommembre || "", true);
     remplirInput(form, "emailmembre", membre.emailmembre || "", true);
-    remplirInput(form, "emailparrain", parrain.emailparrain || "", true);
+    remplirInput(form, "emailparrain", parrain.emailparrain || membre.emailparrain || "", false);
     remplirInput(form, "alias", membre.alias || "", false);
     remplirInput(form, "tel", membre.tel || "", false);
     remplirInput(form, "autoquali", membre.autoquali || "", false);
@@ -598,7 +594,7 @@
     }
 
     try {
-      const reponse = await fetch(ENDPOINT_DA_MEMBRE + "/transmettre", {
+      const reponse = await fetchAvecDelai(ENDPOINT_DA_MEMBRE + "/transmettre", {
         method: "POST",
         credentials: "include",
         cache: "no-store",
@@ -629,7 +625,14 @@
       }
     } catch (error) {
       console.error("Transmission DA :", error);
-      await afficherAlerteDa(error.message || "Erreur technique. Merci de réessayer.");
+
+      const message =
+        error?.name === "AbortError"
+          ? "La transmission n'a pas répondu dans le délai attendu. Merci de réessayer."
+          : error.message || "Erreur technique. Merci de réessayer.";
+
+      await afficherAlerteDa(message);
+
       if (bouton) {
         bouton.disabled = false;
         bouton.textContent = "Transmettre";
@@ -637,9 +640,24 @@
     }
   }
 
+  async function fetchAvecDelai(url, options = {}, delaiMs = 30000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), delaiMs);
+
+    try {
+      return await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   function lirePayloadDa(form) {
     return {
       alias: valeurChamp(form, "alias"),
+      emailparrain: nettoyerEmail(valeurChamp(form, "emailparrain")),
       tel: valeurChamp(form, "tel").replace(/\s+/g, ""),
       autoquali: valeurChamp(form, "autoquali"),
       autoloisir: valeurChamp(form, "autoloisir"),
@@ -649,8 +667,8 @@
       iban: valeurChamp(form, "iban").replace(/\s+/g, "").toUpperCase(),
       swift: valeurChamp(form, "swift").replace(/\s+/g, "").toUpperCase(),
       rib: valeurChamp(form, "rib"),
-      regleclub_v1: caseCochee(form, "regleclub_v1"),
-      regleapp_v1: caseCochee(form, "regleapp_v1")
+      regleclub_v1: true,
+      regleapp_v1: true
     };
   }
 
@@ -664,6 +682,7 @@
 
   function verifierPayloadDa(payload) {
     if (!payload.alias) return "Votre alias est obligatoire.";
+    if (payload.emailparrain && !emailValide(payload.emailparrain)) return "L’adresse e-mail du parrain est invalide.";
     if (!/^\d{10}$/.test(payload.tel)) return "Votre numéro de mobile doit contenir 10 chiffres, sans espace.";
     if (!payload.autoquali) return "Vos trois qualités sont obligatoires.";
     if (!payload.autoloisir) return "Vos trois hobbies sont obligatoires.";
@@ -672,10 +691,16 @@
     if (!/^[A-Z]{2}[0-9A-Z]{13,32}$/.test(payload.iban)) return "Votre IBAN est invalide.";
     if (!/^[A-Z0-9]{8}([A-Z0-9]{3})?$/.test(payload.swift)) return "Le SWIFT de votre banque est invalide.";
     if (!payload.rib) return "Le nom du titulaire selon RIB est obligatoire.";
-    if (!payload.regleclub_v1) return "Le règlement du club doit être accepté.";
-    if (!payload.regleapp_v1) return "Le règlement de l’application doit être accepté.";
 
     return "";
+  }
+
+  function nettoyerEmail(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function emailValide(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
   }
 
   async function demanderQuitterDa(event) {
