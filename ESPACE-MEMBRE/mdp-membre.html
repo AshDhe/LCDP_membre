@@ -78,10 +78,6 @@
         max-width: 440px;
       }
 
-      .lcdp-box-formulaire-page--compact .lcdp-box-formulaire__actions .lcdp-button {
-        width: 100%;
-        max-width: 260px;
-      }
     }
   </style>
 </head>
@@ -116,10 +112,13 @@
                   <p
                     class="lcdp-box-formulaire__subtitle"
                     id="texte-mode-mdp"
-                  ></p>
+                  >
+                    Mise à jour du mot de passe
+                  </p>
 
                   <div class="lcdp-box-formulaire__intro">
                     <p>
+                      Renseignez votre mot de passe, puis validez avec le bouton La Clé du Parc.
                       Vous pourrez ensuite vous connecter depuis "connexion espace membre".
                     </p>
                   </div>
@@ -164,9 +163,18 @@
                   <button
                     type="submit"
                     id="bouton-valider-formulaire"
-                    class="lcdp-button lcdp-button-primary"
+                    class="lcdp-button-logo"
+                    aria-label="Valider avec La Clé du Parc"
+                    title="Valider avec La Clé du Parc"
                   >
-                    Valider
+                    <img
+                      class="lcdp-button-logo__image"
+                      src=""
+                      data-lcdp-objet-src="/IMAG/LOGO/logo-bouton-navigation-192.webp"
+                      alt=""
+                      aria-hidden="true"
+                    >
+                    <span class="lcdp-sr-only">Valider</span>
                   </button>
                 </div>
               </form>

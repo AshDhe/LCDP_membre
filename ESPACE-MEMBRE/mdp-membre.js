@@ -25,16 +25,37 @@
 
     let envoiEnCours = false;
 
+    function definirEtatBoutonValidation(enCours) {
+      boutonValider.disabled = enCours;
+      boutonValider.classList.toggle("is-loading", enCours);
+      boutonValider.setAttribute(
+        "aria-label",
+        enCours ? "Validation en cours" : "Valider avec La Clé du Parc"
+      );
+      boutonValider.setAttribute(
+        "title",
+        enCours ? "Validation en cours" : "Valider avec La Clé du Parc"
+      );
+    }
+
+    function desactiverBoutonValidation() {
+      boutonValider.disabled = true;
+      boutonValider.classList.remove("is-loading");
+      boutonValider.setAttribute("aria-label", "Validation indisponible");
+      boutonValider.setAttribute("title", "Validation indisponible");
+    }
+
+    definirEtatBoutonValidation(false);
+
     if (lienConnexionMembre) {
       lienConnexionMembre.href = urlConnexionMembre;
     }
 
     if (texteModeMdp) {
-      texteModeMdp.textContent =
-        mode === "change"
-          ? "Mettez à jour votre mot de passe"
-          : "Mettez à jour votre mot de passe";
+      texteModeMdp.textContent = "Mise à jour du mot de passe";
     }
+
+    appliquerSourcesObjet(document);
 
     if (!formulaire || !champMotDePasse || !boutonValider) {
       afficherInformation(
@@ -46,7 +67,7 @@
 
     if (!endpointMdptokenz) {
       champMotDePasse.disabled = true;
-      boutonValider.disabled = true;
+      desactiverBoutonValidation();
 
       afficherInformation(
         "Configuration manquante",
@@ -57,7 +78,7 @@
 
     if (!token || !mode) {
       champMotDePasse.disabled = true;
-      boutonValider.disabled = true;
+      desactiverBoutonValidation();
 
       afficherInformation(
         "Lien invalide",
@@ -99,8 +120,7 @@
       }
 
       envoiEnCours = true;
-      boutonValider.disabled = true;
-      boutonValider.textContent = "Validation en cours...";
+      definirEtatBoutonValidation(true);
 
       try {
         const response = await fetch(endpointMdptokenz, {
@@ -128,8 +148,7 @@
           );
 
           envoiEnCours = false;
-          boutonValider.disabled = false;
-          boutonValider.textContent = "Valider";
+          definirEtatBoutonValidation(false);
           return;
         }
 
@@ -148,10 +167,50 @@
         );
 
         envoiEnCours = false;
-        boutonValider.disabled = false;
-        boutonValider.textContent = "Valider";
+        definirEtatBoutonValidation(false);
       }
     }
+  }
+
+  function appliquerSourcesObjet(racine = document) {
+    racine.querySelectorAll("[data-lcdp-objet-src]").forEach((element) => {
+      element.setAttribute("src", construireUrlObjet(element.dataset.lcdpObjetSrc));
+    });
+  }
+
+  function construireUrlObjet(chemin) {
+    const valeur = String(chemin || "");
+
+    if (
+      !valeur ||
+      valeur.startsWith("#") ||
+      valeur.startsWith("mailto:") ||
+      valeur.startsWith("tel:") ||
+      valeur.startsWith("http://") ||
+      valeur.startsWith("https://") ||
+      valeur.startsWith("data:")
+    ) {
+      return valeur;
+    }
+
+    const config = window.SITE_CONFIG || {};
+
+    if (typeof config.objetUrl === "function") {
+      return config.objetUrl(valeur);
+    }
+
+    const objetBaseUrl = nettoyerBaseUrl(
+      config.objetBaseUrl ||
+      config.OBJET_BASE ||
+      window.LCDP_OBJET_BASE ||
+      ""
+    );
+
+    if (objetBaseUrl) {
+      return joindreBaseEtChemin(objetBaseUrl, valeur);
+    }
+
+    return valeur.startsWith("/") ? valeur : "/" + valeur;
   }
 
   function obtenirEndpointMdptokenz() {
