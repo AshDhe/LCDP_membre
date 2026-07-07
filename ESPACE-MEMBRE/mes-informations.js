@@ -651,7 +651,7 @@
       await afficherAlerte(
         messageErreurApi(
           resultat,
-          "Un email de validation a été envoyé. Votre e-mail actuel reste inchangé tant que le nouveau mail n'est pas validé."
+          "Aucun messagr reçu du worker. Ni OK ni KO = KO."
         )
       );
     } catch (error) {
