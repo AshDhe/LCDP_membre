@@ -3,7 +3,8 @@
 
   const CONFIG_PAGE = window.SITE_CONFIG || {};
   const SOURCE_PAGE = "reserver-membre";
-  const DOSSIER_IMAGES_PARC_OBJET = "/IMAG/IMAGE%20PARC";
+  const DOSSIER_IMAGES_PARC_OBJET = "/IMAG/PARC";
+  const NOM_IMAGE_CARD_PARC = "card1.webp";
 
   const ENDPOINT_NOUVELLE_DATE_MEMBRE = construireEndpointApi(
     "workerNouvelleDateMembreUrl",
@@ -640,7 +641,7 @@
     card.dataset.idparc = idparc;
 
     if (image) {
-      image.src = construireUrlImageParc(parc.imageparc);
+      image.src = construireUrlImageParc(parc);
       image.alt = "Image du parc " + nom;
     }
 
@@ -1768,10 +1769,37 @@
     return buildUrl(objetBase, valeur);
   }
 
-  function construireUrlImageParc(imageparc) {
-    const fichier = String(imageparc || "").trim() || "parc-defaut.jpg";
+  function construireUrlImageParc(parc) {
+    const cheminImageExplicite = String(parc?.imageparc || "").trim();
 
-    return construireUrlObjet(DOSSIER_IMAGES_PARC_OBJET + "/" + encodeURIComponent(fichier));
+    if (cheminImageExplicite && cheminImageExplicite.includes("/")) {
+      return construireUrlObjet("/" + cheminImageExplicite.replace(/^\/+/, ""));
+    }
+
+    const departement = nettoyerDepartement(parc?.dptmt || parc?.departement || "");
+    const dossierParc = normaliserNomParcPourChemin(parc?.nom || parc?.nomparc || "");
+
+    if (!departement || !dossierParc) {
+      return construireUrlObjet(DOSSIER_IMAGES_PARC_OBJET + "/parc-defaut.webp");
+    }
+
+    return construireUrlObjet(
+      DOSSIER_IMAGES_PARC_OBJET +
+      "/" + encodeURIComponent(departement) +
+      "/" + encodeURIComponent(dossierParc) +
+      "/" + NOM_IMAGE_CARD_PARC
+    );
+  }
+
+  function normaliserNomParcPourChemin(valeur) {
+    return String(valeur || "")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .replace(/_+/g, "_");
   }
 
   function redirigerConnexionMembre(motif) {
