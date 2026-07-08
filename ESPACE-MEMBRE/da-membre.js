@@ -418,7 +418,7 @@
     ajouterBlocInfoDa(
       bloc,
       "Après envoi",
-      "Votre DA est étudiée par le club avec attention. Elle peut donner lieu à un échange avec un responsable (visio, visu). Vous êtes tenu(e) informé(e) de la décision (acceptation, rejet). Votre pièce d'identité est nécessaire pour finaliser votre demande si elle a été acceptée. Vous pouvez refaire une DA trois mois après un précédent rejet."
+      "Votre DA est étudiée par le club avec attention. Elle peut donner lieu à un échange avec un responsable (visio, visu). Vous êtes tenu(e) informé(e) de la décision. Une copie numérique de votre pièce d'identité est nécessaire pour finaliser votre demande si elle a été acceptée. Vous pouvez refaire une DA trois mois après un précédent refus."
     );
 
 
