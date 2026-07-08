@@ -397,7 +397,7 @@
     titre.textContent = "Demande d'abonnement (DA)";
     bloc.appendChild(titre);
 
-    const intro = document.createElement("p");
+    ajouterBlocInfoDa(
       bloc,
       "Qu'est-ce qu'une DA ?",
       "La DA permet au club de prendre connaissance de votre motivation à devenir membre abonné. Le club s'attache à fournir un service nominatif de qualité et à promouvoir des valeurs de respect, de convivialité et de curiosité."
