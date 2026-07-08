@@ -394,28 +394,24 @@
 
     const titre = document.createElement("h2");
     titre.className = "lcdp-title-page-center";
-    titre.textContent = "Demande d'abonnement";
+    titre.textContent = "Demande d'abonnement (DA)";
     bloc.appendChild(titre);
 
     const intro = document.createElement("p");
-    intro.textContent = "Cette demande permet au club de valider votre accès à l'abonnement.";
+    intro.textContent = "La DA permet au club de prendre connaissance de votre motivation pour être membre abonné. Le club s'attache à fournir à ses membres un service de qualité et à promouvoir les valeurs de respect, de convivialité et de curiosité à travers son activité.";
     bloc.appendChild(intro);
 
     ajouterBlocInfoDa(
       bloc,
-      "À renseigner",
-      "alias, mobile, qualités, loisirs, motivation, coordonnées bancaires de remboursement."
+      "À confirmer et compléter",
+      "Etat civil (nom, prénom), alias dans l'application (si souhaité), adrese e-mail personnelle, n° de téléphone mobile personnel, qualités, loisirs, motivation, valeurs du club, parrain, coordonnées bancaires de remboursement."
     );
     ajouterBlocInfoDa(
       bloc,
       "Après envoi",
-      "votre demande passe en cours d'étude et peut donner lieu à un échange avec le club."
+      "Votre DA est étudiée et peut donner lieu à une rencontre avec un responsable. Elle est ensuite acceptée ou rejettée par notre comité d'abonnement et vous êtes tenu(e) informé(e). Votre pièce d'identité est nécessaire pour finaliser votre dossier dans le cas où la DA est acceptée. Vous pouvez refaire une DA après trois mois si elle n'a pas été validée."
     );
-    ajouterBlocInfoDa(
-      bloc,
-      "Règlements",
-      "en transmettant la demande, vous confirmez votre accord avec les règlements du club et de l'application."
-    );
+
 
     const mention = document.createElement("p");
     mention.className = "lcdp-text-muted";
@@ -432,7 +428,7 @@
     const bouton = document.createElement("button");
     bouton.type = "button";
     bouton.className = "lcdp-button lcdp-button-primary";
-    bouton.textContent = "Faire ma demande";
+    bouton.textContent = "Faire ma DA";
     bouton.addEventListener("click", () => afficherFormulaireDa(membre, parrain, options).catch(console.error));
 
     actions.appendChild(bouton);
