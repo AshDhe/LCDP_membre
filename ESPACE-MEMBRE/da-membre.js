@@ -179,11 +179,27 @@
   }
 
   async function afficherAlerteDa(message, options = {}) {
+    try {
+      await chargerDependancesAlerteDa();
+    } catch (error) {
+      console.error("CSS alerte DA :", error);
+    }
+
     const container = document.createElement("div");
     container.className = "lcdp-da-membre-alerte";
     document.body.appendChild(container);
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    let fragment = null;
+
+    try {
+      fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    } catch (error) {
+      console.error("Fragment alerte DA :", error);
+      container.remove();
+      alert(message || "");
+      return true;
+    }
+
     container.appendChild(fragment);
 
     const alerte = container.querySelector("[data-lcdp-box-alerte]");
@@ -227,13 +243,21 @@
     });
   }
 
-  async function chargerDependancesDa() {
+  async function chargerDependancesAlerteDa() {
+    await chargerCssObjetUneFois("/BOX/02-box-alerte.css");
+  }
+
+  async function chargerDependancesWorkflowDa() {
     await Promise.all([
-      chargerCssObjetUneFois("/BOX/02-box-alerte.css"),
       chargerCssObjetUneFois("/BOX/02-box-dialogue-bouton.css"),
+      chargerCssObjetUneFois("/BOX/04-box-workflow-abonnement.css")
+    ]);
+  }
+
+  async function chargerDependancesFormulaireDa() {
+    await Promise.all([
       chargerCssObjetUneFois("/BOX/03-box-formulaire.css"),
       chargerCssObjetUneFois("/BOX/03-box-champ-formulaire.css"),
-      chargerCssObjetUneFois("/BOX/04-box-workflow-abonnement.css"),
       chargerScriptObjetUneFois("/BOX/03-box-formulaire.js")
     ]);
 
@@ -273,8 +297,6 @@
     const contexte = options.contexte || {};
 
     try {
-      await chargerDependancesDa();
-
       const data = await chargerContexteDa();
       const membre = data.membre || {};
       const parrain = data.parrain || {};
@@ -329,6 +351,8 @@
   }
 
   async function ouvrirWorkflowDa() {
+    await chargerDependancesWorkflowDa();
+
     const slot = obtenirLightboxSlotDa();
     slot.innerHTML = "";
 
@@ -370,23 +394,32 @@
 
     const titre = document.createElement("h2");
     titre.className = "lcdp-title-page-center";
-    titre.textContent = "Faire la 1ère demande d'abonnement (DA)";
+    titre.textContent = "Demande d'abonnement";
     bloc.appendChild(titre);
 
-    [
-      "La DA a pour objectif de mieux vous connaître comme potentiel futur membre abonné du club. Elle est rapide, se fait une seule fois sauf en cas de renouvellement à votre demande et comprend potentiellement un entretien visio ou visu par un représentant du club. Elle est portée à la connaissance du comité abonnement du club pour validation finale. Chaque DA est prise en considération et fait l'objet d'une réponse du club.",
-      "Votre IBAN est demandé pour vous rembourser en cas d'annulation d'abonnement. La copie de votre pièce d'identité est à transmettre par mail à l'issue de l'entretien visio ou visu pour finaliser votre DA. Votre numéro de téléphone mobile est nécessaire pour renforcer votre sécurité, celle des autres membres, celle des parcs et celle du club.",
-      "La DA est une étape importante. La Clé du Parc s'attache à fournir à ses membres un service d'accès à des parcs plein air d'exception qui soit de qualité, nominatif et contrôlé, afin de préserver la qualité et la sécurité des membres, des parcs et du club. Le club s'attache aussi à réunir des passionnés de plein air qui partagent, seuls ou en groupe, les valeurs de respect, de convivialité et de curiosité exprimées par chaque membre abonné du club. Il ne vous reste plus qu'à préparer vos questions pour l'entretien 🙂"
-    ].forEach((texte) => {
-      const p = document.createElement("p");
-      p.className = "lcdp-text-strong-left";
-      p.textContent = texte;
-      bloc.appendChild(p);
-    });
+    const intro = document.createElement("p");
+    intro.textContent = "Cette demande permet au club de valider votre accès à l'abonnement.";
+    bloc.appendChild(intro);
+
+    ajouterBlocInfoDa(
+      bloc,
+      "À renseigner",
+      "alias, mobile, qualités, loisirs, motivation, coordonnées bancaires de remboursement."
+    );
+    ajouterBlocInfoDa(
+      bloc,
+      "Après envoi",
+      "votre demande passe en cours d'étude et peut donner lieu à un échange avec le club."
+    );
+    ajouterBlocInfoDa(
+      bloc,
+      "Règlements",
+      "en transmettant la demande, vous confirmez votre accord avec les règlements du club et de l'application."
+    );
 
     const mention = document.createElement("p");
     mention.className = "lcdp-text-muted";
-    mention.append("En savoir plus avec le ");
+    mention.append("Consulter le ");
     mention.appendChild(creerLienReglement("règlement du club", PAGE_REGLEMENT_CLUB));
     mention.append(" et le ");
     mention.appendChild(creerLienReglement("règlement de l'application", PAGE_REGLEMENT_APPLICATION));
@@ -399,12 +432,26 @@
     const bouton = document.createElement("button");
     bouton.type = "button";
     bouton.className = "lcdp-button lcdp-button-primary";
-    bouton.textContent = "Faire ma DA";
+    bouton.textContent = "Faire ma demande";
     bouton.addEventListener("click", () => afficherFormulaireDa(membre, parrain, options).catch(console.error));
 
     actions.appendChild(bouton);
     bloc.appendChild(actions);
     contenu.appendChild(bloc);
+  }
+
+  function ajouterBlocInfoDa(parent, titre, texte) {
+    const section = document.createElement("section");
+
+    const h3 = document.createElement("h3");
+    h3.textContent = titre;
+    section.appendChild(h3);
+
+    const p = document.createElement("p");
+    p.textContent = texte;
+    section.appendChild(p);
+
+    parent.appendChild(section);
   }
 
   function creerLienReglement(label, href) {
@@ -418,6 +465,8 @@
   }
 
   async function afficherFormulaireDa(membre, parrain, options) {
+    await chargerDependancesFormulaireDa();
+
     const slot = obtenirLightboxSlotDa();
     const contenu = slot.querySelector("[data-lcdp-workflow-abonnement-content]");
 
