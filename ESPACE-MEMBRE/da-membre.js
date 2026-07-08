@@ -398,12 +398,14 @@
     bloc.appendChild(titre);
 
     const intro = document.createElement("p");
-    intro.textContent = "La DA permet au club de prendre connaissance de votre motivation pour être membre abonné. Le club s'attache à fournir à ses membres un service de qualité et à promouvoir les valeurs de respect, de convivialité et de curiosité à travers son activité.";
-    bloc.appendChild(intro);
+      bloc,
+      "Qu'est-ce qu'une DA ?",
+      "La DA permet au club de prendre connaissance de votre motivation à devenir membre abonné. Le club s'attache à fournir un service nominatif de qualité et à promouvoir des valeurs de respect, de convivialité et de curiosité."
+    );
 
     ajouterBlocInfoDa(
       bloc,
-      "À confirmer et compléter",
+      "À confirmer et compléter dans votre DA",
       "Etat civil (nom, prénom), alias dans l'application (si souhaité), adrese e-mail personnelle, n° de téléphone mobile personnel, qualités, loisirs, motivation, valeurs du club, parrain, coordonnées bancaires de remboursement."
     );
     ajouterBlocInfoDa(
@@ -412,15 +414,6 @@
       "Votre DA est étudiée et peut donner lieu à une rencontre avec un responsable. Elle est ensuite acceptée ou rejettée par notre comité d'abonnement et vous êtes tenu(e) informé(e). Votre pièce d'identité est nécessaire pour finaliser votre dossier dans le cas où la DA est acceptée. Vous pouvez refaire une DA après trois mois si elle n'a pas été validée."
     );
 
-
-    const mention = document.createElement("p");
-    mention.className = "lcdp-text-muted";
-    mention.append("Consulter le ");
-    mention.appendChild(creerLienReglement("règlement du club", PAGE_REGLEMENT_CLUB));
-    mention.append(" et le ");
-    mention.appendChild(creerLienReglement("règlement de l'application", PAGE_REGLEMENT_APPLICATION));
-    mention.append(".");
-    bloc.appendChild(mention);
 
     const actions = document.createElement("div");
     actions.className = "lcdp-box-formulaire__actions";
