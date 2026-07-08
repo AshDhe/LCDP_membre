@@ -147,7 +147,6 @@
 
         if (!response.ok || !data || data.success !== true) {
           afficherInformation(
-            "Demande non enregistrée",
             data?.message || "La demande n’a pas pu être enregistrée."
           );
 
@@ -283,11 +282,9 @@
     return "";
   }
 
-  async function afficherInformation(titre, message, redirectUrl = null) {
+  async function afficherInformation(message, redirectUrl = null) {
     const slot = document.getElementById("lcdp-lightbox-slot");
-    const texteMessage = titre && message
-      ? titre + " — " + message
-      : titre || message || "";
+    const texteMessage = message || "";
 
     if (!slot) {
       alert(texteMessage);
