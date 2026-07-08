@@ -401,7 +401,7 @@
 
     const intro = document.createElement("p");
     intro.className = "lcdp-text-muted";
-    intro.textContent = "Avant de prendre votre premier abonnement La Clé du Parc, vous devez faire votre demande d'abonnement.";
+    intro.textContent = "Avant de prendre votre premier abonnement La Clé du Parc, vous devez faire une demande d'abonnement.";
     bloc.appendChild(intro);
 
     ajouterBlocInfoDa(
