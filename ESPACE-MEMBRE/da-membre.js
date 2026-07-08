@@ -401,24 +401,24 @@
 
     const intro = document.createElement("p");
     intro.className = "lcdp-text-muted";
-    intro.textContent = "Avant de prendre votre premier abonnement La Clef du Parc, vous devez votre demande d'abonnement.";
+    intro.textContent = "Avant de prendre votre premier abonnement La Clé du Parc, vous devez faire votre demande d'abonnement.";
     bloc.appendChild(intro);
 
     ajouterBlocInfoDa(
       bloc,
       "Qu'est-ce qu'une DA ?",
-      "La DA permet au club de prendre connaissance de votre motivation à devenir membre abonné. Le club s'attache à fournir un service nominatif de qualité et à promouvoir des valeurs de respect, de convivialité et de curiosité."
+      "La DA permet au club de prendre connaissance de votre motivation à être membre abonné. Le club s'attache à fournir un service nominatif de qualité et à promouvoir des valeurs de respect, de convivialité et de curiosité. Le club s'appuie sur plusieurs réseaux internes de membre actifs."
     );
 
     ajouterBlocInfoDa(
       bloc,
-      "À confirmer et compléter",
-      "Etat civil (nom, prénom), alias dans l'application (si souhaité), adrese e-mail personnelle, n° de téléphone mobile personnel, qualités, loisirs, motivation, valeurs du club, parrain dans l'application (si vous en avez un), coordonnées bancaires pour votre remboursement en annulation d'un abonnement (sous condition)."
+      "À confirmer ou compléter",
+      "Etat civil (nom, prénom), alias dans l'application (si souhaité), adrese e-mail personnelle, n° de téléphone mobile personnel, qualités, loisirs, motivation, valeurs du club, parrain dans l'application (si vous en avez un), coordonnées bancaires pour votre remboursement en cas d'annulation d'un abonnement."
     );
     ajouterBlocInfoDa(
       bloc,
       "Après envoi",
-      "Votre DA est étudiée par le club. Elle peut donner lieu à une rencontre avec un responsable (visio, visu=). Vous êtes tenu(e) informé(e) de la décision (acceptation, rejet). Votre pièce d'identité est nécessaire dans le cas où la DA est acceptée. Vous pouvez refaire une DA après trois mois si elle n'a pas été acceptée précédemment."
+      "Votre DA est étudiée par le club avec attention. Elle peut donner lieu à un échange avec un responsable (visio, visu). Vous êtes tenu(e) informé(e) de la décision (acceptation, rejet). Votre pièce d'identité est nécessaire pour finaliser votre demande si elle a été acceptée. Vous pouvez refaire une DA trois mois après un précédent rejet."
     );
 
 
