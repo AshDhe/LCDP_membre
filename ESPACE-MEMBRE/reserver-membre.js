@@ -285,15 +285,15 @@
 
   function messageBlocageNouvelleDate(etat) {
     if (abonnementAnnuleNonPaye(etat)) {
-      return "Votre abonnement est annulé (non payé).";
+      return "Vous ne pouvez pas choisir de date quand votre abonnement est annulé (non payé).";
     }
 
     if (etat && etat.abonnementSuspendu === true) {
-      return "Votre abonnement est suspendu (non payé).";
+      return "Vous ne pouvez pas choisir de date quand votre abonnement est suspendu (non payé).";
     }
 
     if (!etat || (etat.abonne !== true && !membreAbonne())) {
-      return "Vous devez être membre abonné.";
+      return "Vous devez être membre abonné pour choisir une date.";
     }
 
     return "";
