@@ -106,22 +106,39 @@
     return template.content.cloneNode(true);
   }
 
-  function chargerScriptMembreUneFois(chemin) {
+  function chargerScriptMembreUneFois(chemin, options = {}) {
     const src = construireUrlMembre(chemin);
+    const forcer = options.forcer === true;
+    const scriptExistant = document.querySelector(`script[data-lcdp-script-membre="${chemin}"]`);
 
-    if (document.querySelector(`script[data-lcdp-script-membre="${chemin}"]`)) {
+    if (scriptExistant && !forcer) {
       return Promise.resolve();
+    }
+
+    if (scriptExistant && forcer) {
+      scriptExistant.remove();
     }
 
     return new Promise((resolve, reject) => {
       const script = document.createElement("script");
-      script.src = src;
+      script.src = forcer ? ajouterParametreCacheDa(src) : src;
       script.defer = true;
       script.dataset.lcdpScriptMembre = chemin;
       script.onload = resolve;
       script.onerror = () => reject(new Error("Script membre introuvable : " + chemin));
       document.body.appendChild(script);
     });
+  }
+
+  function ajouterParametreCacheDa(src) {
+    try {
+      const url = new URL(src, window.location.href);
+      url.searchParams.set("lcdp_da", String(Date.now()));
+      return url.toString();
+    } catch (_error) {
+      const separateur = String(src || "").includes("?") ? "&" : "?";
+      return String(src || "") + separateur + "lcdp_da=" + Date.now();
+    }
   }
 
   function normaliserStatuda(value) {
@@ -383,7 +400,7 @@
   async function ouvrirPremiereDaDepuisBurger(contexte, boutonBurger, navBurger) {
     try {
       if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
-        await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js");
+        await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js", { forcer: true });
       }
 
       if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
