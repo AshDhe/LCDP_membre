@@ -434,13 +434,20 @@
   }
 
   function initialiserBoutonDepartementPrincipal() {
-    const bouton = document.getElementById("bouton-changer-departement");
+    const boutonDepartement = document.getElementById("bouton-changer-departement");
+    const boutonIa = document.getElementById("bouton-demander-ia");
 
-    if (!bouton) return;
+    if (boutonDepartement) {
+      boutonDepartement.addEventListener("click", () => {
+        ouvrirChoixDepartement().catch(console.error);
+      });
+    }
 
-    bouton.addEventListener("click", () => {
-      ouvrirChoixDepartement().catch(console.error);
-    });
+    if (boutonIa) {
+      boutonIa.addEventListener("click", () => {
+        afficherAlerte("La recherche avec l’IA sera traitée après la réservation classique.").catch(console.error);
+      });
+    }
   }
 
   function initialiserActionsListeParcs() {
@@ -449,17 +456,6 @@
     if (!zoneActions) return;
 
     zoneActions.innerHTML = "";
-
-    const boutonIa = document.createElement("button");
-    boutonIa.type = "button";
-    boutonIa.className = "lcdp-button lcdp-button-orange";
-    boutonIa.textContent = "Rechercher avec l'IA";
-
-    boutonIa.addEventListener("click", () => {
-      afficherAlerte("La recherche avec l’IA sera traitée après la réservation classique.").catch(console.error);
-    });
-
-    zoneActions.appendChild(boutonIa);
   }
 
   async function chargerReservationsMembrePourBlocages() {
