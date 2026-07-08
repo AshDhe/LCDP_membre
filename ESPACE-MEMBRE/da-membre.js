@@ -12,6 +12,8 @@
     "da-membre-api"
   );
 
+  window.LCDP_ouvrirPremiereDaMembre = ouvrirPremiereDaMembre;
+
   function construireEndpointApi(cleModerne, cleLegacy, sousDomaineWorker) {
     const depuisConfig =
       CONFIG_DA_MEMBRE?.[cleModerne] ||
