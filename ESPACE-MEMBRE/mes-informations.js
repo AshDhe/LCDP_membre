@@ -838,7 +838,7 @@
         if (event.target === dialogue) fermer(null);
       });
 
-      formulaire.addEventListener("submit", (event) => {
+      formulaire.addEventListener("submit", async (event) => {
         event.preventDefault();
 
         erreur.hidden = true;
@@ -846,6 +846,7 @@
 
         const data = {};
         let champRequisManquant = false;
+        let checkboxRequiseManquante = false;
 
         (options.champs || []).forEach((champ) => {
           const input = formulaire.querySelector(`[name="${champ.name}"]`);
@@ -857,13 +858,18 @@
             : "";
 
           if (champ.required && estCheckbox && input.checked !== true) {
-            champRequisManquant = true;
+            checkboxRequiseManquante = true;
           } else if (champ.required && !estCheckbox && !valeur) {
             champRequisManquant = true;
           }
 
           data[champ.name] = valeur;
         });
+
+        if (checkboxRequiseManquante) {
+          await afficherAlerteSuperposee("Vous devez confirmer être l'unique utilisateur.");
+          return;
+        }
 
         if (champRequisManquant) {
           erreur.textContent = "Merci de renseigner le champ demandé.";
@@ -932,6 +938,49 @@
     zoneControl.appendChild(input);
 
     return champ;
+  }
+
+  async function afficherAlerteSuperposee(message) {
+    const conteneur = document.createElement("div");
+    document.body.appendChild(conteneur);
+
+    try {
+      const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+      conteneur.appendChild(fragment);
+
+      const alerte = conteneur.querySelector("[data-lcdp-box-alerte]");
+      const texte = conteneur.querySelector("[data-lcdp-alerte-message]");
+      const boutonFermer = conteneur.querySelector("[data-lcdp-alerte-close]");
+      const boutonOk = conteneur.querySelector("[data-lcdp-alerte-ok]");
+
+      if (!alerte || !texte || !boutonFermer || !boutonOk) {
+        throw new Error("Structure de l’alerte incomplète.");
+      }
+
+      texte.textContent = message || "";
+
+      await new Promise((resolve) => {
+        let resolu = false;
+
+        function fermer() {
+          if (resolu) return;
+          resolu = true;
+          conteneur.remove();
+          resolve();
+        }
+
+        boutonFermer.addEventListener("click", fermer, { once: true });
+        boutonOk.addEventListener("click", fermer, { once: true });
+
+        alerte.addEventListener("click", (event) => {
+          if (event.target === alerte) fermer();
+        }, { once: true });
+      });
+    } catch (error) {
+      console.error("Erreur alerte superposée :", error);
+      conteneur.remove();
+      alert(message || "");
+    }
   }
 
   async function afficherAlerte(message) {
