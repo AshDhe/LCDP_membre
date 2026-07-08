@@ -12,6 +12,7 @@
     const champMotDePasse = document.getElementById("passwordmembre");
     const boutonValider = document.getElementById("bouton-valider-formulaire");
     const afficherMotDePasse = document.getElementById("afficher-mdp-membre");
+    const confirmationUtilisateurUniqueMdp = document.getElementById("confirmer-utilisateur-unique-mdp");
     const lienConnexionMembre = document.getElementById("lien-connexion-membre");
     const texteModeMdp = document.getElementById("texte-mode-mdp");
 
@@ -57,7 +58,7 @@
 
     appliquerSourcesObjet(document);
 
-    if (!formulaire || !champMotDePasse || !boutonValider) {
+    if (!formulaire || !champMotDePasse || !boutonValider || !confirmationUtilisateurUniqueMdp) {
       afficherInformation(
         "Erreur technique",
         "Le formulaire est incomplet. Veuillez réessayer."
@@ -67,6 +68,7 @@
 
     if (!endpointMdptokenz) {
       champMotDePasse.disabled = true;
+      confirmationUtilisateurUniqueMdp.disabled = true;
       desactiverBoutonValidation();
 
       afficherInformation(
@@ -78,6 +80,7 @@
 
     if (!token || !mode) {
       champMotDePasse.disabled = true;
+      confirmationUtilisateurUniqueMdp.disabled = true;
       desactiverBoutonValidation();
 
       afficherInformation(
@@ -119,6 +122,14 @@
         return;
       }
 
+      if (!confirmationUtilisateurUniqueMdp.checked) {
+        afficherInformation(
+          "Confirmation requise",
+          "Vous devez confirmer être l'unique utilisateur."
+        );
+        return;
+      }
+
       envoiEnCours = true;
       definirEtatBoutonValidation(true);
 
@@ -135,7 +146,8 @@
             action: "write-mdp",
             token,
             mode,
-            passwordmembre
+            passwordmembre,
+            unikuser: confirmationUtilisateurUniqueMdp.checked === true
           })
         });
 
