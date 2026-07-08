@@ -782,26 +782,15 @@
     const nomParc = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
     const departement = String(parc.dptmt || parc.departement || "").trim();
 
-    titre.textContent = "Planning du parc";
-    meta.textContent = nomParc + (departement ? " · " + departement : "");
+    titre.textContent = "Parc de " + nomParc + (departement ? " - " + departement : "");
+    meta.textContent = "";
 
-    if (header) {
-      const zonePartage = document.createElement("div");
-      zonePartage.className = "lcdp-box-calendrier-mois__partage";
+    const boutonPartager = creerBoutonPartagerPage();
+    boutonPartager.addEventListener("click", () => {
+      ouvrirPartagePlanningParc(parc).catch(console.error);
+    });
 
-      const boutonPartager = document.createElement("button");
-      boutonPartager.type = "button";
-      boutonPartager.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
-      boutonPartager.textContent = "✉";
-      boutonPartager.title = "Envoyer par mail";
-      boutonPartager.setAttribute("aria-label", "Envoyer ce planning par mail");
-      boutonPartager.addEventListener("click", () => {
-        ouvrirPartagePlanningParc(parc).catch(console.error);
-      });
-
-      zonePartage.appendChild(boutonPartager);
-      header.appendChild(zonePartage);
-    }
+    meta.appendChild(boutonPartager);
 
     const maintenant = new Date();
     const etatPlanning = {
@@ -1003,6 +992,43 @@
     bouton.className = "lcdp-button " + (style || "lcdp-button-primary");
     bouton.textContent = label;
     bouton.addEventListener("click", action);
+    return bouton;
+  }
+
+  function creerBoutonPartagerPage() {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
+    bouton.title = "Partager la page";
+    bouton.setAttribute("aria-label", "Partager la page par e-mail");
+
+    const icone = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icone.setAttribute("viewBox", "0 0 24 24");
+    icone.setAttribute("width", "20");
+    icone.setAttribute("height", "20");
+    icone.setAttribute("aria-hidden", "true");
+    icone.setAttribute("focusable", "false");
+    icone.setAttribute("fill", "none");
+    icone.setAttribute("stroke", "currentColor");
+    icone.setAttribute("stroke-width", "2");
+    icone.setAttribute("stroke-linecap", "round");
+    icone.setAttribute("stroke-linejoin", "round");
+
+    const trace = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    trace.setAttribute("d", "M22 2 11 13");
+
+    const trace2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    trace2.setAttribute("d", "M22 2 15 22 11 13 2 9 22 2Z");
+
+    icone.appendChild(trace);
+    icone.appendChild(trace2);
+
+    const libelle = document.createElement("span");
+    libelle.textContent = "Partager la page";
+
+    bouton.appendChild(icone);
+    bouton.appendChild(libelle);
+
     return bouton;
   }
 
@@ -2162,17 +2188,17 @@
     const cheminImageExplicite = String(parc?.imageparc || "").trim();
 
     if (cheminImageExplicite && cheminImageExplicite.includes("/")) {
-      return construireUrlPublic("/" + cheminImageExplicite.replace(/^\/+/, ""));
+      return construireUrlObjet("/" + cheminImageExplicite.replace(/^\/+/, ""));
     }
 
     const departement = nettoyerDepartement(parc?.dptmt || parc?.departement || "");
     const dossierParc = normaliserNomParcPourChemin(parc?.nom || parc?.nomparc || "");
 
     if (!departement || !dossierParc) {
-      return construireUrlPublic(DOSSIER_IMAGES_PARC_OBJET + "/parc-defaut.webp");
+      return construireUrlObjet(DOSSIER_IMAGES_PARC_OBJET + "/parc-defaut.webp");
     }
 
-    return construireUrlPublic(
+    return construireUrlObjet(
       DOSSIER_IMAGES_PARC_OBJET +
       "/" + encodeURIComponent(departement) +
       "/" + encodeURIComponent(dossierParc) +
