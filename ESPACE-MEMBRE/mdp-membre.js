@@ -60,7 +60,6 @@
 
     if (!formulaire || !champMotDePasse || !boutonValider || !confirmationUtilisateurUniqueMdp) {
       afficherInformation(
-        "Erreur technique",
         "Le formulaire est incomplet. Veuillez réessayer."
       );
       return;
@@ -72,7 +71,6 @@
       desactiverBoutonValidation();
 
       afficherInformation(
-        "Configuration manquante",
         "L’adresse du service de mot de passe n’est pas configurée."
       );
       return;
@@ -84,7 +82,6 @@
       desactiverBoutonValidation();
 
       afficherInformation(
-        "Lien invalide",
         "Le lien utilisé n’est pas valide ou a expiré."
       );
       return;
@@ -108,7 +105,6 @@
 
       if (!passwordmembre.trim()) {
         afficherInformation(
-          "Mot de passe manquant",
           "Veuillez saisir un mot de passe."
         );
         return;
@@ -116,17 +112,13 @@
 
       if (passwordmembre.length < 10) {
         afficherInformation(
-          "Mot de passe trop court",
           "Le mot de passe doit contenir au moins 10 caractères."
         );
         return;
       }
 
       if (!confirmationUtilisateurUniqueMdp.checked) {
-        afficherInformation(
-          "Confirmation requise",
-          "Vous devez confirmer être l'unique utilisateur."
-        );
+        afficherInformation("Vous devez confirmer être l'unique utilisateur.");
         return;
       }
 
@@ -165,8 +157,7 @@
         }
 
         afficherInformation(
-          "Mot de passe enregistré",
-          "Votre mot de passe a bien été enregistré. Vous pouvez maintenant vous connecter à votre compte membre.",
+          "Votre mot de passe est enregistré. Vous pouvez maintenant vous connecter à votre compte membre.",
           urlConnexionMembre
         );
 
@@ -174,7 +165,6 @@
         console.error("Erreur appel mdptokenz :", error);
 
         afficherInformation(
-          "Erreur",
           "Une erreur est survenue. Veuillez réessayer."
         );
 
@@ -295,9 +285,12 @@
 
   async function afficherInformation(titre, message, redirectUrl = null) {
     const slot = document.getElementById("lcdp-lightbox-slot");
+    const texteMessage = titre && message
+      ? titre + " — " + message
+      : titre || message || "";
 
     if (!slot) {
-      alert(message || titre);
+      alert(texteMessage);
 
       if (redirectUrl) {
         window.location.href = redirectUrl;
@@ -308,56 +301,68 @@
 
     slot.innerHTML = "";
 
-    const alerte = document.createElement("div");
-    alerte.className = "lcdp-box-alerte";
-    alerte.setAttribute("role", "alertdialog");
-    alerte.setAttribute("aria-modal", "true");
-    alerte.dataset.lcdpBoxAlerte = "";
+    try {
+      const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+      slot.appendChild(fragment);
 
-    const carte = document.createElement("div");
-    carte.className = "lcdp-box-alerte__card";
+      const alerte = slot.querySelector("[data-lcdp-box-alerte]");
+      const texte = slot.querySelector("[data-lcdp-alerte-message]");
+      const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
+      const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
 
-    const boutonFermer = document.createElement("button");
-    boutonFermer.className = "lcdp-box-alerte__close";
-    boutonFermer.type = "button";
-    boutonFermer.setAttribute("aria-label", "Fermer");
-    boutonFermer.textContent = "×";
+      if (!alerte || !texte || !boutonFermer || !boutonOk) {
+        throw new Error("Structure de l’alerte incomplète.");
+      }
 
-    const paragraphe = document.createElement("p");
-    paragraphe.className = "lcdp-box-alerte__message";
-    paragraphe.textContent = titre && message
-      ? titre + " — " + message
-      : titre || message || "";
+      texte.textContent = texteMessage;
 
-    const boutonOk = document.createElement("button");
-    boutonOk.className = "lcdp-button lcdp-button-primary";
-    boutonOk.type = "button";
-    boutonOk.textContent = "OK";
+      await new Promise((resolve) => {
+        let resolu = false;
 
-    carte.appendChild(boutonFermer);
-    carte.appendChild(paragraphe);
-    carte.appendChild(boutonOk);
-    alerte.appendChild(carte);
-    slot.appendChild(alerte);
-
-    await new Promise((resolve) => {
-      const fermer = () => {
-        slot.innerHTML = "";
-        resolve();
-      };
-
-      boutonFermer.addEventListener("click", fermer, { once: true });
-      boutonOk.addEventListener("click", fermer, { once: true });
-
-      alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) {
-          fermer();
+        function fermer() {
+          if (resolu) return;
+          resolu = true;
+          slot.innerHTML = "";
+          resolve();
         }
-      }, { once: true });
+
+        boutonFermer.addEventListener("click", fermer, { once: true });
+        boutonOk.addEventListener("click", fermer, { once: true });
+
+        alerte.addEventListener("click", (event) => {
+          if (event.target === alerte) fermer();
+        }, { once: true });
+      });
+
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+      }
+    } catch (error) {
+      console.error("Erreur alerte V3 :", error);
+
+      alert(texteMessage);
+
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+      }
+    }
+  }
+
+  async function chargerFragmentObjet(chemin) {
+    const reponse = await fetch(construireUrlObjet(chemin), {
+      method: "GET",
+      credentials: "omit",
+      cache: "no-cache"
     });
 
-    if (redirectUrl) {
-      window.location.href = redirectUrl;
+    if (!reponse.ok) {
+      throw new Error("Fragment OBJET introuvable : " + chemin);
     }
+
+    const html = await reponse.text();
+    const template = document.createElement("template");
+    template.innerHTML = html.trim();
+
+    return template.content.cloneNode(true);
   }
 })();
