@@ -306,7 +306,7 @@
     }
 
     if (!etat || (etat.abonne !== true && !membreAbonne())) {
-      return "Vous devez être membre abonné.";
+      return "Vous devez être membre abonné pour réserver une date.";
     }
 
     return "";
@@ -789,13 +789,25 @@
 
     meta.appendChild(actionPartager);
 
-    const maintenant = new Date();
-    const etatPlanning = {
-      parc,
-      annee: maintenant.getFullYear(),
-      mois: maintenant.getMonth() + 1,
-      planning: []
-    };
+const maintenant = new Date();
+const moisMinimumPlanning = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+const moisMaximumPlanning = new Date(maintenant.getFullYear(), maintenant.getMonth() + 3, 1);
+
+const etatPlanning = {
+  parc,
+  annee: moisMinimumPlanning.getFullYear(),
+  mois: moisMinimumPlanning.getMonth() + 1,
+  planning: [],
+  moisMinimum: {
+   Minimum: {
+    annee: moisMinimumPlanning.getFullYear(),
+    mois: moisMinimumPlanning.getMonth() + 1
+  },
+  moisMaximum: {
+    annee: moisMaximumPlanning.getFullYear(),
+    mois: moisMaximumPlanning.getMonth() + 1
+  }
+};
 
     function fermer() {
       const lightbox = document.getElementById("lcdp-lightbox-slot");
@@ -820,15 +832,34 @@
       { once: true }
     );
 
-    boutonPrecedent.addEventListener("click", () => {
-      changerMois(etatPlanning, -1);
-      afficherPlanningMoisLecture(etatPlanning).catch(console.error);
-    });
+function actualiserNavigationPlanning() {
+  const auMoisMinimum = moisPlanningIdentique(etatPlanning, etatPlanning.moisMinimum);
+  const auMoisMaximum = moisPlanningIdentique(etatPlanning, etatPlanning.moisMaximum);
 
-    boutonSuivant.addEventListener("click", () => {
-      changerMois(etatPlanning, 1);
-      afficherPlanningMoisLecture(etatPlanning).catch(console.error);
-    });
+  boutonPrecedent.disabled = auMoisMinimum;
+  boutonPrecedent.setAttribute("aria-disabled", auMoisMinimum ? "true" : "false");
+
+  boutonSuivant.disabled = auMoisMaximum;
+  boutonSuivant.setAttribute("aria-disabled", auMoisMaximum ? "true" : "false");
+}
+
+boutonPrecedent.addEventListener("click", () => {
+  if (moisPlanningIdentique(etatPlanning, etatPlanning.moisMinimum)) return;
+
+  changerMois(etatPlanning, -1);
+  actualiserNavigationPlanning();
+  afficherPlanningMoisLecture(etatPlanning).catch(console.error);
+});
+
+boutonSuivant.addEventListener("click", () => {
+  if (moisPlanningIdentique(etatPlanning, etatPlanning.moisMaximum)) return;
+
+  changerMois(etatPlanning, 1);
+  actualiserNavigationPlanning();
+  afficherPlanningMoisLecture(etatPlanning).catch(console.error);
+});
+
+actualiserNavigationPlanning();
 
     await afficherPlanningMoisLecture(etatPlanning);
   }
@@ -1850,6 +1881,15 @@ async function afficherPlanningMoisLecture(etatPlanning) {
     const date = new Date(etatCalendrier.annee, etatCalendrier.mois - 1 + delta, 1);
     etatCalendrier.annee = date.getFullYear();
     etatCalendrier.mois = date.getMonth() + 1;
+  }
+
+  function moisPlanningIdentique(etatPlanning, borne) {
+  if (!etatPlanning || !borne) return false;
+
+    return (
+      Number(etatPlanning.annee) === Number(borne.annee) &&
+      Number(etatPlanning.mois) === Number(borne.mois)
+    );
   }
 
   async function afficherAlerte(message) {
