@@ -118,7 +118,7 @@
       }
 
       if (!confirmationUtilisateurUniqueMdp.checked) {
-        afficherInformation("Vous devez confirmer être l'unique utilisateur.");
+        afficherInformation("Vous devez confirmer être l'unique utilisateur du mot de passe.");
         return;
       }
 
