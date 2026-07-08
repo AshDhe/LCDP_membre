@@ -616,6 +616,14 @@
           type: "email",
           autocomplete: "email",
           required: true
+        },
+        {
+          id: "unikuser-nouvel-email-membre",
+          name: "unikuser",
+          label: "Utilisateur unique de l'adresse e-mail",
+          type: "checkbox",
+          checkboxLabel: "Je confirme être l'unique utilisateur de l'adresse e-mail.",
+          required: true
         }
       ]
     });
@@ -634,10 +642,15 @@
       return;
     }
 
-    await envoyerDemandeModificationEmail(nouveauMail);
+    if (valeurBooleenneVraie(resultat.unikuser) !== true) {
+      await afficherAlerte("Vous devez confirmer être l'unique utilisateur.");
+      return;
+    }
+
+    await envoyerDemandeModificationEmail(nouveauMail, true);
   }
 
-  async function envoyerDemandeModificationEmail(nouveauMail) {
+  async function envoyerDemandeModificationEmail(nouveauMail, unikuser) {
     if (!ENDPOINT_MAJ_EMAIL_MEMBRE) {
       await afficherAlerte("Le service de modification d’e-mail n’est pas configuré.");
       return;
@@ -645,15 +658,17 @@
 
     try {
       const resultat = await posterJson(ENDPOINT_MAJ_EMAIL_MEMBRE, {
-        emailmembre: nouveauMail
+        emailmembre: nouveauMail,
+        unikuser: unikuser === true
       });
 
-      await afficherAlerte(
-        messageErreurApi(
-          resultat,
-          "Aucun messagr reçu du worker. Ni OK ni KO = KO."
-        )
-      );
+      const messageWorker = String(resultat?.message || "").trim();
+
+      if (!messageWorker) {
+        throw new Error("Aucun message reçu du worker. Ni OK ni KO = KO.");
+      }
+
+      await afficherAlerte(messageWorker);
     } catch (error) {
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -834,9 +849,16 @@
 
         (options.champs || []).forEach((champ) => {
           const input = formulaire.querySelector(`[name="${champ.name}"]`);
-          const valeur = input ? String(input.value || "").trim() : "";
+          const estCheckbox = input && input.type === "checkbox";
+          const valeur = input
+            ? estCheckbox
+              ? input.checked
+              : String(input.value || "").trim()
+            : "";
 
-          if (champ.required && !valeur) {
+          if (champ.required && estCheckbox && input.checked !== true) {
+            champRequisManquant = true;
+          } else if (champ.required && !estCheckbox && !valeur) {
             champRequisManquant = true;
           }
 
@@ -867,6 +889,27 @@
 
     if (!champ || !zoneLabel || !zoneDescription || !zoneControl) {
       throw new Error("Structure champ formulaire incomplète.");
+    }
+
+    if (configurationChamp.type === "checkbox") {
+      const labelCheckbox = document.createElement("label");
+      labelCheckbox.className = "lcdp-box-champ-formulaire__checkbox-line";
+      labelCheckbox.setAttribute("for", configurationChamp.id);
+
+      const inputCheckbox = document.createElement("input");
+      inputCheckbox.id = configurationChamp.id;
+      inputCheckbox.name = configurationChamp.name;
+      inputCheckbox.type = "checkbox";
+      inputCheckbox.required = configurationChamp.required === true;
+
+      const texteCheckbox = document.createElement("span");
+      texteCheckbox.textContent = configurationChamp.checkboxLabel || configurationChamp.label || "";
+
+      labelCheckbox.appendChild(inputCheckbox);
+      labelCheckbox.appendChild(texteCheckbox);
+      zoneControl.appendChild(labelCheckbox);
+
+      return champ;
     }
 
     const label = document.createElement("label");
