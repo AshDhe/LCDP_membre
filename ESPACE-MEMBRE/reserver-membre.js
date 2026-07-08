@@ -833,49 +833,50 @@
     await afficherPlanningMoisLecture(etatPlanning);
   }
 
-  async function afficherPlanningMoisLecture(etatPlanning) {
-    const racine = document.querySelector("[data-lcdp-planning-parc-lecture='true']");
-    const moisCourant = racine?.querySelector("[data-lcdp-calendrier-mois-current]");
-    const message = racine?.querySelector("[data-lcdp-calendrier-mois-message]");
-    const grille = racine?.querySelector("[data-lcdp-calendrier-mois-grid]");
+async function afficherPlanningMoisLecture(etatPlanning) {
+  const racine = document.querySelector("[data-lcdp-planning-parc-lecture='true']");
+  const moisCourant = racine?.querySelector("[data-lcdp-calendrier-mois-current]");
+  const message = racine?.querySelector("[data-lcdp-calendrier-mois-message]");
+  const grille = racine?.querySelector("[data-lcdp-calendrier-mois-grid]");
 
-    if (!moisCourant || !message || !grille) return;
+  if (!moisCourant || !message || !grille) return;
 
-    moisCourant.textContent = formaterMoisAnnee(etatPlanning.annee, etatPlanning.mois);
-    message.hidden = true;
-    message.textContent = "";
+  moisCourant.textContent = formaterMoisAnnee(etatPlanning.annee, etatPlanning.mois);
 
-    grille.classList.add("lcdp-box-calendrier-mois__grid--loading");
-    grille.setAttribute("aria-busy", "true");
+  message.hidden = true;
+  message.textContent = "";
 
-    try {
-      const planning = await chargerPlanningParcMoisLecture(etatPlanning);
-      etatPlanning.planning = planning;
+  grille.classList.add("lcdp-box-calendrier-mois__grid--loading");
+  grille.setAttribute("aria-busy", "true");
 
-      const grilleTemp = document.createElement("div");
-      remplirGrilleCalendrier(grilleTemp, etatPlanning, planning);
+  try {
+    const planning = await chargerPlanningParcMoisLecture(etatPlanning);
+    etatPlanning.planning = planning;
 
-      grilleTemp.querySelectorAll("[data-lcdp-card-jour-mois]").forEach((jour) => {
-        jour.dataset.lcdpPlanningLecture = "true";
-        jour.setAttribute(
-          "aria-label",
-          (jour.getAttribute("aria-label") || "") + " — consultation uniquement"
-        );
-      });
+    const grilleTemp = document.createElement("div");
+    remplirGrilleCalendrier(grilleTemp, etatPlanning, planning);
 
-      grille.replaceChildren(...Array.from(grilleTemp.childNodes));
-    } catch (error) {
-      console.error("Erreur planning parc lecture :", error);
+    grilleTemp.querySelectorAll("[data-lcdp-card-jour-mois]").forEach((jour) => {
+      jour.dataset.lcdpPlanningLecture = "true";
+      jour.setAttribute(
+        "aria-label",
+        (jour.getAttribute("aria-label") || "") + " — consultation uniquement"
+      );
+    });
 
-      if (!grille.children.length) {
-        message.hidden = false;
-        message.textContent = error.message || "Impossible de charger le planning du parc.";
-      }
-    } finally {
-      grille.classList.remove("lcdp-box-calendrier-mois__grid--loading");
-      grille.removeAttribute("aria-busy");
+    grille.replaceChildren(...Array.from(grilleTemp.childNodes));
+  } catch (error) {
+    console.error("Erreur planning parc lecture :", error);
+
+    if (!grille.children.length) {
+      message.hidden = false;
+      message.textContent = error.message || "Impossible de charger le planning du parc.";
     }
+  } finally {
+    grille.classList.remove("lcdp-box-calendrier-mois__grid--loading");
+    grille.removeAttribute("aria-busy");
   }
+}  
 
   async function chargerPlanningParcMoisLecture(etatPlanning) {
     if (!ENDPOINT_PLANNING_PARC) {
@@ -923,7 +924,7 @@
     if (!emails) return;
 
     await envoyerPartagePlanningParc(parc, emails);
-    await afficherAlerteSuperposee("Page partagée");
+    await afficherAlerteSuperposee("La page a été partagée avec les membres.");
   }
 
   async function ouvrirDialoguePartageEmails() {
@@ -940,7 +941,7 @@
     const actions = conteneur.querySelector("[data-lcdp-listemails-actions]");
     const boutonFermer = conteneur.querySelector("[data-lcdp-listemails-close]");
 
-    if (!box || !titre || !message || !liste || !actions || !boutonFermer) {
+    if (!box || !titre || !message || !liste || !actions) {
       conteneur.remove();
       throw new Error("Structure liste e-mails incomplète.");
     }
@@ -991,7 +992,10 @@
 
       actions.appendChild(creerBoutonPartage("Annuler", "lcdp-button-secondary", () => fermer(null)));
 
-      boutonFermer.addEventListener("click", () => fermer(null));
+      if (boutonFermer) {
+        boutonFermer.addEventListener("click", () => fermer(null));
+      }
+
       box.addEventListener("click", (event) => {
         if (event.target === box) fermer(null);
       });
@@ -1014,9 +1018,9 @@
     action.setAttribute("tabindex", "0");
     action.setAttribute("aria-label", "Partager la page par e-mail");
 
-    const iconeWrapper = document.createElement("span");
-    iconeWrapper.className = "lcdp-box-calendrier-mois__partage-icone";
-    iconeWrapper.setAttribute("aria-hidden", "true");
+    const bouton = document.createElement("span");
+    bouton.className = "lcdp-box-calendrier-mois__partage-icone";
+    bouton.setAttribute("aria-hidden", "true");
 
     const icone = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     icone.setAttribute("viewBox", "0 0 24 24");
@@ -1038,13 +1042,13 @@
 
     icone.appendChild(trace);
     icone.appendChild(trace2);
-    iconeWrapper.appendChild(icone);
+    bouton.appendChild(icone);
 
     const libelle = document.createElement("span");
     libelle.className = "lcdp-box-calendrier-mois__partage-libelle";
     libelle.textContent = "Partager la page";
 
-    action.appendChild(iconeWrapper);
+    action.appendChild(bouton);
     action.appendChild(libelle);
 
     action.addEventListener("keydown", (event) => {
