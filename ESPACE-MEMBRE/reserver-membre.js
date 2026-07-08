@@ -784,13 +784,14 @@
 
     titre.textContent = "Parc de " + nomParc + (departement ? " - " + departement : "");
     meta.textContent = "";
+    meta.classList.add("lcdp-box-calendrier-mois__meta--partage");
 
-    const boutonPartager = creerBoutonPartagerPage();
-    boutonPartager.addEventListener("click", () => {
+    const actionPartager = creerActionPartagerPage();
+    actionPartager.addEventListener("click", () => {
       ouvrirPartagePlanningParc(parc).catch(console.error);
     });
 
-    meta.appendChild(boutonPartager);
+    meta.appendChild(actionPartager);
 
     const maintenant = new Date();
     const etatPlanning = {
@@ -995,12 +996,16 @@
     return bouton;
   }
 
-  function creerBoutonPartagerPage() {
-    const bouton = document.createElement("button");
-    bouton.type = "button";
-    bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
-    bouton.title = "Partager la page";
-    bouton.setAttribute("aria-label", "Partager la page par e-mail");
+  function creerActionPartagerPage() {
+    const action = document.createElement("span");
+    action.className = "lcdp-box-calendrier-mois__partage";
+    action.setAttribute("role", "button");
+    action.setAttribute("tabindex", "0");
+    action.setAttribute("aria-label", "Partager la page par e-mail");
+
+    const bouton = document.createElement("span");
+    bouton.className = "lcdp-box-calendrier-mois__partage-icone";
+    bouton.setAttribute("aria-hidden", "true");
 
     const icone = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     icone.setAttribute("viewBox", "0 0 24 24");
@@ -1022,14 +1027,23 @@
 
     icone.appendChild(trace);
     icone.appendChild(trace2);
+    bouton.appendChild(icone);
 
     const libelle = document.createElement("span");
+    libelle.className = "lcdp-box-calendrier-mois__partage-libelle";
     libelle.textContent = "Partager la page";
 
-    bouton.appendChild(icone);
-    bouton.appendChild(libelle);
+    action.appendChild(bouton);
+    action.appendChild(libelle);
 
-    return bouton;
+    action.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        action.click();
+      }
+    });
+
+    return action;
   }
 
   async function envoyerPartagePlanningParc(parc, emails) {
