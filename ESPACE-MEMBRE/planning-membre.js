@@ -17,7 +17,6 @@
   );
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
-  const PAGE_RESERVER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html");
   const PAGE_INVITER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html");
 
   let pageInitialisee = false;
@@ -25,8 +24,13 @@
 
   const etat = {
     reservations: [],
-    filtre: "avenir",
+    reservationsParDate: new Map(),
+    moisCourant: debutMois(dateAujourdhuiParis()),
+    templateJour: null,
     templateReservation: null,
+    workflowPlanning: null,
+    contenuWorkflowPlanning: null,
+    calendrierMois: null,
     membre: {
       abonne: false,
       abonnementSuspendu: false,
@@ -34,6 +38,8 @@
       paiementSuspension: null
     }
   };
+
+  const PLAGES = ["plage1", "plage2", "plage3"];
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -52,16 +58,14 @@
       etat.membre = creerEtatMembreFallback();
       afficherStatutMembrePlanning(etat.membre);
 
-      await initialiserListeReservations();
-      initialiserBoutonNouvelleDate();
-      initialiserActionsListePlanning();
+      await initialiserPlanningCalendrier();
       document.addEventListener("click", gererClicDocument);
 
       lancerActualisationEtatMembrePlanning();
       await chargerReservations();
     } catch (error) {
       console.error("Erreur planning membre :", error);
-      afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
+      afficherErreurCalendrier(error.message || "Erreur technique. Merci de réessayer.");
     }
   }
 
@@ -74,7 +78,6 @@
       sourceApi: false
     };
   }
-
 
   function lancerActualisationEtatMembrePlanning() {
     if (!promesseActualisationEtatMembre) {
@@ -156,88 +159,100 @@
       : "MEMBRE INVITÉ";
   }
 
-  function initialiserBoutonNouvelleDate() {
-    const bouton = document.getElementById("bouton-nouvelle-date-planning");
+  async function initialiserPlanningCalendrier() {
+    const slot = document.getElementById("lcdp-planning-calendrier-slot");
 
-    if (!bouton) return;
-
-    bouton.href = PAGE_RESERVER_MEMBRE;
-    bouton.classList.add("lcdp-button-planning-nouvelle-date");
-
-    bouton.addEventListener("click", async (event) => {
-      event.preventDefault();
-
-      const acces = await verifierAccesReservationPlanning();
-      if (!acces) return;
-
-      window.location.href = PAGE_RESERVER_MEMBRE;
-    });
-  }
-
-  function initialiserActionsListePlanning() {
-    const zoneActions = document.querySelector("[data-lcdp-liste-card-actions]");
-
-    if (!zoneActions) return;
-
-    zoneActions.innerHTML = "";
-    zoneActions.dataset.lcdpPlanningActions = "true";
-
-    const boutonNouvelleDate = document.getElementById("bouton-nouvelle-date-planning");
-    const ancienConteneurNouvelleDate = boutonNouvelleDate
-      ? boutonNouvelleDate.closest(".lcdp-box-menu-bouton__list")
-      : null;
-
-    if (boutonNouvelleDate) {
-      zoneActions.appendChild(boutonNouvelleDate);
-
-      if (ancienConteneurNouvelleDate && !ancienConteneurNouvelleDate.querySelector("a, button")) {
-        ancienConteneurNouvelleDate.remove();
-      }
+    if (!slot) {
+      throw new Error("Slot planning calendrier introuvable.");
     }
 
-    const bouton = document.createElement("button");
-    bouton.type = "button";
-    bouton.className = "lcdp-button lcdp-button-secondary lcdp-button-planning-toggle";
-    bouton.dataset.filtrePlanningToggle = "1";
-    actualiserBoutonFiltrePlanning(bouton);
+    slot.innerHTML = "";
 
-    bouton.addEventListener("click", () => {
-      etat.filtre = etat.filtre === "avenir" ? "passe" : "avenir";
-      actualiserBoutonFiltrePlanning(bouton);
-      afficherReservations(etat.reservations);
-    });
+    const fragmentWorkflow = await chargerFragmentObjet("/BOX/04-box-workflow-reservation.html");
+    slot.appendChild(fragmentWorkflow);
 
-    zoneActions.appendChild(bouton);
-  }
+    const workflow = slot.querySelector("[data-lcdp-box-workflow-reservation]");
+    const contenu = slot.querySelector("[data-lcdp-workflow-reservation-content]");
 
-  function actualiserBoutonFiltrePlanning(bouton) {
-    if (!bouton) return;
+    if (!workflow || !contenu) {
+      throw new Error("Structure workflow réservation incomplète.");
+    }
 
-    const afficheAvenir = etat.filtre === "avenir";
-
-    bouton.textContent = afficheAvenir ? "Avenir / Passé" : "Passé";
-    bouton.dataset.filtrePlanningEtat = afficheAvenir ? "avenir" : "passe";
-    bouton.classList.remove(
-      "lcdp-button-secondary",
-      "lcdp-button-orange",
-      "lcdp-button-filtre-planning-passe",
-      "lcdp-button-filtre-planning-avenir"
+    workflow.removeAttribute("role");
+    workflow.removeAttribute("aria-modal");
+    workflow.classList.add(
+      "lcdp-box-workflow-reservation--planning-page",
+      "lcdp-box-workflow-reservation--calendrier-mois",
+      "lcdp-workflow-reservation-box"
     );
-    bouton.classList.add(
-      afficheAvenir
-        ? "lcdp-button-filtre-planning-avenir"
-        : "lcdp-button-filtre-planning-passe"
-    );
+
+    const fragmentCalendrier = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
+    contenu.appendChild(fragmentCalendrier);
+
+    const calendrier = contenu.querySelector("[data-lcdp-box-calendrier-mois]");
+
+    if (!calendrier) {
+      throw new Error("Structure calendrier mois incomplète.");
+    }
+
+    calendrier.removeAttribute("role");
+    calendrier.removeAttribute("aria-modal");
+
+    const boutonFermer = calendrier.querySelector("[data-lcdp-calendrier-mois-close]");
+    if (boutonFermer) boutonFermer.hidden = true;
+
+    const titre = calendrier.querySelector("[data-lcdp-calendrier-mois-title]");
+    if (titre) titre.textContent = "Planning du membre";
+
+    const meta = calendrier.querySelector("[data-lcdp-calendrier-mois-meta]");
+    if (meta) meta.textContent = "Cliquez sur une plage verte pour afficher la réservation.";
+
+    const boutonPrecedent = calendrier.querySelector("[data-lcdp-calendrier-mois-prev]");
+    const boutonSuivant = calendrier.querySelector("[data-lcdp-calendrier-mois-next]");
+
+    if (boutonPrecedent) {
+      boutonPrecedent.addEventListener("click", () => {
+        etat.moisCourant = ajouterMois(etat.moisCourant, -1);
+        afficherCalendrierMois();
+      });
+    }
+
+    if (boutonSuivant) {
+      boutonSuivant.addEventListener("click", () => {
+        etat.moisCourant = ajouterMois(etat.moisCourant, 1);
+        afficherCalendrierMois();
+      });
+    }
+
+    const fragmentJour = await chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html");
+    etat.templateJour = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
+
+    if (!etat.templateJour) {
+      throw new Error("Template jour calendrier mois introuvable.");
+    }
+
+    const fragmentReservation = await chargerFragmentObjet("/BOX/04-box-card-reservation-membre.html");
+    etat.templateReservation = fragmentReservation.querySelector("[data-lcdp-box-card-reservation-membre]");
+
+    if (!etat.templateReservation) {
+      throw new Error("Template card réservation membre introuvable.");
+    }
+
+    etat.workflowPlanning = workflow;
+    etat.contenuWorkflowPlanning = contenu;
+    etat.calendrierMois = calendrier;
+
+    afficherChargementCalendrier("Chargement de votre planning...");
   }
 
   async function chargerReservations() {
     if (!ENDPOINT_PLANNING_MEMBRE) {
-      afficherErreurListe("Le service planning membre n’est pas configuré.");
+      afficherErreurCalendrier("Le service planning membre n’est pas configuré.");
       return;
     }
 
     try {
-      afficherChargementListe("Chargement de votre planning...");
+      afficherChargementCalendrier("Chargement de votre planning...");
 
       const reponse = await fetch(ENDPOINT_PLANNING_MEMBRE + "/mes-reservations", {
         method: "GET",
@@ -260,11 +275,449 @@
       }
 
       etat.reservations = Array.isArray(data.reservations) ? data.reservations : [];
-      afficherReservations(etat.reservations);
+      etat.reservationsParDate = indexerReservationsParDate(etat.reservations);
+      ajusterMoisCourantSelonReservations();
+      afficherCalendrierMois();
     } catch (error) {
       console.error("Erreur chargement planning membre :", error);
-      afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
+      afficherErreurCalendrier(error.message || "Erreur technique. Merci de réessayer.");
     }
+  }
+
+  function ajusterMoisCourantSelonReservations() {
+    const aujourdHui = dateAujourdhuiParis();
+    const reservationsAvenir = etat.reservations
+      .filter((reservation) => extraireDateFranceReservation(reservation.datebookd) >= aujourdHui)
+      .sort((a, b) => String(a.datebookd || "").localeCompare(String(b.datebookd || "")));
+
+    const reservationReference = reservationsAvenir[0] || etat.reservations[0] || null;
+    const dateReference = reservationReference ? extraireDateFranceReservation(reservationReference.datebookd) : aujourdHui;
+
+    etat.moisCourant = debutMois(dateReference || aujourdHui);
+  }
+
+  function indexerReservationsParDate(reservations) {
+    const index = new Map();
+
+    (Array.isArray(reservations) ? reservations : []).forEach((reservation) => {
+      const dateIso = extraireDateFranceReservation(reservation.datebookd);
+      if (!dateIso) return;
+
+      const plage = normaliserPlageReservation(reservation);
+      if (!plage) return;
+
+      if (!index.has(dateIso)) {
+        index.set(dateIso, new Map());
+      }
+
+      const reservationsJour = index.get(dateIso);
+
+      if (!reservationsJour.has(plage)) {
+        reservationsJour.set(plage, []);
+      }
+
+      reservationsJour.get(plage).push(reservation);
+    });
+
+    return index;
+  }
+
+  function afficherCalendrierMois() {
+    const calendrier = etat.calendrierMois;
+    if (!calendrier || !etat.templateJour) return;
+
+    const courant = etat.moisCourant || debutMois(dateAujourdhuiParis());
+    const titreMois = calendrier.querySelector("[data-lcdp-calendrier-mois-current]");
+    const grille = calendrier.querySelector("[data-lcdp-calendrier-mois-grid]");
+    const message = calendrier.querySelector("[data-lcdp-calendrier-mois-message]");
+
+    if (titreMois) {
+      titreMois.textContent = formaterMoisAnnee(courant);
+    }
+
+    if (!grille) return;
+
+    grille.innerHTML = "";
+    grille.classList.remove("lcdp-box-calendrier-mois__grid--loading");
+
+    const jours = construireJoursMois(courant);
+    const reservationsDansMois = jours.some((jour) => etat.reservationsParDate.has(jour.dateIso));
+
+    if (message) {
+      message.hidden = reservationsDansMois;
+      message.textContent = reservationsDansMois ? "" : "Aucune réservation sur ce mois.";
+      message.dataset.lcdpMessageType = reservationsDansMois ? "" : "information";
+    }
+
+    const decalageDebut = obtenirDecalageLundi(jours[0].dateIso);
+
+    for (let i = 0; i < decalageDebut; i += 1) {
+      grille.appendChild(creerJourVide());
+    }
+
+    jours.forEach((jour) => {
+      grille.appendChild(creerJourCalendrier(jour));
+    });
+  }
+
+  function afficherChargementCalendrier(messageTexte) {
+    const calendrier = etat.calendrierMois;
+    if (!calendrier) return;
+
+    const grille = calendrier.querySelector("[data-lcdp-calendrier-mois-grid]");
+    const message = calendrier.querySelector("[data-lcdp-calendrier-mois-message]");
+
+    if (grille) {
+      grille.innerHTML = "";
+      grille.classList.add("lcdp-box-calendrier-mois__grid--loading");
+    }
+
+    if (message) {
+      message.hidden = false;
+      message.textContent = messageTexte || "Chargement...";
+      message.dataset.lcdpMessageType = "information";
+    }
+  }
+
+  function afficherErreurCalendrier(messageTexte) {
+    const calendrier = etat.calendrierMois;
+
+    if (!calendrier) {
+      const slot = document.getElementById("lcdp-planning-calendrier-slot");
+      if (slot) slot.textContent = messageTexte || "Erreur technique.";
+      return;
+    }
+
+    const grille = calendrier.querySelector("[data-lcdp-calendrier-mois-grid]");
+    const message = calendrier.querySelector("[data-lcdp-calendrier-mois-message]");
+
+    if (grille) {
+      grille.innerHTML = "";
+      grille.classList.remove("lcdp-box-calendrier-mois__grid--loading");
+    }
+
+    if (message) {
+      message.hidden = false;
+      message.textContent = messageTexte || "Erreur technique.";
+      message.dataset.lcdpMessageType = "erreur";
+    }
+  }
+
+  function creerJourVide() {
+    const jour = etat.templateJour.cloneNode(true);
+    jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--empty");
+    jour.disabled = true;
+    jour.setAttribute("aria-hidden", "true");
+    return jour;
+  }
+
+  function creerJourCalendrier(jourMois) {
+    const jour = etat.templateJour.cloneNode(true);
+    const numero = jour.querySelector("[data-lcdp-card-jour-mois-number]");
+    const reservationsJour = etat.reservationsParDate.get(jourMois.dateIso) || new Map();
+    const aujourdHui = dateAujourdhuiParis();
+    const estPasse = jourMois.dateIso < aujourdHui;
+    const estAujourdhui = jourMois.dateIso === aujourdHui;
+    let jourReservable = false;
+
+    if (numero) numero.textContent = String(jourMois.jour);
+
+    jour.dataset.date = jourMois.dateIso;
+
+    if (estPasse) jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--past");
+    if (estAujourdhui) jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--today");
+
+    PLAGES.forEach((plage) => {
+      const slot = jour.querySelector(`[data-lcdp-card-jour-mois-slot="${plage}"]`);
+      if (!slot) return;
+
+      slot.className = "lcdp-box-card-jour-in-calendrier-mois__slot lcdp-box-card-jour-in-calendrier-mois__slot--gris-clair";
+      slot.removeAttribute("data-idflux");
+      slot.removeAttribute("data-plage");
+
+      const reservationsPlage = reservationsJour.get(plage) || [];
+      const reservation = reservationsPlage[0] || null;
+
+      if (!reservation) return;
+
+      jourReservable = true;
+      jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--reservation-membre");
+
+      if (estPasse) {
+        jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--reservation-membre-passee");
+        slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--vert-passe");
+      } else {
+        slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--vert");
+      }
+
+      slot.dataset.idflux = String(reservation.idflux || "");
+      slot.dataset.plage = plage;
+      slot.setAttribute("aria-label", "Réservation " + libellePlage(plage) + " du " + formaterDateCourte(reservation.datebookd));
+      slot.title = "Réservation " + libellePlage(plage);
+    });
+
+    jour.disabled = !jourReservable;
+
+    if (jourReservable) {
+      jour.addEventListener("click", gererClicJourCalendrier);
+    }
+
+    return jour;
+  }
+
+  function gererClicJourCalendrier(event) {
+    const slot = event.target.closest("[data-lcdp-card-jour-mois-slot]");
+
+    if (!slot || !slot.dataset.idflux) return;
+
+    const reservation = etat.reservations.find((item) => String(item.idflux || "") === String(slot.dataset.idflux || ""));
+
+    if (!reservation) {
+      afficherAlerte("Réservation introuvable.").catch(console.error);
+      return;
+    }
+
+    ouvrirReservationPlanning(reservation).catch(console.error);
+  }
+
+  async function ouvrirReservationPlanning(reservation) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot || !etat.templateReservation) return;
+
+    slot.innerHTML = "";
+
+    const fragmentWorkflow = await chargerFragmentObjet("/BOX/04-box-workflow-reservation.html");
+    slot.appendChild(fragmentWorkflow);
+
+    const workflow = slot.querySelector("[data-lcdp-box-workflow-reservation]");
+    const contenu = slot.querySelector("[data-lcdp-workflow-reservation-content]");
+
+    if (!workflow || !contenu) {
+      slot.innerHTML = "";
+      throw new Error("Structure workflow réservation incomplète.");
+    }
+
+    workflow.classList.add(
+      "lcdp-box-workflow-reservation--planning-reservation",
+      "lcdp-box-workflow-reservation--confirmation",
+      "lcdp-workflow-reservation-box"
+    );
+
+    const boutonFermer = document.createElement("button");
+    boutonFermer.type = "button";
+    boutonFermer.className = "lcdp-box-calendrier-mois__close";
+    boutonFermer.setAttribute("aria-label", "Fermer");
+    boutonFermer.textContent = "×";
+
+    const card = creerCardReservation(reservation);
+    contenu.appendChild(boutonFermer);
+    contenu.appendChild(card);
+
+    function fermer() {
+      slot.innerHTML = "";
+    }
+
+    boutonFermer.addEventListener("click", fermer);
+    workflow.addEventListener("click", (event) => {
+      if (event.target === workflow) fermer();
+    });
+
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Escape") fermer();
+      },
+      { once: true }
+    );
+  }
+
+  function creerCardReservation(reservation) {
+    const card = etat.templateReservation.cloneNode(true);
+
+    const dateReservation = new Date(reservation.datebookd);
+    const estPasse = extraireDateFranceReservation(reservation.datebookd) < dateAujourdhuiParis();
+
+    const parc = reservation.parc || {};
+    const nomParc = parc.nom || parc.nomparc || reservation.nomparc || "Parc";
+    const departement = parc.dptmt || parc.departement || reservation.dptmt || "";
+    const idParc = parc.idparc || reservation.idparc || "";
+    const idFlux = reservation.idflux || "";
+
+    const invitation = card.querySelector("[data-lcdp-card-reservation-invitation]");
+    const date = card.querySelector("[data-lcdp-card-reservation-date]");
+    const heure = card.querySelector("[data-lcdp-card-reservation-heure]");
+    const parcElement = card.querySelector("[data-lcdp-card-reservation-parc]");
+    const departementElement = card.querySelector("[data-lcdp-card-reservation-departement]");
+    const boutonAdresse = card.querySelector("[data-action='adresse']");
+    const boutonInvitation = card.querySelector("[data-action='invitation']");
+    const boutonAnnuler = card.querySelector("[data-action='annuler']");
+
+    card.dataset.idflux = idFlux;
+
+    if (estPasse || (Number.isFinite(dateReservation.getTime()) && dateReservation < new Date())) {
+      card.classList.add("lcdp-box-card-reservation-membre--passe");
+    }
+
+    if (reservation.invitation === true) {
+      card.classList.add("lcdp-box-card-reservation-membre--invitation");
+    }
+
+    if (invitation) {
+      const ligneInvitation = creerLigneInvitation(reservation);
+      invitation.textContent = ligneInvitation;
+      invitation.hidden = !ligneInvitation;
+    }
+
+    if (date) date.textContent = formaterDateCourte(reservation.datebookd);
+    if (heure) heure.textContent = formaterHeureReservation(reservation.datebookd);
+    if (parcElement) parcElement.textContent = "Parc de " + nomParc;
+
+    if (departementElement) {
+      departementElement.textContent = departement ? "(" + departement + ")" : "";
+      departementElement.hidden = !departement;
+    }
+
+    if (boutonAdresse) boutonAdresse.dataset.idparc = idParc;
+
+    if (boutonInvitation) {
+      boutonInvitation.dataset.id = idFlux;
+      boutonInvitation.hidden = estPasse || reservation.invitation === true;
+    }
+
+    if (boutonAnnuler) {
+      boutonAnnuler.dataset.id = idFlux;
+      boutonAnnuler.hidden = estPasse;
+    }
+
+    return card;
+  }
+
+  function creerLigneInvitation(reservation) {
+    if (reservation.invitation !== true) return "";
+
+    const parrain = reservation.parrain || null;
+
+    if (!parrain) return "Invitation";
+
+    const nom = parrain.nommembre || parrain.nom || "";
+    const prenom = parrain.prenommembre || parrain.prenom || "";
+
+    const identite = [nom, prenom]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .join(" ");
+
+    return identite ? "Invitation (" + identite + ")" : "Invitation";
+  }
+
+  async function gererClicDocument(event) {
+    const boutonAdresse = event.target.closest("[data-action='adresse']");
+    const boutonInvitation = event.target.closest("[data-action='invitation']");
+    const boutonAnnuler = event.target.closest("[data-action='annuler']");
+
+    if (boutonAdresse) {
+      await afficherAlerte("L’adresse sera raccordée ensuite.");
+      return;
+    }
+
+    if (boutonInvitation) {
+      await ouvrirPageInvitation(String(boutonInvitation.dataset.id || ""));
+      return;
+    }
+
+    if (boutonAnnuler) {
+      await traiterAnnulationReservation(boutonAnnuler);
+    }
+  }
+
+  async function ouvrirPageInvitation(idflux) {
+    const idReservation = String(idflux || "").trim();
+
+    if (!idReservation) {
+      await afficherAlerte("Réservation manquante.");
+      return;
+    }
+
+    const acces = await verifierAccesReservationPlanning();
+    if (!acces) return;
+
+    const separateur = PAGE_INVITER_MEMBRE.includes("?") ? "&" : "?";
+    window.location.href = PAGE_INVITER_MEMBRE + separateur + "idflux=" + encodeURIComponent(idReservation);
+  }
+
+  async function traiterAnnulationReservation(boutonAnnuler) {
+    const idflux = boutonAnnuler ? String(boutonAnnuler.dataset.id || "").trim() : "";
+
+    if (!idflux) {
+      await afficherAlerte("Réservation manquante.");
+      return;
+    }
+
+    const confirmation = await ouvrirDialogueBoutons({
+      titre: "Confirmer l’annulation",
+      texte: "Voulez-vous vraiment annuler cette date ?",
+      boutons: [
+        {
+          label: "Non",
+          valeur: "non",
+          style: "lcdp-button-secondary"
+        },
+        {
+          label: "Oui",
+          valeur: "oui",
+          style: "lcdp-button-primary"
+        }
+      ]
+    });
+
+    if (confirmation !== "oui") return;
+
+    const texteInitial = boutonAnnuler.textContent;
+    boutonAnnuler.disabled = true;
+    boutonAnnuler.textContent = "Annulation...";
+
+    try {
+      await annulerReservation(idflux);
+      await afficherAlerte("Votre annulation est enregistrée.");
+      const slot = document.getElementById("lcdp-lightbox-slot");
+      if (slot) slot.innerHTML = "";
+      await chargerReservations();
+    } catch (error) {
+      boutonAnnuler.disabled = false;
+      boutonAnnuler.textContent = texteInitial;
+      await afficherAlerte(error.message || "Impossible d’annuler cette réservation.");
+    }
+  }
+
+  async function annulerReservation(idflux) {
+    if (!ENDPOINT_PLANNING_MEMBRE) {
+      throw new Error("Le service planning membre n’est pas configuré.");
+    }
+
+    const reponse = await fetch(ENDPOINT_PLANNING_MEMBRE + "/annuler-reservation", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ idflux })
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return null;
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Impossible d’annuler cette réservation."));
+    }
+
+    return data.reservation || null;
   }
 
   async function verifierAccesReservationPlanning() {
@@ -363,316 +816,107 @@
     };
   }
 
-  async function gererClicDocument(event) {
-    const boutonAdresse = event.target.closest("[data-action='adresse']");
-    const boutonInvitation = event.target.closest("[data-action='invitation']");
-    const boutonAnnuler = event.target.closest("[data-action='annuler']");
+  function construireJoursMois(moisIso) {
+    const match = String(moisIso || "").match(/^(\d{4})-(\d{2})-\d{2}$/);
+    const maintenant = dateAujourdhuiParis();
 
-    if (boutonAdresse) {
-      await afficherAlerte("L’adresse sera raccordée ensuite.");
-      return;
+    if (!match) {
+      return construireJoursMois(debutMois(maintenant));
     }
 
-    if (boutonInvitation) {
-      await ouvrirPageInvitation(String(boutonInvitation.dataset.id || ""));
-      return;
-    }
+    const annee = Number(match[1]);
+    const mois = Number(match[2]);
+    const nombreJours = new Date(annee, mois, 0).getDate();
+    const jours = [];
 
-    if (boutonAnnuler) {
-      await traiterAnnulationReservation(boutonAnnuler);
-    }
-  }
-
-  async function ouvrirPageInvitation(idflux) {
-    const idReservation = String(idflux || "").trim();
-
-    if (!idReservation) {
-      await afficherAlerte("Réservation manquante.");
-      return;
-    }
-
-    const acces = await verifierAccesReservationPlanning();
-    if (!acces) return;
-
-    const separateur = PAGE_INVITER_MEMBRE.includes("?") ? "&" : "?";
-    window.location.href = PAGE_INVITER_MEMBRE + separateur + "idflux=" + encodeURIComponent(idReservation);
-  }
-
-  async function traiterAnnulationReservation(boutonAnnuler) {
-    const idflux = boutonAnnuler ? String(boutonAnnuler.dataset.id || "").trim() : "";
-
-    if (!idflux) {
-      await afficherAlerte("Réservation manquante.");
-      return;
-    }
-
-    const confirmation = await ouvrirDialogueBoutons({
-      titre: "Confirmer l’annulation",
-      texte: "Voulez-vous vraiment annuler cette date ?",
-      boutons: [
-        {
-          label: "Non",
-          valeur: "non",
-          style: "lcdp-button-secondary"
-        },
-        {
-          label: "Oui",
-          valeur: "oui",
-          style: "lcdp-button-primary"
-        }
-      ]
-    });
-
-    if (confirmation !== "oui") return;
-
-    const texteInitial = boutonAnnuler.textContent;
-    boutonAnnuler.disabled = true;
-    boutonAnnuler.textContent = "Annulation...";
-
-    try {
-      await annulerReservation(idflux);
-      await afficherAlerte("Votre annulation est enregistrée.");
-      await chargerReservations();
-    } catch (error) {
-      boutonAnnuler.disabled = false;
-      boutonAnnuler.textContent = texteInitial;
-      await afficherAlerte(error.message || "Impossible d’annuler cette réservation.");
-    }
-  }
-
-  async function annulerReservation(idflux) {
-    if (!ENDPOINT_PLANNING_MEMBRE) {
-      throw new Error("Le service planning membre n’est pas configuré.");
-    }
-
-    const reponse = await fetch(ENDPOINT_PLANNING_MEMBRE + "/annuler-reservation", {
-      method: "POST",
-      credentials: "include",
-      cache: "no-store",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ idflux })
-    });
-
-    const data = await reponse.json().catch(() => null);
-
-    if (reponse.status === 401) {
-      redirigerConnexionMembre("inactive");
-      return null;
-    }
-
-    if (!reponse.ok || !data || !reponseApiOk(data)) {
-      throw new Error(messageErreurApi(data, "Impossible d’annuler cette réservation."));
-    }
-
-    return data.reservation || null;
-  }
-
-  async function initialiserListeReservations(titreListe) {
-    const slot = document.getElementById("lcdp-liste-card-reservations-slot");
-
-    if (!slot) {
-      throw new Error("Slot liste des réservations introuvable.");
-    }
-
-    const fragmentListe = await chargerFragmentObjet("/BOX/04-box-liste-card.html");
-    slot.innerHTML = "";
-    slot.appendChild(fragmentListe);
-
-    const fragmentCard = await chargerFragmentObjet("/BOX/04-box-card-reservation-membre.html");
-    etat.templateReservation = fragmentCard.querySelector("[data-lcdp-box-card-reservation-membre]");
-
-    if (!etat.templateReservation) {
-      throw new Error("Template card réservation membre introuvable.");
-    }
-
-    const titre = slot.querySelector("[data-lcdp-liste-card-title]");
-    const blocTitre = titre ? titre.closest(".lcdp-box-liste-card__heading") : null;
-
-    if (blocTitre) {
-      blocTitre.remove();
-    } else if (titre) {
-      titre.remove();
-    }
-  }
-
-  function obtenirZoneListe() {
-    return document.querySelector("[data-lcdp-liste-card-list]");
-  }
-
-  function obtenirZoneMessageListe() {
-    return document.querySelector("[data-lcdp-liste-card-message]");
-  }
-
-  function afficherChargementListe(message) {
-    const zoneListe = obtenirZoneListe();
-
-    if (zoneListe) zoneListe.innerHTML = "";
-
-    afficherMessageListe(message || "Chargement...", "information");
-  }
-
-  function afficherErreurListe(message) {
-    const zoneListe = obtenirZoneListe();
-
-    if (zoneListe) zoneListe.innerHTML = "";
-
-    afficherMessageListe(message, "erreur");
-  }
-
-  function afficherMessageListe(message, type) {
-    const zoneMessage = obtenirZoneMessageListe();
-
-    if (!zoneMessage) return;
-
-    zoneMessage.hidden = false;
-    zoneMessage.textContent = message;
-    zoneMessage.dataset.lcdpMessageType = type || "information";
-  }
-
-  function masquerMessageListe() {
-    const zoneMessage = obtenirZoneMessageListe();
-
-    if (!zoneMessage) return;
-
-    zoneMessage.hidden = true;
-    zoneMessage.textContent = "";
-    delete zoneMessage.dataset.lcdpMessageType;
-  }
-
-  function afficherReservations(reservations) {
-    const zoneListe = obtenirZoneListe();
-
-    if (!zoneListe) return;
-
-    const reservationsFiltrees = filtrerEtTrierReservations(reservations);
-
-    zoneListe.innerHTML = "";
-
-    if (!reservationsFiltrees.length) {
-      afficherMessageListe(
-        etat.filtre === "avenir" ? "Aucune date à venir." : "Aucune date passée.",
-        "information"
-      );
-      return;
-    }
-
-    masquerMessageListe();
-
-    reservationsFiltrees.forEach((reservation, index) => {
-      zoneListe.appendChild(creerCardReservation(reservation, {
-        premiereReservationAvenir: etat.filtre === "avenir" && index === 0
-      }));
-    });
-  }
-
-  function filtrerEtTrierReservations(source) {
-    const maintenant = new Date();
-
-    return (Array.isArray(source) ? source : [])
-      .filter((reservation) => {
-        const dateReservation = new Date(reservation.datebookd);
-
-        if (Number.isNaN(dateReservation.getTime())) return false;
-
-        if (etat.filtre === "avenir") return dateReservation >= maintenant;
-
-        return dateReservation < maintenant;
-      })
-      .sort((a, b) => {
-        const dateA = new Date(a.datebookd);
-        const dateB = new Date(b.datebookd);
-
-        return etat.filtre === "avenir"
-          ? dateA - dateB
-          : dateB - dateA;
+    for (let jour = 1; jour <= nombreJours; jour += 1) {
+      jours.push({
+        dateIso: annee + "-" + String(mois).padStart(2, "0") + "-" + String(jour).padStart(2, "0"),
+        jour
       });
+    }
+
+    return jours;
   }
 
-  function creerCardReservation(reservation, options = {}) {
-    const card = etat.templateReservation.cloneNode(true);
+  function obtenirDecalageLundi(dateIso) {
+    const match = String(dateIso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
-    const dateReservation = new Date(reservation.datebookd);
-    const estPasse = dateReservation < new Date();
+    if (!match) return 0;
 
-    const parc = reservation.parc || {};
-    const nomParc = parc.nom || parc.nomparc || reservation.nomparc || "Parc";
-    const departement = parc.dptmt || parc.departement || reservation.dptmt || "";
-    const idParc = parc.idparc || reservation.idparc || "";
-    const idFlux = reservation.idflux || "";
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12, 0, 0);
+    const jour = date.getDay();
 
-    const invitation = card.querySelector("[data-lcdp-card-reservation-invitation]");
-    const date = card.querySelector("[data-lcdp-card-reservation-date]");
-    const heure = card.querySelector("[data-lcdp-card-reservation-heure]");
-    const parcElement = card.querySelector("[data-lcdp-card-reservation-parc]");
-    const departementElement = card.querySelector("[data-lcdp-card-reservation-departement]");
-    const boutonAdresse = card.querySelector("[data-action='adresse']");
-    const boutonInvitation = card.querySelector("[data-action='invitation']");
-    const boutonAnnuler = card.querySelector("[data-action='annuler']");
-
-    card.dataset.idflux = idFlux;
-
-    if (estPasse) {
-      card.classList.add("lcdp-box-card-reservation-membre--passe");
-    }
-
-    if (options.premiereReservationAvenir === true && !estPasse) {
-      card.classList.add("lcdp-box-card-reservation-membre--prochaine");
-      card.dataset.lcdpProchaineReservation = "true";
-    }
-
-    if (reservation.invitation === true) {
-      card.classList.add("lcdp-box-card-reservation-membre--invitation");
-    }
-
-    if (invitation) {
-      const ligneInvitation = creerLigneInvitation(reservation);
-      invitation.textContent = ligneInvitation;
-      invitation.hidden = !ligneInvitation;
-    }
-
-    if (date) date.textContent = formaterDateCourte(reservation.datebookd);
-    if (heure) heure.textContent = formaterHeureReservation(reservation.datebookd);
-    if (parcElement) parcElement.textContent = "Parc de " + nomParc;
-
-    if (departementElement) {
-      departementElement.textContent = departement ? "(" + departement + ")" : "";
-      departementElement.hidden = !departement;
-    }
-
-    if (boutonAdresse) boutonAdresse.dataset.idparc = idParc;
-
-    if (boutonInvitation) {
-      boutonInvitation.dataset.id = idFlux;
-      boutonInvitation.hidden = estPasse || reservation.invitation === true;
-    }
-
-    if (boutonAnnuler) {
-      boutonAnnuler.dataset.id = idFlux;
-      boutonAnnuler.hidden = estPasse;
-    }
-
-    return card;
+    return jour === 0 ? 6 : jour - 1;
   }
 
-  function creerLigneInvitation(reservation) {
-    if (reservation.invitation !== true) return "";
+  function debutMois(dateIso) {
+    const texte = String(dateIso || dateAujourdhuiParis()).slice(0, 10);
+    const match = texte.match(/^(\d{4})-(\d{2})/);
 
-    const parrain = reservation.parrain || null;
+    if (!match) return debutMois(dateAujourdhuiParis());
 
-    if (!parrain) return "Invitation";
+    return match[1] + "-" + match[2] + "-01";
+  }
 
-    const nom = parrain.nommembre || parrain.nom || "";
-    const prenom = parrain.prenommembre || parrain.prenom || "";
+  function ajouterMois(dateIso, delta) {
+    const match = String(dateIso || "").match(/^(\d{4})-(\d{2})-\d{2}$/);
 
-    const identite = [nom, prenom]
-      .map((value) => String(value || "").trim())
-      .filter(Boolean)
-      .join(" ");
+    if (!match) return debutMois(dateAujourdhuiParis());
 
-    return identite ? "Invitation (" + identite + ")" : "Invitation";
+    const date = new Date(Number(match[1]), Number(match[2]) - 1 + Number(delta || 0), 1, 12, 0, 0);
+
+    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-01";
+  }
+
+  function formaterMoisAnnee(dateIso) {
+    const match = String(dateIso || "").match(/^(\d{4})-(\d{2})-\d{2}$/);
+
+    if (!match) return "";
+
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, 1, 12, 0, 0);
+
+    return date.toLocaleDateString("fr-FR", {
+      month: "long",
+      year: "numeric"
+    });
+  }
+
+  function normaliserPlageReservation(reservation) {
+    const brut = String(reservation?.plagebookd || reservation?.plage || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[\s_-]+/g, "");
+
+    if (brut.includes("plage1") || brut === "1" || brut.includes("matin")) return "plage1";
+    if (brut.includes("plage2") || brut === "2" || brut.includes("midi") || brut.includes("apres")) return "plage2";
+    if (brut.includes("plage3") || brut === "3" || brut.includes("soir") || brut.includes("fin")) return "plage3";
+
+    const date = new Date(reservation?.datebookd || "");
+
+    if (!Number.isNaN(date.getTime())) {
+      const heure = Number(new Intl.DateTimeFormat("fr-FR", {
+        timeZone: "Europe/Paris",
+        hour: "2-digit",
+        hour12: false,
+        hourCycle: "h23"
+      }).format(date));
+
+      if (heure < 12) return "plage1";
+      if (heure < 18) return "plage2";
+      return "plage3";
+    }
+
+    return "plage1";
+  }
+
+  function libellePlage(plage) {
+    if (plage === "plage1") return "plage 1";
+    if (plage === "plage2") return "plage 2";
+    if (plage === "plage3") return "plage 3";
+    return "plage";
   }
 
   async function initialiserBandeau() {
@@ -990,6 +1234,10 @@
       : messageDefaut;
   }
 
+  function valeurBooleenneVraie(valeur) {
+    return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
+  }
+
   function nettoyerBaseUrl(value) {
     return String(value || "").replace(/\/+$/, "");
   }
@@ -1004,7 +1252,7 @@
     if (Number.isNaN(date.getTime())) return "Date non renseignée";
 
     const dateFranceIso = extraireDateFranceReservation(dateIso);
-    const aujourdHui = dateAujourdhuiFranceIso();
+    const aujourdHui = dateAujourdhuiParis();
     const demain = ajouterJoursDateIso(aujourdHui, 1);
     const apresDemain = ajouterJoursDateIso(aujourdHui, 2);
 
@@ -1049,7 +1297,7 @@
     return annee && mois && jour ? annee + "-" + mois + "-" + jour : "";
   }
 
-  function dateAujourdhuiFranceIso() {
+  function dateAujourdhuiParis() {
     return extraireDateFranceReservation(new Date().toISOString());
   }
 
