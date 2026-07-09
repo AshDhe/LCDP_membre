@@ -24,6 +24,7 @@
 
   const etat = {
     reservations: [],
+    abonnements: [],
     reservationsParDate: new Map(),
     moisCourant: debutMois(dateAujourdhuiParis()),
     templateJour: null,
@@ -40,6 +41,8 @@
   };
 
   const PLAGES = ["plage1", "plage2", "plage3"];
+
+  /* Limite provisoire : navigation jusqu'à décembre N+1. */
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -201,11 +204,19 @@
     const boutonFermer = calendrier.querySelector("[data-lcdp-calendrier-mois-close]");
     if (boutonFermer) boutonFermer.hidden = true;
 
+    calendrier.classList.add("lcdp-box-calendrier-mois--planning-membre");
+
     const titre = calendrier.querySelector("[data-lcdp-calendrier-mois-title]");
-    if (titre) titre.textContent = "Planning du membre";
+    if (titre) {
+      titre.textContent = "";
+      titre.hidden = true;
+    }
 
     const meta = calendrier.querySelector("[data-lcdp-calendrier-mois-meta]");
-    if (meta) meta.textContent = "Cliquez sur une plage verte pour afficher la réservation.";
+    if (meta) {
+      meta.textContent = "";
+      meta.hidden = true;
+    }
 
     const boutonPrecedent = calendrier.querySelector("[data-lcdp-calendrier-mois-prev]");
     const boutonSuivant = calendrier.querySelector("[data-lcdp-calendrier-mois-next]");
@@ -219,7 +230,11 @@
 
     if (boutonSuivant) {
       boutonSuivant.addEventListener("click", () => {
-        etat.moisCourant = ajouterMois(etat.moisCourant, 1);
+        const prochainMois = ajouterMois(etat.moisCourant, 1);
+
+        if (!moisDansLimiteMaximumPlanning(prochainMois)) return;
+
+        etat.moisCourant = prochainMois;
         afficherCalendrierMois();
       });
     }
@@ -275,6 +290,7 @@
       }
 
       etat.reservations = Array.isArray(data.reservations) ? data.reservations : [];
+      etat.abonnements = normaliserAbonnementsMembre(data.abonnements || data.abos || []);
       etat.reservationsParDate = indexerReservationsParDate(etat.reservations);
       ajusterMoisCourantSelonReservations();
       afficherCalendrierMois();
@@ -293,7 +309,7 @@
     const reservationReference = reservationsAvenir[0] || etat.reservations[0] || null;
     const dateReference = reservationReference ? extraireDateFranceReservation(reservationReference.datebookd) : aujourdHui;
 
-    etat.moisCourant = debutMois(dateReference || aujourdHui);
+    etat.moisCourant = limiterMoisMaximumPlanning(debutMois(dateReference || aujourdHui));
   }
 
   function indexerReservationsParDate(reservations) {
@@ -326,7 +342,8 @@
     const calendrier = etat.calendrierMois;
     if (!calendrier || !etat.templateJour) return;
 
-    const courant = etat.moisCourant || debutMois(dateAujourdhuiParis());
+    const courant = limiterMoisMaximumPlanning(etat.moisCourant || debutMois(dateAujourdhuiParis()));
+    etat.moisCourant = courant;
     const titreMois = calendrier.querySelector("[data-lcdp-calendrier-mois-current]");
     const grille = calendrier.querySelector("[data-lcdp-calendrier-mois-grid]");
     const message = calendrier.querySelector("[data-lcdp-calendrier-mois-message]");
@@ -341,13 +358,14 @@
     grille.classList.remove("lcdp-box-calendrier-mois__grid--loading");
 
     const jours = construireJoursMois(courant);
-    const reservationsDansMois = jours.some((jour) => etat.reservationsParDate.has(jour.dateIso));
 
     if (message) {
-      message.hidden = reservationsDansMois;
-      message.textContent = reservationsDansMois ? "" : "Aucune réservation sur ce mois.";
-      message.dataset.lcdpMessageType = reservationsDansMois ? "" : "information";
+      message.hidden = true;
+      message.textContent = "";
+      delete message.dataset.lcdpMessageType;
     }
+
+    actualiserNavigationMoisPlanning();
 
     const decalageDebut = obtenirDecalageLundi(jours[0].dateIso);
 
@@ -448,6 +466,11 @@
         slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--vert-passe");
       } else {
         slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--vert");
+      }
+
+      if (reservationHorsAbonnementMembre(reservation)) {
+        jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--reservation-hors-abonnement");
+        slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--reservation-hors-abonnement");
       }
 
       slot.dataset.idflux = String(reservation.idflux || "");
@@ -559,12 +582,14 @@
       card.classList.add("lcdp-box-card-reservation-membre--passe");
     }
 
-    if (reservation.invitation === true) {
+    const estReservationHorsAbonnement = reservationHorsAbonnementMembre(reservation);
+
+    if (estReservationHorsAbonnement) {
       card.classList.add("lcdp-box-card-reservation-membre--invitation");
     }
 
     if (invitation) {
-      const ligneInvitation = creerLigneInvitation(reservation);
+      const ligneInvitation = creerLigneInvitation(reservation, estReservationHorsAbonnement);
       invitation.textContent = ligneInvitation;
       invitation.hidden = !ligneInvitation;
     }
@@ -582,7 +607,7 @@
 
     if (boutonInvitation) {
       boutonInvitation.dataset.id = idFlux;
-      boutonInvitation.hidden = estPasse || reservation.invitation === true;
+      boutonInvitation.hidden = estPasse || estReservationHorsAbonnement;
     }
 
     if (boutonAnnuler) {
@@ -593,8 +618,8 @@
     return card;
   }
 
-  function creerLigneInvitation(reservation) {
-    if (reservation.invitation !== true) return "";
+  function creerLigneInvitation(reservation, estReservationHorsAbonnement) {
+    if (estReservationHorsAbonnement !== true) return "";
 
     const parrain = reservation.parrain || null;
 
@@ -880,6 +905,85 @@
       month: "long",
       year: "numeric"
     });
+  }
+
+
+  function normaliserAbonnementsMembre(source) {
+    const aujourdHui = dateAujourdhuiParis();
+
+    return (Array.isArray(source) ? source : [])
+      .map((abonnement) => {
+        const statutabo = normaliserTexteTechnique(abonnement?.statutabo || abonnement?.statut || "");
+        const debut = dateIsoDepuisValeur(abonnement?.debut || abonnement?.debutabo || abonnement?.dateDebut || "");
+        let fin = dateIsoDepuisValeur(abonnement?.fin || abonnement?.finabo || abonnement?.dateFin || "");
+
+        /* Un abonnement cancd reste couvert uniquement le jour d'annulation. */
+        if (statutabo === "cancd" && fin && fin > aujourdHui) {
+          fin = aujourdHui;
+        }
+
+        return { debut, fin, statutabo };
+      })
+      .filter((abonnement) => abonnement.debut && abonnement.fin && abonnement.fin >= abonnement.debut);
+  }
+
+  function reservationHorsAbonnementMembre(reservation) {
+    const dateReservation = extraireDateFranceReservation(reservation?.datebookd);
+    const aujourdHui = dateAujourdhuiParis();
+
+    if (!dateReservation) return true;
+
+    /* Règle planning : le passé reste seulement vert atténué.
+       Le contour bleu ne concerne que les réservations à venir hors période d'abonnement. */
+    if (dateReservation < aujourdHui) return false;
+
+    return !etat.abonnements.some((abonnement) => {
+      return dateReservation >= abonnement.debut && dateReservation <= abonnement.fin;
+    });
+  }
+
+  function normaliserTexteTechnique(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/\s+/g, "");
+  }
+
+  function moisMaximumPlanning() {
+    const annee = Number(String(dateAujourdhuiParis()).slice(0, 4));
+
+    if (!Number.isFinite(annee) || annee < 2000) {
+      return "2027-12-01";
+    }
+
+    return String(annee + 1) + "-12-01";
+  }
+
+  function moisDansLimiteMaximumPlanning(moisIso) {
+    return String(debutMois(moisIso || dateAujourdhuiParis())) <= moisMaximumPlanning();
+  }
+
+  function limiterMoisMaximumPlanning(moisIso) {
+    const mois = debutMois(moisIso || dateAujourdhuiParis());
+    const maximum = moisMaximumPlanning();
+
+    return mois > maximum ? maximum : mois;
+  }
+
+  function actualiserNavigationMoisPlanning() {
+    const calendrier = etat.calendrierMois;
+    if (!calendrier) return;
+
+    const boutonSuivant = calendrier.querySelector("[data-lcdp-calendrier-mois-next]");
+    if (!boutonSuivant) return;
+
+    const prochainMois = ajouterMois(etat.moisCourant || dateAujourdhuiParis(), 1);
+    const autorise = moisDansLimiteMaximumPlanning(prochainMois);
+
+    boutonSuivant.disabled = !autorise;
+    boutonSuivant.setAttribute("aria-disabled", autorise ? "false" : "true");
   }
 
   function normaliserPlageReservation(reservation) {
