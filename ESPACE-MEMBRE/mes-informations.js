@@ -345,49 +345,6 @@
         margin-top: 0.55rem;
       }
 
-      #form-mes-informations-membre .lcdp-compte-champ-action-control {
-        position: relative;
-      }
-
-      #form-mes-informations-membre .lcdp-compte-champ-action-control input {
-        padding-right: 4.25rem;
-      }
-
-      #form-mes-informations-membre .lcdp-compte-champ-action-edit {
-        width: 44px;
-        height: 44px;
-        min-width: 0;
-        min-height: 0;
-        padding: 0;
-        border: 2px solid var(--lcdp-color-orange);
-        border-radius: 999px;
-        background: var(--lcdp-color-orange);
-        color: #ffffff;
-        position: absolute;
-        top: 50%;
-        right: 8px;
-        transform: translateY(-50%);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 2;
-        box-shadow: 0 3px 10px rgba(31, 42, 36, 0.16);
-      }
-
-      #form-mes-informations-membre .lcdp-compte-champ-action-edit:hover {
-        background: var(--lcdp-color-orange-hover);
-        border-color: var(--lcdp-color-orange-hover);
-        color: #ffffff;
-      }
-
-      #form-mes-informations-membre .lcdp-compte-champ-action-edit__icon {
-        width: 21px;
-        height: 21px;
-        display: block;
-        fill: currentColor;
-      }
-
       #form-mes-informations-membre .lcdp-compte-actions-adresse {
         display: flex;
         flex-direction: column;
@@ -578,17 +535,17 @@
 
     if (!zoneControl) return;
 
-    champ.classList.add("lcdp-box-champ-formulaire--compte-action");
-    zoneControl.classList.add("lcdp-compte-champ-action-control");
+    champ.classList.add("lcdp-box-champ-formulaire--compte-action", "lcdp-box-champ-formulaire--modifiable");
+    zoneControl.classList.add("lcdp-box-champ-formulaire__control--modifiable");
 
     const bouton = document.createElement("button");
     bouton.id = action.id;
     bouton.type = "button";
-    bouton.className = "lcdp-compte-champ-action-edit";
+    bouton.className = "lcdp-box-champ-formulaire__action-edit";
     bouton.setAttribute("aria-label", action.texte || "Modifier l'alias");
     bouton.title = action.texte || "Modifier l'alias";
     bouton.innerHTML = `
-      <svg class="lcdp-compte-champ-action-edit__icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
         <path d="M4 16.8V20h3.2L17.9 9.3l-3.2-3.2L4 16.8Z"></path>
         <path d="M19.2 8 16 4.8l1.1-1.1a1.7 1.7 0 0 1 2.4 0l.8.8a1.7 1.7 0 0 1 0 2.4L19.2 8Z"></path>
       </svg>
@@ -972,11 +929,24 @@
   }
 
   function formaterDaCompte(compte) {
-    const dateDa = compte?.dateDa || compte?.dateda || "";
-    const statuda = nettoyerTexteSimple(compte?.statuda || "");
+    const statuda = String(compte?.statuda || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "");
 
-    if (dateDa || statuda) {
-      return "DA du " + formaterDate(dateDa) + " (" + (statuda || "Non renseigné") + ")";
+    if (statuda === "encours") {
+      return compte?.dateDa
+        ? "DA en cours le " + formaterDate(compte.dateDa)
+        : "DA en cours";
+    }
+
+    if (compte?.dateRefusDa) {
+      return "DA refusée le " + formaterDate(compte.dateRefusDa);
+    }
+
+    if (compte?.dateDa) {
+      return "DA le " + formaterDate(compte.dateDa);
     }
 
     return "DA non transmise";
@@ -1002,9 +972,7 @@
       return "";
     }
 
-    const libellePoint = Number(points) === 1 ? "point club" : "points club";
-
-    return "Référent " + (statut || "Non classé") + " : " + String(points) + " " + libellePoint + " au " + formaterDate(date);
+    return (statut || "Non classé") + " - (" + String(points) + " points au " + formaterDate(date) + ")";
   }
 
   function formaterReglementCompte(label, value) {
