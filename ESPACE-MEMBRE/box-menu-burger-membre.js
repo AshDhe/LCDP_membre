@@ -214,6 +214,219 @@
     });
   }
 
+  function normaliserStatutabo(value) {
+    const statut = String(value || "").trim().toLowerCase();
+
+    return ["paye", "impaye", "cree", "cancd"].includes(statut) ? statut : "";
+  }
+
+  function dateIsoDepuisValeurBurger(value) {
+    const texte = String(value || "").trim();
+    const match = texte.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+    if (match) {
+      return match[1] + "-" + match[2] + "-" + match[3];
+    }
+
+    const date = new Date(texte);
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    return dateIsoParisBurger(date);
+  }
+
+  function dateIsoParisBurger(date) {
+    const morceaux = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(date);
+
+    const valeur = (type) => morceaux.find((item) => item.type === type)?.value || "";
+
+    return valeur("year") + "-" + valeur("month") + "-" + valeur("day");
+  }
+
+  function dateIsoAujourdhuiParisBurger() {
+    return dateIsoParisBurger(new Date());
+  }
+
+  function obtenirEtatAffichageInviterBurger(source) {
+    const statutabo = normaliserStatutabo(source?.statutabo || source?.statutAbo || "");
+    const fin = dateIsoDepuisValeurBurger(source?.fin || source?.finabo || source?.dateFin || source?.datefin || "");
+    const aujourdHui = dateIsoAujourdhuiParisBurger();
+
+    if (!statutabo || !fin) {
+      return { visible: false };
+    }
+
+    if (statutabo === "paye" && fin >= aujourdHui) {
+      return {
+        visible: true,
+        actif: true,
+        label: "Inviter",
+        statutabo,
+        fin
+      };
+    }
+
+    if (statutabo === "impaye" && fin >= aujourdHui) {
+      return {
+        visible: true,
+        actif: false,
+        label: "Inviter (suspendu : abonnement à payer)",
+        message: "Abonnement suspendu. Vous ne pouvez pas inviter de membre.",
+        peutPayer: true,
+        italique: true,
+        statutabo,
+        fin
+      };
+    }
+
+    if (statutabo === "cree" && fin >= aujourdHui) {
+      return {
+        visible: true,
+        actif: false,
+        label: "Inviter (inactif : abonnement à payer)",
+        message: "Abonnement inactif. Vous ne pouvez pas inviter de membre.",
+        peutPayer: true,
+        italique: false,
+        statutabo,
+        fin
+      };
+    }
+
+    if (statutabo === "cancd" && fin === aujourdHui) {
+      return {
+        visible: true,
+        actif: false,
+        label: "Inviter (inactif : abonnement annulé)",
+        message: "Abonnement inactif. Vous ne pouvez pas inviter de membre.",
+        peutPayer: false,
+        italique: false,
+        statutabo,
+        fin
+      };
+    }
+
+    return { visible: false };
+  }
+
+  function extraireDonneesInviterBurger(source) {
+    const donnees = source && typeof source === "object" ? source : {};
+    const abonnement = trouverAbonnementInviterBurger(donnees);
+    const cible = abonnement || donnees;
+
+    return {
+      statutabo: normaliserStatutabo(
+        cible.statutabo ||
+        cible.statutAbo ||
+        cible.statutabonnement ||
+        cible.statutAbonnement ||
+        ""
+      ),
+      fin: cible.fin || cible.finabo || cible.dateFin || cible.datefin || ""
+    };
+  }
+
+  function trouverAbonnementInviterBurger(donnees) {
+    const candidats = [];
+
+    [
+      donnees.abonnementEnCours,
+      donnees.abonnementActuel,
+      donnees.abonnement,
+      donnees.abo
+    ].forEach((item) => {
+      if (item && typeof item === "object") candidats.push(item);
+    });
+
+    if (Array.isArray(donnees.abonnements)) {
+      donnees.abonnements.forEach((item) => {
+        if (item && typeof item === "object") candidats.push(item);
+      });
+    }
+
+    let meilleur = null;
+    let prioriteMeilleur = 99;
+
+    candidats.forEach((item) => {
+      const etat = obtenirEtatAffichageInviterBurger(item);
+
+      if (!etat.visible) return;
+
+      const priorite = etat.actif
+        ? 1
+        : etat.statutabo === "impaye"
+          ? 2
+          : etat.statutabo === "cree"
+            ? 3
+            : 4;
+
+      if (priorite < prioriteMeilleur) {
+        meilleur = item;
+        prioriteMeilleur = priorite;
+      }
+    });
+
+    return meilleur;
+  }
+
+  function creerItemInviterBurger(contexte) {
+    const etatInviter = obtenirEtatAffichageInviterBurger(contexte);
+
+    if (!etatInviter.visible) return null;
+
+    return {
+      label: etatInviter.label,
+      action: "inviter",
+      etatInviter,
+      italique: etatInviter.italique === true
+    };
+  }
+
+  async function completerContexteInviterBurger(contexte) {
+    if (!contexte) return;
+
+    if (normaliserStatutabo(contexte.statutabo) && dateIsoDepuisValeurBurger(contexte.fin)) {
+      return;
+    }
+
+    const donnees = await chargerDonneesInviterDepuisIndexBurger();
+
+    if (!donnees) return;
+
+    contexte.statutabo = donnees.statutabo || contexte.statutabo || "";
+    contexte.fin = donnees.fin || contexte.fin || "";
+  }
+
+  async function chargerDonneesInviterDepuisIndexBurger() {
+    if (!ENDPOINT_INDEX_MEMBRE) return null;
+
+    try {
+      const reponse = await fetch(ENDPOINT_INDEX_MEMBRE + "/index", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+      const data = await reponse.json().catch(() => null);
+
+      if (!reponse.ok || !data || data.success !== true || data.connected !== true) {
+        return null;
+      }
+
+      return extraireDonneesInviterBurger(data);
+    } catch (error) {
+      console.error("Erreur vérification invitation burger :", error);
+      return null;
+    }
+  }
+
   function obtenirLightboxSlotBurger() {
     let slot = document.getElementById("lcdp-lightbox-slot");
 
@@ -248,6 +461,26 @@
     texte.textContent = message || "";
     boutonOk.textContent = options.boutonOk || "OK";
 
+    const boutonActionConfiguration = options.boutonAction && typeof options.boutonAction === "object"
+      ? options.boutonAction
+      : null;
+    let boutonAction = null;
+
+    if (boutonActionConfiguration) {
+      boutonAction = document.createElement("button");
+      boutonAction.type = "button";
+      boutonAction.className = "lcdp-button " + (boutonActionConfiguration.style || "lcdp-button-mini");
+      boutonAction.textContent = boutonActionConfiguration.label || "Payer";
+
+      const zoneActions = boutonOk.parentElement || texte.parentElement || alerte;
+
+      if (boutonOk.parentElement === zoneActions) {
+        zoneActions.insertBefore(boutonAction, boutonOk);
+      } else {
+        zoneActions.appendChild(boutonAction);
+      }
+    }
+
     return new Promise((resolve) => {
       let resolu = false;
 
@@ -268,6 +501,17 @@
         event.stopPropagation();
         fermer(true);
       });
+      if (boutonAction) {
+        boutonAction.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          fermer("action");
+
+          if (typeof boutonActionConfiguration.action === "function") {
+            boutonActionConfiguration.action();
+          }
+        });
+      }
       alerte.addEventListener("click", (event) => {
         event.stopPropagation();
         if (event.target === alerte) fermer(false);
@@ -330,11 +574,16 @@
     return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
   }
 
-  function creerBoutonActionMenu(label, action) {
+  function creerBoutonActionMenu(label, action, options = {}) {
     const bouton = document.createElement("button");
     bouton.type = "button";
     bouton.className = "lcdp-box-menu-burger__button-link";
     bouton.textContent = label;
+
+    if (options.italique === true) {
+      bouton.classList.add("lcdp-text-italic");
+    }
+
     bouton.addEventListener("click", action);
     return bouton;
   }
@@ -353,11 +602,11 @@
     if (item.action === "inviter") {
       return creerBoutonActionMenu(item.label, () => {
         fermerMenu(boutonBurger, navBurger);
-        gererClicInviterBurger(contexte).catch((error) => {
+        gererClicInviterBurger(contexte, item.etatInviter).catch((error) => {
           console.error(error);
           afficherAlerteBurger(error.message || "Erreur technique. Merci de réessayer.").catch(console.error);
         });
-      });
+      }, { italique: item.italique === true });
     }
 
     if (item.action === "abonnement") {
@@ -420,23 +669,38 @@
     window.location.href = construireUrlMembre(PAGE_ABONNEMENT_MEMBRE);
   }
 
-  async function gererClicInviterBurger(contexte) {
-    if (!contexte?.abonne && !membreAbonneDepuisCookie()) {
-      await afficherAlerteBurger("Vous devez être membre abonné pour utiliser la fonction INVITER");
+  async function gererClicInviterBurger(contexte, etatInviter = null) {
+    const etat = etatInviter || obtenirEtatAffichageInviterBurger(contexte);
+
+    if (!etat.visible) return;
+
+    if (etat.actif === true) {
+      window.location.href = construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html");
       return;
     }
 
-    if (suspensionPourNonPaiementBurger(contexte)) {
-      await redirigerVersAbonnementPourRegularisationBurger();
-      return;
+    await afficherAlerteInviterBloqueBurger(etat);
+  }
+
+  async function afficherAlerteInviterBloqueBurger(etatInviter) {
+    const options = {};
+
+    if (etatInviter?.peutPayer === true) {
+      options.boutonAction = {
+        label: "Payer",
+        style: "lcdp-button-mini lcdp-button-mini-orange",
+        action: ouvrirPageAbonnementBurgerNouvelOnglet
+      };
     }
 
-    if (contexte?.abonnementSuspendu === true) {
-      await afficherAlerteBurger("Votre abonnement est suspendu.");
-      return;
-    }
+    await afficherAlerteBurger(
+      etatInviter?.message || "Abonnement inactif. Vous ne pouvez pas inviter de membre.",
+      options
+    );
+  }
 
-    window.location.href = construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html");
+  function ouvrirPageAbonnementBurgerNouvelOnglet() {
+    window.open(construireUrlMembre(PAGE_ABONNEMENT_MEMBRE), "_blank", "noopener");
   }
 
   async function ouvrirDialogueBoutonsBurger(options) {
@@ -712,10 +976,14 @@
       abonne,
       abonnementSuspendu: valeurBooleenneVraie(etatMembre.abonnementSuspendu || etatMembre.suspendu),
       paiementSuspension: etatMembre.paiementSuspension || etatMembre.paiementRegularisation || null,
+      statutabo: normaliserStatutabo(etatMembre.statutabo || etatMembre.statutAbo || ""),
+      fin: etatMembre.fin || etatMembre.finabo || etatMembre.dateFin || etatMembre.datefin || "",
       statudaConnue: Object.prototype.hasOwnProperty.call(etatMembre, "statuda"),
       statuda: normaliserStatuda(etatMembre.statuda),
       datenext: etatMembre.datenext || null
     };
+
+    await completerContexteInviterBurger(contexte);
 
     slot.innerHTML = "";
 
@@ -737,11 +1005,16 @@
         label: "La Clé",
         espace: "membre",
         href: "/ESPACE-MEMBRE/accueil-membre.html"
-      },
-      {
-        label: "Inviter",
-        action: "inviter"
-      },
+      }
+    ];
+
+    const itemInviter = creerItemInviterBurger(contexte);
+
+    if (itemInviter) {
+      liens.push(itemInviter);
+    }
+
+    liens.push(
       {
         label: "Mon compte",
         espace: "membre",
@@ -769,7 +1042,7 @@
         label: "Déconnexion",
         action: "deconnexion"
       }
-    ];
+    );
 
     listeBurger.innerHTML = "";
 
