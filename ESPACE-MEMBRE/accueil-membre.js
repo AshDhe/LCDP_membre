@@ -28,6 +28,9 @@
     emailparrain: "",
     parrainRenseigne: false,
     aReservationEnCours: false,
+    statutabo: "",
+    debut: "",
+    fin: "",
     abonnementSuspendu: false,
     paiementSuspension: null,
     statuda: null,
@@ -93,19 +96,103 @@
       throw new Error(messageErreurApi(resultat, "Impossible de vérifier votre session membre."));
     }
 
+    const abonnementEnCours = extraireAbonnementEnCours(resultat);
+    const affichageStatut = determinerAffichageStatutMembre(abonnementEnCours);
+
     return {
       prenommembre: nettoyerPrenom(resultat.prenommembre),
-      abonne: valeurBooleenneVraie(resultat.abonne),
+      abonne: affichageStatut.abonne,
       emailparrain: nettoyerEmail(resultat.emailparrain),
       parrainRenseigne: valeurBooleenneVraie(resultat.parrainRenseigne),
       aReservationEnCours: valeurBooleenneVraie(resultat.aReservationEnCours || resultat.aReservationValidable),
       reservationEnCours: resultat.reservationEnCours || resultat.reservationValidable || null,
-      abonnementSuspendu: valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu),
+      statutabo: abonnementEnCours?.statutabo || "",
+      debut: abonnementEnCours?.debut || "",
+      fin: abonnementEnCours?.fin || "",
+      abonnementSuspendu: affichageStatut.suspendu,
+      abonnementAnnule: affichageStatut.annule,
+      mentionAbonnement: affichageStatut.mention,
       paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null,
       statuda: resultat.statuda || null,
       dateda: resultat.dateda || null,
       datenext: resultat.datenext || null
     };
+  }
+
+  function extraireAbonnementEnCours(resultat) {
+    const candidats = [
+      resultat?.abonnementEnCours,
+      resultat?.abonnementCourant,
+      resultat?.abonnementActuel,
+      resultat?.abonnement
+    ].filter((item) => item && typeof item === "object");
+
+    if (resultat && (resultat.statutabo || resultat.debut || resultat.fin)) {
+      candidats.push({
+        statutabo: resultat.statutabo,
+        debut: resultat.debut,
+        fin: resultat.fin
+      });
+    }
+
+    if (Array.isArray(resultat?.abonnements)) {
+      candidats.push(...resultat.abonnements.filter((item) => item && typeof item === "object"));
+    }
+
+    return candidats.find((abonnement) => abonnementEnCoursSelonDates(abonnement)) || null;
+  }
+
+  function determinerAffichageStatutMembre(abonnement) {
+    if (!abonnement || !abonnementEnCoursSelonDates(abonnement)) {
+      return { abonne: false, suspendu: false, annule: false, mention: "" };
+    }
+
+    const statutabo = normaliserStatutabo(abonnement.statutabo);
+
+    if (statutabo === "paye") {
+      return { abonne: true, suspendu: false, annule: false, mention: "" };
+    }
+
+    if (statutabo === "impaye") {
+      return { abonne: true, suspendu: true, annule: false, mention: "[Votre abonnement est suspendu (non payé)]" };
+    }
+
+    if (statutabo === "cancd") {
+      return { abonne: true, suspendu: false, annule: true, mention: "[Votre abonnement est annulé]" };
+    }
+
+    return { abonne: false, suspendu: false, annule: false, mention: "" };
+  }
+
+  function abonnementEnCoursSelonDates(abonnement) {
+    const debut = dateIsoDepuisValeurStatut(abonnement?.debut);
+    const fin = dateIsoDepuisValeurStatut(abonnement?.fin);
+    const aujourdHui = dateIsoAujourdhuiParisStatut();
+
+    return Boolean(debut && fin && debut <= aujourdHui && fin >= aujourdHui);
+  }
+
+  function normaliserStatutabo(value) {
+    const statut = String(value || "").trim().toLowerCase();
+    return ["paye", "impaye", "cancd", "cree"].includes(statut) ? statut : "";
+  }
+
+  function dateIsoDepuisValeurStatut(value) {
+    const texte = String(value || "").trim();
+    const match = texte.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return match ? match[1] + "-" + match[2] + "-" + match[3] : "";
+  }
+
+  function dateIsoAujourdhuiParisStatut() {
+    const morceaux = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(new Date());
+
+    const valeur = (type) => morceaux.find((item) => item.type === type)?.value || "";
+    return valeur("year") + "-" + valeur("month") + "-" + valeur("day");
   }
 
   function afficherEtatMembre(etat) {
@@ -124,16 +211,17 @@
         : "Bonjour, que voulez-vous faire ?";
     }
 
-    afficherSuspensionMembre(etat);
+    afficherMentionAbonnementMembre(etat);
   }
 
-  function afficherSuspensionMembre(etat) {
+  function afficherMentionAbonnementMembre(etat) {
     const mention = document.getElementById("mention-statut-membre");
     if (!mention || !mention.parentNode) return;
 
     let bloc = document.getElementById("mention-suspension-abonnement-membre");
+    const texteMention = etat?.mentionAbonnement || "";
 
-    if (!etat || etat.abonnementSuspendu !== true) {
+    if (!texteMention) {
       if (bloc) bloc.remove();
       return;
     }
@@ -145,26 +233,7 @@
       mention.insertAdjacentElement("afterend", bloc);
     }
 
-    bloc.innerHTML = "";
-
-    const delaiPaiementDepasse = paiementSuspensionDelaiDepasse(etat?.paiementSuspension);
-
-    const texte = document.createElement("span");
-    texte.textContent = delaiPaiementDepasse
-      ? "[Votre abonnement est annulé (non payé)]"
-      : "[Votre abonnement est suspendu (non payé)]";
-    bloc.appendChild(texte);
-
-    const bouton = document.createElement("button");
-    bouton.type = "button";
-    bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
-    bouton.classList.toggle("lcdp-workflow-micro-action--paiement-depasse", delaiPaiementDepasse);
-    bouton.setAttribute("aria-disabled", delaiPaiementDepasse ? "true" : "false");
-    bouton.textContent = "Payer";
-    bouton.addEventListener("click", () => {
-      gererPaiementSuspensionMembre(etat).catch(console.error);
-    });
-    bloc.appendChild(bouton);
+    bloc.textContent = texteMention;
   }
 
   async function gererPaiementSuspensionMembre(etat) {
@@ -447,19 +516,16 @@
       {
         label: "RÉSERVER",
         style: "lcdp-button-accueil lcdp-button-accueil-orange",
-        variante: "reserver",
         action: () => redirigerMembre("/ESPACE-MEMBRE/reserver-membre.html")
       },
       {
         label: "PLANNING",
         style: "lcdp-button-accueil lcdp-button-accueil-green",
-        variante: "planning",
         action: () => redirigerMembre("/ESPACE-MEMBRE/planning-membre.html")
       },
       {
         label: "OUVRIR",
         style: "lcdp-button-accueil lcdp-button-accueil-blue",
-        variante: "ouvrir",
         action: () => gererValidationPresence(etat)
       }
     ];
@@ -473,7 +539,7 @@
       bouton.addEventListener("click", () => {
         Promise.resolve(configuration.action()).catch((error) => {
           console.error(error);
-          afficherAlerte(error.message || "Erreur technique. Merci de réessayer.", { variante: configuration.variante }).catch(console.error);
+          afficherAlerte(error.message || "Erreur technique. Merci de réessayer.").catch(console.error);
         });
       });
 
@@ -483,7 +549,7 @@
 
   async function gererValidationPresence(etat) {
     if (!etat.aReservationEnCours) {
-      await afficherAlerte("Vous n'avez pas de réservation en cours", { variante: "ouvrir" });
+      await afficherAlerte("Vous n'avez pas de réservation en cours");
       return;
     }
 
@@ -570,7 +636,7 @@
     redirigerPublic("/ESPACE-PUBLIC/accueil-public.html");
   }
 
-  async function afficherAlerte(message, options = {}) {
+  async function afficherAlerte(message) {
     const slot = document.getElementById("lcdp-lightbox-slot");
 
     if (!slot) return;
@@ -590,8 +656,6 @@
     }
 
     texte.textContent = message || "";
-
-    appliquerVarianteAlerteAccueil(alerte, options.variante);
 
     return new Promise((resolve) => {
       let resolu = false;
@@ -765,65 +829,6 @@
       script.onerror = () => reject(new Error("Script membre introuvable : " + chemin));
       document.body.appendChild(script);
     });
-  }
-
-  function assurerStyleAlerteAccueilMembre() {
-    if (document.getElementById("lcdp-style-alerte-accueil-membre")) {
-      return;
-    }
-
-    const style = document.createElement("style");
-    style.id = "lcdp-style-alerte-accueil-membre";
-    style.textContent = `
-      .lcdp-page-accueil-membre .lcdp-alerte-accueil-reserver [data-lcdp-alerte-ok] {
-        background: var(--lcdp-color-orange, #f2a23a);
-        border-color: var(--lcdp-color-orange, #f2a23a);
-        color: var(--lcdp-color-text, #1f2a24);
-      }
-
-      .lcdp-page-accueil-membre .lcdp-alerte-accueil-reserver [data-lcdp-alerte-ok]:hover {
-        background: var(--lcdp-color-orange-hover, #e89223);
-        border-color: var(--lcdp-color-orange-hover, #e89223);
-        color: var(--lcdp-color-text, #1f2a24);
-      }
-
-      .lcdp-page-accueil-membre .lcdp-alerte-accueil-planning [data-lcdp-alerte-ok] {
-        background: var(--lcdp-color-logo-green, #55733f);
-        border-color: var(--lcdp-color-logo-green, #55733f);
-        color: #ffffff;
-      }
-
-      .lcdp-page-accueil-membre .lcdp-alerte-accueil-planning [data-lcdp-alerte-ok]:hover {
-        background: var(--lcdp-color-primary, #234438);
-        border-color: var(--lcdp-color-primary, #234438);
-        color: #ffffff;
-      }
-
-      .lcdp-page-accueil-membre .lcdp-alerte-accueil-ouvrir [data-lcdp-alerte-ok] {
-        background: var(--lcdp-color-blue, #2f6fb3);
-        border-color: var(--lcdp-color-blue, #2f6fb3);
-        color: #ffffff;
-      }
-
-      .lcdp-page-accueil-membre .lcdp-alerte-accueil-ouvrir [data-lcdp-alerte-ok]:hover {
-        background: var(--lcdp-color-blue-hover, #255c96);
-        border-color: var(--lcdp-color-blue-hover, #255c96);
-        color: #ffffff;
-      }
-    `.trim();
-
-    document.head.appendChild(style);
-  }
-
-  function appliquerVarianteAlerteAccueil(alerte, variante) {
-    const variantesAutorisees = ["reserver", "planning", "ouvrir"];
-
-    if (!variantesAutorisees.includes(variante)) {
-      return;
-    }
-
-    assurerStyleAlerteAccueilMembre();
-    alerte.classList.add("lcdp-alerte-accueil-" + variante);
   }
 
   function construireEndpointApi(cleModerne, cleLegacy, cleCourte, sousDomaineWorker) {
