@@ -574,7 +574,7 @@
       deplacerChampDansSectionDa(form, sectionTelephone, "tel");
     }
 
-    const sectionRemboursement = creerSectionFormulaireDa(form, "Coordonnées bancaires de remboursement", "iban");
+    const sectionRemboursement = creerSectionFormulaireDa(form, "Coordonnées bancaires de remboursement *", "iban");
 
     if (sectionRemboursement) {
       deplacerChampDansSectionDa(form, sectionRemboursement, "iban");
@@ -585,7 +585,7 @@
       masquerLibelleChampDa(form, "rib");
     }
 
-    const sectionAdresseFacturation = creerSectionFormulaireDa(form, "Adresse de facturation", "adresse1");
+    const sectionAdresseFacturation = creerSectionFormulaireDa(form, "Adresse de facturation *", "adresse1");
 
     if (sectionAdresseFacturation) {
       deplacerChampDansSectionDa(form, sectionAdresseFacturation, "adresse1");
