@@ -502,7 +502,7 @@
       champs: [
         champLectureSeule("da-nom-membre", "nommembre", "", "text", "Déjà renseigné"),
         champLectureSeule("da-prenom-membre", "prenommembre", "", "text", "Déjà renseigné"),
-        champTexte("da-alias", "alias", "", true, "Indiquez ici un alias"),
+        champTexte("da-alias", "alias", "", false, "Indiquez ici un alias"),
         champLectureSeule("da-email-membre", "emailmembre", "", "email", "Déjà renseigné"),
         champTexte("da-tel", "tel", "N° de mobile personnel", true, "Numéro de téléphone mobile personnel", "tel", "numeric"),
         champTexte("da-autoquali", "autoquali", "Vos trois qualités", true, "Vos 3 qualités", "text", "text", 100),
@@ -525,12 +525,12 @@
           required: false
         },
         champEmailParrain(),
-        champTexte("da-iban", "iban", "", true, "IBAN remboursement", "text", "text"),
-        champTexte("da-swift", "swift", "", true, "BIC / SWIFT", "text", "text"),
-        champTexte("da-rib", "rib", "", true, "Nom sur votre RIB"),
-        champTexte("da-adressefacturation1", "adressefacturation1", "", false, "votre adresse", "text", "text"),
-        champTexte("da-adressefacturation2", "adressefacturation2", "", false, "votre adresse", "text", "text"),
-        champTexte("da-villecpfacturation", "villecpfacturation", "", false, "ville et code postal", "text", "text")
+        champTexte("da-iban", "iban", "", false, "IBAN remboursement", "text", "text"),
+        champTexte("da-swift", "swift", "", false, "BIC / SWIFT", "text", "text"),
+        champTexte("da-rib", "rib", "", false, "Nom sur votre RIB"),
+        champTexte("da-adresse1", "adresse1", "", true, "votre adresse", "text", "text"),
+        champTexte("da-adresse2", "adresse2", "", true, "votre adresse", "text", "text"),
+        champTexte("da-adresse3", "adresse3", "", false, "ville et code postal", "text", "text")
       ],
       bouton: {
         id: "bouton-transmettre-da",
@@ -585,15 +585,15 @@
       masquerLibelleChampDa(form, "rib");
     }
 
-    const sectionAdresseFacturation = creerSectionFormulaireDa(form, "Adresse de facturation", "adressefacturation1");
+    const sectionAdresseFacturation = creerSectionFormulaireDa(form, "Adresse de facturation", "adresse1");
 
     if (sectionAdresseFacturation) {
-      deplacerChampDansSectionDa(form, sectionAdresseFacturation, "adressefacturation1");
-      deplacerChampDansSectionDa(form, sectionAdresseFacturation, "adressefacturation2");
-      deplacerChampDansSectionDa(form, sectionAdresseFacturation, "villecpfacturation");
-      masquerLibelleChampDa(form, "adressefacturation1");
-      masquerLibelleChampDa(form, "adressefacturation2");
-      masquerLibelleChampDa(form, "villecpfacturation");
+      deplacerChampDansSectionDa(form, sectionAdresseFacturation, "adresse1");
+      deplacerChampDansSectionDa(form, sectionAdresseFacturation, "adresse2");
+      deplacerChampDansSectionDa(form, sectionAdresseFacturation, "adresse3");
+      masquerLibelleChampDa(form, "adresse1");
+      masquerLibelleChampDa(form, "adresse2");
+      masquerLibelleChampDa(form, "adresse3");
     }
 
     obtenirChampEtatCivilMajDa(form);
@@ -800,9 +800,9 @@
     remplirInput(form, "iban", membre.iban || "", false);
     remplirInput(form, "swift", membre.swift || "", false);
     remplirInput(form, "rib", membre.rib || "", false);
-    remplirInput(form, "adressefacturation1", membre.adressefacturation1 || membre.adresse1 || "", false);
-    remplirInput(form, "adressefacturation2", membre.adressefacturation2 || membre.adresse2 || "", false);
-    remplirInput(form, "villecpfacturation", membre.villecpfacturation || membre.villecp || "", false);
+    remplirInput(form, "adresse1", membre.adresse1 || membre.adressefacturation1 || "", false);
+    remplirInput(form, "adresse2", membre.adresse2 || membre.adressefacturation2 || "", false);
+    remplirInput(form, "adresse3", membre.adresse3 || membre.villecpfacturation || membre.villecp || "", false);
 
     ["autoquali", "autoloisir", "autonouschoisir"].forEach((name) => {
       const input = form.querySelector(`[name="${name}"]`);
@@ -932,9 +932,9 @@
       iban: valeurChamp(form, "iban").replace(/\s+/g, "").toUpperCase(),
       swift: valeurChamp(form, "swift").replace(/\s+/g, "").toUpperCase(),
       rib: valeurChamp(form, "rib"),
-      adressefacturation1: valeurChamp(form, "adressefacturation1"),
-      adressefacturation2: valeurChamp(form, "adressefacturation2"),
-      villecpfacturation: valeurChamp(form, "villecpfacturation"),
+      adresse1: valeurChamp(form, "adresse1"),
+      adresse2: valeurChamp(form, "adresse2"),
+      adresse3: valeurChamp(form, "adresse3"),
       regleclub_v1: true,
       regleapp_v1: true
     };
@@ -949,16 +949,17 @@
   }
 
   function verifierPayloadDa(payload) {
-    if (!payload.alias) return "Votre alias est obligatoire.";
     if (payload.emailparrain && !emailValide(payload.emailparrain)) return "L’adresse e-mail du parrain est invalide.";
     if (!/^\d{10}$/.test(payload.tel)) return "Votre numéro de mobile doit contenir 10 chiffres, sans espace.";
     if (!payload.autoquali) return "Vos trois qualités sont obligatoires.";
     if (!payload.autoloisir) return "Vos trois hobbies sont obligatoires.";
     if (!payload.autonouschoisir) return "Pourquoi La Clé du Parc ? est obligatoire.";
     if (payload.autoquali.length > 100 || payload.autoloisir.length > 100 || payload.autonouschoisir.length > 100) return "Les champs limités ne doivent pas dépasser 100 caractères.";
-    if (!/^[A-Z]{2}[0-9A-Z]{13,32}$/.test(payload.iban)) return "Votre IBAN est invalide.";
-    if (!/^[A-Z0-9]{8}([A-Z0-9]{3})?$/.test(payload.swift)) return "Le SWIFT de votre banque est invalide.";
-    if (!payload.rib) return "Le nom du titulaire selon RIB est obligatoire.";
+    if (!payload.iban && !payload.swift && !payload.rib) return "Les coordonnées bancaires de remboursement sont obligatoires.";
+    if (payload.iban && !/^[A-Z]{2}[0-9A-Z]{13,32}$/.test(payload.iban)) return "Votre IBAN est invalide.";
+    if (payload.swift && !/^[A-Z0-9]{8}([A-Z0-9]{3})?$/.test(payload.swift)) return "Le SWIFT de votre banque est invalide.";
+    if (!payload.adresse1) return "L’adresse de facturation est obligatoire.";
+    if (!payload.adresse2) return "Le deuxième champ d’adresse de facturation est obligatoire.";
 
     return "";
   }
