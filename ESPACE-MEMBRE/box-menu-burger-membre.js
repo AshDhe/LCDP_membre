@@ -888,17 +888,17 @@
     }
 
     if (statuda === "encours") {
-      await afficherAlerteBurger("Vous avez une DA en cours.");
+      await afficherAlerteBurger("Votre DA est en cours. Les abonnements sont accessibles après confirmation.");
       return;
     }
 
     if (statuda === "non") {
-      await afficherAlerteBurger("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(datenext) + ".");
+      await afficherAlerteBurger("Vous pouvez nous transmettre votre DA à partir du " + formaterDateDa(datenext) + ".");
       return;
     }
 
     if (!statudaConnue) {
-      await afficherAlerteBurger("Impossible de vérifier votre droit d'accès à l'abonnement. Merci de repasser par l'accueil membre.");
+      await afficherAlerteBurger("Impossible de vérifier techniquement votre accès aux abonnements. Faîtes votre demande depuis la page La Clé.");
       return;
     }
 
@@ -1035,7 +1035,7 @@
         href: "/ESPACE-PUBLIC/la-cle-du-parc.html"
       },
       {
-        label: "Changer de compte",
+        label: "Changer d'espace connecté",
         action: "changer-compte"
       },
       {
