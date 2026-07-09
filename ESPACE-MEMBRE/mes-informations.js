@@ -972,6 +972,18 @@
   }
 
   function formaterDaCompte(compte) {
+    const statuda = String(compte?.statuda || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "");
+
+    if (statuda === "encours") {
+      return compte?.dateDa
+        ? "DA en cours le " + formaterDate(compte.dateDa)
+        : "DA en cours";
+    }
+
     if (compte?.dateRefusDa) {
       return "DA refusée le " + formaterDate(compte.dateRefusDa);
     }
