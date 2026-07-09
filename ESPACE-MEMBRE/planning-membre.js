@@ -436,6 +436,7 @@
     const aujourdHui = dateAujourdhuiParis();
     const estPasse = jourMois.dateIso < aujourdHui;
     const estAujourdhui = jourMois.dateIso === aujourdHui;
+    const estDansAbonnementAvenir = !estPasse && dateDansPeriodeAbonnementMembre(jourMois.dateIso);
     let jourReservable = false;
 
     if (numero) numero.textContent = String(jourMois.jour);
@@ -443,6 +444,7 @@
     jour.dataset.date = jourMois.dateIso;
 
     if (estPasse) jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--past");
+    if (estDansAbonnementAvenir) jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--abonnement-avenir");
     if (estAujourdhui) jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--today");
 
     PLAGES.forEach((plage) => {
@@ -937,8 +939,16 @@
        Le contour bleu ne concerne que les réservations à venir hors période d'abonnement. */
     if (dateReservation < aujourdHui) return false;
 
-    return !etat.abonnements.some((abonnement) => {
-      return dateReservation >= abonnement.debut && dateReservation <= abonnement.fin;
+    return !dateDansPeriodeAbonnementMembre(dateReservation);
+  }
+
+  function dateDansPeriodeAbonnementMembre(dateIso) {
+    const date = String(dateIso || "").trim().slice(0, 10);
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+
+    return etat.abonnements.some((abonnement) => {
+      return date >= abonnement.debut && date <= abonnement.fin;
     });
   }
 
