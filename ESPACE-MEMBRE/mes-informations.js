@@ -96,7 +96,12 @@
       name: "parrainAffichage",
       label: "Parrain",
       type: "text",
-      key: "parrainAffichage"
+      key: "parrainAffichage",
+      action: {
+        id: "modifier-parrain-membre",
+        texte: "Modifier le parrain",
+        mode: "picto"
+      }
     },
     {
       section: "Participation au club",
@@ -958,7 +963,7 @@
 
   function formaterParrainAffichage(value) {
     const email = nettoyerEmail(value);
-    return "Parrain : " + (email || "Non renseigné");
+    return email || "Pas de parrain indiqué";
   }
 
   function formaterDepartementAffichage(value) {
