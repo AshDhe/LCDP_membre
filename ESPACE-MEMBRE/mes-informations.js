@@ -201,6 +201,7 @@
       zoneActions.hidden = true;
     }
 
+    injecterStylesMesInformations();
     ajouterTitresSectionsCompte();
     masquerLabelsCompte();
 
@@ -224,6 +225,59 @@
     });
 
     initialiserActionsModification();
+  }
+
+  function injecterStylesMesInformations() {
+    if (document.querySelector('style[data-lcdp-mes-informations-styles="true"]')) return;
+
+    const style = document.createElement("style");
+    style.dataset.lcdpMesInformationsStyles = "true";
+    style.textContent = `
+      #form-mes-informations-membre .lcdp-title-section {
+        margin: 1.15rem 0 0.55rem;
+      }
+
+      #form-mes-informations-membre [data-lcdp-box-champ-formulaire] + .lcdp-box-formulaire__actions,
+      #form-mes-informations-membre .lcdp-box-formulaire__actions {
+        margin-top: 0.55rem;
+        margin-bottom: 0.55rem;
+        padding-top: 0;
+      }
+
+      #form-mes-informations-membre .lcdp-box-formulaire__actions + [data-lcdp-box-champ-formulaire],
+      #form-mes-informations-membre .lcdp-box-formulaire__actions + .lcdp-title-section {
+        margin-top: 0.55rem;
+      }
+
+      @media (max-width: 767px) {
+        #mention-statut-membre {
+          margin-top: 0.35rem;
+          margin-bottom: 0.45rem;
+        }
+
+        #lcdp-mes-informations-slot {
+          margin-top: 0.25rem;
+        }
+
+        #form-mes-informations-membre {
+          margin-top: 0;
+        }
+
+        #form-mes-informations-membre .lcdp-title-section {
+          font-size: 1.25rem;
+          line-height: 1.2;
+          margin: 1rem 0 0.55rem;
+        }
+
+        #form-mes-informations-membre [data-lcdp-box-champ-formulaire] + .lcdp-box-formulaire__actions,
+        #form-mes-informations-membre .lcdp-box-formulaire__actions {
+          margin-top: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+      }
+    `;
+
+    document.head.appendChild(style);
   }
 
   function ajouterTitresSectionsCompte() {
@@ -672,7 +726,7 @@
   }
 
   function formaterMembreDepuis(value) {
-    return "Depuis le " + formaterDate(value);
+    return "Inscription le " + formaterDate(value);
   }
 
   function formaterDaCompte(compte) {
