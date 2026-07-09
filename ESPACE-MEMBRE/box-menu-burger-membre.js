@@ -9,6 +9,27 @@
     "W_INDEX_MEMBRE_URL",
     "index-membre-api"
   );
+  const ENDPOINT_DECONNEXION_MEMBRE = construireEndpointApiBurger(
+    "",
+    "W_DECONNEXION_URL",
+    "",
+    "deconnexion-membre-api"
+  );
+
+  const comptesPublicsBurgerMembre = {
+    membre: {
+      label: "Espace MEMBRE",
+      cheminConnexion: "/ESPACE-PUBLIC/connexion-membre.html?source=menu-mon-compte"
+    },
+    parc: {
+      label: "Espace PARC",
+      cheminConnexion: "/ESPACE-PUBLIC/connexion-parc.html?source=menu-mon-compte"
+    },
+    coach: {
+      label: "Espace COACH",
+      cheminConnexion: "/ESPACE-PUBLIC/connexion-coach.html?source=menu-mon-compte"
+    }
+  };
 
 
   function construireEndpointApiBurger(cleModerne, cleLegacy, cleCourte, sousDomaineWorker) {
@@ -86,6 +107,38 @@
 
   function buildUrl(base, path) {
     return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
+  }
+
+  function construireUrlConnexionBurger(compte) {
+    const configuration = comptesPublicsBurgerMembre[compte];
+
+    if (!configuration) {
+      return construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html?source=menu-mon-compte");
+    }
+
+    return construireUrlPublic(configuration.cheminConnexion);
+  }
+
+  function obtenirWorkerUserRouteurUrlBurger() {
+    if (CONFIG_BURGER_MEMBRE.workerUserRouteurUrl) {
+      return String(CONFIG_BURGER_MEMBRE.workerUserRouteurUrl).replace(/\/+$/, "");
+    }
+
+    if (CONFIG_BURGER_MEMBRE.WORKER_USER_ROUTEUR_URL) {
+      return String(CONFIG_BURGER_MEMBRE.WORKER_USER_ROUTEUR_URL).replace(/\/+$/, "");
+    }
+
+    if (typeof CONFIG_BURGER_MEMBRE.apiUrl === "function") {
+      return String(CONFIG_BURGER_MEMBRE.apiUrl("user-routeur-api") || "").replace(/\/+$/, "");
+    }
+
+    return "";
+  }
+
+  function messageErreurApiBurger(resultat, messageDefaut) {
+    return resultat && (resultat.message || resultat.error)
+      ? String(resultat.message || resultat.error)
+      : messageDefaut;
   }
 
   async function chargerFragmentObjet(chemin) {
@@ -277,36 +330,64 @@
     return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
   }
 
+  function creerBoutonActionMenu(label, action) {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "lcdp-box-menu-burger__button-link";
+    bouton.textContent = label;
+    bouton.addEventListener("click", action);
+    return bouton;
+  }
+
   function creerLienMenu(item, boutonBurger, navBurger, contexte) {
     if (item.action === "etre-invite") {
-      const bouton = document.createElement("button");
-      bouton.type = "button";
-      bouton.className = "lcdp-box-menu-burger__button-link";
-      bouton.textContent = item.label;
-
-      bouton.addEventListener("click", () => {
+      return creerBoutonActionMenu(item.label, () => {
         fermerMenu(boutonBurger, navBurger);
 
         if (typeof window.LCDP_gererEtreInviteMembre === "function") {
           window.LCDP_gererEtreInviteMembre().catch(console.error);
         }
       });
+    }
 
-      return bouton;
+    if (item.action === "inviter") {
+      return creerBoutonActionMenu(item.label, () => {
+        fermerMenu(boutonBurger, navBurger);
+        gererClicInviterBurger(contexte).catch((error) => {
+          console.error(error);
+          afficherAlerteBurger(error.message || "Erreur technique. Merci de réessayer.").catch(console.error);
+        });
+      });
     }
 
     if (item.action === "abonnement") {
-      const bouton = document.createElement("button");
-      bouton.type = "button";
-      bouton.className = "lcdp-box-menu-burger__button-link";
-      bouton.textContent = item.label;
-
-      bouton.addEventListener("click", async () => {
+      return creerBoutonActionMenu(item.label, () => {
         fermerMenu(boutonBurger, navBurger);
-        await gererClicAbonnementBurger(contexte, boutonBurger, navBurger);
+        gererClicAbonnementBurger(contexte, boutonBurger, navBurger).catch((error) => {
+          console.error(error);
+          afficherAlerteBurger(error.message || "Erreur technique. Merci de réessayer.").catch(console.error);
+        });
       });
+    }
 
-      return bouton;
+    if (item.action === "changer-compte") {
+      return creerBoutonActionMenu(item.label, () => {
+        fermerMenu(boutonBurger, navBurger);
+        ouvrirDialogueChangerCompteBurger().catch((error) => {
+          console.error("Erreur dialogue changement de compte :", error);
+          window.location.href = construireUrlConnexionBurger("membre");
+        });
+      });
+    }
+
+    if (item.action === "deconnexion") {
+      return creerBoutonActionMenu(item.label, () => {
+        fermerMenu(boutonBurger, navBurger);
+        gererDeconnexionBurger().catch((error) => {
+          console.error(error);
+          afficherAlerteBurger(error.message || "Erreur technique. Merci de réessayer.").catch(console.error);
+        });
+      });
     }
 
     const lien = document.createElement("a");
@@ -321,6 +402,199 @@
     });
 
     return lien;
+  }
+
+  function suspensionPourNonPaiementBurger(contexte) {
+    return Boolean(
+      contexte &&
+      contexte.abonnementSuspendu === true &&
+      contexte.paiementSuspension
+    );
+  }
+
+  async function redirigerVersAbonnementPourRegularisationBurger() {
+    const ok = await afficherAlerteBurger("Votre abonnement est suspendu (non payé). Vous allez être redirigé vers la page d’abonnement.");
+
+    if (!ok) return;
+
+    window.location.href = construireUrlMembre(PAGE_ABONNEMENT_MEMBRE);
+  }
+
+  async function gererClicInviterBurger(contexte) {
+    if (!contexte?.abonne && !membreAbonneDepuisCookie()) {
+      await afficherAlerteBurger("Vous devez être membre abonné pour utiliser la fonction INVITER");
+      return;
+    }
+
+    if (suspensionPourNonPaiementBurger(contexte)) {
+      await redirigerVersAbonnementPourRegularisationBurger();
+      return;
+    }
+
+    if (contexte?.abonnementSuspendu === true) {
+      await afficherAlerteBurger("Votre abonnement est suspendu.");
+      return;
+    }
+
+    window.location.href = construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html");
+  }
+
+  async function ouvrirDialogueBoutonsBurger(options) {
+    const slot = obtenirLightboxSlotBurger();
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    slot.appendChild(fragment);
+
+    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
+    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
+    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
+
+    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
+      slot.innerHTML = "";
+      throw new Error("Structure de dialogue bouton incomplète.");
+    }
+
+    titre.textContent = options.titre || "";
+    texte.textContent = options.texte || "";
+    actions.innerHTML = "";
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        slot.innerHTML = "";
+        resolve(valeur || null);
+      }
+
+      (options.boutons || []).forEach((configuration) => {
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "lcdp-button " + (configuration.style || "lcdp-button-primary");
+        bouton.textContent = configuration.label || "Valider";
+
+        bouton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          fermer(configuration.valeur || configuration.label || true);
+        });
+
+        actions.appendChild(bouton);
+      });
+
+      boutonFermer.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        fermer(null);
+      });
+
+      dialogue.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (event.target === dialogue) fermer(null);
+      });
+
+      document.addEventListener(
+        "keydown",
+        (event) => {
+          if (event.key === "Escape") fermer(null);
+        },
+        { once: true }
+      );
+    });
+  }
+
+  async function redirigerCompteBurger(compte) {
+    const workerUrl = obtenirWorkerUserRouteurUrlBurger();
+
+    if (!workerUrl) {
+      window.location.href = construireUrlConnexionBurger(compte);
+      return;
+    }
+
+    try {
+      const reponse = await fetch(workerUrl, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ compte })
+      });
+
+      if (!reponse.ok) {
+        throw new Error("Routeur utilisateur indisponible.");
+      }
+
+      const data = await reponse.json().catch(() => null);
+
+      if (data && data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+        return;
+      }
+
+      window.location.href = construireUrlConnexionBurger(compte);
+
+    } catch (error) {
+      console.error("Erreur routeur utilisateur :", error);
+      window.location.href = construireUrlConnexionBurger(compte);
+    }
+  }
+
+  async function ouvrirDialogueChangerCompteBurger() {
+    const confirmation = await ouvrirDialogueBoutonsBurger({
+      titre: "Espace connecté",
+      texte: "Choisissez votre espace",
+      boutons: Object.entries(comptesPublicsBurgerMembre).map(([compte, configuration]) => ({
+        label: configuration.label,
+        valeur: compte,
+        style: "lcdp-button-primary"
+      }))
+    });
+
+    if (!confirmation) return;
+
+    await redirigerCompteBurger(confirmation);
+  }
+
+  async function gererDeconnexionBurger() {
+    const confirmation = await ouvrirDialogueBoutonsBurger({
+      titre: "Confirmer la déconnexion",
+      texte: "Voulez-vous vous déconnecter de votre espace membre ?",
+      boutons: [
+        {
+          label: "Confirmer",
+          valeur: "confirmer",
+          style: "lcdp-button-primary"
+        }
+      ]
+    });
+
+    if (confirmation !== "confirmer") return;
+
+    if (!ENDPOINT_DECONNEXION_MEMBRE) {
+      throw new Error("Le service de déconnexion membre n’est pas configuré.");
+    }
+
+    const reponse = await fetch(ENDPOINT_DECONNEXION_MEMBRE + "/deconnexion", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
+    const resultat = await reponse.json().catch(() => null);
+
+    if (!reponse.ok || !resultat || resultat.success !== true) {
+      throw new Error(messageErreurApiBurger(resultat, "Impossible de fermer la session membre."));
+    }
+
+    window.location.href = construireUrlPublic("/ESPACE-PUBLIC/accueil-public.html");
   }
 
   async function gererClicAbonnementBurger(contexte, boutonBurger, navBurger) {
@@ -435,6 +709,9 @@
       ? valeurBooleenneVraie(etatMembre.abonne)
       : membreAbonneDepuisCookie();
     const contexte = {
+      abonne,
+      abonnementSuspendu: valeurBooleenneVraie(etatMembre.abonnementSuspendu || etatMembre.suspendu),
+      paiementSuspension: etatMembre.paiementSuspension || etatMembre.paiementRegularisation || null,
       statudaConnue: Object.prototype.hasOwnProperty.call(etatMembre, "statuda"),
       statuda: normaliserStatuda(etatMembre.statuda),
       datenext: etatMembre.datenext || null
@@ -457,45 +734,42 @@
 
     const liens = [
       {
-        label: "Accueil public",
-        espace: "public",
-        href: "/ESPACE-PUBLIC/accueil-public.html"
-      },
-      {
-        label: "Menu membre",
+        label: "La Clé",
         espace: "membre",
         href: "/ESPACE-MEMBRE/accueil-membre.html"
-      }
-    ];
-
-    if (!abonne) {
-      liens.push({
-        label: "Être invité(e)",
-        action: "etre-invite"
-      });
-    }
-
-    liens.push(
-      {
-        label: "Mes informations",
-        espace: "membre",
-        href: "/ESPACE-MEMBRE/mes-informations.html"
       },
       {
-        label: "Mes points",
+        label: "Inviter",
+        action: "inviter"
+      },
+      {
+        label: "Mon compte",
         espace: "membre",
-        href: "/ESPACE-MEMBRE/mes-points.html"
+        href: "/ESPACE-MEMBRE/mes-informations.html"
       },
       {
         label: "Abonnement",
         action: "abonnement"
       },
       {
-        label: "Actualité du club",
+        label: "Actualité",
         espace: "public",
         href: "/ESPACE-PUBLIC/actualite.html"
+      },
+      {
+        label: "Le club",
+        espace: "public",
+        href: "/ESPACE-PUBLIC/la-cle-du-parc.html"
+      },
+      {
+        label: "Changer de compte",
+        action: "changer-compte"
+      },
+      {
+        label: "Déconnexion",
+        action: "deconnexion"
       }
-    );
+    ];
 
     listeBurger.innerHTML = "";
 
