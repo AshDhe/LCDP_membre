@@ -500,10 +500,10 @@
       titre: "DA",
       sousTitre: "La Clé du Parc",
       champs: [
-        champLectureSeule("da-nom-membre", "nommembre", "Nom", "text", "Déjà renseigné"),
-        champLectureSeule("da-prenom-membre", "prenommembre", "Prénom", "text", "Déjà renseigné"),
-        champTexte("da-alias", "alias", "Alias", true, "Voulez-vous utiliser un alias dans l'application ? (modifiable ensuite)"),
-        champLectureSeule("da-email-membre", "emailmembre", "E-mail", "email", "Déjà renseigné"),
+        champLectureSeule("da-nom-membre", "nommembre", "", "text", "Déjà renseigné"),
+        champLectureSeule("da-prenom-membre", "prenommembre", "", "text", "Déjà renseigné"),
+        champTexte("da-alias", "alias", "", true, "Indiquez ici un alias"),
+        champLectureSeule("da-email-membre", "emailmembre", "", "email", "Déjà renseigné"),
         champTexte("da-tel", "tel", "N° de mobile personnel", true, "Numéro de téléphone mobile personnel", "tel", "numeric"),
         champTexte("da-autoquali", "autoquali", "Vos trois qualités", true, "Vos 3 qualités", "text", "text", 100),
         champTexte("da-autoloisir", "autoloisir", "Vos trois hobbies", true, "Vos 3 loisirs", "text", "text", 100),
@@ -525,9 +525,12 @@
           required: false
         },
         champEmailParrain(),
-        champTexte("da-iban", "iban", "Votre IBAN", true, "IBAN remboursement", "text", "text"),
-        champTexte("da-swift", "swift", "SWIFT de votre banque", true, "BIC / SWIFT", "text", "text"),
-        champTexte("da-rib", "rib", "Nom du titulaire selon RIB", true, "Titulaire du RIB")
+        champTexte("da-iban", "iban", "", true, "IBAN remboursement", "text", "text"),
+        champTexte("da-swift", "swift", "", true, "BIC / SWIFT", "text", "text"),
+        champTexte("da-rib", "rib", "", true, "Nom sur votre RIB"),
+        champTexte("da-adressefacturation1", "adressefacturation1", "", false, "votre adresse", "text", "text"),
+        champTexte("da-adressefacturation2", "adressefacturation2", "", false, "votre adresse", "text", "text"),
+        champTexte("da-villecpfacturation", "villecpfacturation", "", false, "ville et code postal", "text", "text")
       ],
       bouton: {
         id: "bouton-transmettre-da",
@@ -559,20 +562,38 @@
       ajouterBoutonMajEtatCivilDa(form, sectionEtatCivil, wrapperNom, wrapperPrenom);
       deplacerChampDansSectionDa(form, sectionEtatCivil, "alias");
       deplacerChampDansSectionDa(form, sectionEtatCivil, "emailmembre");
+      masquerLibelleChampDa(form, "nommembre");
+      masquerLibelleChampDa(form, "prenommembre");
+      masquerLibelleChampDa(form, "alias");
+      masquerLibelleChampDa(form, "emailmembre");
     }
 
-    const sectionTelephone = creerSectionFormulaireDa(form, "Numéro de téléphone mobile *", "tel");
+    const sectionTelephone = creerSectionFormulaireDa(form, "", "tel");
 
     if (sectionTelephone) {
       deplacerChampDansSectionDa(form, sectionTelephone, "tel");
     }
 
-    const sectionRemboursement = creerSectionFormulaireDa(form, "Coordonnées de remboursement", "iban");
+    const sectionRemboursement = creerSectionFormulaireDa(form, "Coordonnées bancaires de remboursement", "iban");
 
     if (sectionRemboursement) {
       deplacerChampDansSectionDa(form, sectionRemboursement, "iban");
       deplacerChampDansSectionDa(form, sectionRemboursement, "swift");
       deplacerChampDansSectionDa(form, sectionRemboursement, "rib");
+      masquerLibelleChampDa(form, "iban");
+      masquerLibelleChampDa(form, "swift");
+      masquerLibelleChampDa(form, "rib");
+    }
+
+    const sectionAdresseFacturation = creerSectionFormulaireDa(form, "Adresse de facturation", "adressefacturation1");
+
+    if (sectionAdresseFacturation) {
+      deplacerChampDansSectionDa(form, sectionAdresseFacturation, "adressefacturation1");
+      deplacerChampDansSectionDa(form, sectionAdresseFacturation, "adressefacturation2");
+      deplacerChampDansSectionDa(form, sectionAdresseFacturation, "villecpfacturation");
+      masquerLibelleChampDa(form, "adressefacturation1");
+      masquerLibelleChampDa(form, "adressefacturation2");
+      masquerLibelleChampDa(form, "villecpfacturation");
     }
 
     obtenirChampEtatCivilMajDa(form);
@@ -586,10 +607,12 @@
     const section = document.createElement("section");
     section.className = "lcdp-da-formulaire-section";
 
-    const h3 = document.createElement("h3");
-    h3.className = "lcdp-da-formulaire-section__titre";
-    h3.textContent = titre;
-    section.appendChild(h3);
+    if (titre) {
+      const h3 = document.createElement("h3");
+      h3.className = "lcdp-da-formulaire-section__titre";
+      h3.textContent = titre;
+      section.appendChild(h3);
+    }
 
     reference.parentNode.insertBefore(section, reference);
 
@@ -619,6 +642,20 @@
       input.closest("label") ||
       input.parentElement
     );
+  }
+
+  function masquerLibelleChampDa(form, name) {
+    const input = form.querySelector(`[name="${name}"]`);
+    const wrapper = trouverWrapperChampDa(form, name);
+
+    if (!input || !wrapper) return;
+
+    const label = wrapper.querySelector(`label[for="${input.id}"]`) || wrapper.querySelector(".lcdp-box-champ-formulaire__label");
+
+    if (label) {
+      label.textContent = "";
+      label.hidden = true;
+    }
   }
 
   function ajouterBoutonMajEtatCivilDa(form, section, wrapperNom, wrapperPrenom) {
@@ -763,6 +800,9 @@
     remplirInput(form, "iban", membre.iban || "", false);
     remplirInput(form, "swift", membre.swift || "", false);
     remplirInput(form, "rib", membre.rib || "", false);
+    remplirInput(form, "adressefacturation1", membre.adressefacturation1 || membre.adresse1 || "", false);
+    remplirInput(form, "adressefacturation2", membre.adressefacturation2 || membre.adresse2 || "", false);
+    remplirInput(form, "villecpfacturation", membre.villecpfacturation || membre.villecp || "", false);
 
     ["autoquali", "autoloisir", "autonouschoisir"].forEach((name) => {
       const input = form.querySelector(`[name="${name}"]`);
@@ -892,6 +932,9 @@
       iban: valeurChamp(form, "iban").replace(/\s+/g, "").toUpperCase(),
       swift: valeurChamp(form, "swift").replace(/\s+/g, "").toUpperCase(),
       rib: valeurChamp(form, "rib"),
+      adressefacturation1: valeurChamp(form, "adressefacturation1"),
+      adressefacturation2: valeurChamp(form, "adressefacturation2"),
+      villecpfacturation: valeurChamp(form, "villecpfacturation"),
       regleclub_v1: true,
       regleapp_v1: true
     };

@@ -202,6 +202,7 @@
     }
 
     ajouterTitresSectionsCompte();
+    masquerLabelsCompte();
 
     champsCompte.forEach((champ) => {
       const input = document.getElementById(champ.id);
@@ -243,6 +244,36 @@
       blocChamp.parentNode.insertBefore(titre, blocChamp);
       sectionsAjoutees.add(champ.section);
     });
+  }
+
+  function masquerLabelsCompte() {
+    champsCompte.forEach((champ) => {
+      masquerLabelChampCompte(champ.id, champ.label || champ.name || "Information");
+    });
+  }
+
+  function masquerLabelChampCompte(champId, ariaLabel) {
+    const input = document.getElementById(champId);
+    const champ = input ? input.closest("[data-lcdp-box-champ-formulaire]") : null;
+
+    if (!input || !champ) return;
+
+    const label = champ.querySelector(`label[for="${champId}"]`);
+
+    if (label) {
+      label.textContent = "";
+      label.hidden = true;
+      label.setAttribute("aria-hidden", "true");
+    }
+
+    const zoneLabel = champ.querySelector("[data-lcdp-champ-label-zone]");
+
+    if (zoneLabel) {
+      zoneLabel.hidden = true;
+      zoneLabel.setAttribute("aria-hidden", "true");
+    }
+
+    input.setAttribute("aria-label", ariaLabel || "Information");
   }
 
   function marquerChampLectureSeuleInfo(champId) {
@@ -698,6 +729,7 @@
 
     const compteAffiche = {
       ...compteMembreActuel,
+      alias: compteMembreActuel.alias || "alias non renseigné",
       membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
       daAffichage: formaterDaCompte(compteMembreActuel),
       statutAffichage: formaterStatutCompte(compteMembreActuel.statut),
@@ -772,7 +804,7 @@
 
       remplirChamp("champ-nom-membre", compteMembreActuel.nom);
       remplirChamp("champ-prenom-membre", compteMembreActuel.prenom);
-      remplirChamp("champ-alias-membre", compteMembreActuel.alias);
+      remplirChamp("champ-alias-membre", compteMembreActuel.alias || "alias non renseigné");
 
       await afficherAlerte(messageErreurApi(resultat, "Votre état civil est enregistré."));
     } catch (error) {
