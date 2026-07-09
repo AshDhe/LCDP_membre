@@ -34,8 +34,13 @@
   let pageInitialisee = false;
   let emailMembreActuel = "";
 
+  const PAGE_POINTS_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-points.html");
+
+  let compteMembreActuel = null;
+
   const champsCompte = [
     {
+      section: "Etat civil",
       id: "champ-nom-membre",
       name: "nom",
       label: "Nom",
@@ -43,6 +48,7 @@
       key: "nom"
     },
     {
+      section: "Etat civil",
       id: "champ-prenom-membre",
       name: "prenom",
       label: "Prénom",
@@ -50,6 +56,19 @@
       key: "prenom"
     },
     {
+      section: "Etat civil",
+      id: "champ-alias-membre",
+      name: "alias",
+      label: "Alias",
+      type: "text",
+      key: "alias",
+      action: {
+        id: "modifier-etat-civil-membre",
+        texte: "Modifier"
+      }
+    },
+    {
+      section: "Etat civil",
       id: "champ-email-membre",
       name: "email",
       label: "E-mail",
@@ -57,53 +76,52 @@
       key: "email",
       action: {
         id: "modifier-email-membre",
-        texte: "Modifier mon e-mail"
+        texte: "Modifier"
       }
     },
     {
-      id: "champ-date-creation-membre",
-      name: "membreDepuis",
-      label: "Date d’inscription",
+      section: "Participation au club",
+      id: "champ-membre-depuis",
+      name: "membreDepuisAffichage",
+      label: "Depuis",
       type: "text",
-      key: "membreDepuis",
-      formatter: formaterDate
+      key: "membreDepuisAffichage"
     },
     {
+      section: "Participation au club",
+      id: "champ-da-membre",
+      name: "daAffichage",
+      label: "DA",
+      type: "text",
+      key: "daAffichage"
+    },
+    {
+      section: "Participation au club",
       id: "champ-statut-membre",
-      name: "statut",
-      label: "Statut",
+      name: "statutAffichage",
+      label: "Membre",
       type: "text",
-      key: "statut"
+      key: "statutAffichage"
     },
     {
-      id: "champ-parrain-membre",
-      name: "parrain",
-      label: "Parrain",
+      section: "Participation au club",
+      id: "champ-points-club-membre",
+      name: "pointsClubAffichage",
+      label: "Points club",
       type: "text",
-      key: "parrain",
+      key: "pointsClubAffichage",
       action: {
-        id: "modifier-parrain-membre",
-        texte: "Modifier mon parrain"
+        id: "voir-points-membre",
+        texte: "Voir mes points"
       }
     },
     {
-      id: "champ-departement-membre",
-      name: "departement",
-      label: "Département",
-      type: "text",
-      key: "departement",
-      action: {
-        id: "modifier-departement-membre",
-        texte: "Modifier mon département"
-      }
-    },
-    {
+      section: "Acceptation du règlement",
       id: "champ-reglement-club",
-      name: "reglementClub",
-      label: "Date d'acceptation du règlement (club)",
+      name: "reglementClubAffichage",
+      label: "Club",
       type: "text",
-      key: "reglementClub",
-      formatter: formaterDate,
+      key: "reglementClubAffichage",
       lien: {
         texteAvant: "Lire le ",
         texteLien: "règlement du club",
@@ -111,12 +129,12 @@
       }
     },
     {
+      section: "Acceptation du règlement",
       id: "champ-reglement-application",
-      name: "reglementApplication",
-      label: "Date d'acceptation du règlement (application)",
+      name: "reglementApplicationAffichage",
+      label: "Application",
       type: "text",
-      key: "reglementApplication",
-      formatter: formaterDate,
+      key: "reglementApplicationAffichage",
       lien: {
         texteAvant: "Lire le ",
         texteLien: "règlement de l'application",
@@ -153,7 +171,7 @@
       id: "form-mes-informations-membre",
       ariaLabel: "Informations du compte membre",
       titre: "",
-      sousTitre: "informations liées à votre compte membre",
+      sousTitre: "",
       champs: champsCompte.map((champ) => ({
         id: champ.id,
         name: champ.name,
@@ -172,10 +190,18 @@
       titreFormulaire.hidden = true;
     }
 
+    const sousTitreFormulaire = form.querySelector("[data-lcdp-formulaire-subtitle], [data-lcdp-formulaire-sous-titre]");
+    if (sousTitreFormulaire) {
+      sousTitreFormulaire.textContent = "";
+      sousTitreFormulaire.hidden = true;
+    }
+
     const zoneActions = form.querySelector("[data-lcdp-formulaire-actions]");
     if (zoneActions) {
       zoneActions.hidden = true;
     }
+
+    ajouterTitresSectionsCompte();
 
     champsCompte.forEach((champ) => {
       const input = document.getElementById(champ.id);
@@ -185,9 +211,7 @@
         input.value = "Chargement...";
       }
 
-      if (champ.id === "champ-statut-membre") {
-        marquerChampLectureSeuleInfo(champ.id);
-      }
+      marquerChampLectureSeuleInfo(champ.id);
 
       if (champ.action) {
         ajouterBoutonModificationApresChamp(champ.id, champ.action);
@@ -199,6 +223,26 @@
     });
 
     initialiserActionsModification();
+  }
+
+  function ajouterTitresSectionsCompte() {
+    const sectionsAjoutees = new Set();
+
+    champsCompte.forEach((champ) => {
+      if (!champ.section || sectionsAjoutees.has(champ.section)) return;
+
+      const input = document.getElementById(champ.id);
+      const blocChamp = input ? input.closest("[data-lcdp-box-champ-formulaire]") : null;
+
+      if (!blocChamp || !blocChamp.parentNode) return;
+
+      const titre = document.createElement("h3");
+      titre.className = "lcdp-title-section";
+      titre.textContent = champ.section;
+
+      blocChamp.parentNode.insertBefore(titre, blocChamp);
+      sectionsAjoutees.add(champ.section);
+    });
   }
 
   function marquerChampLectureSeuleInfo(champId) {
@@ -252,11 +296,15 @@
   }
 
   function initialiserActionsModification() {
+    const boutonEtatCivil = document.getElementById("modifier-etat-civil-membre");
     const boutonEmail = document.getElementById("modifier-email-membre");
+    const boutonPoints = document.getElementById("voir-points-membre");
     const boutonParrain = document.getElementById("modifier-parrain-membre");
     const boutonDepartement = document.getElementById("modifier-departement-membre");
 
+    if (boutonEtatCivil) boutonEtatCivil.addEventListener("click", ouvrirDialogueEtatCivilMembre);
     if (boutonEmail) boutonEmail.addEventListener("click", ouvrirDialogueEmailMembre);
+    if (boutonPoints) boutonPoints.addEventListener("click", ouvrirPagePointsMembre);
     if (boutonParrain) boutonParrain.addEventListener("click", ouvrirDialogueParrainMembre);
     if (boutonDepartement) boutonDepartement.addEventListener("click", ouvrirDialogueDepartementMembre);
   }
@@ -592,17 +640,145 @@
     return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
   }
 
+  function formaterMembreDepuis(value) {
+    return "Depuis le " + formaterDate(value);
+  }
+
+  function formaterDaCompte(compte) {
+    if (compte?.dateRefusDa) {
+      return "DA refusée le " + formaterDate(compte.dateRefusDa);
+    }
+
+    if (compte?.dateDa) {
+      return "DA le " + formaterDate(compte.dateDa);
+    }
+
+    return "DA non transmise";
+  }
+
+  function formaterStatutCompte(value) {
+    const statut = String(value || "").trim().toLowerCase();
+
+    if (statut === "abonné" || statut === "abonne") {
+      return "Membre abonné";
+    }
+
+    return "Membre invité";
+  }
+
+  function formaterPointsClub(compte) {
+    const niveau = String(compte?.niveauPointsClub || compte?.niveauClub || "").trim();
+    const points = compte?.pointsClub ?? compte?.pointsclub ?? null;
+    const date = compte?.datePointsClub || compte?.dateDernierComptagePoints || "";
+
+    if (!niveau && (points === null || points === undefined || points === "")) {
+      return "";
+    }
+
+    const morceaux = ["Membre " + (niveau || "non classé")];
+
+    if (points !== null && points !== undefined && points !== "") {
+      morceaux.push(String(points) + " points club");
+    }
+
+    if (date) {
+      morceaux.push("le " + formaterDate(date));
+    }
+
+    return morceaux.join(" - ");
+  }
+
+  function formaterReglementCompte(label, value) {
+    return label + " le " + formaterDate(value);
+  }
+
   function afficherCompteMembre(compte) {
-    emailMembreActuel = nettoyerEmail(compte.email);
+    compteMembreActuel = compte || {};
+    emailMembreActuel = nettoyerEmail(compteMembreActuel.email);
+
+    const compteAffiche = {
+      ...compteMembreActuel,
+      membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
+      daAffichage: formaterDaCompte(compteMembreActuel),
+      statutAffichage: formaterStatutCompte(compteMembreActuel.statut),
+      pointsClubAffichage: formaterPointsClub(compteMembreActuel),
+      reglementClubAffichage: formaterReglementCompte("Club", compteMembreActuel.reglementClub),
+      reglementApplicationAffichage: formaterReglementCompte("Application", compteMembreActuel.reglementApplication)
+    };
 
     champsCompte.forEach((champ) => {
-      const valeurBrute = compte[champ.key];
-      const valeur = typeof champ.formatter === "function"
-        ? champ.formatter(valeurBrute)
-        : valeurBrute;
-
-      remplirChamp(champ.id, valeur);
+      remplirChamp(champ.id, compteAffiche[champ.key]);
     });
+  }
+
+  function ouvrirPagePointsMembre() {
+    window.location.href = PAGE_POINTS_MEMBRE;
+  }
+
+  async function ouvrirDialogueEtatCivilMembre() {
+    const resultat = await ouvrirDialogueChamp({
+      titre: "Modifier",
+      champs: [
+        {
+          id: "nouveau-nom-membre",
+          name: "nommembre",
+          label: "Nom",
+          type: "text",
+          required: false,
+          value: compteMembreActuel?.nom || ""
+        },
+        {
+          id: "nouveau-prenom-membre",
+          name: "prenommembre",
+          label: "Prénom",
+          type: "text",
+          required: false,
+          value: compteMembreActuel?.prenom || ""
+        },
+        {
+          id: "nouvel-alias-membre",
+          name: "alias",
+          label: "Alias",
+          type: "text",
+          required: false,
+          value: compteMembreActuel?.alias || ""
+        }
+      ]
+    });
+
+    if (!resultat) return;
+
+    await envoyerModificationEtatCivil({
+      nommembre: nettoyerTexteSimple(resultat.nommembre),
+      prenommembre: nettoyerTexteSimple(resultat.prenommembre),
+      alias: nettoyerTexteSimple(resultat.alias)
+    });
+  }
+
+  async function envoyerModificationEtatCivil(donnees) {
+    if (!ENDPOINT_MON_COMPTE_MEMBRE) {
+      await afficherAlerte("Le service du compte membre n’est pas configuré.");
+      return;
+    }
+
+    try {
+      const resultat = await posterJson(ENDPOINT_MON_COMPTE_MEMBRE + "/etat-civil", donnees);
+      const compte = resultat?.compte || {};
+
+      compteMembreActuel = {
+        ...compteMembreActuel,
+        ...compte
+      };
+
+      remplirChamp("champ-nom-membre", compteMembreActuel.nom);
+      remplirChamp("champ-prenom-membre", compteMembreActuel.prenom);
+      remplirChamp("champ-alias-membre", compteMembreActuel.alias);
+
+      await afficherAlerte(messageErreurApi(resultat, "Votre état civil est enregistré."));
+    } catch (error) {
+      if (error.redirection === true) return;
+      await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
+    }
   }
 
   async function ouvrirDialogueEmailMembre() {
@@ -1247,6 +1423,12 @@
     }
 
     return date.toLocaleDateString("fr-FR");
+  }
+
+  function nettoyerTexteSimple(valeur) {
+    return String(valeur || "")
+      .trim()
+      .replace(/\s+/g, " ");
   }
 
   function nettoyerEmail(valeur) {
