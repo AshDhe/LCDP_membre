@@ -34,7 +34,8 @@
   let pageInitialisee = false;
   let emailMembreActuel = "";
 
-  const PAGE_POINTS_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-points.html");
+  const PAGE_POINTS_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/points-membre.html");
+  const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
 
   let compteMembreActuel = null;
 
@@ -64,7 +65,8 @@
       key: "alias",
       action: {
         id: "modifier-alias-membre",
-        texte: "Modifier l'alias"
+        texte: "Modifier l'alias",
+        mode: "picto"
       }
     },
     {
@@ -76,7 +78,8 @@
       key: "email",
       action: {
         id: "modifier-email-membre",
-        texte: "Modifier l'e-mail"
+        texte: "Modifier l'e-mail",
+        mode: "picto"
       }
     },
     {
@@ -113,6 +116,72 @@
       action: {
         id: "voir-points-membre",
         texte: "Voir mes points"
+      }
+    },
+    {
+      section: "Adresse de facturation",
+      id: "champ-adresse1-membre",
+      name: "adresse1",
+      label: "Adresse 1",
+      type: "text",
+      key: "adresse1"
+    },
+    {
+      section: "Adresse de facturation",
+      id: "champ-adresse2-membre",
+      name: "adresse2",
+      label: "Adresse 2",
+      type: "text",
+      key: "adresse2"
+    },
+    {
+      section: "Adresse de facturation",
+      id: "champ-adresse3-membre",
+      name: "adresse3",
+      label: "Adresse 3",
+      type: "text",
+      key: "adresse3"
+    },
+    {
+      section: "Coordonnées de remboursement IBAN",
+      id: "champ-iban-membre",
+      name: "iban",
+      label: "IBAN",
+      type: "text",
+      key: "iban",
+      action: {
+        id: "modifier-iban-membre",
+        texte: "Modifier l'IBAN",
+        mode: "picto",
+        champ: "iban"
+      }
+    },
+    {
+      section: "Coordonnées de remboursement IBAN",
+      id: "champ-swift-membre",
+      name: "swift",
+      label: "SWIFT",
+      type: "text",
+      key: "swift",
+      action: {
+        id: "modifier-swift-membre",
+        texte: "Modifier le SWIFT",
+        mode: "picto",
+        champ: "swift"
+      }
+    },
+    {
+      section: "Coordonnées de remboursement IBAN",
+      id: "champ-rib-membre",
+      name: "rib",
+      label: "RIB",
+      type: "text",
+      key: "rib",
+      action: {
+        id: "modifier-rib-membre",
+        texte: "Modifier le RIB",
+        mode: "picto",
+        champ: "rib"
       }
     },
     {
@@ -224,6 +293,7 @@
       }
     });
 
+    ajouterActionsAdresseFacturation();
     initialiserActionsModification();
   }
 
@@ -288,6 +358,29 @@
         height: 22px;
         display: block;
         fill: currentColor;
+      }
+
+      #form-mes-informations-membre .lcdp-compte-actions-adresse {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--lcdp-space-2);
+      }
+
+      #form-mes-informations-membre .lcdp-compte-actions-adresse .lcdp-button {
+        margin-top: 0;
+      }
+
+      #form-mes-informations-membre .lcdp-compte-actions-adresse .lcdp-button-orange {
+        background: var(--lcdp-color-orange);
+        border-color: var(--lcdp-color-orange);
+        color: var(--lcdp-color-text);
+      }
+
+      #form-mes-informations-membre .lcdp-compte-actions-adresse .lcdp-button-orange:hover {
+        background: var(--lcdp-color-orange-hover);
+        border-color: var(--lcdp-color-orange-hover);
+        color: var(--lcdp-color-text);
       }
 
       @media (max-width: 767px) {
@@ -402,13 +495,39 @@
     champ.appendChild(note);
   }
 
+  function ajouterActionsAdresseFacturation() {
+    const input = document.getElementById("champ-adresse3-membre");
+    const champ = input ? input.closest("[data-lcdp-box-champ-formulaire]") : null;
+
+    if (!champ || document.getElementById("modifier-adresse-facturation-membre")) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "lcdp-box-formulaire__actions lcdp-compte-actions-adresse";
+
+    const boutonModifier = document.createElement("button");
+    boutonModifier.id = "modifier-adresse-facturation-membre";
+    boutonModifier.type = "button";
+    boutonModifier.className = "lcdp-button lcdp-button-orange";
+    boutonModifier.textContent = "Modifier";
+
+    const boutonFactures = document.createElement("button");
+    boutonFactures.id = "voir-factures-membre";
+    boutonFactures.type = "button";
+    boutonFactures.className = "lcdp-button lcdp-button-secondary";
+    boutonFactures.textContent = "Voir mes factures";
+
+    wrapper.appendChild(boutonModifier);
+    wrapper.appendChild(boutonFactures);
+    champ.insertAdjacentElement("afterend", wrapper);
+  }
+
   function ajouterBoutonModificationApresChamp(champId, action) {
     const input = document.getElementById(champId);
     const champ = input ? input.closest("[data-lcdp-box-champ-formulaire]") : null;
 
     if (!champ) return;
 
-    if (action.id === "modifier-alias-membre" || action.id === "modifier-email-membre") {
+    if (action.mode === "picto" || action.id === "modifier-alias-membre" || action.id === "modifier-email-membre") {
       ajouterPictoModificationDansChamp(input, champ, action);
       return;
     }
@@ -456,12 +575,22 @@
     const boutonPoints = document.getElementById("voir-points-membre");
     const boutonParrain = document.getElementById("modifier-parrain-membre");
     const boutonDepartement = document.getElementById("modifier-departement-membre");
+    const boutonAdresseFacturation = document.getElementById("modifier-adresse-facturation-membre");
+    const boutonFactures = document.getElementById("voir-factures-membre");
+    const boutonIban = document.getElementById("modifier-iban-membre");
+    const boutonSwift = document.getElementById("modifier-swift-membre");
+    const boutonRib = document.getElementById("modifier-rib-membre");
 
     if (boutonAlias) boutonAlias.addEventListener("click", ouvrirDialogueAliasMembre);
     if (boutonEmail) boutonEmail.addEventListener("click", ouvrirDialogueEmailMembre);
     if (boutonPoints) boutonPoints.addEventListener("click", ouvrirPagePointsMembre);
     if (boutonParrain) boutonParrain.addEventListener("click", ouvrirDialogueParrainMembre);
     if (boutonDepartement) boutonDepartement.addEventListener("click", ouvrirDialogueDepartementMembre);
+    if (boutonAdresseFacturation) boutonAdresseFacturation.addEventListener("click", ouvrirDialogueAdresseFacturationMembre);
+    if (boutonFactures) boutonFactures.addEventListener("click", ouvrirPageFacturesMembre);
+    if (boutonIban) boutonIban.addEventListener("click", () => ouvrirDialogueCoordonneeRemboursementMembre("iban", "IBAN"));
+    if (boutonSwift) boutonSwift.addEventListener("click", () => ouvrirDialogueCoordonneeRemboursementMembre("swift", "SWIFT"));
+    if (boutonRib) boutonRib.addEventListener("click", () => ouvrirDialogueCoordonneeRemboursementMembre("rib", "RIB"));
   }
 
   async function chargerCompteMembre() {
@@ -827,25 +956,16 @@
   }
 
   function formaterPointsClub(compte) {
-    const niveau = String(compte?.niveauPointsClub || compte?.niveauClub || "").trim();
-    const points = compte?.pointsClub ?? compte?.pointsclub ?? null;
-    const date = compte?.datePointsClub || compte?.dateDernierComptagePoints || "";
+    const pointsObjet = compte?.points || {};
+    const statut = nettoyerTexteSimple(compte?.statutPointsClub || pointsObjet.statut || "");
+    const points = compte?.pointsClub ?? compte?.pointsclub ?? pointsObjet.points ?? null;
+    const date = compte?.datePointsClub || pointsObjet.date || "";
 
-    if (!niveau && (points === null || points === undefined || points === "")) {
+    if (points === null || points === undefined || points === "") {
       return "";
     }
 
-    const morceaux = ["Membre " + (niveau || "non classé")];
-
-    if (points !== null && points !== undefined && points !== "") {
-      morceaux.push(String(points) + " points club");
-    }
-
-    if (date) {
-      morceaux.push("le " + formaterDate(date));
-    }
-
-    return morceaux.join(" - ");
+    return (statut || "Non classé") + " - (" + String(points) + " points au " + formaterDate(date) + ")";
   }
 
   function formaterReglementCompte(label, value) {
@@ -874,6 +994,145 @@
 
   function ouvrirPagePointsMembre() {
     window.location.href = PAGE_POINTS_MEMBRE;
+  }
+
+  function ouvrirPageFacturesMembre() {
+    window.location.href = PAGE_ABONNEMENT_MEMBRE;
+  }
+
+  async function ouvrirDialogueAdresseFacturationMembre() {
+    const resultat = await ouvrirDialogueChamp({
+      titre: "Modifier l'adresse de facturation",
+      champs: [
+        {
+          id: "nouvelle-adresse1-membre",
+          name: "adresse1",
+          label: "Adresse 1",
+          type: "text",
+          required: false,
+          value: compteMembreActuel?.adresse1 || ""
+        },
+        {
+          id: "nouvelle-adresse2-membre",
+          name: "adresse2",
+          label: "Adresse 2",
+          type: "text",
+          required: false,
+          value: compteMembreActuel?.adresse2 || ""
+        },
+        {
+          id: "nouvelle-adresse3-membre",
+          name: "adresse3",
+          label: "Adresse 3",
+          type: "text",
+          required: false,
+          value: compteMembreActuel?.adresse3 || ""
+        }
+      ]
+    });
+
+    if (!resultat) return;
+
+    await envoyerModificationAdresseFacturation({
+      adresse1: nettoyerTexteSimple(resultat.adresse1),
+      adresse2: nettoyerTexteSimple(resultat.adresse2),
+      adresse3: nettoyerTexteSimple(resultat.adresse3)
+    });
+  }
+
+  async function envoyerModificationAdresseFacturation(donnees) {
+    if (!ENDPOINT_MON_COMPTE_MEMBRE) {
+      await afficherAlerte("Le service du compte membre n’est pas configuré.");
+      return;
+    }
+
+    try {
+      const resultat = await posterJson(ENDPOINT_MON_COMPTE_MEMBRE + "/adresse-facturation", donnees);
+      const compte = resultat?.compte || {};
+
+      compteMembreActuel = {
+        ...compteMembreActuel,
+        adresse1: compte.adresse1 || "",
+        adresse2: compte.adresse2 || "",
+        adresse3: compte.adresse3 || ""
+      };
+
+      remplirChamp("champ-adresse1-membre", compteMembreActuel.adresse1);
+      remplirChamp("champ-adresse2-membre", compteMembreActuel.adresse2);
+      remplirChamp("champ-adresse3-membre", compteMembreActuel.adresse3);
+
+      await afficherAlerte(messageErreurApi(resultat, "Votre adresse de facturation est enregistrée."));
+    } catch (error) {
+      if (error.redirection === true) return;
+      await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
+    }
+  }
+
+  async function ouvrirDialogueCoordonneeRemboursementMembre(champ, label) {
+    const champAutorise = normaliserChampRemboursement(champ);
+
+    if (!champAutorise) {
+      await afficherAlerte("Champ de remboursement non autorisé.");
+      return;
+    }
+
+    const resultat = await ouvrirDialogueChamp({
+      titre: "Modifier " + label,
+      champs: [
+        {
+          id: "nouvelle-coordonnee-remboursement-membre",
+          name: "valeur",
+          label,
+          type: "text",
+          required: false,
+          value: compteMembreActuel?.[champAutorise] || ""
+        }
+      ]
+    });
+
+    if (!resultat) return;
+
+    await envoyerModificationCoordonneeRemboursement(champAutorise, nettoyerTexteSimple(resultat.valeur));
+  }
+
+  async function envoyerModificationCoordonneeRemboursement(champ, valeur) {
+    if (!ENDPOINT_MON_COMPTE_MEMBRE) {
+      await afficherAlerte("Le service du compte membre n’est pas configuré.");
+      return;
+    }
+
+    const champAutorise = normaliserChampRemboursement(champ);
+
+    if (!champAutorise) {
+      await afficherAlerte("Champ de remboursement non autorisé.");
+      return;
+    }
+
+    try {
+      const resultat = await posterJson(ENDPOINT_MON_COMPTE_MEMBRE + "/coordonnees-remboursement", {
+        champ: champAutorise,
+        valeur
+      });
+      const compte = resultat?.compte || {};
+      const nouvelleValeur = compte[champAutorise] || "";
+
+      compteMembreActuel = {
+        ...compteMembreActuel,
+        [champAutorise]: nouvelleValeur
+      };
+
+      remplirChamp("champ-" + champAutorise + "-membre", nouvelleValeur);
+
+      await afficherAlerte(messageErreurApi(resultat, "Vos coordonnées de remboursement sont enregistrées."));
+    } catch (error) {
+      if (error.redirection === true) return;
+      await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
+    }
+  }
+
+  function normaliserChampRemboursement(champ) {
+    const valeur = String(champ || "").trim().toLowerCase();
+    return ["iban", "swift", "rib"].includes(valeur) ? valeur : "";
   }
 
   async function ouvrirDialogueAliasMembre() {
