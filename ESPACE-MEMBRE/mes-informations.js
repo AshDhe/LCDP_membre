@@ -92,6 +92,27 @@
     },
     {
       section: "Participation au club",
+      id: "champ-parrain-membre",
+      name: "parrainAffichage",
+      label: "Parrain",
+      type: "text",
+      key: "parrainAffichage"
+    },
+    {
+      section: "Participation au club",
+      id: "champ-departement-membre",
+      name: "departementAffichage",
+      label: "Département",
+      type: "text",
+      key: "departementAffichage",
+      action: {
+        id: "modifier-departement-membre",
+        texte: "Modifier le département",
+        mode: "picto"
+      }
+    },
+    {
+      section: "Participation au club",
       id: "champ-da-membre",
       name: "daAffichage",
       label: "DA",
@@ -324,38 +345,40 @@
       }
 
       #form-mes-informations-membre .lcdp-compte-champ-action-control input {
-        padding-right: 3.35rem;
+        padding-right: 4.25rem;
       }
 
       #form-mes-informations-membre .lcdp-compte-champ-action-edit {
-        width: 34px;
-        height: 34px;
+        width: 44px;
+        height: 44px;
         min-width: 0;
         min-height: 0;
         padding: 0;
-        border: 0;
+        border: 2px solid var(--lcdp-color-orange);
         border-radius: 999px;
-        background: transparent;
-        color: var(--lcdp-color-orange);
+        background: var(--lcdp-color-orange);
+        color: #ffffff;
         position: absolute;
         top: 50%;
-        right: 14px;
+        right: 8px;
         transform: translateY(-50%);
         display: inline-flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
         z-index: 2;
+        box-shadow: 0 3px 10px rgba(31, 42, 36, 0.16);
       }
 
       #form-mes-informations-membre .lcdp-compte-champ-action-edit:hover {
-        background: rgba(242, 162, 58, 0.14);
-        color: var(--lcdp-color-orange-hover);
+        background: var(--lcdp-color-orange-hover);
+        border-color: var(--lcdp-color-orange-hover);
+        color: #ffffff;
       }
 
       #form-mes-informations-membre .lcdp-compte-champ-action-edit__icon {
-        width: 22px;
-        height: 22px;
+        width: 21px;
+        height: 21px;
         display: block;
         fill: currentColor;
       }
@@ -933,6 +956,16 @@
     return "Inscription le " + formaterDate(value);
   }
 
+  function formaterParrainAffichage(value) {
+    const email = nettoyerEmail(value);
+    return "Parrain : " + (email || "Non renseigné");
+  }
+
+  function formaterDepartementAffichage(value) {
+    const departement = nettoyerDepartement(value);
+    return "Département actuel : " + (departement || "Non renseigné");
+  }
+
   function formaterDaCompte(compte) {
     if (compte?.dateRefusDa) {
       return "DA refusée le " + formaterDate(compte.dateRefusDa);
@@ -980,6 +1013,8 @@
       ...compteMembreActuel,
       alias: formaterAliasAffichage(compteMembreActuel.alias),
       membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
+      parrainAffichage: formaterParrainAffichage(compteMembreActuel.parrain),
+      departementAffichage: formaterDepartementAffichage(compteMembreActuel.departement),
       daAffichage: formaterDaCompte(compteMembreActuel),
       statutAffichage: formaterStatutCompte(compteMembreActuel.statut),
       pointsClubAffichage: formaterPointsClub(compteMembreActuel),
@@ -1289,7 +1324,12 @@
         emailparrain
       });
 
-      remplirChamp("champ-parrain-membre", emailparrain || null);
+      compteMembreActuel = {
+        ...compteMembreActuel,
+        parrain: emailparrain || ""
+      };
+
+      remplirChamp("champ-parrain-membre", formaterParrainAffichage(compteMembreActuel.parrain));
       await afficherAlerte(messageErreurApi(resultat, "Votre changement de parrain est enregistré."));
     } catch (error) {
       if (error.redirection === true) return;
@@ -1306,7 +1346,8 @@
           name: "dptmtmembre",
           label: "Nouveau département",
           type: "text",
-          required: true
+          required: true,
+          value: compteMembreActuel?.departement || ""
         }
       ]
     });
@@ -1334,7 +1375,12 @@
         dptmtmembre
       });
 
-      remplirChamp("champ-departement-membre", dptmtmembre);
+      compteMembreActuel = {
+        ...compteMembreActuel,
+        departement: dptmtmembre
+      };
+
+      remplirChamp("champ-departement-membre", formaterDepartementAffichage(compteMembreActuel.departement));
       await afficherAlerte(messageErreurApi(resultat, "Votre changement de département est enregistré."));
     } catch (error) {
       if (error.redirection === true) return;
