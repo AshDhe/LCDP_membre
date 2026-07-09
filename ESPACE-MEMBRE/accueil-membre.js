@@ -441,49 +441,25 @@
       throw new Error("Structure du menu bouton incomplète.");
     }
 
+    liste.classList.add("lcdp-accueil-actions");
+
     const boutons = [
       {
-        label: "VALIDER",
-        style: "lcdp-button-primary",
-        action: () => gererValidationPresence(etat)
-      },
-      {
         label: "RÉSERVER",
-        style: "lcdp-button-primary",
+        style: "lcdp-button-accueil lcdp-button-accueil-orange",
         action: () => redirigerMembre("/ESPACE-MEMBRE/reserver-membre.html")
       },
       {
         label: "PLANNING",
-        style: "lcdp-button-primary",
+        style: "lcdp-button-accueil lcdp-button-accueil-green",
         action: () => redirigerMembre("/ESPACE-MEMBRE/planning-membre.html")
       },
       {
-        label: "INVITER",
-        style: "lcdp-button-primary",
-        action: () => ouvrirPageAbonne(etat, "INVITER", "/ESPACE-MEMBRE/inviter-membre.html")
+        label: "OUVRIR",
+        style: "lcdp-button-accueil lcdp-button-accueil-blue",
+        action: () => gererValidationPresence(etat)
       }
     ];
-
-    if (!etat.abonne) {
-      boutons.push({
-        label: "ÊTRE INVITÉ(E)",
-        style: "lcdp-button-orange",
-        action: () => gererEtreInvite(etat)
-      });
-    }
-
-    boutons.push(
-      {
-        label: "ACTUALITÉ",
-        style: "lcdp-button-primary",
-        action: () => redirigerPublic("/ESPACE-PUBLIC/actualite.html")
-      },
-      {
-        label: "DÉCONNEXION",
-        style: "lcdp-button-primary",
-        action: gererDeconnexion
-      }
-    );
 
     boutons.forEach((configuration) => {
       const bouton = document.createElement("button");
