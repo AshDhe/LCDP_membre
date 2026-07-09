@@ -76,7 +76,7 @@
       key: "email",
       action: {
         id: "modifier-email-membre",
-        texte: "Modifier"
+        texte: "Modifier l'e-mail"
       }
     },
     {
@@ -249,6 +249,47 @@
         margin-top: 0.55rem;
       }
 
+      #form-mes-informations-membre .lcdp-compte-champ-action-control {
+        position: relative;
+      }
+
+      #form-mes-informations-membre .lcdp-compte-champ-action-control input {
+        padding-right: 3.35rem;
+      }
+
+      #form-mes-informations-membre .lcdp-compte-champ-action-edit {
+        width: 34px;
+        height: 34px;
+        min-width: 0;
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--lcdp-color-orange);
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 2;
+      }
+
+      #form-mes-informations-membre .lcdp-compte-champ-action-edit:hover {
+        background: rgba(242, 162, 58, 0.14);
+        color: var(--lcdp-color-orange-hover);
+      }
+
+      #form-mes-informations-membre .lcdp-compte-champ-action-edit__icon {
+        width: 22px;
+        height: 22px;
+        display: block;
+        fill: currentColor;
+      }
+
       @media (max-width: 767px) {
         #mention-statut-membre {
           margin-top: 0.35rem;
@@ -367,6 +408,11 @@
 
     if (!champ) return;
 
+    if (action.id === "modifier-alias-membre" || action.id === "modifier-email-membre") {
+      ajouterPictoModificationDansChamp(input, champ, action);
+      return;
+    }
+
     const wrapper = document.createElement("div");
     wrapper.className = "lcdp-box-formulaire__actions";
 
@@ -378,6 +424,30 @@
 
     wrapper.appendChild(bouton);
     champ.insertAdjacentElement("afterend", wrapper);
+  }
+
+  function ajouterPictoModificationDansChamp(input, champ, action) {
+    const zoneControl = champ.querySelector("[data-lcdp-champ-control]") || input.parentNode;
+
+    if (!zoneControl) return;
+
+    champ.classList.add("lcdp-box-champ-formulaire--compte-action");
+    zoneControl.classList.add("lcdp-compte-champ-action-control");
+
+    const bouton = document.createElement("button");
+    bouton.id = action.id;
+    bouton.type = "button";
+    bouton.className = "lcdp-compte-champ-action-edit";
+    bouton.setAttribute("aria-label", action.texte || "Modifier l'alias");
+    bouton.title = action.texte || "Modifier l'alias";
+    bouton.innerHTML = `
+      <svg class="lcdp-compte-champ-action-edit__icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+        <path d="M4 16.8V20h3.2L17.9 9.3l-3.2-3.2L4 16.8Z"></path>
+        <path d="M19.2 8 16 4.8l1.1-1.1a1.7 1.7 0 0 1 2.4 0l.8.8a1.7 1.7 0 0 1 0 2.4L19.2 8Z"></path>
+      </svg>
+    `;
+
+    zoneControl.appendChild(bouton);
   }
 
   function initialiserActionsModification() {
@@ -725,6 +795,11 @@
     return valeur === true || valeur === "true" || valeur === 1 || valeur === "1";
   }
 
+  function formaterAliasAffichage(value) {
+    const alias = nettoyerTexteSimple(value);
+    return "Alias : " + (alias || "alias non renseigné");
+  }
+
   function formaterMembreDepuis(value) {
     return "Inscription le " + formaterDate(value);
   }
@@ -783,7 +858,7 @@
 
     const compteAffiche = {
       ...compteMembreActuel,
-      alias: compteMembreActuel.alias || "alias non renseigné",
+      alias: formaterAliasAffichage(compteMembreActuel.alias),
       membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
       daAffichage: formaterDaCompte(compteMembreActuel),
       statutAffichage: formaterStatutCompte(compteMembreActuel.statut),
@@ -838,7 +913,7 @@
         alias: compte.alias || ""
       };
 
-      remplirChamp("champ-alias-membre", compteMembreActuel.alias || "alias non renseigné");
+      remplirChamp("champ-alias-membre", formaterAliasAffichage(compteMembreActuel.alias));
 
       await afficherAlerte(messageErreurApi(resultat, "Votre alias est enregistré."));
     } catch (error) {
