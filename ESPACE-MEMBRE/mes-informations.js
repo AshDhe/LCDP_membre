@@ -63,8 +63,8 @@
       type: "text",
       key: "alias",
       action: {
-        id: "modifier-etat-civil-membre",
-        texte: "Modifier"
+        id: "modifier-alias-membre",
+        texte: "Modifier l'alias"
       }
     },
     {
@@ -381,13 +381,13 @@
   }
 
   function initialiserActionsModification() {
-    const boutonEtatCivil = document.getElementById("modifier-etat-civil-membre");
+    const boutonAlias = document.getElementById("modifier-alias-membre");
     const boutonEmail = document.getElementById("modifier-email-membre");
     const boutonPoints = document.getElementById("voir-points-membre");
     const boutonParrain = document.getElementById("modifier-parrain-membre");
     const boutonDepartement = document.getElementById("modifier-departement-membre");
 
-    if (boutonEtatCivil) boutonEtatCivil.addEventListener("click", ouvrirDialogueEtatCivilMembre);
+    if (boutonAlias) boutonAlias.addEventListener("click", ouvrirDialogueAliasMembre);
     if (boutonEmail) boutonEmail.addEventListener("click", ouvrirDialogueEmailMembre);
     if (boutonPoints) boutonPoints.addEventListener("click", ouvrirPagePointsMembre);
     if (boutonParrain) boutonParrain.addEventListener("click", ouvrirDialogueParrainMembre);
@@ -801,26 +801,10 @@
     window.location.href = PAGE_POINTS_MEMBRE;
   }
 
-  async function ouvrirDialogueEtatCivilMembre() {
+  async function ouvrirDialogueAliasMembre() {
     const resultat = await ouvrirDialogueChamp({
-      titre: "Modifier",
+      titre: "Modifier l'alias",
       champs: [
-        {
-          id: "nouveau-nom-membre",
-          name: "nommembre",
-          label: "Nom",
-          type: "text",
-          required: false,
-          value: compteMembreActuel?.nom || ""
-        },
-        {
-          id: "nouveau-prenom-membre",
-          name: "prenommembre",
-          label: "Prénom",
-          type: "text",
-          required: false,
-          value: compteMembreActuel?.prenom || ""
-        },
         {
           id: "nouvel-alias-membre",
           name: "alias",
@@ -834,33 +818,29 @@
 
     if (!resultat) return;
 
-    await envoyerModificationEtatCivil({
-      nommembre: nettoyerTexteSimple(resultat.nommembre),
-      prenommembre: nettoyerTexteSimple(resultat.prenommembre),
+    await envoyerModificationAlias({
       alias: nettoyerTexteSimple(resultat.alias)
     });
   }
 
-  async function envoyerModificationEtatCivil(donnees) {
+  async function envoyerModificationAlias(donnees) {
     if (!ENDPOINT_MON_COMPTE_MEMBRE) {
       await afficherAlerte("Le service du compte membre n’est pas configuré.");
       return;
     }
 
     try {
-      const resultat = await posterJson(ENDPOINT_MON_COMPTE_MEMBRE + "/etat-civil", donnees);
+      const resultat = await posterJson(ENDPOINT_MON_COMPTE_MEMBRE + "/alias", donnees);
       const compte = resultat?.compte || {};
 
       compteMembreActuel = {
         ...compteMembreActuel,
-        ...compte
+        alias: compte.alias || ""
       };
 
-      remplirChamp("champ-nom-membre", compteMembreActuel.nom);
-      remplirChamp("champ-prenom-membre", compteMembreActuel.prenom);
       remplirChamp("champ-alias-membre", compteMembreActuel.alias || "alias non renseigné");
 
-      await afficherAlerte(messageErreurApi(resultat, "Votre état civil est enregistré."));
+      await afficherAlerte(messageErreurApi(resultat, "Votre alias est enregistré."));
     } catch (error) {
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
