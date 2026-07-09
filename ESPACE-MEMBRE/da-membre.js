@@ -482,6 +482,7 @@
     }
 
     initialiserValeursFormulaireDa(form, membre, parrain);
+    organiserFormulaireDa(form);
 
     const boutonSubmit = form.querySelector("button[type='submit']");
     if (boutonSubmit) boutonSubmit.textContent = "Transmettre";
@@ -496,14 +497,14 @@
     return {
       id: "formulaire-da-membre",
       ariaLabel: "Première demande d'abonnement membre",
-      titre: "Faire la 1ère demande d'abonnement (DA)",
-      sousTitre: "La Clé du Parc | Demande d'abonnement",
+      titre: "DA",
+      sousTitre: "La Clé du Parc",
       champs: [
-        champLectureSeule("da-nom-membre", "nommembre", "Nom", "text", "Nom d'état civil"),
-        champLectureSeule("da-prenom-membre", "prenommembre", "Prénom", "text", "Prénom d'état civil"),
-        champTexte("da-alias", "alias", "Alias", true, "Alias souhaité"),
-        champLectureSeule("da-email-membre", "emailmembre", "E-mail", "email", "E-mail de membre"),
-        champTexte("da-tel", "tel", "N° de mobile personnel", true, "Mobile personnel", "tel", "numeric"),
+        champLectureSeule("da-nom-membre", "nommembre", "Nom", "text", "Déjà renseigné"),
+        champLectureSeule("da-prenom-membre", "prenommembre", "Prénom", "text", "Déjà renseigné"),
+        champTexte("da-alias", "alias", "Alias", true, "Voulez-vous utiliser un alias dans l'application ? (modifiable ensuite)"),
+        champLectureSeule("da-email-membre", "emailmembre", "E-mail", "email", "Déjà renseigné"),
+        champTexte("da-tel", "tel", "N° de mobile personnel", true, "Numéro de téléphone mobile personnel", "tel", "numeric"),
         champTexte("da-autoquali", "autoquali", "Vos trois qualités", true, "Vos 3 qualités", "text", "text", 100),
         champTexte("da-autoloisir", "autoloisir", "Vos trois hobbies", true, "Vos 3 loisirs", "text", "text", 100),
         champTexte("da-autonouschoisir", "autonouschoisir", "Pourquoi La Clé du Parc ?", true, "Votre motivation", "text", "text", 100),
@@ -534,7 +535,7 @@
         label: "Transmettre",
         style: "lcdp-button-primary"
       },
-      noteHtml: `* Votre réponse est obligatoire pour compléter le formulaire, sauf parrain, valeurs du club et abonnement Famille.<br>Ce formulaire et les données qu’il contient sont soumis au <a href="${construireUrlPublic(PAGE_REGLEMENT_CLUB)}" target="_blank" rel="noopener noreferrer">règlement du club</a> et au <a href="${construireUrlPublic(PAGE_REGLEMENT_APPLICATION)}" target="_blank" rel="noopener noreferrer">règlement de l'application</a>.`
+      noteHtml: `* Votre réponse est nécessaire.<br>Ce formulaire et les données qu’il contient sont soumis au <a href="${construireUrlPublic(PAGE_REGLEMENT_CLUB)}" target="_blank" rel="noopener noreferrer">règlement du club</a> et au <a href="${construireUrlPublic(PAGE_REGLEMENT_APPLICATION)}" target="_blank" rel="noopener noreferrer">règlement de l'application</a>.`
     };
   }
 
@@ -547,6 +548,174 @@
       required: false,
       placeholder: placeholder || label
     };
+  }
+
+  function organiserFormulaireDa(form) {
+    const sectionEtatCivil = creerSectionFormulaireDa(form, "Etat civil *", "nommembre");
+
+    if (sectionEtatCivil) {
+      const wrapperNom = deplacerChampDansSectionDa(form, sectionEtatCivil, "nommembre");
+      const wrapperPrenom = deplacerChampDansSectionDa(form, sectionEtatCivil, "prenommembre");
+      ajouterBoutonMajEtatCivilDa(form, sectionEtatCivil, wrapperNom, wrapperPrenom);
+      deplacerChampDansSectionDa(form, sectionEtatCivil, "alias");
+      deplacerChampDansSectionDa(form, sectionEtatCivil, "emailmembre");
+    }
+
+    const sectionTelephone = creerSectionFormulaireDa(form, "Numéro de téléphone mobile *", "tel");
+
+    if (sectionTelephone) {
+      deplacerChampDansSectionDa(form, sectionTelephone, "tel");
+    }
+
+    const sectionRemboursement = creerSectionFormulaireDa(form, "Coordonnées de remboursement", "iban");
+
+    if (sectionRemboursement) {
+      deplacerChampDansSectionDa(form, sectionRemboursement, "iban");
+      deplacerChampDansSectionDa(form, sectionRemboursement, "swift");
+      deplacerChampDansSectionDa(form, sectionRemboursement, "rib");
+    }
+
+    obtenirChampEtatCivilMajDa(form);
+  }
+
+  function creerSectionFormulaireDa(form, titre, nameReference) {
+    const reference = trouverWrapperChampDa(form, nameReference);
+
+    if (!reference || !reference.parentNode) return null;
+
+    const section = document.createElement("section");
+    section.className = "lcdp-da-formulaire-section";
+
+    const h3 = document.createElement("h3");
+    h3.className = "lcdp-da-formulaire-section__titre";
+    h3.textContent = titre;
+    section.appendChild(h3);
+
+    reference.parentNode.insertBefore(section, reference);
+
+    return section;
+  }
+
+  function deplacerChampDansSectionDa(form, section, name) {
+    const wrapper = trouverWrapperChampDa(form, name);
+
+    if (!wrapper || !section || wrapper === section || section.contains(wrapper)) return wrapper || null;
+
+    section.appendChild(wrapper);
+
+    return wrapper;
+  }
+
+  function trouverWrapperChampDa(form, name) {
+    const input = form.querySelector(`[name="${name}"]`);
+
+    if (!input) return null;
+
+    return (
+      input.closest("[data-lcdp-box-champ-formulaire]") ||
+      input.closest("[data-lcdp-champ-formulaire]") ||
+      input.closest(".lcdp-box-champ-formulaire") ||
+      input.closest(".lcdp-box-formulaire__champ") ||
+      input.closest("label") ||
+      input.parentElement
+    );
+  }
+
+  function ajouterBoutonMajEtatCivilDa(form, section, wrapperNom, wrapperPrenom) {
+    if (!section) return;
+
+    const hiddenMaj = obtenirChampEtatCivilMajDa(form);
+    const inputNomLecture = form.querySelector('[name="nommembre"]');
+    const inputPrenomLecture = form.querySelector('[name="prenommembre"]');
+
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "lcdp-button lcdp-button-secondary";
+    bouton.textContent = "Mettre à jour";
+
+    const box = document.createElement("div");
+    box.className = "lcdp-da-maj-etat-civil";
+    box.hidden = true;
+
+    const champNom = creerChampMajEtatCivilDa("Nom", inputNomLecture?.value || "");
+    const champPrenom = creerChampMajEtatCivilDa("Prénom", inputPrenomLecture?.value || "");
+
+    const boutonValider = document.createElement("button");
+    boutonValider.type = "button";
+    boutonValider.className = "lcdp-button lcdp-button-primary";
+    boutonValider.textContent = "Valider";
+
+    bouton.addEventListener("click", (event) => {
+      event.preventDefault();
+      box.hidden = !box.hidden;
+
+      if (!box.hidden) {
+        champNom.input.value = inputNomLecture?.value || "";
+        champPrenom.input.value = inputPrenomLecture?.value || "";
+        champNom.input.focus();
+      }
+    });
+
+    boutonValider.addEventListener("click", (event) => {
+      event.preventDefault();
+
+      if (inputNomLecture) inputNomLecture.value = champNom.input.value.trim();
+      if (inputPrenomLecture) inputPrenomLecture.value = champPrenom.input.value.trim();
+
+      hiddenMaj.value = "true";
+      box.hidden = true;
+    });
+
+    box.appendChild(champNom.wrapper);
+    box.appendChild(champPrenom.wrapper);
+    box.appendChild(boutonValider);
+
+    if (wrapperPrenom && wrapperPrenom.parentNode === section) {
+      wrapperPrenom.insertAdjacentElement("afterend", box);
+      wrapperPrenom.insertAdjacentElement("afterend", bouton);
+      return;
+    }
+
+    if (wrapperNom && wrapperNom.parentNode === section) {
+      wrapperNom.insertAdjacentElement("afterend", box);
+      wrapperNom.insertAdjacentElement("afterend", bouton);
+      return;
+    }
+
+    section.appendChild(bouton);
+    section.appendChild(box);
+  }
+
+  function creerChampMajEtatCivilDa(labelTexte, valeur) {
+    const wrapper = document.createElement("label");
+    wrapper.className = "lcdp-da-maj-etat-civil__champ";
+
+    const span = document.createElement("span");
+    span.textContent = labelTexte;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = valeur || "";
+    input.autocomplete = labelTexte === "Nom" ? "family-name" : "given-name";
+
+    wrapper.appendChild(span);
+    wrapper.appendChild(input);
+
+    return { wrapper, input };
+  }
+
+  function obtenirChampEtatCivilMajDa(form) {
+    let input = form.querySelector('[name="etatcivilmaj"]');
+
+    if (!input) {
+      input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "etatcivilmaj";
+      input.value = "false";
+      form.appendChild(input);
+    }
+
+    return input;
   }
 
   function champEmailParrain() {
@@ -601,10 +770,16 @@
     });
 
     const checkboxValeurs = form.querySelector('[name="checkboxvaleurs"]');
-    if (checkboxValeurs) checkboxValeurs.checked = valeurBooleenneVraie(membre.checkboxvaleurs);
+    if (checkboxValeurs) {
+      checkboxValeurs.checked = false;
+      checkboxValeurs.defaultChecked = false;
+    }
 
     const targetFamille = form.querySelector('[name="targetfamill"]');
-    if (targetFamille) targetFamille.checked = valeurBooleenneVraie(membre.targetfamill);
+    if (targetFamille) {
+      targetFamille.checked = false;
+      targetFamille.defaultChecked = false;
+    }
   }
 
   function remplirInput(form, name, value, readOnly) {
@@ -700,7 +875,12 @@
   }
 
   function lirePayloadDa(form) {
+    const etatcivilmaj = valeurChamp(form, "etatcivilmaj") === "true";
+
     return {
+      etatcivilmaj,
+      nommembre: etatcivilmaj ? valeurChamp(form, "nommembre") : "",
+      prenommembre: etatcivilmaj ? valeurChamp(form, "prenommembre") : "",
       alias: valeurChamp(form, "alias"),
       emailparrain: nettoyerEmail(valeurChamp(form, "emailparrain")),
       tel: valeurChamp(form, "tel").replace(/\s+/g, ""),
