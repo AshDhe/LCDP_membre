@@ -972,24 +972,11 @@
   }
 
   function formaterDaCompte(compte) {
-    const statuda = String(compte?.statuda || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "");
+    const dateDa = compte?.dateDa || compte?.dateda || "";
+    const statuda = nettoyerTexteSimple(compte?.statuda || "");
 
-    if (statuda === "encours") {
-      return compte?.dateDa
-        ? "DA en cours le " + formaterDate(compte.dateDa)
-        : "DA en cours";
-    }
-
-    if (compte?.dateRefusDa) {
-      return "DA refusée le " + formaterDate(compte.dateRefusDa);
-    }
-
-    if (compte?.dateDa) {
-      return "DA le " + formaterDate(compte.dateDa);
+    if (dateDa || statuda) {
+      return "DA du " + formaterDate(dateDa) + " (" + (statuda || "Non renseigné") + ")";
     }
 
     return "DA non transmise";
@@ -1015,7 +1002,9 @@
       return "";
     }
 
-    return (statut || "Non classé") + " - (" + String(points) + " points au " + formaterDate(date) + ")";
+    const libellePoint = Number(points) === 1 ? "point club" : "points club";
+
+    return "Référent " + (statut || "Non classé") + " : " + String(points) + " " + libellePoint + " au " + formaterDate(date);
   }
 
   function formaterReglementCompte(label, value) {
