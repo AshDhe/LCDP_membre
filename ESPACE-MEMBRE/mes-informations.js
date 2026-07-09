@@ -142,6 +142,10 @@
       action: {
         id: "voir-points-membre",
         texte: "Voir mes points"
+      },
+      badge: {
+        id: "badge-points-club-membre",
+        type: "points"
       }
     },
     {
@@ -312,6 +316,10 @@
 
       if (champ.action) {
         ajouterBoutonModificationApresChamp(champ.id, champ.action);
+      }
+
+      if (champ.badge) {
+        ajouterBadgeInformationDansChamp(champ.id, champ.badge);
       }
 
       if (champ.lien) {
@@ -553,6 +561,33 @@
 
     zoneControl.appendChild(bouton);
   }
+
+  function ajouterBadgeInformationDansChamp(champId, badgeConfig) {
+    const input = document.getElementById(champId);
+    const champ = input ? input.closest("[data-lcdp-box-champ-formulaire]") : null;
+    const zoneControl = champ ? champ.querySelector("[data-lcdp-champ-control]") || input.parentNode : null;
+
+    if (!input || !champ || !zoneControl) return;
+
+    champ.classList.add("lcdp-box-champ-formulaire--badge");
+    zoneControl.classList.add("lcdp-box-champ-formulaire__control--badge");
+
+    const badge = document.createElement("span");
+    badge.id = badgeConfig.id || champId + "-badge";
+    badge.className = "lcdp-box-champ-formulaire__badge";
+    badge.hidden = true;
+    badge.setAttribute("aria-hidden", "true");
+
+    const image = document.createElement("img");
+    image.className = "lcdp-box-champ-formulaire__badge-image";
+    image.alt = "";
+    image.loading = "lazy";
+    image.decoding = "async";
+
+    badge.appendChild(image);
+    zoneControl.appendChild(badge);
+  }
+
 
   function initialiserActionsModification() {
     const boutonAlias = document.getElementById("modifier-alias-membre");
@@ -929,24 +964,11 @@
   }
 
   function formaterDaCompte(compte) {
-    const statuda = String(compte?.statuda || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "");
+    const dateDa = compte?.dateDa || compte?.dateda || "";
+    const statuda = nettoyerTexteSimple(compte?.statuda || "");
 
-    if (statuda === "encours") {
-      return compte?.dateDa
-        ? "DA en cours le " + formaterDate(compte.dateDa)
-        : "DA en cours";
-    }
-
-    if (compte?.dateRefusDa) {
-      return "DA refusée le " + formaterDate(compte.dateRefusDa);
-    }
-
-    if (compte?.dateDa) {
-      return "DA le " + formaterDate(compte.dateDa);
+    if (dateDa || statuda) {
+      return "DA du " + formaterDate(dateDa) + " (" + (statuda || "Non renseigné") + ")";
     }
 
     return "DA non transmise";
@@ -972,7 +994,57 @@
       return "";
     }
 
-    return (statut || "Non classé") + " - (" + String(points) + " points au " + formaterDate(date) + ")";
+    const libellePoint = Number(points) === 1 ? "point club" : "points club";
+
+    return "Référent " + (statut || "Non classé") + " : " + String(points) + " " + libellePoint + " au " + formaterDate(date);
+  }
+
+  function actualiserBadgePointsClub(compte) {
+    const badge = document.getElementById("badge-points-club-membre");
+    const image = badge ? badge.querySelector(".lcdp-box-champ-formulaire__badge-image") : null;
+
+    if (!badge || !image) return;
+
+    const pointsObjet = compte?.points || {};
+    const badgePoints = normaliserBadgePoints(compte?.statutPointsClub || pointsObjet.statut || "");
+
+    if (!badgePoints) {
+      badge.hidden = true;
+      image.removeAttribute("src");
+      image.removeAttribute("srcset");
+      image.removeAttribute("sizes");
+      return;
+    }
+
+    const cheminBadge = "/IMAG/BADG/" + badgePoints;
+
+    image.src = construireUrlObjet(cheminBadge + "96.webp");
+    image.srcset = [
+      construireUrlObjet(cheminBadge + "64.webp") + " 64w",
+      construireUrlObjet(cheminBadge + "96.webp") + " 96w",
+      construireUrlObjet(cheminBadge + "192.webp") + " 192w"
+    ].join(", ");
+    image.sizes = "(min-width: 768px) 44px, (max-width: 420px) 38px, 40px";
+    badge.hidden = false;
+  }
+
+  function normaliserBadgePoints(value) {
+    const badge = String(value || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "");
+
+    const correspondances = {
+      bronze: "bronze",
+      bronse: "bronze",
+      argent: "argent",
+      or: "or",
+      platine: "platine"
+    };
+
+    return correspondances[badge] || "";
   }
 
   function formaterReglementCompte(label, value) {
@@ -999,6 +1071,8 @@
     champsCompte.forEach((champ) => {
       remplirChamp(champ.id, compteAffiche[champ.key]);
     });
+
+    actualiserBadgePointsClub(compteMembreActuel);
   }
 
   function ouvrirPagePointsMembre() {
