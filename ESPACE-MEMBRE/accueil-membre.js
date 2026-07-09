@@ -447,16 +447,19 @@
       {
         label: "RÉSERVER",
         style: "lcdp-button-accueil lcdp-button-accueil-orange",
+        variante: "reserver",
         action: () => redirigerMembre("/ESPACE-MEMBRE/reserver-membre.html")
       },
       {
         label: "PLANNING",
         style: "lcdp-button-accueil lcdp-button-accueil-green",
+        variante: "planning",
         action: () => redirigerMembre("/ESPACE-MEMBRE/planning-membre.html")
       },
       {
         label: "OUVRIR",
         style: "lcdp-button-accueil lcdp-button-accueil-blue",
+        variante: "ouvrir",
         action: () => gererValidationPresence(etat)
       }
     ];
@@ -470,7 +473,7 @@
       bouton.addEventListener("click", () => {
         Promise.resolve(configuration.action()).catch((error) => {
           console.error(error);
-          afficherAlerte(error.message || "Erreur technique. Merci de réessayer.").catch(console.error);
+          afficherAlerte(error.message || "Erreur technique. Merci de réessayer.", { variante: configuration.variante }).catch(console.error);
         });
       });
 
@@ -480,7 +483,7 @@
 
   async function gererValidationPresence(etat) {
     if (!etat.aReservationEnCours) {
-      await afficherAlerte("Vous n'avez pas de réservation en cours");
+      await afficherAlerte("Vous n'avez pas de réservation en cours", { variante: "ouvrir" });
       return;
     }
 
@@ -567,7 +570,7 @@
     redirigerPublic("/ESPACE-PUBLIC/accueil-public.html");
   }
 
-  async function afficherAlerte(message) {
+  async function afficherAlerte(message, options = {}) {
     const slot = document.getElementById("lcdp-lightbox-slot");
 
     if (!slot) return;
@@ -587,6 +590,8 @@
     }
 
     texte.textContent = message || "";
+
+    appliquerVarianteAlerteAccueil(alerte, options.variante);
 
     return new Promise((resolve) => {
       let resolu = false;
@@ -760,6 +765,65 @@
       script.onerror = () => reject(new Error("Script membre introuvable : " + chemin));
       document.body.appendChild(script);
     });
+  }
+
+  function assurerStyleAlerteAccueilMembre() {
+    if (document.getElementById("lcdp-style-alerte-accueil-membre")) {
+      return;
+    }
+
+    const style = document.createElement("style");
+    style.id = "lcdp-style-alerte-accueil-membre";
+    style.textContent = `
+      .lcdp-page-accueil-membre .lcdp-alerte-accueil-reserver [data-lcdp-alerte-ok] {
+        background: var(--lcdp-color-orange, #f2a23a);
+        border-color: var(--lcdp-color-orange, #f2a23a);
+        color: var(--lcdp-color-text, #1f2a24);
+      }
+
+      .lcdp-page-accueil-membre .lcdp-alerte-accueil-reserver [data-lcdp-alerte-ok]:hover {
+        background: var(--lcdp-color-orange-hover, #e89223);
+        border-color: var(--lcdp-color-orange-hover, #e89223);
+        color: var(--lcdp-color-text, #1f2a24);
+      }
+
+      .lcdp-page-accueil-membre .lcdp-alerte-accueil-planning [data-lcdp-alerte-ok] {
+        background: var(--lcdp-color-logo-green, #55733f);
+        border-color: var(--lcdp-color-logo-green, #55733f);
+        color: #ffffff;
+      }
+
+      .lcdp-page-accueil-membre .lcdp-alerte-accueil-planning [data-lcdp-alerte-ok]:hover {
+        background: var(--lcdp-color-primary, #234438);
+        border-color: var(--lcdp-color-primary, #234438);
+        color: #ffffff;
+      }
+
+      .lcdp-page-accueil-membre .lcdp-alerte-accueil-ouvrir [data-lcdp-alerte-ok] {
+        background: var(--lcdp-color-blue, #2f6fb3);
+        border-color: var(--lcdp-color-blue, #2f6fb3);
+        color: #ffffff;
+      }
+
+      .lcdp-page-accueil-membre .lcdp-alerte-accueil-ouvrir [data-lcdp-alerte-ok]:hover {
+        background: var(--lcdp-color-blue-hover, #255c96);
+        border-color: var(--lcdp-color-blue-hover, #255c96);
+        color: #ffffff;
+      }
+    `.trim();
+
+    document.head.appendChild(style);
+  }
+
+  function appliquerVarianteAlerteAccueil(alerte, variante) {
+    const variantesAutorisees = ["reserver", "planning", "ouvrir"];
+
+    if (!variantesAutorisees.includes(variante)) {
+      return;
+    }
+
+    assurerStyleAlerteAccueilMembre();
+    alerte.classList.add("lcdp-alerte-accueil-" + variante);
   }
 
   function construireEndpointApi(cleModerne, cleLegacy, cleCourte, sousDomaineWorker) {
