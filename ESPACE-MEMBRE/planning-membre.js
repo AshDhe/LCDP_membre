@@ -586,8 +586,12 @@
     const departement = parc.dptmt || parc.departement || reservation.dptmt || "";
     const idParc = parc.idparc || reservation.idparc || "";
     const idFlux = reservation.idflux || "";
+    const imageParc = parc.imageparc || parc.image || reservation.imageparc || reservation.image || "";
 
+    const media = card.querySelector("[data-lcdp-card-reservation-media]");
+    const image = card.querySelector("[data-lcdp-card-reservation-image]");
     const invitation = card.querySelector("[data-lcdp-card-reservation-invitation]");
+    const badgeInvitation = card.querySelector("[data-lcdp-card-reservation-invitation-badge]");
     const date = card.querySelector("[data-lcdp-card-reservation-date]");
     const heure = card.querySelector("[data-lcdp-card-reservation-heure]");
     const parcElement = card.querySelector("[data-lcdp-card-reservation-parc]");
@@ -608,10 +612,24 @@
       card.classList.add("lcdp-box-card-reservation-membre--invitation");
     }
 
+    if (image && media) {
+      const srcImage = construireUrlImageParc(imageParc);
+
+      if (srcImage) {
+        image.src = srcImage;
+        image.alt = "Parc de " + nomParc;
+        media.hidden = false;
+        card.classList.add("lcdp-box-card-reservation-membre--avec-image");
+      } else {
+        image.removeAttribute("src");
+        image.alt = "";
+        media.hidden = true;
+      }
+    }
+
     if (invitation) {
-      const ligneInvitation = creerLigneInvitation(reservation, estReservationHorsAbonnement);
-      invitation.textContent = ligneInvitation;
-      invitation.hidden = !ligneInvitation;
+      invitation.textContent = "";
+      invitation.hidden = true;
     }
 
     if (date) date.textContent = formaterDateCourte(reservation.datebookd);
@@ -628,6 +646,12 @@
     if (boutonInvitation) {
       boutonInvitation.dataset.id = idFlux;
       boutonInvitation.hidden = estPasse || estReservationHorsAbonnement;
+    }
+
+    if (badgeInvitation) {
+      badgeInvitation.textContent = "invit’";
+      badgeInvitation.hidden = !estReservationHorsAbonnement;
+      badgeInvitation.setAttribute("aria-label", "Invitation");
     }
 
     if (boutonAnnuler) {
@@ -1334,6 +1358,17 @@
       buildUrl(CONFIG_PAGE.publicBaseUrl || CONFIG_PAGE.PUBLIC_BASE || "", "/OBJET");
 
     return buildUrl(objetBase, valeur);
+  }
+
+  function construireUrlImageParc(value) {
+    const chemin = String(value || "").trim();
+
+    if (!chemin) return "";
+    if (estUrlExterneOuAncre(chemin)) return chemin;
+
+    const cheminObjet = chemin.replace(/^\/?OBJET\/?/, "/");
+
+    return construireUrlObjet(cheminObjet);
   }
 
   function estUrlExterneOuAncre(chemin) {
