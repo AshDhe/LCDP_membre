@@ -856,13 +856,16 @@
     }
 
     galerie.setAttribute("aria-label", "Photos de l’entrée du parc");
-    titre.textContent = "Entrée du parc";
+    titre.textContent = "";
+
+    const headerGalerie = titre.closest(".lcdp-box-galerie__header");
+    if (headerGalerie) headerGalerie.hidden = true;
+
     liste.innerHTML = "";
 
     ["entree1.webp", "entree2.webp"].forEach((fichier, index) => {
       liste.appendChild(creerCarteGalerieEntreeParc({
         chemin: construireCheminImageParcFichier(data.nomParc, data.departement, fichier),
-        titre: "Entrée " + String(index + 1),
         alt: "Entrée du parc de " + data.nomParc
       }));
     });
@@ -871,10 +874,6 @@
   function creerCarteGalerieEntreeParc(data) {
     const article = document.createElement("article");
     article.className = "lcdp-box-galerie__card";
-
-    const titre = document.createElement("h3");
-    titre.className = "lcdp-box-galerie__card-title";
-    titre.textContent = data.titre || "Entrée";
 
     const image = document.createElement("img");
     image.className = "lcdp-box-galerie__image";
@@ -886,7 +885,6 @@
       article.hidden = true;
     };
 
-    article.appendChild(titre);
     article.appendChild(image);
 
     return article;
