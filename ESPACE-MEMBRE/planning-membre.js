@@ -647,7 +647,10 @@
       departementElement.hidden = !departement;
     }
 
-    if (boutonAdresse) boutonAdresse.dataset.idparc = idParc;
+    if (boutonAdresse) {
+      boutonAdresse.dataset.idparc = idParc;
+      boutonAdresse.dataset.id = idFlux;
+    }
 
     if (boutonInvitation) {
       boutonInvitation.dataset.id = idFlux;
@@ -692,7 +695,9 @@
     const boutonAnnuler = event.target.closest("[data-action='annuler']");
 
     if (boutonAdresse) {
-      await afficherAlerte("L’adresse sera raccordée ensuite.");
+      const cardReservation = boutonAdresse.closest("[data-lcdp-box-card-reservation-membre]");
+      const idflux = String(boutonAdresse.dataset.id || cardReservation?.dataset.idflux || "").trim();
+      await ouvrirAccesParcReservation(idflux, boutonAdresse);
       return;
     }
 
@@ -704,6 +709,197 @@
     if (boutonAnnuler) {
       await traiterAnnulationReservation(boutonAnnuler);
     }
+  }
+
+  async function ouvrirAccesParcReservation(idflux, declencheur) {
+    const idReservation = String(idflux || "").trim();
+
+    if (!idReservation) {
+      await afficherAlerte("Réservation manquante.");
+      return;
+    }
+
+    const reservation = etat.reservations.find((item) => String(item.idflux || "") === idReservation);
+
+    if (!reservation) {
+      await afficherAlerte("Réservation introuvable.");
+      return;
+    }
+
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) return;
+
+    const ancienneBox = slot.querySelector("[data-lcdp-box-card-acces-parc]");
+    if (ancienneBox) ancienneBox.remove();
+
+    const fragmentAcces = await chargerFragmentObjet("/BOX/04-box-card-acces-parc.html");
+    slot.appendChild(fragmentAcces);
+
+    const boxAcces = Array.from(slot.querySelectorAll("[data-lcdp-box-card-acces-parc]")).pop();
+
+    if (!boxAcces) {
+      throw new Error("Structure accès parc introuvable.");
+    }
+
+    await remplirBoxAccesParc(boxAcces, reservation);
+
+    const boutonFermer = boxAcces.querySelector("[data-lcdp-card-acces-parc-close]");
+
+    function fermerAcces() {
+      document.removeEventListener("keydown", gererEchapAcces, true);
+      boxAcces.remove();
+      if (declencheur && typeof declencheur.focus === "function") {
+        declencheur.focus({ preventScroll: true });
+      }
+    }
+
+    function gererEchapAcces(event) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      fermerAcces();
+    }
+
+    if (boutonFermer) boutonFermer.addEventListener("click", fermerAcces);
+
+    boxAcces.addEventListener("click", (event) => {
+      if (event.target === boxAcces) fermerAcces();
+    });
+
+    document.addEventListener("keydown", gererEchapAcces, true);
+  }
+
+  async function remplirBoxAccesParc(boxAcces, reservation) {
+    const parc = reservation.parc || {};
+    const nomParc = parc.nom || parc.nomparc || reservation.nomparc || "Parc";
+    const departement = parc.dptmt || parc.departement || reservation.dptmt || "";
+
+    const titre = boxAcces.querySelector("[data-lcdp-card-acces-parc-title]");
+    const slotMap = boxAcces.querySelector("[data-lcdp-card-acces-parc-map-slot]");
+    const zoneAdresse = boxAcces.querySelector("[data-lcdp-card-acces-parc-adresse]");
+    const zoneEntree = boxAcces.querySelector("[data-lcdp-card-acces-parc-entree]");
+    const slotGalerie = boxAcces.querySelector("[data-lcdp-card-acces-parc-galerie-slot]");
+
+    if (titre) titre.textContent = "Accès au parc de " + nomParc;
+
+    if (slotMap) {
+      await remplirMapParc(slotMap, parc);
+    }
+
+    if (zoneAdresse) {
+      remplirAdresseParc(zoneAdresse, parc);
+    }
+
+    if (zoneEntree) {
+      zoneEntree.textContent = String(parc.entreeparc || reservation.entreeparc || "Entrée du parc à renseigner.").trim();
+    }
+
+    if (slotGalerie) {
+      await remplirGalerieEntreeParc(slotGalerie, {
+        nomParc,
+        departement
+      });
+    }
+  }
+
+  async function remplirMapParc(slotMap, parc) {
+    slotMap.innerHTML = "";
+
+    const fragmentMap = await chargerFragmentObjet("/BOX/04-box-card-map-parc.html");
+    slotMap.appendChild(fragmentMap);
+
+    const coords = slotMap.querySelector("[data-lcdp-card-map-parc-coords]");
+    const lat = nettoyerCoordonneeParc(parc.latparc);
+    const lng = nettoyerCoordonneeParc(parc.lngparc);
+
+    if (coords) {
+      coords.textContent = lat && lng
+        ? "Lat. " + lat + " · Lng. " + lng
+        : "Coordonnées à renseigner.";
+    }
+  }
+
+  function remplirAdresseParc(zoneAdresse, parc) {
+    zoneAdresse.innerHTML = "";
+
+    const lignes = [parc.adresse1, parc.adresse2, parc.adresse3]
+      .map((ligne) => String(ligne || "").trim())
+      .filter(Boolean);
+
+    if (!lignes.length) {
+      const ligneVide = document.createElement("p");
+      ligneVide.textContent = "Adresse à renseigner.";
+      zoneAdresse.appendChild(ligneVide);
+      return;
+    }
+
+    lignes.forEach((ligne) => {
+      const paragraphe = document.createElement("p");
+      paragraphe.textContent = ligne;
+      zoneAdresse.appendChild(paragraphe);
+    });
+  }
+
+  async function remplirGalerieEntreeParc(slotGalerie, data) {
+    slotGalerie.innerHTML = "";
+
+    const fragmentGalerie = await chargerFragmentObjet("/BOX/03-box-galerie.html");
+    slotGalerie.appendChild(fragmentGalerie);
+
+    const galerie = slotGalerie.querySelector("[data-lcdp-box-galerie]");
+    const titre = slotGalerie.querySelector("[data-lcdp-galerie-title]");
+    const liste = slotGalerie.querySelector("[data-lcdp-galerie-list]");
+
+    if (!galerie || !titre || !liste) {
+      throw new Error("Structure galerie accès parc incomplète.");
+    }
+
+    galerie.setAttribute("aria-label", "Photos de l’entrée du parc");
+    titre.textContent = "Entrée du parc";
+    liste.innerHTML = "";
+
+    ["entree1.webp", "entree2.webp"].forEach((fichier, index) => {
+      liste.appendChild(creerCarteGalerieEntreeParc({
+        chemin: construireCheminImageParcFichier(data.nomParc, data.departement, fichier),
+        titre: "Entrée " + String(index + 1),
+        alt: "Entrée du parc de " + data.nomParc
+      }));
+    });
+  }
+
+  function creerCarteGalerieEntreeParc(data) {
+    const article = document.createElement("article");
+    article.className = "lcdp-box-galerie__card";
+
+    const titre = document.createElement("h3");
+    titre.className = "lcdp-box-galerie__card-title";
+    titre.textContent = data.titre || "Entrée";
+
+    const image = document.createElement("img");
+    image.className = "lcdp-box-galerie__image";
+    image.alt = data.alt || "Entrée du parc";
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.src = construireUrlImageParc(data.chemin || "");
+    image.onerror = () => {
+      article.hidden = true;
+    };
+
+    article.appendChild(titre);
+    article.appendChild(image);
+
+    return article;
+  }
+
+  function nettoyerCoordonneeParc(value) {
+    const texte = String(value ?? "").trim();
+    if (!texte) return "";
+
+    const nombre = Number(texte.replace(",", "."));
+    if (!Number.isFinite(nombre)) return texte;
+
+    return String(Math.round(nombre * 1000000) / 1000000);
   }
 
   async function ouvrirPageInvitation(idflux) {
@@ -1367,12 +1563,17 @@
   }
 
   function construireCheminImageParcParDefaut(nomParc, departement) {
+    return construireCheminImageParcFichier(nomParc, departement, "card1.webp");
+  }
+
+  function construireCheminImageParcFichier(nomParc, departement, fichier) {
     const nom = normaliserSegmentCheminImageParc(nomParc);
     const dptmt = normaliserDepartementCheminImageParc(departement);
+    const nomFichier = String(fichier || "").trim();
 
-    if (!nom || !dptmt) return "";
+    if (!nom || !dptmt || !nomFichier) return "";
 
-    return "/OBJET/IMAG/PARC/" + dptmt + "/" + nom + "/card1.webp";
+    return "/OBJET/IMAG/PARC/" + dptmt + "/" + nom + "/" + nomFichier;
   }
 
   function normaliserSegmentCheminImageParc(value) {
