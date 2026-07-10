@@ -18,6 +18,7 @@
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_INVITER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html");
+  const PAGE_RESERVER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/reserver-membres.html");
 
   let pageInitialisee = false;
   let promesseActualisationEtatMembre = null;
@@ -221,6 +222,8 @@
     const boutonPrecedent = calendrier.querySelector("[data-lcdp-calendrier-mois-prev]");
     const boutonSuivant = calendrier.querySelector("[data-lcdp-calendrier-mois-next]");
 
+    ajouterBoutonReserverPlanning(calendrier);
+
     if (boutonPrecedent) {
       boutonPrecedent.addEventListener("click", () => {
         etat.moisCourant = ajouterMois(etat.moisCourant, -1);
@@ -258,6 +261,21 @@
     etat.calendrierMois = calendrier;
 
     afficherChargementCalendrier("Chargement de votre planning...");
+  }
+
+  function ajouterBoutonReserverPlanning(calendrier) {
+    const navigation = calendrier ? calendrier.querySelector(".lcdp-box-calendrier-mois__navigation") : null;
+
+    if (!navigation || navigation.querySelector("[data-lcdp-planning-reserver]")) return;
+
+    const lien = document.createElement("a");
+    lien.className = "lcdp-planning-membre-reserver-link";
+    lien.href = PAGE_RESERVER_MEMBRE;
+    lien.textContent = "RÉSERVER";
+    lien.dataset.lcdpPlanningReserver = "true";
+    lien.setAttribute("aria-label", "Réserver une nouvelle date");
+
+    navigation.appendChild(lien);
   }
 
   async function chargerReservations() {
