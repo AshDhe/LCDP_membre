@@ -269,7 +269,7 @@
     if (!navigation || navigation.querySelector("[data-lcdp-planning-reserver]")) return;
 
     const lien = document.createElement("a");
-    lien.className = "lcdp-planning-membre-reserver-link";
+    lien.className = "lcdp-planning-membre-reserver-link lcdp-planning-membre-reserver-button";
     lien.href = PAGE_RESERVER_MEMBRE;
     lien.textContent = "RÉSERVER";
     lien.dataset.lcdpPlanningReserver = "true";
