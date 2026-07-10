@@ -378,7 +378,7 @@
     });
   }
 
-  function afficherChargementCalendrier(messageTexte) {
+  function afficherChargementCalendrier() {
     const calendrier = etat.calendrierMois;
     if (!calendrier) return;
 
@@ -391,9 +391,9 @@
     }
 
     if (message) {
-      message.hidden = false;
-      message.textContent = messageTexte || "Chargement...";
-      message.dataset.lcdpMessageType = "information";
+      message.hidden = true;
+      message.textContent = "";
+      delete message.dataset.lcdpMessageType;
     }
   }
 
