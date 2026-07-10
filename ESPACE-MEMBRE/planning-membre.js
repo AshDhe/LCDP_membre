@@ -463,22 +463,40 @@
       jourReservable = true;
       jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--reservation-membre");
 
-      if (estPasse) {
+      const estReservationInvitationPlanning = reservationHorsAbonnementMembre(reservation);
+
+      if (estReservationInvitationPlanning) {
+        jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--reservation-invitation");
+        slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--reservation-invitation");
+      } else if (estPasse) {
         jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--reservation-membre-passee");
         slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--vert-passe");
       } else {
         slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--vert");
       }
 
-      if (reservationHorsAbonnementMembre(reservation)) {
-        jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--reservation-hors-abonnement");
-        slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--reservation-hors-abonnement");
+      const nomParcSlot = nomParcCourtReservation(reservation);
+      const nomParcComplet = nomParcReservation(reservation);
+
+      if (nomParcSlot) {
+        const libelleParc = document.createElement("span");
+        libelleParc.className = "lcdp-box-card-jour-in-calendrier-mois__slot-label";
+        libelleParc.textContent = nomParcSlot;
+        libelleParc.setAttribute("aria-hidden", "true");
+        slot.appendChild(libelleParc);
       }
 
       slot.dataset.idflux = String(reservation.idflux || "");
       slot.dataset.plage = plage;
-      slot.setAttribute("aria-label", "Réservation " + libellePlage(plage) + " du " + formaterDateCourte(reservation.datebookd));
-      slot.title = "Réservation " + libellePlage(plage);
+      slot.setAttribute(
+        "aria-label",
+        "Réservation " +
+          (nomParcComplet ? nomParcComplet + " - " : "") +
+          libellePlage(plage) +
+          " du " +
+          formaterDateCourte(reservation.datebookd)
+      );
+      slot.title = "Réservation " + (nomParcComplet ? nomParcComplet + " - " : "") + libellePlage(plage);
     });
 
     jour.disabled = !jourReservable;
@@ -936,8 +954,10 @@
     if (!dateReservation) return true;
 
     /* Règle planning : le passé reste seulement vert atténué.
-       Le contour bleu ne concerne que les réservations à venir hors période d'abonnement. */
+       L'affichage invitation ne concerne que les réservations à venir. */
     if (dateReservation < aujourdHui) return false;
+
+    if (valeurBooleenneVraie(reservation?.invitation)) return true;
 
     return !dateDansPeriodeAbonnementMembre(dateReservation);
   }
@@ -1031,6 +1051,22 @@
     if (plage === "plage2") return "plage 2";
     if (plage === "plage3") return "plage 3";
     return "plage";
+  }
+
+  function nomParcReservation(reservation) {
+    const parc = reservation?.parc || {};
+
+    return String(parc.nom || parc.nomparc || reservation?.nomparc || "")
+      .trim()
+      .replace(/\s+/g, " ");
+  }
+
+  function nomParcCourtReservation(reservation) {
+    const nom = nomParcReservation(reservation);
+
+    if (!nom) return "";
+
+    return nom.slice(0, 15);
   }
 
   async function initialiserBandeau() {
