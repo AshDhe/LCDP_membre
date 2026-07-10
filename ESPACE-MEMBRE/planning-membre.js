@@ -51,9 +51,84 @@
     initialiserPage();
   }
 
+
+  function injecterStylesCorrectifsPlanningMembre() {
+    if (document.querySelector('style[data-lcdp-planning-membre-correctifs="true"]')) return;
+
+    const style = document.createElement("style");
+    style.dataset.lcdpPlanningMembreCorrectifs = "true";
+    style.textContent = `
+      .lcdp-box-card-reservation-membre [data-action="adresse"],
+      .lcdp-box-card-reservation-membre .lcdp-box-card-reservation-membre__micro-action--acces {
+        border-color: var(--lcdp-color-logo-green) !important;
+        background: var(--lcdp-color-logo-green) !important;
+        color: #ffffff !important;
+        text-decoration: none !important;
+      }
+
+      .lcdp-box-card-reservation-membre [data-action="adresse"]:hover,
+      .lcdp-box-card-reservation-membre .lcdp-box-card-reservation-membre__micro-action--acces:hover {
+        border-color: var(--lcdp-color-primary) !important;
+        background: var(--lcdp-color-primary) !important;
+        color: #ffffff !important;
+      }
+
+      .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-row {
+        width: 100% !important;
+        margin: 0 0 var(--lcdp-space-2) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+      }
+
+      .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-button {
+        position: static !important;
+        transform: none !important;
+        width: auto !important;
+        min-width: 112px !important;
+        max-width: none !important;
+        min-height: 38px !important;
+        margin: 0 !important;
+        padding: 8px 16px !important;
+        border: 2px solid var(--lcdp-color-orange) !important;
+        border-radius: 999px !important;
+        background: #ffffff !important;
+        color: var(--lcdp-color-orange) !important;
+        font: inherit !important;
+        font-size: 0.86rem !important;
+        line-height: 1 !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.045em !important;
+        text-align: center !important;
+        text-decoration: none !important;
+        text-transform: uppercase !important;
+        white-space: nowrap !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: none !important;
+      }
+
+      .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-button:visited,
+      .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-button:hover {
+        color: var(--lcdp-color-orange) !important;
+        text-decoration: none !important;
+      }
+
+      .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-button:hover {
+        background: rgba(242, 162, 58, 0.10) !important;
+        border-color: var(--lcdp-color-orange) !important;
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
   async function initialiserPage() {
     if (pageInitialisee) return;
     pageInitialisee = true;
+
+    injecterStylesCorrectifsPlanningMembre();
 
     try {
       await initialiserBandeau();
@@ -264,18 +339,45 @@
   }
 
   function ajouterBoutonReserverPlanning(calendrier) {
+    const card = calendrier ? calendrier.querySelector(".lcdp-box-calendrier-mois__card") : null;
+    const header = calendrier ? calendrier.querySelector(".lcdp-box-calendrier-mois__header") : null;
+    const body = calendrier ? calendrier.querySelector(".lcdp-box-calendrier-mois__body") : null;
     const navigation = calendrier ? calendrier.querySelector(".lcdp-box-calendrier-mois__navigation") : null;
 
-    if (!navigation || navigation.querySelector("[data-lcdp-planning-reserver]")) return;
+    if (!card || !header) return;
 
-    const lien = document.createElement("a");
-    lien.className = "lcdp-planning-membre-reserver-link lcdp-planning-membre-reserver-button";
+    /* Sécurité : la navigation mensuelle doit rester dans le body du calendrier. */
+    if (body && navigation && navigation.parentNode !== body) {
+      body.insertBefore(navigation, body.firstElementChild);
+    }
+
+    let ligneReserver = card.querySelector("[data-lcdp-planning-reserver-row]");
+
+    if (!ligneReserver) {
+      ligneReserver = document.createElement("div");
+      ligneReserver.className = "lcdp-planning-membre-reserver-row";
+      ligneReserver.dataset.lcdpPlanningReserverRow = "true";
+    }
+
+    if (ligneReserver.parentNode !== card || ligneReserver.nextElementSibling !== header) {
+      card.insertBefore(ligneReserver, header);
+    }
+
+    let lien = calendrier.querySelector("[data-lcdp-planning-reserver]");
+
+    if (!lien) {
+      lien = document.createElement("a");
+      lien.dataset.lcdpPlanningReserver = "true";
+      lien.textContent = "RÉSERVER";
+      lien.setAttribute("aria-label", "Réserver une nouvelle date");
+    }
+
+    lien.className = "lcdp-button lcdp-planning-membre-reserver-button";
     lien.href = PAGE_RESERVER_MEMBRE;
-    lien.textContent = "RÉSERVER";
-    lien.dataset.lcdpPlanningReserver = "true";
-    lien.setAttribute("aria-label", "Réserver une nouvelle date");
 
-    navigation.appendChild(lien);
+    if (lien.parentNode !== ligneReserver) {
+      ligneReserver.appendChild(lien);
+    }
   }
 
   async function chargerReservations() {
@@ -666,6 +768,8 @@
     }
 
     if (boutonAdresse) {
+      boutonAdresse.textContent = "Accès";
+      boutonAdresse.classList.add("lcdp-box-card-reservation-membre__micro-action--acces");
       boutonAdresse.dataset.idparc = idParc;
       boutonAdresse.dataset.id = idFlux;
     }
