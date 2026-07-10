@@ -673,12 +673,36 @@
     boutonFermer.setAttribute("aria-label", "Fermer");
     boutonFermer.textContent = "×";
 
+    const vues = document.createElement("div");
+    vues.className = "lcdp-planning-reservation-vues";
+    vues.dataset.lcdpPlanningReservationVues = "true";
+
+    const vueReservation = document.createElement("div");
+    vueReservation.className = "lcdp-planning-reservation-vue lcdp-planning-reservation-vue--active";
+    vueReservation.dataset.lcdpPlanningVue = "reservation";
+
     const card = creerCardReservation(reservation);
+    vueReservation.appendChild(card);
+    vues.appendChild(vueReservation);
+
     contenu.appendChild(boutonFermer);
-    contenu.appendChild(card);
+    contenu.appendChild(vues);
 
     function fermer() {
+      document.removeEventListener("keydown", gererEchapReservation);
       slot.innerHTML = "";
+    }
+
+    function gererEchapReservation(event) {
+      if (event.key !== "Escape") return;
+
+      if (workflow.classList.contains("lcdp-box-workflow-reservation--acces-parc-ouvert")) {
+        event.preventDefault();
+        fermerAccesParcDansReservation(workflow);
+        return;
+      }
+
+      fermer();
     }
 
     boutonFermer.addEventListener("click", fermer);
@@ -686,13 +710,7 @@
       if (event.target === workflow) fermer();
     });
 
-    document.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.key === "Escape") fermer();
-      },
-      { once: true }
-    );
+    document.addEventListener("keydown", gererEchapReservation);
   }
 
   function creerCardReservation(reservation) {
@@ -848,48 +866,109 @@
       return;
     }
 
-    const slot = document.getElementById("lcdp-lightbox-slot");
+    const workflow = declencheur
+      ? declencheur.closest("[data-lcdp-box-workflow-reservation]")
+      : document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
 
-    if (!slot) return;
+    if (!workflow) return;
 
-    const ancienneBox = slot.querySelector("[data-lcdp-box-card-acces-parc]");
-    if (ancienneBox) ancienneBox.remove();
+    const vues = workflow.querySelector("[data-lcdp-planning-reservation-vues]");
+    const vueReservation = workflow.querySelector('[data-lcdp-planning-vue="reservation"]');
 
-    const fragmentAcces = await chargerFragmentObjet("/BOX/04-box-card-acces-parc.html");
-    slot.appendChild(fragmentAcces);
+    if (!vues || !vueReservation) return;
 
-    const boxAcces = Array.from(slot.querySelectorAll("[data-lcdp-box-card-acces-parc]")).pop();
+    let vueAcces = workflow.querySelector('[data-lcdp-planning-vue="acces"]');
+    let boxAcces = vueAcces ? vueAcces.querySelector("[data-lcdp-box-card-acces-parc]") : null;
 
-    if (!boxAcces) {
-      throw new Error("Structure accès parc introuvable.");
+    if (!vueAcces || !boxAcces) {
+      vueAcces = document.createElement("div");
+      vueAcces.className = "lcdp-planning-reservation-vue";
+      vueAcces.dataset.lcdpPlanningVue = "acces";
+      vueAcces.hidden = true;
+
+      const fragmentAcces = await chargerFragmentObjet("/BOX/04-box-card-acces-parc.html");
+      vueAcces.appendChild(fragmentAcces);
+      vues.appendChild(vueAcces);
+
+      boxAcces = vueAcces.querySelector("[data-lcdp-box-card-acces-parc]");
+
+      if (!boxAcces) {
+        throw new Error("Structure accès parc introuvable.");
+      }
+
+      preparerBoxAccesParcInline(boxAcces, workflow);
     }
 
     await remplirBoxAccesParc(boxAcces, reservation);
 
-    const boutonFermer = boxAcces.querySelector("[data-lcdp-card-acces-parc-close]");
+    workflow.dataset.lcdpAccesDeclencheurId = declencheur && declencheur.id ? declencheur.id : "";
+    workflow._lcdpDernierDeclencheurAcces = declencheur || null;
 
-    function fermerAcces() {
-      document.removeEventListener("keydown", gererEchapAcces, true);
-      boxAcces.remove();
-      if (declencheur && typeof declencheur.focus === "function") {
-        declencheur.focus({ preventScroll: true });
+    vueReservation.hidden = true;
+    vueReservation.classList.remove("lcdp-planning-reservation-vue--active");
+
+    vueAcces.hidden = false;
+    vueAcces.classList.add("lcdp-planning-reservation-vue--active");
+    workflow.classList.add("lcdp-box-workflow-reservation--acces-parc-ouvert");
+
+    const retour = boxAcces.querySelector("[data-lcdp-card-acces-parc-close]");
+    const titre = boxAcces.querySelector("[data-lcdp-card-acces-parc-title]");
+
+    if (retour && typeof retour.focus === "function") {
+      retour.focus({ preventScroll: true });
+    } else if (titre && typeof titre.focus === "function") {
+      titre.focus({ preventScroll: true });
+    }
+  }
+
+  function preparerBoxAccesParcInline(boxAcces, workflow) {
+    boxAcces.classList.add("lcdp-box-card-acces-parc--inline");
+    boxAcces.removeAttribute("aria-modal");
+    boxAcces.setAttribute("role", "region");
+
+    const boutonFermer = boxAcces.querySelector("[data-lcdp-card-acces-parc-close]");
+    const header = boxAcces.querySelector(".lcdp-box-card-acces-parc__header");
+    const titre = boxAcces.querySelector("[data-lcdp-card-acces-parc-title]");
+
+    if (boutonFermer) {
+      boutonFermer.textContent = "← Retour";
+      boutonFermer.setAttribute("aria-label", "Retour à la réservation");
+      boutonFermer.classList.add("lcdp-box-card-acces-parc__close--retour");
+      boutonFermer.addEventListener("click", () => fermerAccesParcDansReservation(workflow));
+
+      if (header && boutonFermer.parentNode !== header) {
+        header.insertBefore(boutonFermer, header.firstChild);
       }
     }
 
-    function gererEchapAcces(event) {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      fermerAcces();
+    if (titre) {
+      titre.tabIndex = -1;
+    }
+  }
+
+  function fermerAccesParcDansReservation(workflow) {
+    const racine = workflow || document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
+    if (!racine) return;
+
+    const vueReservation = racine.querySelector('[data-lcdp-planning-vue="reservation"]');
+    const vueAcces = racine.querySelector('[data-lcdp-planning-vue="acces"]');
+
+    if (vueAcces) {
+      vueAcces.hidden = true;
+      vueAcces.classList.remove("lcdp-planning-reservation-vue--active");
     }
 
-    if (boutonFermer) boutonFermer.addEventListener("click", fermerAcces);
+    if (vueReservation) {
+      vueReservation.hidden = false;
+      vueReservation.classList.add("lcdp-planning-reservation-vue--active");
+    }
 
-    boxAcces.addEventListener("click", (event) => {
-      if (event.target === boxAcces) fermerAcces();
-    });
+    racine.classList.remove("lcdp-box-workflow-reservation--acces-parc-ouvert");
 
-    document.addEventListener("keydown", gererEchapAcces, true);
+    const declencheur = racine._lcdpDernierDeclencheurAcces;
+    if (declencheur && typeof declencheur.focus === "function") {
+      declencheur.focus({ preventScroll: true });
+    }
   }
 
   async function remplirBoxAccesParc(boxAcces, reservation) {
