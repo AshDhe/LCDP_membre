@@ -586,7 +586,13 @@
     const departement = parc.dptmt || parc.departement || reservation.dptmt || "";
     const idParc = parc.idparc || reservation.idparc || "";
     const idFlux = reservation.idflux || "";
-    const imageParc = parc.imageparc || parc.image || reservation.imageparc || reservation.image || "";
+    const imageParc =
+      construireCheminImageParcParDefaut(nomParc, departement) ||
+      parc.imageparc ||
+      parc.image ||
+      reservation.imageparc ||
+      reservation.image ||
+      "";
 
     const media = card.querySelector("[data-lcdp-card-reservation-media]");
     const image = card.querySelector("[data-lcdp-card-reservation-image]");
@@ -1358,6 +1364,37 @@
       buildUrl(CONFIG_PAGE.publicBaseUrl || CONFIG_PAGE.PUBLIC_BASE || "", "/OBJET");
 
     return buildUrl(objetBase, valeur);
+  }
+
+  function construireCheminImageParcParDefaut(nomParc, departement) {
+    const nom = normaliserSegmentCheminImageParc(nomParc);
+    const dptmt = normaliserDepartementCheminImageParc(departement);
+
+    if (!nom || !dptmt) return "";
+
+    return "/OBJET/IMAG/PARC/" + dptmt + "/" + nom + "/card1.webp";
+  }
+
+  function normaliserSegmentCheminImageParc(value) {
+    return String(value || "")
+      .trim()
+      .replace(/^parc\s+de\s+/i, "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
+
+  function normaliserDepartementCheminImageParc(value) {
+    const departement = String(value || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^0-9A-Z]/g, "");
+
+    if (/^[1-9]$/.test(departement)) return "0" + departement;
+
+    return departement;
   }
 
   function construireUrlImageParc(value) {
