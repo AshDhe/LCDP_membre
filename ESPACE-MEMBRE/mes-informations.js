@@ -589,8 +589,11 @@
     }
 
     if (action.affichageDaOui === true) {
+      bouton.dataset.lcdpActionDaProtegee = "true";
       bouton.hidden = true;
       bouton.disabled = true;
+      bouton.tabIndex = -1;
+      bouton.style.display = "none";
       bouton.setAttribute("aria-hidden", "true");
     }
 
@@ -1135,10 +1138,34 @@
       const bouton = document.getElementById(champ.action.id);
       if (!bouton) return;
 
-      bouton.hidden = !afficherActionsProtegees;
-      bouton.disabled = !afficherActionsProtegees;
-      bouton.setAttribute("aria-hidden", afficherActionsProtegees ? "false" : "true");
+      if (afficherActionsProtegees) {
+        bouton.hidden = false;
+        bouton.disabled = false;
+        bouton.removeAttribute("aria-hidden");
+        bouton.removeAttribute("tabindex");
+        bouton.style.removeProperty("display");
+        return;
+      }
+
+      retirerActionProtegeeDa(bouton);
     });
+  }
+
+  function retirerActionProtegeeDa(bouton) {
+    if (!bouton) return;
+
+    const zoneControl = bouton.closest("[data-lcdp-champ-control]");
+    const champ = bouton.closest("[data-lcdp-box-champ-formulaire]");
+
+    bouton.remove();
+
+    if (zoneControl && !zoneControl.querySelector(".lcdp-box-champ-formulaire__action-edit")) {
+      zoneControl.classList.remove("lcdp-box-champ-formulaire__control--modifiable");
+    }
+
+    if (champ && !champ.querySelector(".lcdp-box-champ-formulaire__action-edit")) {
+      champ.classList.remove("lcdp-box-champ-formulaire--compte-action", "lcdp-box-champ-formulaire--modifiable");
+    }
   }
 
   function membreAvecDaOui(compte) {
