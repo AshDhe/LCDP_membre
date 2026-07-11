@@ -79,7 +79,8 @@
       action: {
         id: "modifier-email-membre",
         texte: "Modifier l'e-mail",
-        mode: "picto"
+        mode: "picto",
+        pictoRouge: true
       }
     },
     {
@@ -158,7 +159,9 @@
       action: {
         id: "modifier-adresse1-membre",
         texte: "Modifier l'adresse de facturation",
-        mode: "picto"
+        mode: "picto",
+        pictoRouge: true,
+        affichageDaOui: true
       }
     },
     {
@@ -171,7 +174,9 @@
       action: {
         id: "modifier-adresse2-membre",
         texte: "Modifier l'adresse de facturation",
-        mode: "picto"
+        mode: "picto",
+        pictoRouge: true,
+        affichageDaOui: true
       }
     },
     {
@@ -184,7 +189,9 @@
       action: {
         id: "modifier-adresse3-membre",
         texte: "Modifier l'adresse de facturation",
-        mode: "picto"
+        mode: "picto",
+        pictoRouge: true,
+        affichageDaOui: true
       }
     },
     {
@@ -198,7 +205,9 @@
         id: "modifier-iban-membre",
         texte: "Modifier l'IBAN",
         mode: "picto",
-        champ: "iban"
+        champ: "iban",
+        pictoRouge: true,
+        affichageDaOui: true
       }
     },
     {
@@ -212,7 +221,9 @@
         id: "modifier-swift-membre",
         texte: "Modifier le SWIFT",
         mode: "picto",
-        champ: "swift"
+        champ: "swift",
+        pictoRouge: true,
+        affichageDaOui: true
       }
     },
     {
@@ -226,7 +237,9 @@
         id: "modifier-rib-membre",
         texte: "Modifier le RIB",
         mode: "picto",
-        champ: "rib"
+        champ: "rib",
+        pictoRouge: true,
+        affichageDaOui: true
       }
     },
     {
@@ -389,6 +402,18 @@
         background: var(--lcdp-color-orange-hover);
         border-color: var(--lcdp-color-orange-hover);
         color: var(--lcdp-color-text);
+      }
+
+      #form-mes-informations-membre .lcdp-box-champ-formulaire__action-edit--rouge,
+      #form-mes-informations-membre .lcdp-box-champ-formulaire__action-edit--rouge:hover,
+      #form-mes-informations-membre .lcdp-box-champ-formulaire__action-edit--rouge:focus-visible {
+        color: #b3261e;
+      }
+
+      #form-mes-informations-membre .lcdp-box-champ-formulaire__action-edit--rouge .lcdp-box-champ-formulaire__action-edit-icon,
+      #form-mes-informations-membre .lcdp-box-champ-formulaire__action-edit--rouge .lcdp-box-champ-formulaire__action-edit-icon path {
+        fill: currentColor;
+        stroke: currentColor;
       }
 
       @media (max-width: 767px) {
@@ -558,6 +583,17 @@
     bouton.id = action.id;
     bouton.type = "button";
     bouton.className = "lcdp-box-champ-formulaire__action-edit";
+
+    if (action.pictoRouge === true) {
+      bouton.classList.add("lcdp-box-champ-formulaire__action-edit--rouge");
+    }
+
+    if (action.affichageDaOui === true) {
+      bouton.hidden = true;
+      bouton.disabled = true;
+      bouton.setAttribute("aria-hidden", "true");
+    }
+
     bouton.setAttribute("aria-label", action.texte || "Modifier l'alias");
     bouton.title = action.texte || "Modifier l'alias";
     bouton.innerHTML = `
@@ -603,11 +639,11 @@
     const boutonPoints = document.getElementById("voir-points-membre");
     const boutonParrain = document.getElementById("modifier-parrain-membre");
     const boutonDepartement = document.getElementById("modifier-departement-membre");
-    const boutonsAdresseFacturation = [
-      document.getElementById("modifier-adresse1-membre"),
-      document.getElementById("modifier-adresse2-membre"),
-      document.getElementById("modifier-adresse3-membre")
-    ].filter(Boolean);
+    const actionsAdresseFacturation = [
+      { bouton: document.getElementById("modifier-adresse1-membre"), champ: "adresse1", label: "Adresse 1" },
+      { bouton: document.getElementById("modifier-adresse2-membre"), champ: "adresse2", label: "Adresse 2" },
+      { bouton: document.getElementById("modifier-adresse3-membre"), champ: "adresse3", label: "Adresse 3" }
+    ].filter((action) => action.bouton);
     const boutonFactures = document.getElementById("voir-factures-membre");
     const boutonIban = document.getElementById("modifier-iban-membre");
     const boutonSwift = document.getElementById("modifier-swift-membre");
@@ -618,8 +654,8 @@
     if (boutonPoints) boutonPoints.addEventListener("click", ouvrirPagePointsMembre);
     if (boutonParrain) boutonParrain.addEventListener("click", ouvrirDialogueParrainMembre);
     if (boutonDepartement) boutonDepartement.addEventListener("click", ouvrirDialogueDepartementMembre);
-    boutonsAdresseFacturation.forEach((bouton) => {
-      bouton.addEventListener("click", ouvrirDialogueAdresseFacturationMembre);
+    actionsAdresseFacturation.forEach((action) => {
+      action.bouton.addEventListener("click", ouvrirDialogueAdresseFacturationMembre);
     });
     if (boutonFactures) boutonFactures.addEventListener("click", ouvrirPageFacturesMembre);
     if (boutonIban) boutonIban.addEventListener("click", () => ouvrirDialogueCoordonneeRemboursementMembre("iban", "IBAN"));
@@ -1087,6 +1123,34 @@
     });
 
     actualiserBadgePointsClub(compteMembreActuel);
+    actualiserActionsProtegeesDa(compteMembreActuel);
+  }
+
+  function actualiserActionsProtegeesDa(compte) {
+    const afficherActionsProtegees = membreAvecDaOui(compte);
+
+    champsCompte.forEach((champ) => {
+      if (!champ.action || champ.action.affichageDaOui !== true || !champ.action.id) return;
+
+      const bouton = document.getElementById(champ.action.id);
+      if (!bouton) return;
+
+      bouton.hidden = !afficherActionsProtegees;
+      bouton.disabled = !afficherActionsProtegees;
+      bouton.setAttribute("aria-hidden", afficherActionsProtegees ? "false" : "true");
+    });
+  }
+
+  function membreAvecDaOui(compte) {
+    return normaliserStatudaCompte(compte?.statuda || compte?.statutDa || compte?.da || "") === "oui";
+  }
+
+  function normaliserStatudaCompte(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
   }
 
   function ouvrirPagePointsMembre() {
@@ -1098,43 +1162,73 @@
   }
 
   async function ouvrirDialogueAdresseFacturationMembre() {
+    const champsAdresse = ["adresse1", "adresse2", "adresse3"];
+
     const resultat = await ouvrirDialogueChamp({
       titre: "Modifier l'adresse de facturation",
-      champs: [
-        {
-          id: "nouvelle-adresse1-membre",
-          name: "adresse1",
-          label: "Adresse 1",
+      champs: champsAdresse.map((champ) => {
+        const label = libelleChampAdresseFacturation(champ);
+
+        return {
+          id: "nouvelle-" + champ + "-membre",
+          name: champ,
+          label,
           type: "text",
-          required: false,
-          value: compteMembreActuel?.adresse1 || ""
-        },
-        {
-          id: "nouvelle-adresse2-membre",
-          name: "adresse2",
-          label: "Adresse 2",
-          type: "text",
-          required: false,
-          value: compteMembreActuel?.adresse2 || ""
-        },
-        {
-          id: "nouvelle-adresse3-membre",
-          name: "adresse3",
-          label: "Adresse 3",
-          type: "text",
-          required: false,
-          value: compteMembreActuel?.adresse3 || ""
-        }
-      ]
+          required: champ !== "adresse3",
+          value: compteMembreActuel?.[champ] || "",
+          nettoyer: nettoyerTexteSimple,
+          messageRequis: label + " est obligatoire.",
+          valider: (valeur) => messageValidationAdresseFacturation(champ, valeur)
+        };
+      })
     });
 
     if (!resultat) return;
 
-    await envoyerModificationAdresseFacturation({
+    const donnees = {
       adresse1: nettoyerTexteSimple(resultat.adresse1),
       adresse2: nettoyerTexteSimple(resultat.adresse2),
       adresse3: nettoyerTexteSimple(resultat.adresse3)
-    });
+    };
+
+    const messageValidation = champsAdresse
+      .map((champ) => messageValidationAdresseFacturation(champ, donnees[champ]))
+      .find(Boolean);
+
+    if (messageValidation) {
+      await afficherAlerte(messageValidation);
+      return;
+    }
+
+    await envoyerModificationAdresseFacturation(donnees);
+  }
+
+  function normaliserChampAdresseFacturation(champ) {
+    const valeur = String(champ || "").trim().toLowerCase();
+    return ["adresse1", "adresse2", "adresse3"].includes(valeur) ? valeur : "";
+  }
+
+  function libelleChampAdresseFacturation(champ) {
+    if (champ === "adresse1") return "Adresse 1";
+    if (champ === "adresse2") return "Adresse 2";
+    if (champ === "adresse3") return "Adresse 3";
+
+    return "Adresse";
+  }
+
+  function messageValidationAdresseFacturation(champ, valeur) {
+    const label = libelleChampAdresseFacturation(champ);
+    const texte = nettoyerTexteSimple(valeur);
+
+    if (!texte) {
+      return champ === "adresse3" ? "" : label + " est obligatoire.";
+    }
+
+    if (!/[0-9A-Za-zÀ-ÿ]/.test(texte)) {
+      return label + " doit contenir au moins une lettre ou un chiffre.";
+    }
+
+    return "";
   }
 
   async function envoyerModificationAdresseFacturation(donnees) {
@@ -1181,15 +1275,26 @@
           name: "valeur",
           label,
           type: "text",
-          required: false,
-          value: compteMembreActuel?.[champAutorise] || ""
+          required: true,
+          value: compteMembreActuel?.[champAutorise] || "",
+          nettoyer: (valeur) => normaliserValeurCoordonneeRemboursement(champAutorise, valeur),
+          messageRequis: label + " est obligatoire.",
+          valider: (valeur) => messageValidationCoordonneeRemboursement(champAutorise, valeur)
         }
       ]
     });
 
     if (!resultat) return;
 
-    await envoyerModificationCoordonneeRemboursement(champAutorise, nettoyerTexteSimple(resultat.valeur));
+    const valeur = normaliserValeurCoordonneeRemboursement(champAutorise, resultat.valeur);
+    const messageValidation = messageValidationCoordonneeRemboursement(champAutorise, valeur);
+
+    if (messageValidation) {
+      await afficherAlerte(messageValidation);
+      return;
+    }
+
+    await envoyerModificationCoordonneeRemboursement(champAutorise, valeur);
   }
 
   async function envoyerModificationCoordonneeRemboursement(champ, valeur) {
@@ -1225,6 +1330,73 @@
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
     }
+  }
+
+  function normaliserValeurCoordonneeRemboursement(champ, valeur) {
+    const texte = nettoyerTexteSimple(valeur).toUpperCase();
+
+    if (["iban", "swift", "rib"].includes(champ)) {
+      return texte.replace(/\s+/g, "");
+    }
+
+    return texte;
+  }
+
+  function messageValidationCoordonneeRemboursement(champ, valeur) {
+    const champAutorise = normaliserChampRemboursement(champ);
+    const texte = normaliserValeurCoordonneeRemboursement(champAutorise, valeur);
+
+    if (!texte) {
+      return libelleChampRemboursement(champAutorise) + " est obligatoire.";
+    }
+
+    if (champAutorise === "iban") {
+      if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/.test(texte) || texte.length < 15 || texte.length > 34) {
+        return "L’IBAN saisi doit être un IBAN valide.";
+      }
+
+      if (!ibanValideMod97(texte)) {
+        return "L’IBAN saisi est invalide.";
+      }
+    }
+
+    if (champAutorise === "swift" && !/^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(texte)) {
+      return "Le SWIFT/BIC saisi doit contenir 8 ou 11 caractères au format bancaire attendu.";
+    }
+
+    if (champAutorise === "rib" && !/^[A-Z0-9]{21}[0-9]{2}$/.test(texte)) {
+      return "Le RIB saisi doit contenir 23 caractères, avec une clé RIB finale sur 2 chiffres.";
+    }
+
+    return "";
+  }
+
+  function libelleChampRemboursement(champ) {
+    if (champ === "iban") return "IBAN";
+    if (champ === "swift") return "SWIFT";
+    if (champ === "rib") return "RIB";
+
+    return "Coordonnée de remboursement";
+  }
+
+  function ibanValideMod97(iban) {
+    const valeur = String(iban || "").toUpperCase();
+    const rearrange = valeur.slice(4) + valeur.slice(0, 4);
+    let reste = 0;
+
+    for (const caractere of rearrange) {
+      const bloc = /[0-9]/.test(caractere)
+        ? caractere
+        : String(caractere.charCodeAt(0) - 55);
+
+      if (!/^[0-9]+$/.test(bloc)) return false;
+
+      for (const chiffre of bloc) {
+        reste = (reste * 10 + Number(chiffre)) % 97;
+      }
+    }
+
+    return reste === 1;
   }
 
   function normaliserChampRemboursement(champ) {
@@ -1531,20 +1703,38 @@
         const data = {};
         let champRequisManquant = false;
         let checkboxRequiseManquante = false;
+        let messageValidation = "";
 
         (options.champs || []).forEach((champ) => {
           const input = formulaire.querySelector(`[name="${champ.name}"]`);
           const estCheckbox = input && input.type === "checkbox";
-          const valeur = input
+          let valeur = input
             ? estCheckbox
               ? input.checked
-              : String(input.value || "").trim()
+              : String(input.value || "")
             : "";
+
+          if (!estCheckbox) {
+            valeur = typeof champ.nettoyer === "function"
+              ? champ.nettoyer(valeur)
+              : String(valeur || "").trim();
+
+            if (input) {
+              input.value = valeur;
+            }
+          }
 
           if (champ.required && estCheckbox && input.checked !== true) {
             checkboxRequiseManquante = true;
           } else if (champ.required && !estCheckbox && !valeur) {
             champRequisManquant = true;
+            if (!messageValidation) {
+              messageValidation = champ.messageRequis || "Merci de renseigner le champ demandé.";
+            }
+          }
+
+          if (!messageValidation && !estCheckbox && valeur && typeof champ.valider === "function") {
+            messageValidation = champ.valider(valeur) || "";
           }
 
           data[champ.name] = valeur;
@@ -1555,8 +1745,8 @@
           return;
         }
 
-        if (champRequisManquant) {
-          erreur.textContent = "Merci de renseigner le champ demandé.";
+        if (champRequisManquant || messageValidation) {
+          erreur.textContent = messageValidation || "Merci de renseigner le champ demandé.";
           erreur.hidden = false;
           return;
         }
