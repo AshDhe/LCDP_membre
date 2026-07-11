@@ -1290,9 +1290,9 @@ async function afficherPlanningMoisLecture(etatPlanning) {
       ouvrirPartagePlanningParc(parc).catch(console.error);
     });
 
-    actions.appendChild(boutonFiche);
     actions.appendChild(boutonReserver);
     actions.appendChild(actionPartager);
+    actions.appendChild(boutonFiche);
 
     return actions;
   }
