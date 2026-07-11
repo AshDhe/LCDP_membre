@@ -48,7 +48,7 @@
   const PAGE_PLANNING_PARC_PUBLIC = construireUrlPublic("/ESPACE-PUBLIC/planning-parc.html");
 
   let pageInitialisee = false;
-  let etatMembre = { abonne: false, abonnementSuspendu: false, abonnementAnnuleNonPaye: false, paiementSuspension: null };
+  let etatMembre = { abonne: false, abonnementSuspendu: false, abonnementAnnuleNonPaye: false, paiementSuspension: null, statudaConnue: false, statuda: null, datenext: null };
 
   const etatPage = {
     departement: "",
@@ -108,7 +108,7 @@
 
     if (reponse.status === 401) {
       redirigerConnexionMembre("inactive");
-      return { abonne: false, abonnementSuspendu: false, abonnementAnnuleNonPaye: false, paiementSuspension: null };
+      return { abonne: false, abonnementSuspendu: false, abonnementAnnuleNonPaye: false, paiementSuspension: null, statudaConnue: false, statuda: null, datenext: null };
     }
 
     if (!reponse.ok || !resultat || !reponseApiOk(resultat)) {
@@ -119,7 +119,10 @@
       abonne: valeurBooleenneVraie(resultat.abonne),
       abonnementSuspendu: valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu),
       abonnementAnnuleNonPaye: valeurBooleenneVraie(resultat.abonnementAnnuleNonPaye || resultat.abonnementAnnule || resultat.annuleNonPaye),
-      paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null
+      paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null,
+      statudaConnue: Object.prototype.hasOwnProperty.call(resultat, "statuda"),
+      statuda: normaliserStatudaReservation(resultat.statuda),
+      datenext: resultat.datenext || null
     };
   }
 
@@ -325,10 +328,44 @@
     }
 
     if (!etat || (etat.abonne !== true && !membreAbonne())) {
+      const statuda = normaliserStatudaReservation(etat?.statuda);
+
+      if (statuda === "encours") {
+        return "Vous devez être membre abonné pour réserver. Votre DA est en cours.";
+      }
+
+      if (statuda === "non") {
+        return "Vous devez être membre abonné pour réserver. Vous pouvez transmettre votre DA à partir du " + formaterDateDaReservation(etat?.datenext) + ".";
+      }
+
+      if (!statuda) {
+        return `Vous devez être membre abonné pour réserver. Cliquez sur le lien Abonnement du "burger" menu de votre espace membre pour devenir membre abonné. Sous réserve de la validation préalable de votre première demande d'abonnement (DA) par le Club.`;
+      }
+
       return "Vous devez être membre abonné pour réserver une date.";
     }
 
     return "";
+  }
+
+  function normaliserStatudaReservation(value) {
+    const statut = String(value || "").trim().toLowerCase();
+
+    return ["encours", "oui", "non"].includes(statut) ? statut : null;
+  }
+
+  function formaterDateDaReservation(value) {
+    if (!value) return "une date communiquée par le club";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+
+    return date.toLocaleDateString("fr-FR", {
+      timeZone: "Europe/Paris",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    });
   }
 
   function abonnementAnnuleNonPaye(etat) {
