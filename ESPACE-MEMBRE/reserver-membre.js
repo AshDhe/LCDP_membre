@@ -57,6 +57,7 @@
     templateCardParc: null,
     templateJourMois: null,
     templateHeureJour: null,
+    templateFicheParc: null,
     calendrierMoisActif: null
   };
 
@@ -437,14 +438,17 @@
     const fragmentCard = await chargerFragmentObjet("/BOX/04-box-card-parc.html");
     etatPage.templateCardParc = fragmentCard.querySelector("[data-lcdp-box-card-parc]");
 
+    const fragmentFicheParc = await chargerFragmentObjet("/BOX/04-box-fiche-parc.html");
+    etatPage.templateFicheParc = fragmentFicheParc.querySelector("[data-lcdp-box-fiche-parc]");
+
     const fragmentJour = await chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html");
     etatPage.templateJourMois = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
 
     const fragmentHeure = await chargerFragmentObjet("/BOX/04-box-card-heure-in-calendrier-jour.html");
     etatPage.templateHeureJour = fragmentHeure.querySelector("[data-lcdp-card-heure-jour]");
 
-    if (!etatPage.templateCardParc || !etatPage.templateJourMois || !etatPage.templateHeureJour) {
-      throw new Error("Templates parc, jour ou heure introuvables.");
+    if (!etatPage.templateCardParc || !etatPage.templateFicheParc || !etatPage.templateJourMois || !etatPage.templateHeureJour) {
+      throw new Error("Templates parc, fiche parc, jour ou heure introuvables.");
     }
   }
 
@@ -687,11 +691,12 @@
 
     if (boutonPlanning) {
       boutonPlanning.dataset.idparc = idparc;
+      boutonPlanning.textContent = "Planning Parc";
     }
 
     if (boutonReserver) {
       boutonReserver.dataset.idparc = idparc;
-      boutonReserver.textContent = "Nouvelle date";
+      boutonReserver.textContent = "Réserver";
     }
 
     return card;
@@ -706,7 +711,15 @@
 
     if (boutonFiche) {
       event.preventDefault();
-      await afficherAlerte("La fiche du parc sera traitée après le choix de réservation.");
+
+      const parc = trouverParcParId(boutonFiche.dataset.idparc);
+
+      if (!parc) {
+        await afficherAlerte("Parc introuvable.");
+        return;
+      }
+
+      await ouvrirFicheParc(parc);
       return;
     }
 
@@ -760,6 +773,126 @@
       event.preventDefault();
       await traiterChoixHeure(boutonHeure);
     }
+  }
+
+  async function ouvrirFicheParc(parc) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const fiche = etatPage.templateFicheParc
+      ? etatPage.templateFicheParc.cloneNode(true)
+      : (await chargerFragmentObjet("/BOX/04-box-fiche-parc.html")).querySelector("[data-lcdp-box-fiche-parc]");
+
+    if (!fiche) {
+      throw new Error("Template fiche parc introuvable.");
+    }
+
+    const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
+    const departement = String(parc.dptmt || parc.departement || "").trim();
+    const image = fiche.querySelector("[data-lcdp-fiche-parc-image]");
+    const titre = fiche.querySelector("[data-lcdp-fiche-parc-title]");
+    const meta = fiche.querySelector("[data-lcdp-fiche-parc-meta]");
+    const presentation = fiche.querySelector("[data-lcdp-fiche-parc-presentation]");
+    const galerie = fiche.querySelector("[data-lcdp-fiche-parc-galerie]");
+    const coordonnees = fiche.querySelector("[data-lcdp-fiche-parc-coordonnees]");
+    const contact = fiche.querySelector("[data-lcdp-fiche-parc-contact]");
+    const boutonFermer = fiche.querySelector("[data-lcdp-fiche-parc-close]");
+
+    if (image) {
+      image.src = construireUrlImageParc(parc);
+      image.alt = "Image du parc " + nom;
+    }
+
+    if (titre) {
+      titre.textContent = "Parc de " + nom;
+    }
+
+    if (meta) {
+      meta.textContent = departement ? "Département " + departement : "Département non renseigné";
+    }
+
+    if (presentation) {
+      presentation.textContent = nettoyerTexteFiche(parc.prez || parc.presentation || parc.description || "") || "Présentation non renseignée.";
+    }
+
+    if (galerie) {
+      galerie.textContent = nettoyerTexteFiche(parc.galerie || parc.galeriephoto || parc.photos || "") || "Galerie photo non renseignée.";
+    }
+
+    if (coordonnees) {
+      coordonnees.textContent = construireTexteCoordonneesParc(parc);
+    }
+
+    if (contact) {
+      contact.textContent = construireTexteContactParc(parc);
+    }
+
+    function fermer() {
+      slot.innerHTML = "";
+    }
+
+    if (boutonFermer) {
+      boutonFermer.addEventListener("click", fermer);
+    }
+
+    fiche.addEventListener("click", (event) => {
+      if (event.target === fiche) fermer();
+    });
+
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Escape") fermer();
+      },
+      { once: true }
+    );
+
+    slot.appendChild(fiche);
+  }
+
+  function construireTexteCoordonneesParc(parc) {
+    const lignes = [
+      parc.adresse1,
+      parc.adresse2,
+      parc.adresse3
+    ]
+      .map(nettoyerTexteFiche)
+      .filter(Boolean);
+
+    const latitude = nettoyerTexteFiche(parc.latparc || parc.latitude || "");
+    const longitude = nettoyerTexteFiche(parc.lngparc || parc.longitude || "");
+
+    if (latitude && longitude) {
+      lignes.push("Coordonnées GPS : " + latitude + ", " + longitude);
+    }
+
+    return lignes.length ? lignes.join("\n") : "Coordonnées non renseignées.";
+  }
+
+  function construireTexteContactParc(parc) {
+    const lignes = [
+      parc.contact,
+      parc.contactparc,
+      parc.emailparc,
+      parc.email,
+      parc.telephone,
+      parc.telparc,
+      parc.tel
+    ]
+      .map(nettoyerTexteFiche)
+      .filter(Boolean)
+      .filter((valeur, index, liste) => liste.indexOf(valeur) === index);
+
+    return lignes.length ? lignes.join("\n") : "Contact non renseigné.";
+  }
+
+  function nettoyerTexteFiche(valeur) {
+    return String(valeur || "")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   function trouverParcParId(idparc) {
