@@ -132,7 +132,7 @@
       titre.insertAdjacentElement("afterend", mention);
     }
 
-    mention.textContent = etat && etat.abonne ? "[Vous êtes membre abonné]" : "[Vous êtes membre invité]";
+    mention.textContent = etat && etat.abonne ? "MEMBRE ABONNÉ" : "MEMBRE INVITÉ";
     afficherSuspensionMembre(etat);
   }
 
@@ -156,13 +156,19 @@
 
     bloc.innerHTML = "";
 
+    const delaiPaiementDepasse = paiementSuspensionDelaiDepasse(etat?.paiementSuspension);
+
     const texte = document.createElement("span");
-    texte.textContent = "[Votre abonnement est suspendu (non payé)]";
+    texte.textContent = delaiPaiementDepasse
+      ? "[Votre abonnement est annulé (non payé)]"
+      : "[Votre abonnement est suspendu (non payé)]";
     bloc.appendChild(texte);
 
     const bouton = document.createElement("button");
     bouton.type = "button";
     bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
+    bouton.classList.toggle("lcdp-workflow-micro-action--paiement-depasse", delaiPaiementDepasse);
+    bouton.setAttribute("aria-disabled", delaiPaiementDepasse ? "true" : "false");
     bouton.textContent = "Payer";
     bouton.addEventListener("click", () => {
       gererPaiementSuspensionMembre(etat).catch(console.error);
@@ -289,11 +295,20 @@
       return;
     }
 
+    if (paiementSuspensionDelaiDepasse(paiement)) {
+      await afficherAlerte(messageDelaiPaiementDepasse());
+      return;
+    }
+
     const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
     if (!ok) return;
 
     const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
     window.location.href = PAGE_PAIEMENT_CB + separateur + "orderid=" + encodeURIComponent(orderid) + "&echeance=" + encodeURIComponent(String(numeroEcheance || 1)) + "&source=suspension";
+  }
+
+  function messageDelaiPaiementDepasse() {
+    return "Le délai de paiement est dépassé. Cet abonnement est annulé.";
   }
 
   function messageBlocageNouvelleDate(etat) {
@@ -799,7 +814,6 @@ const etatPlanning = {
   mois: moisMinimumPlanning.getMonth() + 1,
   planning: [],
   moisMinimum: {
-   Minimum: {
     annee: moisMinimumPlanning.getFullYear(),
     mois: moisMinimumPlanning.getMonth() + 1
   },
