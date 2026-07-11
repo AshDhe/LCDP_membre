@@ -799,6 +799,7 @@
 
     const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
     const titre = fiche.querySelector("[data-lcdp-fiche-parc-title]");
+    const actionsSlot = fiche.querySelector("[data-lcdp-fiche-parc-actions]");
     const presentation = fiche.querySelector("[data-lcdp-fiche-parc-presentation]");
     const galerieSlot = fiche.querySelector("[data-lcdp-fiche-parc-galerie-slot]");
     const mapSlot = fiche.querySelector("[data-lcdp-fiche-parc-map-slot]");
@@ -807,6 +808,11 @@
 
     if (titre) {
       titre.textContent = "Parc de " + nom;
+    }
+
+    if (actionsSlot) {
+      actionsSlot.innerHTML = "";
+      actionsSlot.appendChild(creerActionsFicheParc(parc));
     }
 
     if (presentation) {
@@ -1263,6 +1269,39 @@ async function afficherPlanningMoisLecture(etatPlanning) {
     bouton.textContent = label;
     bouton.addEventListener("click", action);
     return bouton;
+  }
+
+  function creerActionsFicheParc(parc) {
+    const actions = document.createElement("div");
+    actions.className = "lcdp-box-fiche-parc__actions-list";
+
+    const boutonReserver = document.createElement("button");
+    boutonReserver.type = "button";
+    boutonReserver.className = "lcdp-button lcdp-button-orange lcdp-box-fiche-parc__action-reserver";
+    boutonReserver.textContent = "Réserver";
+    boutonReserver.addEventListener("click", () => {
+      demarrerReservationParc(parc).catch(console.error);
+    });
+
+    const boutonPlanning = document.createElement("button");
+    boutonPlanning.type = "button";
+    boutonPlanning.className = "lcdp-button lcdp-button-primary lcdp-box-fiche-parc__action-planning";
+    boutonPlanning.textContent = "Planning parc";
+    boutonPlanning.addEventListener("click", () => {
+      ouvrirPlanningMoisParc(parc).catch(console.error);
+    });
+
+    const actionPartager = creerActionPartagerPage();
+    actionPartager.classList.add("lcdp-box-fiche-parc__partage");
+    actionPartager.addEventListener("click", () => {
+      ouvrirPartagePlanningParc(parc).catch(console.error);
+    });
+
+    actions.appendChild(boutonReserver);
+    actions.appendChild(boutonPlanning);
+    actions.appendChild(actionPartager);
+
+    return actions;
   }
 
   function creerActionsPlanningParc(parc) {
