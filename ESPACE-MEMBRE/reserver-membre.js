@@ -795,48 +795,34 @@
     }
 
     const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
-    const departement = String(parc.dptmt || parc.departement || "").trim();
-    const image = fiche.querySelector("[data-lcdp-fiche-parc-image]");
     const titre = fiche.querySelector("[data-lcdp-fiche-parc-title]");
-    const meta = fiche.querySelector("[data-lcdp-fiche-parc-meta]");
     const presentation = fiche.querySelector("[data-lcdp-fiche-parc-presentation]");
-    const galerie = fiche.querySelector("[data-lcdp-fiche-parc-galerie]");
+    const galerieSlot = fiche.querySelector("[data-lcdp-fiche-parc-galerie-slot]");
     const mapSlot = fiche.querySelector("[data-lcdp-fiche-parc-map-slot]");
-    const adresse = fiche.querySelector("[data-lcdp-fiche-parc-adresse]");
     const contact = fiche.querySelector("[data-lcdp-fiche-parc-contact]");
     const boutonFermer = fiche.querySelector("[data-lcdp-fiche-parc-close]");
-
-    if (image) {
-      image.src = construireUrlImageParc(parc);
-      image.alt = "Image du parc " + nom;
-    }
 
     if (titre) {
       titre.textContent = "Parc de " + nom;
     }
 
-    if (meta) {
-      meta.textContent = departement ? "Département " + departement : "Département non renseigné";
-    }
-
     if (presentation) {
-      presentation.textContent = nettoyerTexteFiche(parc.prez || parc.presentation || parc.description || "") || "Présentation non renseignée.";
+      remplirBlocTexteFiche(
+        presentation,
+        nettoyerTexteFiche(parc.prez || parc.presentation || parc.description || "") || "Présentation non renseignée."
+      );
     }
 
-    if (galerie) {
-      galerie.textContent = nettoyerTexteFiche(parc.galerie || parc.galeriephoto || parc.photos || "") || "Galerie photo non renseignée.";
+    if (galerieSlot) {
+      afficherGalerieParcDansSlot(galerieSlot, parc);
     }
 
     if (mapSlot) {
       afficherCarteParcDansSlot(mapSlot, parc);
     }
 
-    if (adresse) {
-      remplirAdresseParc(adresse, parc);
-    }
-
     if (contact) {
-      contact.textContent = construireTexteContactParc(parc);
+      remplirBlocTexteFiche(contact, construireTexteContactParc(parc));
     }
 
     function fermer() {
@@ -860,6 +846,67 @@
     );
 
     slot.appendChild(fiche);
+  }
+
+  function remplirBlocTexteFiche(conteneur, texte) {
+    if (!conteneur) return;
+
+    conteneur.innerHTML = "";
+
+    const lignes = String(texte || "")
+      .split("\n")
+      .map(nettoyerTexteFiche)
+      .filter(Boolean);
+
+    if (!lignes.length) {
+      const paragraphe = document.createElement("p");
+      paragraphe.textContent = "Non renseigné.";
+      conteneur.appendChild(paragraphe);
+      return;
+    }
+
+    lignes.forEach((ligne) => {
+      const paragraphe = document.createElement("p");
+      paragraphe.textContent = ligne;
+      conteneur.appendChild(paragraphe);
+    });
+  }
+
+  function afficherGalerieParcDansSlot(slot, parc) {
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const galerie = document.createElement("section");
+    galerie.className = "lcdp-component lcdp-box-galerie lcdp-box-fiche-parc__galerie-box";
+    galerie.setAttribute("aria-label", "Galerie photo du parc");
+
+    const liste = document.createElement("div");
+    liste.className = "lcdp-box-galerie__list";
+
+    const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
+
+    for (let index = 1; index <= 6; index += 1) {
+      const numero = String(index).padStart(2, "0");
+      const card = document.createElement("article");
+      card.className = "lcdp-box-galerie__card lcdp-box-fiche-parc__galerie-card";
+
+      const image = document.createElement("img");
+      image.className = "lcdp-box-galerie__image lcdp-box-fiche-parc__galerie-image";
+      image.src = construireUrlImageParcFichier(parc, numero + ".webp");
+      image.alt = "Photo " + numero + " du parc de " + nom;
+      image.loading = "lazy";
+      image.decoding = "async";
+      image.addEventListener("error", () => {
+        card.hidden = true;
+      });
+
+      card.appendChild(image);
+      liste.appendChild(card);
+    }
+
+    galerie.appendChild(liste);
+    slot.appendChild(galerie);
   }
 
   function afficherCarteParcDansSlot(slot, parc) {
@@ -886,33 +933,6 @@
     slot.appendChild(carte);
   }
 
-  function remplirAdresseParc(conteneur, parc) {
-    if (!conteneur) return;
-
-    const lignes = [
-      parc.adresse1,
-      parc.adresse2,
-      parc.adresse3
-    ]
-      .map(nettoyerTexteFiche)
-      .filter(Boolean);
-
-    conteneur.innerHTML = "";
-
-    if (!lignes.length) {
-      const ligneVide = document.createElement("p");
-      ligneVide.textContent = "Adresse non renseignée.";
-      conteneur.appendChild(ligneVide);
-      return;
-    }
-
-    lignes.forEach((ligne) => {
-      const paragraphe = document.createElement("p");
-      paragraphe.textContent = ligne;
-      conteneur.appendChild(paragraphe);
-    });
-  }
-
   function construireTexteContactParc(parc) {
     const lignes = [
       parc.contact,
@@ -928,6 +948,23 @@
       .filter((valeur, index, liste) => liste.indexOf(valeur) === index);
 
     return lignes.length ? lignes.join("\n") : "Contact non renseigné.";
+  }
+
+  function construireUrlImageParcFichier(parc, fichier) {
+    const departement = nettoyerDepartement(parc?.dptmt || parc?.departement || "");
+    const dossierParc = normaliserNomParcPourChemin(parc?.nom || parc?.nomparc || "");
+    const nomFichier = String(fichier || "").replace(/^\/+/, "");
+
+    if (!departement || !dossierParc || !nomFichier) {
+      return construireUrlObjet(DOSSIER_IMAGES_PARC_OBJET + "/parc-defaut.webp");
+    }
+
+    return construireUrlObjet(
+      DOSSIER_IMAGES_PARC_OBJET +
+      "/" + encodeURIComponent(departement) +
+      "/" + encodeURIComponent(dossierParc) +
+      "/" + encodeURIComponent(nomFichier)
+    );
   }
 
   function nettoyerTexteFiche(valeur) {
