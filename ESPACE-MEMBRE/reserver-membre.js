@@ -1277,8 +1277,8 @@ async function afficherPlanningMoisLecture(etatPlanning) {
 
     const boutonReserver = document.createElement("button");
     boutonReserver.type = "button";
-    boutonReserver.className = "lcdp-button lcdp-button-orange lcdp-box-fiche-parc__action-reserver";
-    boutonReserver.textContent = "Réserver";
+    boutonReserver.className = "lcdp-button lcdp-box-calendrier-mois__action-reserver lcdp-box-fiche-parc__action-reserver";
+    boutonReserver.textContent = "RÉSERVER";
     boutonReserver.addEventListener("click", () => {
       demarrerReservationParc(parc).catch(console.error);
     });
@@ -1291,8 +1291,7 @@ async function afficherPlanningMoisLecture(etatPlanning) {
       ouvrirPlanningMoisParc(parc).catch(console.error);
     });
 
-    const actionPartager = creerActionPartagerPage();
-    actionPartager.classList.add("lcdp-box-fiche-parc__partage");
+    const actionPartager = creerActionPartagerFicheParc();
     actionPartager.addEventListener("click", () => {
       ouvrirPartagePlanningParc(parc).catch(console.error);
     });
@@ -1302,6 +1301,56 @@ async function afficherPlanningMoisLecture(etatPlanning) {
     actions.appendChild(actionPartager);
 
     return actions;
+  }
+
+  function creerActionPartagerFicheParc() {
+    const action = document.createElement("span");
+    action.className = "lcdp-box-fiche-parc__partage";
+    action.setAttribute("role", "button");
+    action.setAttribute("tabindex", "0");
+    action.setAttribute("aria-label", "Partager la page par e-mail");
+
+    const bouton = document.createElement("span");
+    bouton.className = "lcdp-box-fiche-parc__partage-icone";
+    bouton.setAttribute("aria-hidden", "true");
+
+    const icone = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icone.setAttribute("viewBox", "0 0 24 24");
+    icone.setAttribute("width", "20");
+    icone.setAttribute("height", "20");
+    icone.setAttribute("aria-hidden", "true");
+    icone.setAttribute("focusable", "false");
+    icone.setAttribute("fill", "none");
+    icone.setAttribute("stroke", "currentColor");
+    icone.setAttribute("stroke-width", "2");
+    icone.setAttribute("stroke-linecap", "round");
+    icone.setAttribute("stroke-linejoin", "round");
+
+    const trace = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    trace.setAttribute("d", "M22 2 11 13");
+
+    const trace2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    trace2.setAttribute("d", "M22 2 15 22 11 13 2 9 22 2Z");
+
+    icone.appendChild(trace);
+    icone.appendChild(trace2);
+    bouton.appendChild(icone);
+
+    const libelle = document.createElement("span");
+    libelle.className = "lcdp-box-fiche-parc__partage-libelle";
+    libelle.textContent = "Partager la page";
+
+    action.appendChild(bouton);
+    action.appendChild(libelle);
+
+    action.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        action.click();
+      }
+    });
+
+    return action;
   }
 
   function creerActionsPlanningParc(parc) {
