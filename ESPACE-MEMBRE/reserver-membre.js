@@ -58,6 +58,7 @@
     templateJourMois: null,
     templateHeureJour: null,
     templateFicheParc: null,
+    templateMapParc: null,
     calendrierMoisActif: null
   };
 
@@ -441,14 +442,17 @@
     const fragmentFicheParc = await chargerFragmentObjet("/BOX/04-box-fiche-parc.html");
     etatPage.templateFicheParc = fragmentFicheParc.querySelector("[data-lcdp-box-fiche-parc]");
 
+    const fragmentMapParc = await chargerFragmentObjet("/BOX/04-box-card-map-parc.html");
+    etatPage.templateMapParc = fragmentMapParc.querySelector("[data-lcdp-box-card-map-parc]");
+
     const fragmentJour = await chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html");
     etatPage.templateJourMois = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
 
     const fragmentHeure = await chargerFragmentObjet("/BOX/04-box-card-heure-in-calendrier-jour.html");
     etatPage.templateHeureJour = fragmentHeure.querySelector("[data-lcdp-card-heure-jour]");
 
-    if (!etatPage.templateCardParc || !etatPage.templateFicheParc || !etatPage.templateJourMois || !etatPage.templateHeureJour) {
-      throw new Error("Templates parc, fiche parc, jour ou heure introuvables.");
+    if (!etatPage.templateCardParc || !etatPage.templateFicheParc || !etatPage.templateMapParc || !etatPage.templateJourMois || !etatPage.templateHeureJour) {
+      throw new Error("Templates parc, fiche parc, carte parc, jour ou heure introuvables.");
     }
   }
 
@@ -797,7 +801,8 @@
     const meta = fiche.querySelector("[data-lcdp-fiche-parc-meta]");
     const presentation = fiche.querySelector("[data-lcdp-fiche-parc-presentation]");
     const galerie = fiche.querySelector("[data-lcdp-fiche-parc-galerie]");
-    const coordonnees = fiche.querySelector("[data-lcdp-fiche-parc-coordonnees]");
+    const mapSlot = fiche.querySelector("[data-lcdp-fiche-parc-map-slot]");
+    const adresse = fiche.querySelector("[data-lcdp-fiche-parc-adresse]");
     const contact = fiche.querySelector("[data-lcdp-fiche-parc-contact]");
     const boutonFermer = fiche.querySelector("[data-lcdp-fiche-parc-close]");
 
@@ -822,8 +827,12 @@
       galerie.textContent = nettoyerTexteFiche(parc.galerie || parc.galeriephoto || parc.photos || "") || "Galerie photo non renseignée.";
     }
 
-    if (coordonnees) {
-      coordonnees.textContent = construireTexteCoordonneesParc(parc);
+    if (mapSlot) {
+      afficherCarteParcDansSlot(mapSlot, parc);
+    }
+
+    if (adresse) {
+      remplirAdresseParc(adresse, parc);
     }
 
     if (contact) {
@@ -853,7 +862,33 @@
     slot.appendChild(fiche);
   }
 
-  function construireTexteCoordonneesParc(parc) {
+  function afficherCarteParcDansSlot(slot, parc) {
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const carte = etatPage.templateMapParc
+      ? etatPage.templateMapParc.cloneNode(true)
+      : null;
+
+    if (!carte) return;
+
+    const coords = carte.querySelector("[data-lcdp-card-map-parc-coords]");
+    const latitude = nettoyerTexteFiche(parc.latparc || parc.latitude || "");
+    const longitude = nettoyerTexteFiche(parc.lngparc || parc.longitude || "");
+
+    if (coords) {
+      coords.textContent = latitude && longitude
+        ? latitude + ", " + longitude
+        : "Coordonnées GPS non renseignées";
+    }
+
+    slot.appendChild(carte);
+  }
+
+  function remplirAdresseParc(conteneur, parc) {
+    if (!conteneur) return;
+
     const lignes = [
       parc.adresse1,
       parc.adresse2,
@@ -862,14 +897,20 @@
       .map(nettoyerTexteFiche)
       .filter(Boolean);
 
-    const latitude = nettoyerTexteFiche(parc.latparc || parc.latitude || "");
-    const longitude = nettoyerTexteFiche(parc.lngparc || parc.longitude || "");
+    conteneur.innerHTML = "";
 
-    if (latitude && longitude) {
-      lignes.push("Coordonnées GPS : " + latitude + ", " + longitude);
+    if (!lignes.length) {
+      const ligneVide = document.createElement("p");
+      ligneVide.textContent = "Adresse non renseignée.";
+      conteneur.appendChild(ligneVide);
+      return;
     }
 
-    return lignes.length ? lignes.join("\n") : "Coordonnées non renseignées.";
+    lignes.forEach((ligne) => {
+      const paragraphe = document.createElement("p");
+      paragraphe.textContent = ligne;
+      conteneur.appendChild(paragraphe);
+    });
   }
 
   function construireTexteContactParc(parc) {
