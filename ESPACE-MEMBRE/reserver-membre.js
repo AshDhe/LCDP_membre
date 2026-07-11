@@ -744,21 +744,8 @@
     if (boutonReserver) {
       event.preventDefault();
 
-      const messageBlocage = messageBlocageNouvelleDate(etatMembre);
-
-      if (messageBlocage) {
-        await afficherAlerte(messageBlocage);
-        return;
-      }
-
       const parc = trouverParcParId(boutonReserver.dataset.idparc);
-
-      if (!parc) {
-        await afficherAlerte("Parc introuvable.");
-        return;
-      }
-
-      await ouvrirCalendrierMoisParc(parc);
+      await demarrerReservationParc(parc);
       return;
     }
 
@@ -777,6 +764,22 @@
       event.preventDefault();
       await traiterChoixHeure(boutonHeure);
     }
+  }
+
+  async function demarrerReservationParc(parc) {
+    const messageBlocage = messageBlocageNouvelleDate(etatMembre);
+
+    if (messageBlocage) {
+      await afficherAlerte(messageBlocage);
+      return;
+    }
+
+    if (!parc) {
+      await afficherAlerte("Parc introuvable.");
+      return;
+    }
+
+    await ouvrirCalendrierMoisParc(parc);
   }
 
   async function ouvrirFicheParc(parc) {
@@ -1008,12 +1011,7 @@
     meta.textContent = "";
     meta.classList.add("lcdp-box-calendrier-mois__meta--partage");
 
-    const actionPartager = creerActionPartagerPage();
-    actionPartager.addEventListener("click", () => {
-      ouvrirPartagePlanningParc(parc).catch(console.error);
-    });
-
-    meta.appendChild(actionPartager);
+    meta.appendChild(creerActionsPlanningParc(parc));
 
 const maintenant = new Date();
 const moisMinimumPlanning = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
@@ -1265,6 +1263,38 @@ async function afficherPlanningMoisLecture(etatPlanning) {
     bouton.textContent = label;
     bouton.addEventListener("click", action);
     return bouton;
+  }
+
+  function creerActionsPlanningParc(parc) {
+    const actions = document.createElement("div");
+    actions.className = "lcdp-box-calendrier-mois__actions-parc";
+
+    const boutonFiche = document.createElement("button");
+    boutonFiche.type = "button";
+    boutonFiche.className = "lcdp-button lcdp-button-secondary lcdp-box-calendrier-mois__action-fiche";
+    boutonFiche.textContent = "Fiche parc";
+    boutonFiche.addEventListener("click", () => {
+      ouvrirFicheParc(parc).catch(console.error);
+    });
+
+    const boutonReserver = document.createElement("button");
+    boutonReserver.type = "button";
+    boutonReserver.className = "lcdp-button lcdp-box-calendrier-mois__action-reserver";
+    boutonReserver.textContent = "RÉSERVER";
+    boutonReserver.addEventListener("click", () => {
+      demarrerReservationParc(parc).catch(console.error);
+    });
+
+    const actionPartager = creerActionPartagerPage();
+    actionPartager.addEventListener("click", () => {
+      ouvrirPartagePlanningParc(parc).catch(console.error);
+    });
+
+    actions.appendChild(boutonFiche);
+    actions.appendChild(boutonReserver);
+    actions.appendChild(actionPartager);
+
+    return actions;
   }
 
   function creerActionPartagerPage() {
