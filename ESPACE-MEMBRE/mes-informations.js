@@ -154,7 +154,12 @@
       name: "adresse1",
       label: "Adresse 1",
       type: "text",
-      key: "adresse1"
+      key: "adresse1",
+      action: {
+        id: "modifier-adresse1-membre",
+        texte: "Modifier l'adresse de facturation",
+        mode: "picto"
+      }
     },
     {
       section: "Adresse de facturation",
@@ -162,7 +167,12 @@
       name: "adresse2",
       label: "Adresse 2",
       type: "text",
-      key: "adresse2"
+      key: "adresse2",
+      action: {
+        id: "modifier-adresse2-membre",
+        texte: "Modifier l'adresse de facturation",
+        mode: "picto"
+      }
     },
     {
       section: "Adresse de facturation",
@@ -170,7 +180,12 @@
       name: "adresse3",
       label: "Adresse 3",
       type: "text",
-      key: "adresse3"
+      key: "adresse3",
+      action: {
+        id: "modifier-adresse3-membre",
+        texte: "Modifier l'adresse de facturation",
+        mode: "picto"
+      }
     },
     {
       section: "Coordonnées de remboursement IBAN",
@@ -492,16 +507,10 @@
     const input = document.getElementById("champ-adresse3-membre");
     const champ = input ? input.closest("[data-lcdp-box-champ-formulaire]") : null;
 
-    if (!champ || document.getElementById("modifier-adresse-facturation-membre")) return;
+    if (!champ || document.getElementById("voir-factures-membre")) return;
 
     const wrapper = document.createElement("div");
     wrapper.className = "lcdp-box-formulaire__actions lcdp-compte-actions-adresse";
-
-    const boutonModifier = document.createElement("button");
-    boutonModifier.id = "modifier-adresse-facturation-membre";
-    boutonModifier.type = "button";
-    boutonModifier.className = "lcdp-button lcdp-button-orange";
-    boutonModifier.textContent = "Modifier";
 
     const boutonFactures = document.createElement("button");
     boutonFactures.id = "voir-factures-membre";
@@ -509,7 +518,6 @@
     boutonFactures.className = "lcdp-button lcdp-button-secondary";
     boutonFactures.textContent = "Voir mes factures";
 
-    wrapper.appendChild(boutonModifier);
     wrapper.appendChild(boutonFactures);
     champ.insertAdjacentElement("afterend", wrapper);
   }
@@ -595,7 +603,11 @@
     const boutonPoints = document.getElementById("voir-points-membre");
     const boutonParrain = document.getElementById("modifier-parrain-membre");
     const boutonDepartement = document.getElementById("modifier-departement-membre");
-    const boutonAdresseFacturation = document.getElementById("modifier-adresse-facturation-membre");
+    const boutonsAdresseFacturation = [
+      document.getElementById("modifier-adresse1-membre"),
+      document.getElementById("modifier-adresse2-membre"),
+      document.getElementById("modifier-adresse3-membre")
+    ].filter(Boolean);
     const boutonFactures = document.getElementById("voir-factures-membre");
     const boutonIban = document.getElementById("modifier-iban-membre");
     const boutonSwift = document.getElementById("modifier-swift-membre");
@@ -606,7 +618,9 @@
     if (boutonPoints) boutonPoints.addEventListener("click", ouvrirPagePointsMembre);
     if (boutonParrain) boutonParrain.addEventListener("click", ouvrirDialogueParrainMembre);
     if (boutonDepartement) boutonDepartement.addEventListener("click", ouvrirDialogueDepartementMembre);
-    if (boutonAdresseFacturation) boutonAdresseFacturation.addEventListener("click", ouvrirDialogueAdresseFacturationMembre);
+    boutonsAdresseFacturation.forEach((bouton) => {
+      bouton.addEventListener("click", ouvrirDialogueAdresseFacturationMembre);
+    });
     if (boutonFactures) boutonFactures.addEventListener("click", ouvrirPageFacturesMembre);
     if (boutonIban) boutonIban.addEventListener("click", () => ouvrirDialogueCoordonneeRemboursementMembre("iban", "IBAN"));
     if (boutonSwift) boutonSwift.addEventListener("click", () => ouvrirDialogueCoordonneeRemboursementMembre("swift", "SWIFT"));
