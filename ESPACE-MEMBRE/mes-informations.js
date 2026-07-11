@@ -36,6 +36,7 @@
 
   const PAGE_POINTS_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/points-membre.html");
   const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
+  const PAGE_FACTURES_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-factures-membre.html");
 
   let compteMembreActuel = null;
 
@@ -1185,7 +1186,7 @@
   }
 
   function ouvrirPageFacturesMembre() {
-    window.location.href = PAGE_ABONNEMENT_MEMBRE;
+    window.location.href = PAGE_FACTURES_MEMBRE;
   }
 
   async function ouvrirDialogueAdresseFacturationMembre() {
