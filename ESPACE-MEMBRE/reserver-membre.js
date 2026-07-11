@@ -59,7 +59,9 @@
     templateHeureJour: null,
     templateFicheParc: null,
     templateMapParc: null,
-    calendrierMoisActif: null
+    templateShiftDetailParc: null,
+    calendrierMoisActif: null,
+    shiftDetailParc: null
   };
 
   if (document.readyState === "loading") {
@@ -445,14 +447,17 @@
     const fragmentMapParc = await chargerFragmentObjet("/BOX/04-box-card-map-parc.html");
     etatPage.templateMapParc = fragmentMapParc.querySelector("[data-lcdp-box-card-map-parc]");
 
+    const fragmentShiftDetailParc = await chargerFragmentObjet("/BOX/04-box-shift-detail-parc.html");
+    etatPage.templateShiftDetailParc = fragmentShiftDetailParc.querySelector("[data-lcdp-box-shift-detail-parc]");
+
     const fragmentJour = await chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html");
     etatPage.templateJourMois = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
 
     const fragmentHeure = await chargerFragmentObjet("/BOX/04-box-card-heure-in-calendrier-jour.html");
     etatPage.templateHeureJour = fragmentHeure.querySelector("[data-lcdp-card-heure-jour]");
 
-    if (!etatPage.templateCardParc || !etatPage.templateFicheParc || !etatPage.templateMapParc || !etatPage.templateJourMois || !etatPage.templateHeureJour) {
-      throw new Error("Templates parc, fiche parc, carte parc, jour ou heure introuvables.");
+    if (!etatPage.templateCardParc || !etatPage.templateFicheParc || !etatPage.templateMapParc || !etatPage.templateShiftDetailParc || !etatPage.templateJourMois || !etatPage.templateHeureJour) {
+      throw new Error("Templates parc, fiche parc, carte parc, shift détail parc, jour ou heure introuvables.");
     }
   }
 
@@ -770,12 +775,12 @@
     const messageBlocage = messageBlocageNouvelleDate(etatMembre);
 
     if (messageBlocage) {
-      await afficherAlerte(messageBlocage);
+      await afficherAlerteDetailParcOuPage(messageBlocage);
       return;
     }
 
     if (!parc) {
-      await afficherAlerte("Parc introuvable.");
+      await afficherAlerteDetailParcOuPage("Parc introuvable.");
       return;
     }
 
@@ -783,8 +788,213 @@
   }
 
   async function ouvrirFicheParc(parc) {
+    await ouvrirShiftDetailParc(parc, "fiche");
+  }
+
+  async function ouvrirShiftDetailParc(parc, vueDemandee) {
+    if (!parc) {
+      await afficherAlerte("Parc introuvable.");
+      return;
+    }
+
+    const detail = await obtenirOuCreerShiftDetailParc();
+
+    if (!detail || !detail.contenu) {
+      throw new Error("Structure shift détail parc incomplète.");
+    }
+
+    etatPage.shiftDetailParc = {
+      parc,
+      vue: vueDemandee || "fiche"
+    };
+
+    await afficherVueShiftDetailParc(parc, vueDemandee || "fiche");
+  }
+
+  async function obtenirOuCreerShiftDetailParc() {
     const slot = document.getElementById("lcdp-lightbox-slot");
 
+    if (!slot) return null;
+
+    let racine = slot.querySelector("[data-lcdp-box-shift-detail-parc]");
+
+    if (!racine) {
+      slot.innerHTML = "";
+
+      const shift = etatPage.templateShiftDetailParc
+        ? etatPage.templateShiftDetailParc.cloneNode(true)
+        : (await chargerFragmentObjet("/BOX/04-box-shift-detail-parc.html")).querySelector("[data-lcdp-box-shift-detail-parc]");
+
+      if (!shift) {
+        throw new Error("Template shift détail parc introuvable.");
+      }
+
+      slot.appendChild(shift);
+      racine = shift;
+
+      const boutonFermer = racine.querySelector("[data-lcdp-shift-detail-parc-close]");
+
+      if (boutonFermer) {
+        boutonFermer.addEventListener("click", fermerShiftDetailParc);
+      }
+
+      racine.addEventListener("click", (event) => {
+        if (event.target === racine) {
+          fermerShiftDetailParc();
+        }
+      });
+
+      const gererEscape = (event) => {
+        if (event.key === "Escape" && document.body.contains(racine)) {
+          fermerShiftDetailParc();
+        }
+      };
+
+      racine._lcdpShiftDetailParcEscape = gererEscape;
+      document.addEventListener("keydown", gererEscape);
+    }
+
+    return {
+      racine,
+      contenu: racine.querySelector("[data-lcdp-shift-detail-parc-content]"),
+      alerteSlot: racine.querySelector("[data-lcdp-shift-detail-parc-alerte-slot]")
+    };
+  }
+
+  function obtenirShiftDetailParcActif() {
+    const racine = document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-shift-detail-parc]");
+
+    if (!racine) return null;
+
+    return {
+      racine,
+      contenu: racine.querySelector("[data-lcdp-shift-detail-parc-content]"),
+      alerteSlot: racine.querySelector("[data-lcdp-shift-detail-parc-alerte-slot]")
+    };
+  }
+
+  function fermerShiftDetailParc() {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    const racine = slot ? slot.querySelector("[data-lcdp-box-shift-detail-parc]") : null;
+
+    if (racine && racine._lcdpShiftDetailParcEscape) {
+      document.removeEventListener("keydown", racine._lcdpShiftDetailParcEscape);
+    }
+
+    etatPage.shiftDetailParc = null;
+
+    if (slot) {
+      slot.innerHTML = "";
+    }
+  }
+
+  async function afficherVueShiftDetailParc(parc, vueDemandee) {
+    const detail = await obtenirOuCreerShiftDetailParc();
+
+    if (!detail || !detail.contenu) {
+      throw new Error("Zone contenu shift détail parc introuvable.");
+    }
+
+    if (detail.alerteSlot) {
+      detail.alerteSlot.innerHTML = "";
+    }
+
+    const vue = vueDemandee || "fiche";
+    etatPage.shiftDetailParc = { parc, vue };
+    detail.racine.dataset.lcdpShiftVue = vue;
+
+    await preparerTransitionShiftDetailParc(detail.contenu);
+
+    if (vue === "planning") {
+      await afficherPlanningMoisParcDansConteneur(detail.contenu, parc);
+      return;
+    }
+
+    if (vue === "reservation") {
+      await afficherReservationMoisParcDansConteneur(detail.contenu, parc, true);
+      return;
+    }
+
+    await afficherFicheParcDansConteneur(detail.contenu, parc);
+  }
+
+  async function preparerTransitionShiftDetailParc(contenu) {
+    if (!contenu) return;
+
+    contenu.classList.add("lcdp-box-shift-detail-parc__content--transition");
+    await attendre(90);
+    contenu.innerHTML = "";
+    contenu.classList.remove("lcdp-box-shift-detail-parc__content--transition");
+  }
+
+  async function afficherAlerteDetailParcOuPage(message) {
+    const detail = obtenirShiftDetailParcActif();
+
+    if (detail && detail.alerteSlot) {
+      await afficherAlerteShiftDetailParc(message);
+      return;
+    }
+
+    await afficherAlerte(message);
+  }
+
+  async function afficherAlerteShiftDetailParc(message) {
+    const detail = obtenirShiftDetailParcActif();
+
+    if (!detail || !detail.alerteSlot) {
+      await afficherAlerte(message);
+      return;
+    }
+
+    detail.alerteSlot.innerHTML = "";
+
+    const box = document.createElement("div");
+    box.className = "lcdp-box-shift-detail-parc__alerte-box";
+    box.setAttribute("role", "alertdialog");
+    box.setAttribute("aria-modal", "true");
+
+    const boutonFermer = document.createElement("button");
+    boutonFermer.type = "button";
+    boutonFermer.className = "lcdp-box-shift-detail-parc__alerte-close";
+    boutonFermer.setAttribute("aria-label", "Fermer");
+    boutonFermer.textContent = "×";
+
+    const texte = document.createElement("p");
+    texte.className = "lcdp-box-shift-detail-parc__alerte-message";
+    texte.textContent = message || "";
+
+    const boutonOk = document.createElement("button");
+    boutonOk.type = "button";
+    boutonOk.className = "lcdp-button lcdp-button-primary lcdp-box-shift-detail-parc__alerte-ok";
+    boutonOk.textContent = "OK";
+
+    box.appendChild(boutonFermer);
+    box.appendChild(texte);
+    box.appendChild(boutonOk);
+    detail.alerteSlot.appendChild(box);
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermerDepuisFond(event) {
+        if (event.target === detail.alerteSlot) fermer(false);
+      }
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        detail.alerteSlot.removeEventListener("click", fermerDepuisFond);
+        detail.alerteSlot.innerHTML = "";
+        resolve(valeur);
+      }
+
+      boutonFermer.addEventListener("click", () => fermer(false));
+      boutonOk.addEventListener("click", () => fermer(true));
+      detail.alerteSlot.addEventListener("click", fermerDepuisFond);
+    });
+  }
+
+  async function afficherFicheParcDansConteneur(slot, parc) {
     if (!slot) return;
 
     slot.innerHTML = "";
@@ -796,6 +1006,8 @@
     if (!fiche) {
       throw new Error("Template fiche parc introuvable.");
     }
+
+    fiche.classList.add("lcdp-box-fiche-parc--shift-detail");
 
     const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
     const titre = fiche.querySelector("[data-lcdp-fiche-parc-title]");
@@ -834,25 +1046,9 @@
       remplirBlocTexteFiche(contact, construireTexteContactParc(parc));
     }
 
-    function fermer() {
-      slot.innerHTML = "";
-    }
-
     if (boutonFermer) {
-      boutonFermer.addEventListener("click", fermer);
+      boutonFermer.addEventListener("click", fermerShiftDetailParc);
     }
-
-    fiche.addEventListener("click", (event) => {
-      if (event.target === fiche) fermer();
-    });
-
-    document.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.key === "Escape") fermer();
-      },
-      { once: true }
-    );
 
     slot.appendChild(fiche);
   }
@@ -989,8 +1185,13 @@
   }
 
   async function ouvrirPlanningMoisParc(parc) {
-    const slot = await obtenirCoquePlanningParcContenu();
-    await preparerTransitionCoquePlanningParc(slot);
+    await ouvrirShiftDetailParc(parc, "planning");
+  }
+
+  async function afficherPlanningMoisParcDansConteneur(slot, parc) {
+    if (!slot) return;
+
+    slot.innerHTML = "";
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
     slot.appendChild(fragment);
@@ -998,7 +1199,6 @@
     const calendrier = slot.querySelector("[data-lcdp-box-calendrier-mois]");
     const titre = slot.querySelector("[data-lcdp-calendrier-mois-title]");
     const meta = slot.querySelector("[data-lcdp-calendrier-mois-meta]");
-    const header = slot.querySelector(".lcdp-box-calendrier-mois__header");
     const boutonFermer = slot.querySelector("[data-lcdp-calendrier-mois-close]");
     const boutonPrecedent = slot.querySelector("[data-lcdp-calendrier-mois-prev]");
     const boutonSuivant = slot.querySelector("[data-lcdp-calendrier-mois-next]");
@@ -1008,6 +1208,7 @@
     }
 
     calendrier.dataset.lcdpPlanningParcLecture = "true";
+    calendrier.classList.add("lcdp-box-calendrier-mois--shift-detail");
     appliquerClasseCoquePlanningParc(calendrier, "calendrier-mois");
 
     const nomParc = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
@@ -1019,76 +1220,55 @@
 
     meta.appendChild(creerActionsPlanningParc(parc));
 
-const maintenant = new Date();
-const moisMinimumPlanning = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
-const moisMaximumPlanning = new Date(maintenant.getFullYear(), maintenant.getMonth() + 3, 1);
+    const maintenant = new Date();
+    const moisMinimumPlanning = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+    const moisMaximumPlanning = new Date(maintenant.getFullYear(), maintenant.getMonth() + 3, 1);
 
-const etatPlanning = {
-  parc,
-  annee: moisMinimumPlanning.getFullYear(),
-  mois: moisMinimumPlanning.getMonth() + 1,
-  planning: [],
-  moisMinimum: {
-    annee: moisMinimumPlanning.getFullYear(),
-    mois: moisMinimumPlanning.getMonth() + 1
-  },
-  moisMaximum: {
-    annee: moisMaximumPlanning.getFullYear(),
-    mois: moisMaximumPlanning.getMonth() + 1
-  }
-};
-
-    function fermer() {
-      const lightbox = document.getElementById("lcdp-lightbox-slot");
-      if (lightbox) lightbox.innerHTML = "";
-    }
-
-    boutonFermer.addEventListener("click", fermer);
-
-    const coque = calendrier.closest("[data-lcdp-box-workflow-reservation]");
-
-    if (coque) {
-      coque.addEventListener("click", (event) => {
-        if (event.target === coque) fermer();
-      });
-    }
-
-    document.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.key === "Escape") fermer();
+    const etatPlanning = {
+      parc,
+      annee: moisMinimumPlanning.getFullYear(),
+      mois: moisMinimumPlanning.getMonth() + 1,
+      planning: [],
+      moisMinimum: {
+        annee: moisMinimumPlanning.getFullYear(),
+        mois: moisMinimumPlanning.getMonth() + 1
       },
-      { once: true }
-    );
+      moisMaximum: {
+        annee: moisMaximumPlanning.getFullYear(),
+        mois: moisMaximumPlanning.getMonth() + 1
+      }
+    };
 
-function actualiserNavigationPlanning() {
-  const auMoisMinimum = moisPlanningIdentique(etatPlanning, etatPlanning.moisMinimum);
-  const auMoisMaximum = moisPlanningIdentique(etatPlanning, etatPlanning.moisMaximum);
+    boutonFermer.addEventListener("click", fermerShiftDetailParc);
 
-  boutonPrecedent.disabled = auMoisMinimum;
-  boutonPrecedent.setAttribute("aria-disabled", auMoisMinimum ? "true" : "false");
+    function actualiserNavigationPlanning() {
+      const auMoisMinimum = moisPlanningIdentique(etatPlanning, etatPlanning.moisMinimum);
+      const auMoisMaximum = moisPlanningIdentique(etatPlanning, etatPlanning.moisMaximum);
 
-  boutonSuivant.disabled = auMoisMaximum;
-  boutonSuivant.setAttribute("aria-disabled", auMoisMaximum ? "true" : "false");
-}
+      boutonPrecedent.disabled = auMoisMinimum;
+      boutonPrecedent.setAttribute("aria-disabled", auMoisMinimum ? "true" : "false");
 
-boutonPrecedent.addEventListener("click", () => {
-  if (moisPlanningIdentique(etatPlanning, etatPlanning.moisMinimum)) return;
+      boutonSuivant.disabled = auMoisMaximum;
+      boutonSuivant.setAttribute("aria-disabled", auMoisMaximum ? "true" : "false");
+    }
 
-  changerMois(etatPlanning, -1);
-  actualiserNavigationPlanning();
-  afficherPlanningMoisLecture(etatPlanning).catch(console.error);
-});
+    boutonPrecedent.addEventListener("click", () => {
+      if (moisPlanningIdentique(etatPlanning, etatPlanning.moisMinimum)) return;
 
-boutonSuivant.addEventListener("click", () => {
-  if (moisPlanningIdentique(etatPlanning, etatPlanning.moisMaximum)) return;
+      changerMois(etatPlanning, -1);
+      actualiserNavigationPlanning();
+      afficherPlanningMoisLecture(etatPlanning).catch(console.error);
+    });
 
-  changerMois(etatPlanning, 1);
-  actualiserNavigationPlanning();
-  afficherPlanningMoisLecture(etatPlanning).catch(console.error);
-});
+    boutonSuivant.addEventListener("click", () => {
+      if (moisPlanningIdentique(etatPlanning, etatPlanning.moisMaximum)) return;
 
-actualiserNavigationPlanning();
+      changerMois(etatPlanning, 1);
+      actualiserNavigationPlanning();
+      afficherPlanningMoisLecture(etatPlanning).catch(console.error);
+    });
+
+    actualiserNavigationPlanning();
 
     await afficherPlanningMoisLecture(etatPlanning);
   }
@@ -1167,7 +1347,7 @@ async function afficherPlanningMoisLecture(etatPlanning) {
     const data = await reponse.json().catch(() => null);
 
     if (reponse.status === 401) {
-      await afficherAlerte("Cette page est réservée aux membres invités ou abonnés.");
+      await afficherAlerteDetailParcOuPage("Cette page est réservée aux membres invités ou abonnés.");
       return [];
     }
 
@@ -1288,7 +1468,7 @@ async function afficherPlanningMoisLecture(etatPlanning) {
     boutonPlanning.className = "lcdp-button lcdp-button-primary lcdp-box-fiche-parc__action-planning";
     boutonPlanning.textContent = "Planning parc";
     boutonPlanning.addEventListener("click", () => {
-      ouvrirPlanningMoisParc(parc).catch(console.error);
+      afficherVueShiftDetailParc(parc, "planning").catch(console.error);
     });
 
     const actionPartager = creerActionPartagerFicheParc();
@@ -1362,7 +1542,7 @@ async function afficherPlanningMoisLecture(etatPlanning) {
     boutonFiche.className = "lcdp-button lcdp-button-secondary lcdp-box-calendrier-mois__action-fiche";
     boutonFiche.textContent = "Fiche parc";
     boutonFiche.addEventListener("click", () => {
-      ouvrirFicheParc(parc).catch(console.error);
+      afficherVueShiftDetailParc(parc, "fiche").catch(console.error);
     });
 
     const boutonReserver = document.createElement("button");
@@ -1538,8 +1718,22 @@ async function afficherPlanningMoisLecture(etatPlanning) {
   }
 
   async function ouvrirCalendrierMoisParc(parc) {
+    const detail = obtenirShiftDetailParcActif();
+
+    if (detail && detail.contenu) {
+      await afficherVueShiftDetailParc(parc, "reservation");
+      return;
+    }
+
     const slot = document.getElementById("lcdp-lightbox-slot");
 
+    if (!slot) return;
+
+    slot.innerHTML = "";
+    await afficherReservationMoisParcDansConteneur(slot, parc, false);
+  }
+
+  async function afficherReservationMoisParcDansConteneur(slot, parc, dansShiftDetail) {
     if (!slot) return;
 
     slot.innerHTML = "";
@@ -1558,6 +1752,10 @@ async function afficherPlanningMoisLecture(etatPlanning) {
       throw new Error("Structure calendrier mois incomplète.");
     }
 
+    if (dansShiftDetail) {
+      calendrier.classList.add("lcdp-box-calendrier-mois--shift-detail");
+    }
+
     const nomParc = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
     const departement = String(parc.dptmt || parc.departement || "").trim();
 
@@ -1574,23 +1772,31 @@ async function afficherPlanningMoisLecture(etatPlanning) {
 
     etatPage.calendrierMoisActif = etatCalendrier;
 
-    async function fermer() {
-      slot.innerHTML = "";
+    function fermer() {
+      if (dansShiftDetail) {
+        fermerShiftDetailParc();
+        return;
+      }
+
+      const lightbox = document.getElementById("lcdp-lightbox-slot");
+      if (lightbox) lightbox.innerHTML = "";
     }
 
     boutonFermer.addEventListener("click", fermer);
 
-    calendrier.addEventListener("click", (event) => {
-      if (event.target === calendrier) fermer();
-    });
+    if (!dansShiftDetail) {
+      calendrier.addEventListener("click", (event) => {
+        if (event.target === calendrier) fermer();
+      });
 
-    document.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.key === "Escape") fermer();
-      },
-      { once: true }
-    );
+      document.addEventListener(
+        "keydown",
+        (event) => {
+          if (event.key === "Escape") fermer();
+        },
+        { once: true }
+      );
+    }
 
     boutonPrecedent.addEventListener("click", () => {
       changerMois(etatCalendrier, -1);
