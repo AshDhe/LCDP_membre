@@ -525,27 +525,26 @@
 
     injecterStylesActionsPersistantesReserver();
 
-    const barre = document.createElement("div");
-    barre.id = "lcdp-actions-persistantes-reserver";
-    barre.className = "lcdp-actions-persistantes-reserver lcdp-actions-persistantes-reserver--fixe";
-    barre.hidden = true;
-    barre.setAttribute("aria-hidden", "true");
-    barre.appendChild(creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa));
-    document.body.appendChild(barre);
+    const barreDesktop = document.createElement("div");
+    barreDesktop.id = "lcdp-actions-persistantes-reserver";
+    barreDesktop.className = "lcdp-actions-persistantes-reserver lcdp-actions-persistantes-reserver--desktop";
+    barreDesktop.hidden = true;
+    barreDesktop.setAttribute("aria-hidden", "true");
+    barreDesktop.appendChild(creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa));
+    document.body.appendChild(barreDesktop);
 
-    const barreAvantFooter = document.createElement("div");
-    barreAvantFooter.id = "lcdp-actions-persistantes-reserver-fin-page";
-    barreAvantFooter.className = "lcdp-actions-persistantes-reserver-inline";
-    barreAvantFooter.hidden = true;
-    barreAvantFooter.setAttribute("aria-hidden", "true");
-    barreAvantFooter.appendChild(creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa));
+    const slotActionsFooter = obtenirSlotActionsFooterReserver();
+    let barreFooterMobile = null;
 
-    const slotFooter = document.getElementById("lcdp-footer-slot");
-
-    if (slotFooter && slotFooter.parentNode) {
-      slotFooter.parentNode.insertBefore(barreAvantFooter, slotFooter);
-    } else {
-      document.body.appendChild(barreAvantFooter);
+    if (slotActionsFooter) {
+      slotActionsFooter.innerHTML = "";
+      barreFooterMobile = document.createElement("div");
+      barreFooterMobile.id = "lcdp-actions-footer-reserver";
+      barreFooterMobile.className = "lcdp-actions-footer-reserver";
+      barreFooterMobile.hidden = true;
+      barreFooterMobile.setAttribute("aria-hidden", "true");
+      barreFooterMobile.appendChild(creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa));
+      slotActionsFooter.appendChild(barreFooterMobile);
     }
 
     const cible = trouverBlocActionsInitialesReserver(boutonDepartement, boutonIa);
@@ -556,30 +555,45 @@
       return Boolean(slotLightbox && slotLightbox.children.length > 0);
     }
 
-    function footerVisibleSurMobile() {
-      const largeurFenetre = window.innerWidth || document.documentElement.clientWidth || 0;
+    function modeMobile() {
+      return (window.innerWidth || document.documentElement.clientWidth || 0) < 768;
+    }
 
-      if (largeurFenetre >= 768 || !slotFooter) return false;
+    function actualiserHauteurWrapperFooter() {
+      const wrapper = document.querySelector("[data-lcdp-box-wraper-footer]");
 
-      const rect = slotFooter.getBoundingClientRect();
-      const hauteurFenetre = window.innerHeight || document.documentElement.clientHeight || 0;
-      const margeAvantFooter = 120;
+      if (!wrapper) {
+        document.documentElement.style.removeProperty("--lcdp-wraper-footer-reserver-height");
+        return;
+      }
 
-      return rect.top < (hauteurFenetre + margeAvantFooter) && rect.bottom > 0;
+      document.documentElement.style.setProperty(
+        "--lcdp-wraper-footer-reserver-height",
+        String(Math.ceil(wrapper.getBoundingClientRect().height || 0)) + "px"
+      );
     }
 
     function actualiserAffichageBarre() {
       const afficher = actionsInitialesVisibles !== true && !lightboxOuverte();
-      const afficherEnFinPage = afficher && footerVisibleSurMobile();
-      const afficherFixe = afficher && !afficherEnFinPage;
+      const afficherFooterMobile = afficher && modeMobile() && Boolean(barreFooterMobile);
+      const afficherDesktop = afficher && !modeMobile();
 
-      barre.hidden = !afficherFixe;
-      barre.setAttribute("aria-hidden", afficherFixe ? "false" : "true");
+      barreDesktop.hidden = !afficherDesktop;
+      barreDesktop.setAttribute("aria-hidden", afficherDesktop ? "false" : "true");
 
-      barreAvantFooter.hidden = !afficherEnFinPage;
-      barreAvantFooter.setAttribute("aria-hidden", afficherEnFinPage ? "false" : "true");
+      if (barreFooterMobile) {
+        barreFooterMobile.hidden = !afficherFooterMobile;
+        barreFooterMobile.setAttribute("aria-hidden", afficherFooterMobile ? "false" : "true");
+      }
 
-      document.body.classList.toggle("lcdp-actions-persistantes-reserver-actives", afficherFixe);
+      document.body.classList.toggle("lcdp-actions-persistantes-reserver-actives", afficherDesktop);
+      document.body.classList.toggle("lcdp-actions-footer-reserver-actives", afficherFooterMobile);
+
+      if (afficherFooterMobile) {
+        actualiserHauteurWrapperFooter();
+      } else {
+        document.documentElement.style.removeProperty("--lcdp-wraper-footer-reserver-height");
+      }
     }
 
     function actualiserDepuisPositionBoutons() {
@@ -610,13 +624,19 @@
       observateurLightbox.observe(slotLightbox, { childList: true });
     }
 
-    if (slotFooter && "ResizeObserver" in window) {
+    const wrapperFooter = document.querySelector("[data-lcdp-box-wraper-footer]");
+
+    if (wrapperFooter && "ResizeObserver" in window) {
       const observateurFooter = new ResizeObserver(actualiserDepuisPositionBoutons);
-      observateurFooter.observe(slotFooter);
+      observateurFooter.observe(wrapperFooter);
     }
 
     actualiserDepuisPositionBoutons();
     window.setTimeout(actualiserDepuisPositionBoutons, 250);
+  }
+
+  function obtenirSlotActionsFooterReserver() {
+    return document.querySelector("[data-lcdp-wraper-footer-actions]");
   }
 
   function creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa) {
@@ -683,7 +703,7 @@
     style.dataset.lcdpActionsPersistantesReserver = "true";
     style.textContent = `
       .lcdp-actions-persistantes-reserver[hidden],
-      .lcdp-actions-persistantes-reserver-inline[hidden] {
+      .lcdp-actions-footer-reserver[hidden] {
         display: none !important;
       }
 
@@ -691,22 +711,15 @@
         position: fixed;
         left: 0;
         right: 0;
-        bottom: 12px;
-        bottom: calc(12px + env(safe-area-inset-bottom));
+        top: calc(var(--lcdp-bandeau-height, 72px) + 10px);
         z-index: 4990;
-        padding: 0 var(--lcdp-space-2);
+        padding: 0 var(--lcdp-space-3);
         pointer-events: none;
         transform: translateZ(0);
       }
 
-      .lcdp-actions-persistantes-reserver-inline {
-        width: 100%;
-        padding: var(--lcdp-space-3) var(--lcdp-space-2);
-        box-sizing: border-box;
-      }
-
       .lcdp-actions-persistantes-reserver__inner {
-        width: min(calc(100vw - 20px), 520px);
+        width: min(520px, calc(100vw - 48px));
         margin: 0 auto;
         display: flex;
         align-items: center;
@@ -721,7 +734,8 @@
         box-sizing: border-box;
       }
 
-      .lcdp-actions-persistantes-reserver-inline .lcdp-actions-persistantes-reserver__inner {
+      .lcdp-actions-footer-reserver .lcdp-actions-persistantes-reserver__inner {
+        width: min(calc(100vw - 20px), 520px);
         background: var(--lcdp-color-surface);
       }
 
@@ -749,23 +763,19 @@
         color: var(--lcdp-color-text);
       }
 
-      body.lcdp-actions-persistantes-reserver-actives .lcdp-site-main {
-        padding-bottom: 88px;
-      }
-
-      @media (min-width: 768px) {
+      @media (max-width: 767px) {
         .lcdp-actions-persistantes-reserver {
-          top: calc(var(--lcdp-bandeau-height, 72px) + 10px);
-          bottom: auto;
-          padding: 0 var(--lcdp-space-3);
-        }
-
-        .lcdp-actions-persistantes-reserver-inline {
           display: none !important;
         }
 
-        .lcdp-actions-persistantes-reserver__inner {
-          width: min(520px, calc(100vw - 48px));
+        body.lcdp-actions-footer-reserver-actives .lcdp-site-main {
+          padding-bottom: calc(var(--lcdp-wraper-footer-reserver-height, 132px) + env(safe-area-inset-bottom));
+        }
+      }
+
+      @media (min-width: 768px) {
+        .lcdp-actions-footer-reserver {
+          display: none !important;
         }
 
         .lcdp-actions-persistantes-reserver__button.lcdp-button {
@@ -774,10 +784,6 @@
           min-height: 42px;
           padding: 0.6rem 1rem;
           font-size: 0.95rem;
-        }
-
-        body.lcdp-actions-persistantes-reserver-actives .lcdp-site-main {
-          padding-bottom: 0;
         }
       }
     `;
@@ -2935,8 +2941,25 @@ async function afficherPlanningMoisLecture(etatPlanning) {
 
     slot.innerHTML = "";
 
+    let wrapper = null;
+
+    try {
+      const fragmentWrapper = await chargerFragmentObjet("/BOX/02-box-wraper-footer.html");
+      wrapper = fragmentWrapper.querySelector("[data-lcdp-box-wraper-footer]");
+    } catch (error) {
+      console.warn("Wrapper footer indisponible, chargement du footer simple.", error);
+    }
+
+    if (wrapper) {
+      slot.appendChild(wrapper);
+    }
+
+    const slotFooter = wrapper
+      ? wrapper.querySelector("[data-lcdp-wraper-footer-footer]")
+      : slot;
+
     const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
-    slot.appendChild(footer);
+    slotFooter.appendChild(footer);
     appliquerRoutesSite(slot);
   }
 
