@@ -1246,21 +1246,13 @@
       return;
     }
 
-    const emails = await ouvrirBoxEmailsInvitationReservation(declencheur);
+    const resultat = await ouvrirBoxEmailsInvitationReservation(idReservation, declencheur);
 
-    if (!emails || !emails.length) return;
-
-    let resultat = null;
-
-    try {
-      resultat = await envoyerInvitationReservation(idReservation, emails, declencheur);
-    } catch (error) {
-      await afficherAlerteInvitationReservation(error.message || "Impossible d’envoyer l’invitation.", declencheur);
-      return;
-    }
+    if (!resultat) return;
 
     if (invitationReservationCreee(resultat)) {
       marquerReservationAvecInvitesPlanning(idReservation, declencheur);
+      await afficherAlerteInvitationReservation(resultat.message || "Invitation envoyée.", declencheur);
     }
   }
 
@@ -1932,7 +1924,14 @@
     await afficherAlerteOk(message);
   }
 
-  async function ouvrirBoxEmailsInvitationReservation(declencheur) {
+  async function ouvrirBoxEmailsInvitationReservation(idflux, declencheur) {
+    const idReservation = String(idflux || "").trim();
+
+    if (!idReservation) {
+      await afficherAlerteInvitationReservation("Réservation manquante.", declencheur);
+      return null;
+    }
+
     await chargerCssObjetUneFois("/BOX/04-box-listemails.css");
 
     const conteneur = document.createElement("div");
@@ -1962,15 +1961,37 @@
     message.textContent = "";
 
     const limiteEmails = limiteEmailsInvitation();
+    let traitementEnCours = false;
 
-    function afficherErreurEmails(texte) {
-      message.hidden = false;
+    function afficherMessageEmails(texte, estErreur = false) {
+      message.hidden = !texte;
       message.textContent = texte || "";
+      message.dataset.lcdpMessageType = estErreur ? "erreur" : "information";
+      message.classList.toggle("lcdp-box-card-listemails__message--erreur", estErreur === true);
+    }
+
+    function definirTraitementEnCours(valeur) {
+      traitementEnCours = valeur === true;
+
+      Array.from(liste.querySelectorAll("input[type='email']")).forEach((input) => {
+        input.disabled = traitementEnCours;
+      });
+
+      Array.from(actions.querySelectorAll("button")).forEach((bouton) => {
+        bouton.disabled = traitementEnCours;
+      });
+
+      if (boutonFermer) {
+        boutonFermer.disabled = traitementEnCours;
+        boutonFermer.setAttribute("aria-disabled", traitementEnCours ? "true" : "false");
+      }
     }
 
     function ajouterChamp(valeur = "") {
+      if (traitementEnCours) return;
+
       if (liste.querySelectorAll("input[type='email']").length >= limiteEmails) {
-        afficherErreurEmails("Votre droit d'invitation est limité à " + String(limiteEmails) + " e-mail" + (limiteEmails > 1 ? "s" : "") + ".");
+        afficherMessageEmails("Votre droit d'invitation est limité à " + String(limiteEmails) + " e-mail" + (limiteEmails > 1 ? "s" : "") + ".", true);
         return;
       }
 
@@ -1992,61 +2013,77 @@
     ajouterChamp();
 
     actions.innerHTML = "";
-    actions.appendChild(creerBoutonInvitationEmails("Ajouter un e-mail", "lcdp-button-secondary", () => ajouterChamp()));
+
+    const boutonAjouter = creerBoutonInvitationEmails("Ajouter un e-mail", "lcdp-button-secondary", () => ajouterChamp());
+    const boutonInviter = creerBoutonInvitationEmails("Inviter", "lcdp-button-primary", async () => {
+      if (traitementEnCours) return;
+
+      afficherMessageEmails("");
+
+      const emailsSaisis = Array.from(liste.querySelectorAll("input[type='email']"))
+        .map((input) => nettoyerEmail(input.value))
+        .filter(Boolean);
+
+      const emails = emailsSaisis.filter((email, index, array) => array.indexOf(email) === index);
+      const emailInvalide = emails.find((email) => !emailValide(email));
+
+      if (!emails.length) {
+        afficherMessageEmails("Renseignez au moins une adresse e-mail.", true);
+        return;
+      }
+
+      if (emailInvalide) {
+        afficherMessageEmails("Une adresse e-mail est invalide.", true);
+        return;
+      }
+
+      if (emails.length > limiteEmails) {
+        afficherMessageEmails("Votre droit d'invitation est limité à " + String(limiteEmails) + " e-mail" + (limiteEmails > 1 ? "s" : "") + ".", true);
+        return;
+      }
+
+      definirTraitementEnCours(true);
+      boutonInviter.textContent = "Envoi en cours...";
+      afficherMessageEmails("Patientez, l’invitation est en cours d’enregistrement...");
+
+      try {
+        console.info("[LCDP invitation] POST /inviter-reservation", {
+          idflux: idReservation,
+          nbEmails: emails.length
+        });
+
+        const resultat = await posterInvitationReservation(idReservation, emails);
+
+        console.info("[LCDP invitation] invitation enregistrée", resultat);
+        fermer(resultat);
+      } catch (error) {
+        console.error("[LCDP invitation] échec invitation", error);
+        definirTraitementEnCours(false);
+        boutonInviter.textContent = "Inviter";
+        afficherMessageEmails(error.message || "Impossible d’envoyer l’invitation.", true);
+      }
+    });
+    const boutonAnnuler = creerBoutonInvitationEmails("Annuler", "lcdp-button-secondary", () => fermer(null));
+
+    actions.appendChild(boutonAjouter);
+    actions.appendChild(boutonInviter);
+    actions.appendChild(boutonAnnuler);
 
     return new Promise((resolve) => {
       let resolu = false;
 
       function fermer(valeur) {
+        if (traitementEnCours && !valeur) return;
         if (resolu) return;
         resolu = true;
         document.removeEventListener("keydown", gererEchap);
         conteneur.remove();
-        resolve(valeur);
+        resolve(valeur || null);
       }
 
       function gererEchap(event) {
         if (event.key === "Escape") fermer(null);
       }
-
-      let validationEnCours = false;
-      const boutonInviter = creerBoutonInvitationEmails("Inviter", "lcdp-button-primary", () => {
-        if (validationEnCours) return;
-
-        message.hidden = true;
-        message.textContent = "";
-
-        const emailsSaisis = Array.from(liste.querySelectorAll("input[type='email']"))
-          .map((input) => nettoyerEmail(input.value))
-          .filter(Boolean);
-
-        const emails = emailsSaisis.filter((email, index, array) => array.indexOf(email) === index);
-        const emailInvalide = emails.find((email) => !emailValide(email));
-
-        if (!emails.length) {
-          afficherErreurEmails("Renseignez au moins une adresse e-mail.");
-          return;
-        }
-
-        if (emailInvalide) {
-          afficherErreurEmails("Une adresse e-mail est invalide.");
-          return;
-        }
-
-        if (emails.length > limiteEmails) {
-          afficherErreurEmails("Votre droit d'invitation est limité à " + String(limiteEmails) + " e-mail" + (limiteEmails > 1 ? "s" : "") + ".");
-          return;
-        }
-
-        validationEnCours = true;
-        boutonInviter.disabled = true;
-        boutonInviter.textContent = "Envoi...";
-        fermer(emails);
-      });
-
-      actions.appendChild(boutonInviter);
-
-      actions.appendChild(creerBoutonInvitationEmails("Annuler", "lcdp-button-secondary", () => fermer(null)));
 
       if (boutonFermer) {
         boutonFermer.addEventListener("click", () => fermer(null));
@@ -2079,12 +2116,13 @@
     return 10;
   }
 
-  async function envoyerInvitationReservation(idflux, emails, declencheur) {
+  async function posterInvitationReservation(idflux, emails) {
     if (!ENDPOINT_INVITER_MEMBRE) {
-      await afficherAlerteInvitationReservation("Le service invitation membre n’est pas configuré.", declencheur);
-      return null;
+      throw new Error("Le service invitation membre n’est pas configuré.");
     }
 
+    const controleur = new AbortController();
+    const delai = window.setTimeout(() => controleur.abort(), 20000);
     let reponse = null;
 
     try {
@@ -2092,6 +2130,7 @@
         method: "POST",
         credentials: "include",
         cache: "no-store",
+        signal: controleur.signal,
         headers: {
           "Accept": "application/json",
           "Content-Type": "application/json"
@@ -2102,23 +2141,38 @@
         })
       });
     } catch (error) {
+      if (error && error.name === "AbortError") {
+        throw new Error("Le service invitation ne répond pas. Merci de réessayer.");
+      }
+
       throw new Error("Le service invitation membre est indisponible.");
+    } finally {
+      window.clearTimeout(delai);
     }
 
     const data = await reponse.json().catch(() => null);
 
     if (reponse.status === 401) {
       redirigerConnexionMembre("inactive");
-      return null;
+      throw new Error("Session membre inactive.");
     }
 
     if (!reponse.ok || !data || !reponseApiOk(data)) {
-      await afficherAlerteInvitationReservation(messageErreurApi(data, "Impossible d’envoyer l’invitation."), declencheur);
-      return null;
+      throw new Error(messageErreurApi(data, "Impossible d’envoyer l’invitation."));
     }
 
-    await afficherAlerteInvitationReservation(data.message || "Invitation envoyée.", declencheur);
     return data;
+  }
+
+  async function envoyerInvitationReservation(idflux, emails, declencheur) {
+    try {
+      const data = await posterInvitationReservation(idflux, emails);
+      await afficherAlerteInvitationReservation(data.message || "Invitation envoyée.", declencheur);
+      return data;
+    } catch (error) {
+      await afficherAlerteInvitationReservation(error.message || "Impossible d’envoyer l’invitation.", declencheur);
+      return null;
+    }
   }
 
   async function traiterAnnulationReservation(boutonAnnuler) {
