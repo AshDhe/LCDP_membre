@@ -594,7 +594,10 @@
     }
 
     try {
-      afficherChargementListe("Chargement des parcs du département...");
+      masquerMessageListe();
+
+      const zoneListe = obtenirZoneListe();
+      if (zoneListe) zoneListe.innerHTML = "";
 
       const reponse = await fetch(ENDPOINT_NOUVELLE_DATE_MEMBRE + "/autour-de-moi", {
         method: "GET",
