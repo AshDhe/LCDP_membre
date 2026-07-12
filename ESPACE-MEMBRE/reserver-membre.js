@@ -548,7 +548,7 @@
     const boutonStickyIa = document.createElement("button");
     boutonStickyIa.type = "button";
     boutonStickyIa.className = "lcdp-button lcdp-button-orange lcdp-actions-persistantes-reserver__button";
-    boutonStickyIa.textContent = "Rechercher";
+    boutonStickyIa.textContent = "Rechercher IA";
     boutonStickyIa.setAttribute("aria-label", "Rechercher avec l’IA");
     boutonStickyIa.title = "Rechercher avec l’IA";
     boutonStickyIa.addEventListener("click", (event) => {
@@ -577,35 +577,36 @@
       document.body.classList.toggle("lcdp-actions-persistantes-reserver-actives", afficher);
     }
 
-    if ("IntersectionObserver" in window && cible) {
-      const observateurActions = new IntersectionObserver((entries) => {
-        actionsInitialesVisibles = entries.some((entry) => entry.isIntersecting && entry.intersectionRatio > 0);
+    function actualiserDepuisPositionBoutons() {
+      if (!cible) {
+        actionsInitialesVisibles = true;
         actualiserAffichageBarre();
-      }, {
-        threshold: [0, 0.01, 0.1, 0.5, 1]
-      });
+        return;
+      }
 
-      observateurActions.observe(cible);
-    } else if (cible) {
-      const actualiserDepuisScroll = () => {
-        const rect = cible.getBoundingClientRect();
-        actionsInitialesVisibles = rect.bottom > 0 && rect.top < window.innerHeight;
-        actualiserAffichageBarre();
-      };
+      const rect = cible.getBoundingClientRect();
+      const hauteurFenetre = window.innerHeight || document.documentElement.clientHeight || 0;
+      const marge = 4;
 
-      window.addEventListener("scroll", actualiserDepuisScroll, { passive: true });
-      window.addEventListener("resize", actualiserDepuisScroll);
-      actualiserDepuisScroll();
+      actionsInitialesVisibles = rect.bottom > marge && rect.top < (hauteurFenetre - marge);
+      actualiserAffichageBarre();
     }
+
+    window.addEventListener("scroll", actualiserDepuisPositionBoutons, { passive: true });
+    window.addEventListener("resize", actualiserDepuisPositionBoutons);
+    window.addEventListener("orientationchange", () => {
+      window.setTimeout(actualiserDepuisPositionBoutons, 180);
+    });
 
     const slotLightbox = document.getElementById("lcdp-lightbox-slot");
 
     if (slotLightbox && "MutationObserver" in window) {
-      const observateurLightbox = new MutationObserver(actualiserAffichageBarre);
+      const observateurLightbox = new MutationObserver(actualiserDepuisPositionBoutons);
       observateurLightbox.observe(slotLightbox, { childList: true });
     }
 
-    actualiserAffichageBarre();
+    actualiserDepuisPositionBoutons();
+    window.setTimeout(actualiserDepuisPositionBoutons, 250);
   }
 
   function trouverBlocActionsInitialesReserver(boutonDepartement, boutonIa) {
@@ -647,14 +648,16 @@
         position: fixed;
         left: 0;
         right: 0;
-        bottom: max(10px, env(safe-area-inset-bottom));
-        z-index: 2200;
+        bottom: 12px;
+        bottom: calc(12px + env(safe-area-inset-bottom));
+        z-index: 4400;
         padding: 0 var(--lcdp-space-2);
         pointer-events: none;
+        transform: translateZ(0);
       }
 
       .lcdp-actions-persistantes-reserver__inner {
-        width: min(100%, 520px);
+        width: min(calc(100vw - 20px), 520px);
         margin: 0 auto;
         display: flex;
         align-items: center;
