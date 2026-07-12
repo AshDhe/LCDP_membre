@@ -73,14 +73,18 @@
     if (pageInitialisee) return;
     pageInitialisee = true;
 
+    document.body.classList.add("lcdp-page-reserver");
+
     try {
+      const promesseFooter = initialiserFooter();
+
       await initialiserBandeau();
-      await initialiserFooter();
       etatMembre = await chargerEtatMembre();
       afficherEtatMembre(etatMembre);
       await actualiserBurgerMembre(etatMembre.abonne);
       await initialiserListeParcs();
       initialiserBoutonDepartementPrincipal();
+      await promesseFooter;
       initialiserActionsPersistantesReserver();
       initialiserActionsListeParcs();
       document.addEventListener("click", gererClicDocument);
@@ -591,9 +595,28 @@
   }
 
   function obtenirOuCreerSlotActionsFooterReserver() {
-    const wrapper = document.querySelector("[data-lcdp-box-wraper-footer]");
+    let wrapper = document.querySelector("[data-lcdp-box-wraper-footer]");
 
-    if (!wrapper) return null;
+    if (!wrapper) {
+      const slotPageFooter = document.getElementById("lcdp-footer-slot");
+
+      if (!slotPageFooter) return null;
+
+      wrapper = document.createElement("div");
+      wrapper.className = "lcdp-box-wraper-footer";
+      wrapper.dataset.lcdpBoxWraperFooter = "";
+
+      const slotFooter = document.createElement("div");
+      slotFooter.className = "lcdp-box-wraper-footer__footer";
+      slotFooter.dataset.lcdpWraperFooterFooter = "";
+
+      while (slotPageFooter.firstChild) {
+        slotFooter.appendChild(slotPageFooter.firstChild);
+      }
+
+      wrapper.appendChild(slotFooter);
+      slotPageFooter.appendChild(wrapper);
+    }
 
     let slot = wrapper.querySelector("[data-lcdp-wraper-footer-actions]");
 
@@ -953,6 +976,8 @@
     if (image) {
       image.src = construireUrlImageParc(parc);
       image.alt = "Image du parc " + nom;
+      image.loading = "lazy";
+      image.decoding = "async";
     }
 
     if (titre) titre.textContent = nom;
