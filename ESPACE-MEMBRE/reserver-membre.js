@@ -76,7 +76,16 @@
     document.body.classList.add("lcdp-page-reserver");
 
     try {
-      const promesseFooter = initialiserFooter();
+      const promesseFooter = initialiserFooter()
+        .then(() => {
+          initialiserActionsPersistantesReserver();
+          actualiserEspaceFooterReserver();
+        })
+        .catch((error) => {
+          console.warn("Footer indisponible sur la page Réserver.", error);
+          initialiserActionsPersistantesReserver();
+          actualiserEspaceFooterReserver();
+        });
 
       await initialiserBandeau();
       etatMembre = await chargerEtatMembre();
@@ -84,12 +93,11 @@
       await actualiserBurgerMembre(etatMembre.abonne);
       await initialiserListeParcs();
       initialiserBoutonDepartementPrincipal();
-      await promesseFooter;
-      initialiserActionsPersistantesReserver();
       initialiserActionsListeParcs();
       document.addEventListener("click", gererClicDocument);
       await chargerReservationsMembrePourBlocages();
       await chargerParcsDepartementMembre();
+      await promesseFooter;
     } catch (error) {
       console.error("Erreur réserver membre :", error);
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -560,6 +568,7 @@
 
       slotActionsFooter.hidden = !afficher;
       slotActionsFooter.setAttribute("aria-hidden", afficher ? "false" : "true");
+      window.requestAnimationFrame(actualiserEspaceFooterReserver);
     }
 
     function actualiserDepuisPositionBoutons() {
@@ -578,7 +587,10 @@
     }
 
     window.addEventListener("scroll", actualiserDepuisPositionBoutons, { passive: true });
-    window.addEventListener("resize", actualiserDepuisPositionBoutons);
+    window.addEventListener("resize", () => {
+      actualiserDepuisPositionBoutons();
+      actualiserEspaceFooterReserver();
+    });
     window.addEventListener("orientationchange", () => {
       window.setTimeout(actualiserDepuisPositionBoutons, 180);
     });
@@ -591,7 +603,23 @@
     }
 
     actualiserDepuisPositionBoutons();
-    window.setTimeout(actualiserDepuisPositionBoutons, 250);
+    actualiserEspaceFooterReserver();
+    window.setTimeout(() => {
+      actualiserDepuisPositionBoutons();
+      actualiserEspaceFooterReserver();
+    }, 250);
+  }
+
+  function actualiserEspaceFooterReserver() {
+    const wrapper = document.querySelector("[data-lcdp-box-wraper-footer]");
+
+    if (!wrapper) return;
+
+    const hauteur = Math.ceil(wrapper.getBoundingClientRect().height || 0);
+
+    if (hauteur > 0) {
+      document.documentElement.style.setProperty("--lcdp-reserver-wrapper-footer-height", hauteur + "px");
+    }
   }
 
   function obtenirOuCreerSlotActionsFooterReserver() {
@@ -3013,6 +3041,8 @@ async function afficherPlanningMoisLecture(etatPlanning) {
     const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
     slotFooter.appendChild(footer);
     appliquerRoutesSite(slot);
+    actualiserEspaceFooterReserver();
+    window.setTimeout(actualiserEspaceFooterReserver, 250);
   }
 
   function appliquerRoutesSite(racine = document) {
