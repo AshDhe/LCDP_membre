@@ -532,22 +532,30 @@
     barreDesktop.appendChild(creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa));
     document.body.appendChild(barreDesktop);
 
-    const slotActionsFooter = obtenirSlotActionsFooterReserver();
-    let barreFooterMobile = null;
+    let slotActionsFooter = null;
+    let barreFooter = null;
 
-    if (slotActionsFooter) {
-      slotActionsFooter.innerHTML = "";
-      slotActionsFooter.hidden = true;
-      slotActionsFooter.setAttribute("aria-hidden", "true");
+    function installerActionsFooterSiPossible() {
+      slotActionsFooter = obtenirOuCreerSlotActionsFooterReserver();
 
-      barreFooterMobile = document.createElement("div");
-      barreFooterMobile.id = "lcdp-actions-footer-reserver";
-      barreFooterMobile.className = "lcdp-actions-footer-reserver";
-      barreFooterMobile.hidden = true;
-      barreFooterMobile.setAttribute("aria-hidden", "true");
-      barreFooterMobile.appendChild(creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa));
-      slotActionsFooter.appendChild(barreFooterMobile);
+      if (!slotActionsFooter) return;
+
+      if (!barreFooter) {
+        slotActionsFooter.innerHTML = "";
+        slotActionsFooter.hidden = true;
+        slotActionsFooter.setAttribute("aria-hidden", "true");
+
+        barreFooter = document.createElement("div");
+        barreFooter.id = "lcdp-actions-footer-reserver";
+        barreFooter.className = "lcdp-actions-footer-reserver";
+        barreFooter.hidden = true;
+        barreFooter.setAttribute("aria-hidden", "true");
+        barreFooter.appendChild(creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa));
+        slotActionsFooter.appendChild(barreFooter);
+      }
     }
+
+    installerActionsFooterSiPossible();
 
     const cible = trouverBlocActionsInitialesReserver(boutonDepartement, boutonIa);
     let actionsInitialesVisibles = true;
@@ -576,16 +584,18 @@
     }
 
     function actualiserAffichageBarre() {
+      installerActionsFooterSiPossible();
+
       const afficher = actionsInitialesVisibles !== true && !lightboxOuverte();
-      const afficherFooter = afficher && Boolean(barreFooterMobile);
+      const afficherFooter = afficher && Boolean(barreFooter);
       const afficherDesktop = false;
 
       barreDesktop.hidden = true;
       barreDesktop.setAttribute("aria-hidden", "true");
 
-      if (barreFooterMobile) {
-        barreFooterMobile.hidden = !afficherFooter;
-        barreFooterMobile.setAttribute("aria-hidden", afficherFooter ? "false" : "true");
+      if (barreFooter) {
+        barreFooter.hidden = !afficherFooter;
+        barreFooter.setAttribute("aria-hidden", afficherFooter ? "false" : "true");
       }
 
       if (slotActionsFooter) {
@@ -642,8 +652,30 @@
     window.setTimeout(actualiserDepuisPositionBoutons, 250);
   }
 
-  function obtenirSlotActionsFooterReserver() {
-    return document.querySelector("[data-lcdp-wraper-footer-actions]");
+  function obtenirOuCreerSlotActionsFooterReserver() {
+    const wrapper = document.querySelector("[data-lcdp-box-wraper-footer]");
+
+    if (!wrapper) return null;
+
+    let slot = wrapper.querySelector("[data-lcdp-wraper-footer-actions]");
+
+    if (slot) return slot;
+
+    slot = document.createElement("div");
+    slot.className = "lcdp-box-wraper-footer__actions";
+    slot.dataset.lcdpWraperFooterActions = "";
+    slot.setAttribute("aria-hidden", "true");
+    slot.hidden = true;
+
+    const slotFooter = wrapper.querySelector("[data-lcdp-wraper-footer-footer]");
+
+    if (slotFooter) {
+      wrapper.insertBefore(slot, slotFooter);
+    } else {
+      wrapper.insertBefore(slot, wrapper.firstChild);
+    }
+
+    return slot;
   }
 
   function creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa) {
