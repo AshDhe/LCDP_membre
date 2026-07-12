@@ -82,6 +82,7 @@
       await actualiserBurgerMembre(etatMembre.abonne);
       await initialiserListeParcs();
       initialiserBoutonDepartementPrincipal();
+      initialiserActionsPersistantesReserver();
       initialiserActionsListeParcs();
       document.addEventListener("click", gererClicDocument);
       await chargerReservationsMembrePourBlocages();
@@ -513,6 +514,215 @@
         afficherAlerte("La recherche avec l’IA sera traitée après la réservation classique.").catch(console.error);
       });
     }
+  }
+
+  function initialiserActionsPersistantesReserver() {
+    const boutonDepartement = document.getElementById("bouton-changer-departement");
+    const boutonIa = document.getElementById("bouton-demander-ia");
+
+    if (!boutonDepartement || !boutonIa) return;
+    if (document.getElementById("lcdp-actions-persistantes-reserver")) return;
+
+    injecterStylesActionsPersistantesReserver();
+
+    const barre = document.createElement("div");
+    barre.id = "lcdp-actions-persistantes-reserver";
+    barre.className = "lcdp-actions-persistantes-reserver";
+    barre.hidden = true;
+    barre.setAttribute("aria-hidden", "true");
+
+    const contenu = document.createElement("div");
+    contenu.className = "lcdp-actions-persistantes-reserver__inner";
+
+    const boutonStickyDepartement = document.createElement("button");
+    boutonStickyDepartement.type = "button";
+    boutonStickyDepartement.className = "lcdp-button lcdp-button-primary lcdp-actions-persistantes-reserver__button";
+    boutonStickyDepartement.textContent = "Département";
+    boutonStickyDepartement.setAttribute("aria-label", "Changer de département");
+    boutonStickyDepartement.title = "Changer de département";
+    boutonStickyDepartement.addEventListener("click", (event) => {
+      event.preventDefault();
+      boutonDepartement.click();
+    });
+
+    const boutonStickyIa = document.createElement("button");
+    boutonStickyIa.type = "button";
+    boutonStickyIa.className = "lcdp-button lcdp-button-orange lcdp-actions-persistantes-reserver__button";
+    boutonStickyIa.textContent = "Rechercher";
+    boutonStickyIa.setAttribute("aria-label", "Rechercher avec l’IA");
+    boutonStickyIa.title = "Rechercher avec l’IA";
+    boutonStickyIa.addEventListener("click", (event) => {
+      event.preventDefault();
+      boutonIa.click();
+    });
+
+    contenu.appendChild(boutonStickyDepartement);
+    contenu.appendChild(boutonStickyIa);
+    barre.appendChild(contenu);
+    document.body.appendChild(barre);
+
+    const cible = trouverBlocActionsInitialesReserver(boutonDepartement, boutonIa);
+    let actionsInitialesVisibles = true;
+
+    function lightboxOuverte() {
+      const slotLightbox = document.getElementById("lcdp-lightbox-slot");
+      return Boolean(slotLightbox && slotLightbox.children.length > 0);
+    }
+
+    function actualiserAffichageBarre() {
+      const afficher = actionsInitialesVisibles !== true && !lightboxOuverte();
+
+      barre.hidden = !afficher;
+      barre.setAttribute("aria-hidden", afficher ? "false" : "true");
+      document.body.classList.toggle("lcdp-actions-persistantes-reserver-actives", afficher);
+    }
+
+    if ("IntersectionObserver" in window && cible) {
+      const observateurActions = new IntersectionObserver((entries) => {
+        actionsInitialesVisibles = entries.some((entry) => entry.isIntersecting && entry.intersectionRatio > 0);
+        actualiserAffichageBarre();
+      }, {
+        threshold: [0, 0.01, 0.1, 0.5, 1]
+      });
+
+      observateurActions.observe(cible);
+    } else if (cible) {
+      const actualiserDepuisScroll = () => {
+        const rect = cible.getBoundingClientRect();
+        actionsInitialesVisibles = rect.bottom > 0 && rect.top < window.innerHeight;
+        actualiserAffichageBarre();
+      };
+
+      window.addEventListener("scroll", actualiserDepuisScroll, { passive: true });
+      window.addEventListener("resize", actualiserDepuisScroll);
+      actualiserDepuisScroll();
+    }
+
+    const slotLightbox = document.getElementById("lcdp-lightbox-slot");
+
+    if (slotLightbox && "MutationObserver" in window) {
+      const observateurLightbox = new MutationObserver(actualiserAffichageBarre);
+      observateurLightbox.observe(slotLightbox, { childList: true });
+    }
+
+    actualiserAffichageBarre();
+  }
+
+  function trouverBlocActionsInitialesReserver(boutonDepartement, boutonIa) {
+    const candidats = [
+      boutonDepartement.parentElement,
+      boutonDepartement.parentElement ? boutonDepartement.parentElement.parentElement : null,
+      boutonDepartement.closest("[data-lcdp-actions-reserver]"),
+      boutonDepartement.closest(".lcdp-page-actions"),
+      boutonDepartement.closest(".lcdp-box-formulaire__actions"),
+      boutonDepartement.closest(".lcdp-stack-medium"),
+      boutonDepartement.closest(".lcdp-stack-large")
+    ].filter(Boolean);
+
+    const blocDirect = candidats.find((element) => element.contains(boutonDepartement) && element.contains(boutonIa));
+
+    if (blocDirect) return blocDirect;
+
+    let noeud = boutonDepartement;
+
+    while (noeud && noeud !== document.body) {
+      if (noeud.contains(boutonIa)) return noeud;
+      noeud = noeud.parentElement;
+    }
+
+    return boutonDepartement;
+  }
+
+  function injecterStylesActionsPersistantesReserver() {
+    if (document.querySelector('style[data-lcdp-actions-persistantes-reserver="true"]')) return;
+
+    const style = document.createElement("style");
+    style.dataset.lcdpActionsPersistantesReserver = "true";
+    style.textContent = `
+      .lcdp-actions-persistantes-reserver[hidden] {
+        display: none !important;
+      }
+
+      .lcdp-actions-persistantes-reserver {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: max(10px, env(safe-area-inset-bottom));
+        z-index: 2200;
+        padding: 0 var(--lcdp-space-2);
+        pointer-events: none;
+      }
+
+      .lcdp-actions-persistantes-reserver__inner {
+        width: min(100%, 520px);
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--lcdp-space-2);
+        padding: 8px;
+        border: 1px solid var(--lcdp-color-border);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 10px 30px rgba(31, 42, 36, 0.18);
+        pointer-events: auto;
+        box-sizing: border-box;
+      }
+
+      .lcdp-actions-persistantes-reserver__button.lcdp-button {
+        flex: 1 1 0;
+        min-width: 0;
+        min-height: 40px;
+        margin: 0;
+        padding: 0.55rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.9rem;
+        line-height: 1.1;
+        white-space: nowrap;
+      }
+
+      .lcdp-actions-persistantes-reserver__button.lcdp-button-orange {
+        background: var(--lcdp-color-orange);
+        border-color: var(--lcdp-color-orange);
+        color: var(--lcdp-color-text);
+      }
+
+      .lcdp-actions-persistantes-reserver__button.lcdp-button-orange:hover {
+        background: var(--lcdp-color-orange-hover);
+        border-color: var(--lcdp-color-orange-hover);
+        color: var(--lcdp-color-text);
+      }
+
+      body.lcdp-actions-persistantes-reserver-actives .lcdp-site-main {
+        padding-bottom: 88px;
+      }
+
+      @media (min-width: 768px) {
+        .lcdp-actions-persistantes-reserver {
+          top: calc(var(--lcdp-bandeau-height, 72px) + 10px);
+          bottom: auto;
+          padding: 0 var(--lcdp-space-3);
+        }
+
+        .lcdp-actions-persistantes-reserver__inner {
+          width: min(520px, calc(100vw - 48px));
+        }
+
+        .lcdp-actions-persistantes-reserver__button.lcdp-button {
+          flex: 1 1 0;
+          max-width: 230px;
+          min-height: 42px;
+          padding: 0.6rem 1rem;
+          font-size: 0.95rem;
+        }
+
+        body.lcdp-actions-persistantes-reserver-actives .lcdp-site-main {
+          padding-bottom: 0;
+        }
+      }
+    `;
+
+    document.head.appendChild(style);
   }
 
   function initialiserActionsListeParcs() {
