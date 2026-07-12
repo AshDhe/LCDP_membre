@@ -520,42 +520,25 @@
     const boutonIa = document.getElementById("bouton-demander-ia");
 
     if (!boutonDepartement || !boutonIa) return;
-    if (document.getElementById("lcdp-actions-persistantes-reserver")) return;
+    if (document.getElementById("lcdp-actions-footer-reserver")) return;
 
     injecterStylesActionsPersistantesReserver();
 
-    const barreDesktop = document.createElement("div");
-    barreDesktop.id = "lcdp-actions-persistantes-reserver";
-    barreDesktop.className = "lcdp-actions-persistantes-reserver lcdp-actions-persistantes-reserver--desktop";
-    barreDesktop.hidden = true;
-    barreDesktop.setAttribute("aria-hidden", "true");
-    barreDesktop.appendChild(creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa));
-    document.body.appendChild(barreDesktop);
+    const slotActionsFooter = obtenirOuCreerSlotActionsFooterReserver();
 
-    let slotActionsFooter = null;
-    let barreFooter = null;
+    if (!slotActionsFooter) return;
 
-    function installerActionsFooterSiPossible() {
-      slotActionsFooter = obtenirOuCreerSlotActionsFooterReserver();
+    slotActionsFooter.innerHTML = "";
+    slotActionsFooter.hidden = true;
+    slotActionsFooter.setAttribute("aria-hidden", "true");
 
-      if (!slotActionsFooter) return;
-
-      if (!barreFooter) {
-        slotActionsFooter.innerHTML = "";
-        slotActionsFooter.hidden = true;
-        slotActionsFooter.setAttribute("aria-hidden", "true");
-
-        barreFooter = document.createElement("div");
-        barreFooter.id = "lcdp-actions-footer-reserver";
-        barreFooter.className = "lcdp-actions-footer-reserver";
-        barreFooter.hidden = true;
-        barreFooter.setAttribute("aria-hidden", "true");
-        barreFooter.appendChild(creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa));
-        slotActionsFooter.appendChild(barreFooter);
-      }
-    }
-
-    installerActionsFooterSiPossible();
+    const barreFooter = document.createElement("div");
+    barreFooter.id = "lcdp-actions-footer-reserver";
+    barreFooter.className = "lcdp-actions-footer-reserver";
+    barreFooter.hidden = true;
+    barreFooter.setAttribute("aria-hidden", "true");
+    barreFooter.appendChild(creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa));
+    slotActionsFooter.appendChild(barreFooter);
 
     const cible = trouverBlocActionsInitialesReserver(boutonDepartement, boutonIa);
     let actionsInitialesVisibles = true;
@@ -565,52 +548,14 @@
       return Boolean(slotLightbox && slotLightbox.children.length > 0);
     }
 
-    function modeMobile() {
-      return (window.innerWidth || document.documentElement.clientWidth || 0) < 768;
-    }
-
-    function actualiserHauteurWrapperFooter() {
-      const wrapper = document.querySelector("[data-lcdp-box-wraper-footer]");
-
-      if (!wrapper) {
-        document.documentElement.style.removeProperty("--lcdp-wraper-footer-reserver-height");
-        return;
-      }
-
-      document.documentElement.style.setProperty(
-        "--lcdp-wraper-footer-reserver-height",
-        String(Math.ceil(wrapper.getBoundingClientRect().height || 0)) + "px"
-      );
-    }
-
     function actualiserAffichageBarre() {
-      installerActionsFooterSiPossible();
-
       const afficher = actionsInitialesVisibles !== true && !lightboxOuverte();
-      const afficherFooter = afficher && Boolean(barreFooter);
-      const afficherDesktop = false;
 
-      barreDesktop.hidden = true;
-      barreDesktop.setAttribute("aria-hidden", "true");
+      barreFooter.hidden = !afficher;
+      barreFooter.setAttribute("aria-hidden", afficher ? "false" : "true");
 
-      if (barreFooter) {
-        barreFooter.hidden = !afficherFooter;
-        barreFooter.setAttribute("aria-hidden", afficherFooter ? "false" : "true");
-      }
-
-      if (slotActionsFooter) {
-        slotActionsFooter.hidden = !afficherFooter;
-        slotActionsFooter.setAttribute("aria-hidden", afficherFooter ? "false" : "true");
-      }
-
-      document.body.classList.toggle("lcdp-actions-persistantes-reserver-actives", afficherDesktop);
-      document.body.classList.toggle("lcdp-actions-footer-reserver-actives", afficherFooter);
-
-      if (afficherFooter) {
-        actualiserHauteurWrapperFooter();
-      } else {
-        document.documentElement.style.removeProperty("--lcdp-wraper-footer-reserver-height");
-      }
+      slotActionsFooter.hidden = !afficher;
+      slotActionsFooter.setAttribute("aria-hidden", afficher ? "false" : "true");
     }
 
     function actualiserDepuisPositionBoutons() {
@@ -639,13 +584,6 @@
     if (slotLightbox && "MutationObserver" in window) {
       const observateurLightbox = new MutationObserver(actualiserDepuisPositionBoutons);
       observateurLightbox.observe(slotLightbox, { childList: true });
-    }
-
-    const wrapperFooter = document.querySelector("[data-lcdp-box-wraper-footer]");
-
-    if (wrapperFooter && "ResizeObserver" in window) {
-      const observateurFooter = new ResizeObserver(actualiserDepuisPositionBoutons);
-      observateurFooter.observe(wrapperFooter);
     }
 
     actualiserDepuisPositionBoutons();
@@ -712,6 +650,7 @@
 
   function trouverBlocActionsInitialesReserver(boutonDepartement, boutonIa) {
     const candidats = [
+      boutonDepartement.closest(".lcdp-box-menu-bouton__list"),
       boutonDepartement.parentElement,
       boutonDepartement.parentElement ? boutonDepartement.parentElement.parentElement : null,
       boutonDepartement.closest("[data-lcdp-actions-reserver]"),
@@ -741,24 +680,17 @@
     const style = document.createElement("style");
     style.dataset.lcdpActionsPersistantesReserver = "true";
     style.textContent = `
-      .lcdp-actions-persistantes-reserver[hidden],
       .lcdp-actions-footer-reserver[hidden] {
         display: none !important;
       }
 
-      .lcdp-actions-persistantes-reserver {
-        position: fixed;
-        left: 0;
-        right: 0;
-        top: calc(var(--lcdp-bandeau-height, 72px) + 10px);
-        z-index: 4990;
-        padding: 0 var(--lcdp-space-3);
-        pointer-events: none;
-        transform: translateZ(0);
+      .lcdp-actions-footer-reserver {
+        width: 100%;
+        box-sizing: border-box;
       }
 
-      .lcdp-actions-persistantes-reserver__inner {
-        width: min(520px, calc(100vw - 48px));
+      .lcdp-actions-footer-reserver .lcdp-actions-persistantes-reserver__inner {
+        width: min(620px, calc(100vw - 32px));
         margin: 0 auto;
         display: flex;
         align-items: center;
@@ -767,15 +699,9 @@
         padding: 8px;
         border: 1px solid var(--lcdp-color-border);
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.96);
-        box-shadow: 0 10px 30px rgba(31, 42, 36, 0.18);
-        pointer-events: auto;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 10px 30px rgba(31, 42, 36, 0.14);
         box-sizing: border-box;
-      }
-
-      .lcdp-actions-footer-reserver .lcdp-actions-persistantes-reserver__inner {
-        width: min(calc(100vw - 20px), 520px);
-        background: var(--lcdp-color-surface);
       }
 
       .lcdp-actions-persistantes-reserver__button.lcdp-button {
@@ -803,26 +729,13 @@
       }
 
       @media (max-width: 767px) {
-        .lcdp-actions-persistantes-reserver {
-          display: none !important;
-        }
-
-        body.lcdp-actions-footer-reserver-actives .lcdp-site-main {
-          padding-bottom: calc(var(--lcdp-wraper-footer-reserver-height, 132px) + env(safe-area-inset-bottom));
+        .lcdp-actions-footer-reserver .lcdp-actions-persistantes-reserver__inner {
+          width: min(calc(100vw - 20px), 520px);
         }
       }
 
       @media (min-width: 768px) {
-        .lcdp-actions-persistantes-reserver {
-          display: none !important;
-        }
-
-        .lcdp-actions-footer-reserver .lcdp-actions-persistantes-reserver__inner {
-          width: min(620px, calc(100vw - 64px));
-        }
-
         .lcdp-actions-persistantes-reserver__button.lcdp-button {
-          flex: 1 1 0;
           max-width: 260px;
           min-height: 42px;
           padding: 0.6rem 1rem;
