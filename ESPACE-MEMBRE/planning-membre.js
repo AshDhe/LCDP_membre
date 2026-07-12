@@ -911,7 +911,7 @@
     vueAcces.classList.add("lcdp-planning-reservation-vue--active");
     workflow.classList.add("lcdp-box-workflow-reservation--acces-parc-ouvert");
 
-    const retour = boxAcces.querySelector("[data-lcdp-card-acces-parc-close]");
+    const retour = boxAcces.querySelector("[data-lcdp-card-acces-parc-retour]");
     const titre = boxAcces.querySelector("[data-lcdp-card-acces-parc-title]");
 
     if (retour && typeof retour.focus === "function") {
@@ -926,15 +926,12 @@
     boxAcces.removeAttribute("aria-modal");
     boxAcces.setAttribute("role", "region");
 
-    const boutonFermer = boxAcces.querySelector("[data-lcdp-card-acces-parc-close]");
+    const boutonRetour = boxAcces.querySelector("[data-lcdp-card-acces-parc-retour]");
     const header = boxAcces.querySelector(".lcdp-box-card-acces-parc__header");
     const titre = boxAcces.querySelector("[data-lcdp-card-acces-parc-title]");
 
-    if (boutonFermer) {
-      boutonFermer.textContent = "← Retour";
-      boutonFermer.setAttribute("aria-label", "Retour à la réservation");
-      boutonFermer.classList.add("lcdp-box-card-acces-parc__close--retour");
-      boutonFermer.addEventListener("click", () => fermerAccesParcDansReservation(workflow));
+    if (boutonRetour) {
+      boutonRetour.addEventListener("click", () => fermerAccesParcDansReservation(workflow));
 
       if (header) {
         let ligneRetour = boxAcces.querySelector(".lcdp-box-card-acces-parc__retour-row");
@@ -945,8 +942,8 @@
           header.insertAdjacentElement("beforebegin", ligneRetour);
         }
 
-        if (boutonFermer.parentNode !== ligneRetour) {
-          ligneRetour.appendChild(boutonFermer);
+        if (boutonRetour.parentNode !== ligneRetour) {
+          ligneRetour.appendChild(boutonRetour);
         }
       }
     }
