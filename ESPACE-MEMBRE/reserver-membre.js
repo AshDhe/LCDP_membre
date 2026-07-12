@@ -577,26 +577,26 @@
 
     function actualiserAffichageBarre() {
       const afficher = actionsInitialesVisibles !== true && !lightboxOuverte();
-      const afficherFooterMobile = afficher && modeMobile() && Boolean(barreFooterMobile);
-      const afficherDesktop = afficher && !modeMobile();
+      const afficherFooter = afficher && Boolean(barreFooterMobile);
+      const afficherDesktop = false;
 
-      barreDesktop.hidden = !afficherDesktop;
-      barreDesktop.setAttribute("aria-hidden", afficherDesktop ? "false" : "true");
+      barreDesktop.hidden = true;
+      barreDesktop.setAttribute("aria-hidden", "true");
 
       if (barreFooterMobile) {
-        barreFooterMobile.hidden = !afficherFooterMobile;
-        barreFooterMobile.setAttribute("aria-hidden", afficherFooterMobile ? "false" : "true");
+        barreFooterMobile.hidden = !afficherFooter;
+        barreFooterMobile.setAttribute("aria-hidden", afficherFooter ? "false" : "true");
       }
 
       if (slotActionsFooter) {
-        slotActionsFooter.hidden = !afficherFooterMobile;
-        slotActionsFooter.setAttribute("aria-hidden", afficherFooterMobile ? "false" : "true");
+        slotActionsFooter.hidden = !afficherFooter;
+        slotActionsFooter.setAttribute("aria-hidden", afficherFooter ? "false" : "true");
       }
 
       document.body.classList.toggle("lcdp-actions-persistantes-reserver-actives", afficherDesktop);
-      document.body.classList.toggle("lcdp-actions-footer-reserver-actives", afficherFooterMobile);
+      document.body.classList.toggle("lcdp-actions-footer-reserver-actives", afficherFooter);
 
-      if (afficherFooterMobile) {
+      if (afficherFooter) {
         actualiserHauteurWrapperFooter();
       } else {
         document.documentElement.style.removeProperty("--lcdp-wraper-footer-reserver-height");
@@ -781,13 +781,17 @@
       }
 
       @media (min-width: 768px) {
-        .lcdp-actions-footer-reserver {
+        .lcdp-actions-persistantes-reserver {
           display: none !important;
+        }
+
+        .lcdp-actions-footer-reserver .lcdp-actions-persistantes-reserver__inner {
+          width: min(620px, calc(100vw - 64px));
         }
 
         .lcdp-actions-persistantes-reserver__button.lcdp-button {
           flex: 1 1 0;
-          max-width: 230px;
+          max-width: 260px;
           min-height: 42px;
           padding: 0.6rem 1rem;
           font-size: 0.95rem;
