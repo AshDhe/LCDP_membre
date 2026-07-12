@@ -894,7 +894,18 @@
         boutonInvitation.textContent = "Invit’";
         boutonInvitation.classList.add("lcdp-box-card-reservation-membre__micro-action--invit-recu");
         boutonInvitation.setAttribute("aria-disabled", "false");
+        boutonInvitation.removeAttribute("disabled");
+        boutonInvitation.disabled = false;
+        boutonInvitation.style.pointerEvents = "auto";
         boutonInvitation.title = "Afficher le parrain";
+        boutonInvitation.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          afficherParrainReservationInvitee(reservation).catch((error) => {
+            console.error("[LCDP invitation reçue] affichage parrain impossible", error);
+            window.alert(formaterParrainInvitationRecue(reservation));
+          });
+        });
       } else {
         boutonInvitation.textContent = reservationAvecInvitesPlanning(reservation) ? "Invité(s)" : "Inviter";
         boutonInvitation.setAttribute("aria-disabled", "false");
@@ -957,6 +968,15 @@
     if (boutonInvitation) {
       const cardReservation = boutonInvitation.closest("[data-lcdp-box-card-reservation-membre]");
       const idflux = String(boutonInvitation.dataset.id || cardReservation?.dataset.idflux || "").trim();
+      const reservation = trouverReservationPlanningParId(idflux);
+
+      if (reservationHorsAbonnementMembre(reservation)) {
+        event.preventDefault();
+        event.stopPropagation();
+        await afficherParrainReservationInvitee(reservation);
+        return;
+      }
+
       await ouvrirPageInvitation(idflux, boutonInvitation);
       return;
     }
@@ -1264,6 +1284,17 @@
     if (!idReservation) return null;
 
     return etat.reservations.find((item) => String(item.idflux || "") === idReservation) || null;
+  }
+
+  async function afficherParrainReservationInvitee(reservation) {
+    const message = formaterParrainInvitationRecue(reservation);
+
+    try {
+      await afficherAlerteOkParDessusLightbox(message);
+    } catch (error) {
+      console.error("[LCDP invitation reçue] alerte objet impossible", error);
+      window.alert(message);
+    }
   }
 
   function formaterParrainInvitationRecue(reservation) {
