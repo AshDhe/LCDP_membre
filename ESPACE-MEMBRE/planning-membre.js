@@ -1250,7 +1250,14 @@
 
     if (!emails || !emails.length) return;
 
-    const resultat = await envoyerInvitationReservation(idReservation, emails, declencheur);
+    let resultat = null;
+
+    try {
+      resultat = await envoyerInvitationReservation(idReservation, emails, declencheur);
+    } catch (error) {
+      await afficherAlerteInvitationReservation(error.message || "Impossible d’envoyer l’invitation.", declencheur);
+      return;
+    }
 
     if (invitationReservationCreee(resultat)) {
       marquerReservationAvecInvitesPlanning(idReservation, declencheur);
@@ -2002,7 +2009,10 @@
         if (event.key === "Escape") fermer(null);
       }
 
-      actions.appendChild(creerBoutonInvitationEmails("Inviter", "lcdp-button-primary", () => {
+      let validationEnCours = false;
+      const boutonInviter = creerBoutonInvitationEmails("Inviter", "lcdp-button-primary", () => {
+        if (validationEnCours) return;
+
         message.hidden = true;
         message.textContent = "";
 
@@ -2028,8 +2038,13 @@
           return;
         }
 
+        validationEnCours = true;
+        boutonInviter.disabled = true;
+        boutonInviter.textContent = "Envoi...";
         fermer(emails);
-      }));
+      });
+
+      actions.appendChild(boutonInviter);
 
       actions.appendChild(creerBoutonInvitationEmails("Annuler", "lcdp-button-secondary", () => fermer(null)));
 
@@ -2070,19 +2085,25 @@
       return null;
     }
 
-    const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/inviter-reservation", {
-      method: "POST",
-      credentials: "include",
-      cache: "no-store",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        idflux,
-        emails
-      })
-    });
+    let reponse = null;
+
+    try {
+      reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/inviter-reservation", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          idflux,
+          emails
+        })
+      });
+    } catch (error) {
+      throw new Error("Le service invitation membre est indisponible.");
+    }
 
     const data = await reponse.json().catch(() => null);
 
