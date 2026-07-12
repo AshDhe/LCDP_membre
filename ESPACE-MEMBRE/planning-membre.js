@@ -1962,6 +1962,7 @@
 
     const limiteEmails = limiteEmailsInvitation();
     let traitementEnCours = false;
+    let fermerBox = () => {};
 
     function afficherMessageEmails(texte, estErreur = false) {
       message.hidden = !texte;
@@ -2010,16 +2011,7 @@
       input.focus();
     }
 
-    ajouterChamp();
-
-    actions.innerHTML = "";
-
-    const boutonAjouter = creerBoutonInvitationEmails("Ajouter un e-mail", "lcdp-button-secondary", () => ajouterChamp());
-    const boutonInviter = creerBoutonInvitationEmails("Inviter", "lcdp-button-primary", async () => {
-      if (traitementEnCours) return;
-
-      afficherMessageEmails("");
-
+    function collecterEmailsBox() {
       const emailsSaisis = Array.from(liste.querySelectorAll("input[type='email']"))
         .map((input) => nettoyerEmail(input.value))
         .filter(Boolean);
@@ -2028,17 +2020,35 @@
       const emailInvalide = emails.find((email) => !emailValide(email));
 
       if (!emails.length) {
-        afficherMessageEmails("Renseignez au moins une adresse e-mail.", true);
-        return;
+        return { emails: [], erreur: "Renseignez au moins une adresse e-mail." };
       }
 
       if (emailInvalide) {
-        afficherMessageEmails("Une adresse e-mail est invalide.", true);
-        return;
+        return { emails: [], erreur: "Une adresse e-mail est invalide." };
       }
 
       if (emails.length > limiteEmails) {
-        afficherMessageEmails("Votre droit d'invitation est limité à " + String(limiteEmails) + " e-mail" + (limiteEmails > 1 ? "s" : "") + ".", true);
+        return {
+          emails: [],
+          erreur: "Votre droit d'invitation est limité à " + String(limiteEmails) + " e-mail" + (limiteEmails > 1 ? "s" : "") + "."
+        };
+      }
+
+      return { emails, erreur: "" };
+    }
+
+    ajouterChamp();
+
+    actions.innerHTML = "";
+
+    const boutonAjouter = creerBoutonInvitationEmails("Ajouter un e-mail", "lcdp-button-secondary", () => ajouterChamp());
+    const boutonInviter = creerBoutonInvitationEmails("Inviter", "lcdp-button-primary", async () => {
+      if (traitementEnCours) return;
+
+      const collecte = collecterEmailsBox();
+
+      if (collecte.erreur) {
+        afficherMessageEmails(collecte.erreur, true);
         return;
       }
 
@@ -2049,13 +2059,13 @@
       try {
         console.info("[LCDP invitation] POST /inviter-reservation", {
           idflux: idReservation,
-          nbEmails: emails.length
+          nbEmails: collecte.emails.length
         });
 
-        const resultat = await posterInvitationReservation(idReservation, emails);
+        const resultat = await posterInvitationReservation(idReservation, collecte.emails);
 
         console.info("[LCDP invitation] invitation enregistrée", resultat);
-        fermer(resultat);
+        fermerBox(resultat);
       } catch (error) {
         console.error("[LCDP invitation] échec invitation", error);
         definirTraitementEnCours(false);
@@ -2063,7 +2073,7 @@
         afficherMessageEmails(error.message || "Impossible d’envoyer l’invitation.", true);
       }
     });
-    const boutonAnnuler = creerBoutonInvitationEmails("Annuler", "lcdp-button-secondary", () => fermer(null));
+    const boutonAnnuler = creerBoutonInvitationEmails("Annuler", "lcdp-button-secondary", () => fermerBox(null));
 
     actions.appendChild(boutonAjouter);
     actions.appendChild(boutonInviter);
@@ -2072,25 +2082,25 @@
     return new Promise((resolve) => {
       let resolu = false;
 
-      function fermer(valeur) {
+      fermerBox = (valeur) => {
         if (traitementEnCours && !valeur) return;
         if (resolu) return;
         resolu = true;
         document.removeEventListener("keydown", gererEchap);
         conteneur.remove();
         resolve(valeur || null);
-      }
+      };
 
       function gererEchap(event) {
-        if (event.key === "Escape") fermer(null);
+        if (event.key === "Escape") fermerBox(null);
       }
 
       if (boutonFermer) {
-        boutonFermer.addEventListener("click", () => fermer(null));
+        boutonFermer.addEventListener("click", () => fermerBox(null));
       }
 
       box.addEventListener("click", (event) => {
-        if (event.target === box) fermer(null);
+        if (event.target === box) fermerBox(null);
       });
 
       document.addEventListener("keydown", gererEchap);
@@ -2121,8 +2131,6 @@
       throw new Error("Le service invitation membre n’est pas configuré.");
     }
 
-    const controleur = new AbortController();
-    const delai = window.setTimeout(() => controleur.abort(), 20000);
     let reponse = null;
 
     try {
@@ -2130,7 +2138,6 @@
         method: "POST",
         credentials: "include",
         cache: "no-store",
-        signal: controleur.signal,
         headers: {
           "Accept": "application/json",
           "Content-Type": "application/json"
@@ -2141,13 +2148,8 @@
         })
       });
     } catch (error) {
-      if (error && error.name === "AbortError") {
-        throw new Error("Le service invitation ne répond pas. Merci de réessayer.");
-      }
-
+      console.error("[LCDP invitation] fetch impossible", error);
       throw new Error("Le service invitation membre est indisponible.");
-    } finally {
-      window.clearTimeout(delai);
     }
 
     const data = await reponse.json().catch(() => null);
