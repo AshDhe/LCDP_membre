@@ -1342,6 +1342,16 @@
       .replace(/\s+/g, " ");
   }
 
+  function nettoyerEmail(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase();
+  }
+
+  function emailValide(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+  }
+
   function formaterParrainInvitationRecue(reservation) {
     const affichage = nettoyerTexteSimple(reservation?.parrainInvitation?.affichage || "");
 
