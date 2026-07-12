@@ -1085,17 +1085,24 @@
   function creerCarteGalerieEntreeParc(data) {
     const article = document.createElement("article");
     article.className = "lcdp-box-galerie__card";
+    article.dataset.lcdpEntreeParcImageCard = "true";
 
     const image = document.createElement("img");
     image.className = "lcdp-box-galerie__image";
     image.alt = data.alt || "Entrée du parc";
     image.loading = "lazy";
     image.decoding = "async";
-    image.src = construireUrlImageParc(data.chemin || "");
-    image.onerror = () => {
-      article.hidden = true;
-    };
+    image.dataset.lcdpImageLoading = "true";
 
+    image.addEventListener("load", () => {
+      delete image.dataset.lcdpImageLoading;
+    });
+
+    image.addEventListener("error", () => {
+      article.remove();
+    });
+
+    image.src = construireUrlImageParc(data.chemin || "");
     article.appendChild(image);
 
     return article;
@@ -1788,7 +1795,8 @@
   function normaliserSegmentCheminImageParc(value) {
     return String(value || "")
       .trim()
-      .replace(/^parc\s+de\s+/i, "")
+      .replace(/^parc\s+d[’']\s*/i, "")
+      .replace(/^parc\s+(?:de|du|des)\s+/i, "")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .toUpperCase()
