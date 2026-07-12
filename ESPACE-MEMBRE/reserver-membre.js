@@ -568,6 +568,7 @@
 
       slotActionsFooter.hidden = !afficher;
       slotActionsFooter.setAttribute("aria-hidden", afficher ? "false" : "true");
+      document.body.classList.toggle("lcdp-reserver-actions-footer-active", afficher);
       window.requestAnimationFrame(actualiserEspaceFooterReserver);
     }
 
@@ -611,42 +612,34 @@
   }
 
   function actualiserEspaceFooterReserver() {
-    const wrapper = document.querySelector("[data-lcdp-box-wraper-footer]");
+    const footer = document.querySelector("#lcdp-footer-slot .lcdp-box-footer");
+    const barre = document.getElementById("lcdp-actions-footer-reserver");
 
-    if (!wrapper) return;
+    const hauteurFooter = Math.ceil(footer?.getBoundingClientRect?.().height || 56);
 
-    const hauteur = Math.ceil(wrapper.getBoundingClientRect().height || 0);
+    document.documentElement.style.setProperty(
+      "--lcdp-reserver-footer-height",
+      hauteurFooter + "px"
+    );
 
-    if (hauteur > 0) {
-      document.documentElement.style.setProperty("--lcdp-reserver-wrapper-footer-height", hauteur + "px");
+    if (barre && barre.hidden !== true) {
+      const hauteurActions = Math.ceil(barre.getBoundingClientRect().height || 0);
+
+      if (hauteurActions > 0) {
+        document.documentElement.style.setProperty(
+          "--lcdp-reserver-actions-footer-height",
+          hauteurActions + "px"
+        );
+      }
     }
   }
 
   function obtenirOuCreerSlotActionsFooterReserver() {
-    let wrapper = document.querySelector("[data-lcdp-box-wraper-footer]");
+    const slotPageFooter = document.getElementById("lcdp-footer-slot");
 
-    if (!wrapper) {
-      const slotPageFooter = document.getElementById("lcdp-footer-slot");
+    if (!slotPageFooter) return null;
 
-      if (!slotPageFooter) return null;
-
-      wrapper = document.createElement("div");
-      wrapper.className = "lcdp-box-wraper-footer";
-      wrapper.dataset.lcdpBoxWraperFooter = "";
-
-      const slotFooter = document.createElement("div");
-      slotFooter.className = "lcdp-box-wraper-footer__footer";
-      slotFooter.dataset.lcdpWraperFooterFooter = "";
-
-      while (slotPageFooter.firstChild) {
-        slotFooter.appendChild(slotPageFooter.firstChild);
-      }
-
-      wrapper.appendChild(slotFooter);
-      slotPageFooter.appendChild(wrapper);
-    }
-
-    let slot = wrapper.querySelector("[data-lcdp-wraper-footer-actions]");
+    let slot = slotPageFooter.querySelector("[data-lcdp-wraper-footer-actions]");
 
     if (slot) return slot;
 
@@ -656,13 +649,7 @@
     slot.setAttribute("aria-hidden", "true");
     slot.hidden = true;
 
-    const slotFooter = wrapper.querySelector("[data-lcdp-wraper-footer-footer]");
-
-    if (slotFooter) {
-      wrapper.insertBefore(slot, slotFooter);
-    } else {
-      wrapper.insertBefore(slot, wrapper.firstChild);
-    }
+    slotPageFooter.insertBefore(slot, slotPageFooter.firstChild);
 
     return slot;
   }
@@ -3021,25 +3008,8 @@ async function afficherPlanningMoisLecture(etatPlanning) {
 
     slot.innerHTML = "";
 
-    let wrapper = null;
-
-    try {
-      const fragmentWrapper = await chargerFragmentObjet("/BOX/02-box-wraper-footer.html");
-      wrapper = fragmentWrapper.querySelector("[data-lcdp-box-wraper-footer]");
-    } catch (error) {
-      console.warn("Wrapper footer indisponible, chargement du footer simple.", error);
-    }
-
-    if (wrapper) {
-      slot.appendChild(wrapper);
-    }
-
-    const slotFooter = wrapper
-      ? wrapper.querySelector("[data-lcdp-wraper-footer-footer]")
-      : slot;
-
     const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
-    slotFooter.appendChild(footer);
+    slot.appendChild(footer);
     appliquerRoutesSite(slot);
     actualiserEspaceFooterReserver();
     window.setTimeout(actualiserEspaceFooterReserver, 250);
