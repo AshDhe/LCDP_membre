@@ -18,7 +18,7 @@
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_INVITER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html");
-  const PAGE_RESERVER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html");
+  const PAGE_RESERVER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/reserver-membres.html");
 
   let pageInitialisee = false;
   let promesseActualisationEtatMembre = null;
@@ -936,8 +936,18 @@
       boutonFermer.classList.add("lcdp-box-card-acces-parc__close--retour");
       boutonFermer.addEventListener("click", () => fermerAccesParcDansReservation(workflow));
 
-      if (header && boutonFermer.parentNode !== header) {
-        header.insertBefore(boutonFermer, header.firstChild);
+      if (header) {
+        let ligneRetour = boxAcces.querySelector(".lcdp-box-card-acces-parc__retour-row");
+
+        if (!ligneRetour) {
+          ligneRetour = document.createElement("div");
+          ligneRetour.className = "lcdp-box-card-acces-parc__retour-row";
+          header.insertAdjacentElement("beforebegin", ligneRetour);
+        }
+
+        if (boutonFermer.parentNode !== ligneRetour) {
+          ligneRetour.appendChild(boutonFermer);
+        }
       }
     }
 
@@ -1787,10 +1797,18 @@
   }
 
   function normaliserDepartementCheminImageParc(value) {
-    const departement = String(value || "")
+    const texte = String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       .trim()
-      .toUpperCase()
-      .replace(/[^0-9A-Z]/g, "");
+      .toUpperCase();
+
+    const corse = texte.match(/(?:^|\b)(2A|2B)(?:$|\b)/);
+
+    if (corse) return corse[1];
+
+    const matchDepartement = texte.match(/\d{1,3}/);
+    const departement = matchDepartement ? matchDepartement[0] : "";
 
     if (/^[1-9]$/.test(departement)) return "0" + departement;
 
