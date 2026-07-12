@@ -146,6 +146,30 @@
         display: inline-flex !important;
       }
 
+      .lcdp-box-workflow-reservation--planning-reservation .lcdp-box-calendrier-mois__close {
+        display: none !important;
+      }
+
+      .lcdp-box-card-reservation-membre__place .lcdp-box-card-reservation-membre__micro-action--annuler {
+        flex: 0 0 auto !important;
+        margin-left: var(--lcdp-space-2) !important;
+      }
+
+      .lcdp-box-card-reservation-membre__actions .lcdp-box-card-reservation-membre__micro-action--fermer {
+        border-color: var(--lcdp-color-border) !important;
+        background: var(--lcdp-color-surface) !important;
+        color: var(--lcdp-color-text) !important;
+      }
+
+      @media (max-width: 767px) {
+        .lcdp-box-card-reservation-membre__place .lcdp-box-card-reservation-membre__micro-action--annuler {
+          flex-basis: 100% !important;
+          width: max-content !important;
+          margin-left: 0 !important;
+          margin-top: var(--lcdp-space-1) !important;
+        }
+      }
+
       .lcdp-box-card-reservation-membre__micro-action--delai-depasse {
         border-color: var(--lcdp-color-border) !important;
         background: var(--lcdp-color-surface-soft) !important;
@@ -757,12 +781,6 @@
       "lcdp-workflow-reservation-box"
     );
 
-    const boutonFermer = document.createElement("button");
-    boutonFermer.type = "button";
-    boutonFermer.className = "lcdp-box-calendrier-mois__close";
-    boutonFermer.setAttribute("aria-label", "Fermer");
-    boutonFermer.textContent = "×";
-
     const vues = document.createElement("div");
     vues.className = "lcdp-planning-reservation-vues";
     vues.dataset.lcdpPlanningReservationVues = "true";
@@ -775,7 +793,6 @@
     vueReservation.appendChild(card);
     vues.appendChild(vueReservation);
 
-    contenu.appendChild(boutonFermer);
     contenu.appendChild(vues);
 
     function fermer() {
@@ -795,7 +812,8 @@
       fermer();
     }
 
-    boutonFermer.addEventListener("click", fermer);
+    workflow._lcdpFermerReservationPlanning = fermer;
+
     workflow.addEventListener("click", (event) => {
       if (event.target === workflow) fermer();
     });
@@ -903,7 +921,11 @@
           event.stopPropagation();
           afficherParrainReservationInvitee(reservation).catch((error) => {
             console.error("[LCDP invitation reçue] affichage parrain impossible", error);
-            window.alert(formaterParrainInvitationRecue(reservation));
+            try {
+              window.alert(formaterParrainInvitationRecue(reservation));
+            } catch {
+              window.alert("Parrain non renseigné");
+            }
           });
         });
       } else {
@@ -954,9 +976,25 @@
   }
 
   async function gererClicDocument(event) {
+    const boutonFermerReservation = event.target.closest("[data-action='fermer']");
     const boutonAdresse = event.target.closest("[data-action='adresse']");
     const boutonInvitation = event.target.closest("[data-action='invitation']");
     const boutonAnnuler = event.target.closest("[data-action='annuler']");
+
+    if (boutonFermerReservation) {
+      event.preventDefault();
+      event.stopPropagation();
+      const workflow = boutonFermerReservation.closest("[data-lcdp-box-workflow-reservation]");
+
+      if (workflow && typeof workflow._lcdpFermerReservationPlanning === "function") {
+        workflow._lcdpFermerReservationPlanning();
+        return;
+      }
+
+      const slot = document.getElementById("lcdp-lightbox-slot");
+      if (slot) slot.innerHTML = "";
+      return;
+    }
 
     if (boutonAdresse) {
       const cardReservation = boutonAdresse.closest("[data-lcdp-box-card-reservation-membre]");
@@ -1295,6 +1333,12 @@
       console.error("[LCDP invitation reçue] alerte objet impossible", error);
       window.alert(message);
     }
+  }
+
+  function nettoyerTexteSimple(value) {
+    return String(value || "")
+      .trim()
+      .replace(/\s+/g, " ");
   }
 
   function formaterParrainInvitationRecue(reservation) {
