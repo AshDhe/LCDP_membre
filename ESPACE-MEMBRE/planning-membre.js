@@ -955,7 +955,9 @@
     }
 
     if (boutonInvitation) {
-      await ouvrirPageInvitation(String(boutonInvitation.dataset.id || ""), boutonInvitation);
+      const cardReservation = boutonInvitation.closest("[data-lcdp-box-card-reservation-membre]");
+      const idflux = String(boutonInvitation.dataset.id || cardReservation?.dataset.idflux || "").trim();
+      await ouvrirPageInvitation(idflux, boutonInvitation);
       return;
     }
 
@@ -2692,16 +2694,15 @@
   }
 
   async function afficherAlerteOkParDessusLightbox(message) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return null;
-
-    const coucheExistante = slot.querySelector("[data-lcdp-alerte-ok-overlay]");
-    if (coucheExistante) coucheExistante.remove();
+    document.querySelectorAll("[data-lcdp-alerte-ok-overlay]").forEach((element) => element.remove());
 
     const couche = document.createElement("div");
     couche.dataset.lcdpAlerteOkOverlay = "true";
-    slot.appendChild(couche);
+    couche.style.position = "fixed";
+    couche.style.inset = "0";
+    couche.style.zIndex = "12000";
+    couche.style.pointerEvents = "auto";
+    document.body.appendChild(couche);
 
     const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
     couche.appendChild(fragment);
@@ -2715,6 +2716,13 @@
       couche.remove();
       throw new Error("Structure de l’alerte incomplète.");
     }
+
+    alerte.style.position = "fixed";
+    alerte.style.inset = "0";
+    alerte.style.zIndex = "12001";
+    alerte.style.display = "flex";
+    alerte.style.alignItems = "center";
+    alerte.style.justifyContent = "center";
 
     texte.textContent = message || "";
 
@@ -2731,6 +2739,9 @@
       }
 
       boutonOk.addEventListener("click", fermer);
+      alerte.addEventListener("click", (event) => {
+        if (event.target === alerte) fermer();
+      });
     });
   }
 
