@@ -538,6 +538,9 @@
 
     if (slotActionsFooter) {
       slotActionsFooter.innerHTML = "";
+      slotActionsFooter.hidden = true;
+      slotActionsFooter.setAttribute("aria-hidden", "true");
+
       barreFooterMobile = document.createElement("div");
       barreFooterMobile.id = "lcdp-actions-footer-reserver";
       barreFooterMobile.className = "lcdp-actions-footer-reserver";
@@ -584,6 +587,11 @@
       if (barreFooterMobile) {
         barreFooterMobile.hidden = !afficherFooterMobile;
         barreFooterMobile.setAttribute("aria-hidden", afficherFooterMobile ? "false" : "true");
+      }
+
+      if (slotActionsFooter) {
+        slotActionsFooter.hidden = !afficherFooterMobile;
+        slotActionsFooter.setAttribute("aria-hidden", afficherFooterMobile ? "false" : "true");
       }
 
       document.body.classList.toggle("lcdp-actions-persistantes-reserver-actives", afficherDesktop);
