@@ -472,6 +472,7 @@
       }
 
       const statsParFlux = new Map();
+      etat.reservationsAvecInvites.clear();
 
       data.reservations.forEach((reservation) => {
         const idflux = String(reservation?.idflux || "").trim();
@@ -868,17 +869,24 @@
 
     if (boutonInvitation) {
       boutonInvitation.dataset.id = idFlux;
-      boutonInvitation.hidden = estReservationHorsAbonnement;
+      boutonInvitation.hidden = false;
       boutonInvitation.classList.remove("lcdp-box-card-reservation-membre__micro-action--delai-depasse");
-      boutonInvitation.setAttribute("aria-disabled", "false");
-      boutonInvitation.removeAttribute("title");
-      boutonInvitation.textContent = reservationAvecInvitesPlanning(reservation) ? "Invité(s)" : "Inviter";
+
+      if (estReservationHorsAbonnement) {
+        boutonInvitation.textContent = "Invit’";
+        boutonInvitation.setAttribute("aria-disabled", "true");
+        boutonInvitation.title = "Réservation reçue comme invitation";
+      } else {
+        boutonInvitation.textContent = reservationAvecInvitesPlanning(reservation) ? "Invité(s)" : "Inviter";
+        boutonInvitation.setAttribute("aria-disabled", "false");
+        boutonInvitation.removeAttribute("title");
+      }
     }
 
     if (badgeInvitation) {
-      badgeInvitation.textContent = "invit’";
-      badgeInvitation.hidden = !estReservationHorsAbonnement;
-      badgeInvitation.setAttribute("aria-label", "Invitation");
+      badgeInvitation.textContent = "";
+      badgeInvitation.hidden = true;
+      badgeInvitation.setAttribute("aria-hidden", "true");
     }
 
     if (boutonAnnuler) {
@@ -1195,6 +1203,11 @@
       return;
     }
 
+    if (reservationHorsAbonnementMembre(reservation)) {
+      await afficherAlerteInvitationReservation(formaterParrainInvitationRecue(reservation), declencheur);
+      return;
+    }
+
     if (reservationAvecInvitesPlanning(reservation)) {
       await ouvrirListeInvitesReservation(idReservation, declencheur);
       return;
@@ -1233,6 +1246,38 @@
     return etat.reservations.find((item) => String(item.idflux || "") === idReservation) || null;
   }
 
+  function formaterParrainInvitationRecue(reservation) {
+    const parrain = reservation?.parrain || {};
+    const alias = nettoyerTexteSimple(
+      parrain.alias ||
+      parrain.aliasmembre ||
+      reservation?.aliasparrain ||
+      reservation?.aliasParrain ||
+      ""
+    );
+
+    if (alias) return alias;
+
+    const prenom = nettoyerTexteSimple(
+      parrain.prenommembre ||
+      parrain.prenom ||
+      reservation?.prenomparrain ||
+      reservation?.prenomParrain ||
+      ""
+    );
+    const nom = nettoyerTexteSimple(
+      parrain.nommembre ||
+      parrain.nom ||
+      reservation?.nomparrain ||
+      reservation?.nomParrain ||
+      ""
+    );
+    const initialeNom = nom ? nom.charAt(0).toUpperCase() + "." : "";
+    const identite = [prenom, initialeNom].filter(Boolean).join(" ");
+
+    return identite || "Parrain non renseigné";
+  }
+
   function reservationAvecInvitesPlanning(reservation) {
     const idflux = String(reservation?.idflux || "").trim();
 
@@ -1242,10 +1287,8 @@
 
     const stats = reservation?.invitationStats || reservation?.invitationsStats || null;
     const invitesActifs = Number(stats?.in || stats?.actifs || stats?.invites || 0);
-    const invitesAnnules = Number(stats?.out || stats?.cancd || stats?.annules || 0);
 
-    return (Number.isFinite(invitesActifs) && invitesActifs > 0) ||
-      (Number.isFinite(invitesAnnules) && invitesAnnules > 0);
+    return Number.isFinite(invitesActifs) && invitesActifs > 0;
   }
 
   function invitationReservationCreee(data) {
@@ -1278,6 +1321,15 @@
       };
     }
 
+    actualiserBoutonsInvitationPlanning(idReservation, declencheur);
+  }
+
+  function actualiserBoutonsInvitationPlanning(idflux, declencheur) {
+    const idReservation = String(idflux || "").trim();
+    const reservation = trouverReservationPlanningParId(idReservation);
+
+    if (!idReservation || !reservation) return;
+
     const boutons = [];
 
     if (declencheur) boutons.push(declencheur);
@@ -1288,8 +1340,18 @@
 
     boutons.forEach((bouton) => {
       if (!bouton) return;
-      bouton.textContent = "Invité(s)";
+
+      bouton.hidden = false;
       bouton.classList.remove("lcdp-box-card-reservation-membre__micro-action--delai-depasse");
+
+      if (reservationHorsAbonnementMembre(reservation)) {
+        bouton.textContent = "Invit’";
+        bouton.setAttribute("aria-disabled", "true");
+        bouton.title = "Réservation reçue comme invitation";
+        return;
+      }
+
+      bouton.textContent = reservationAvecInvitesPlanning(reservation) ? "Invité(s)" : "Inviter";
       bouton.setAttribute("aria-disabled", "false");
       bouton.removeAttribute("title");
     });
@@ -1578,8 +1640,13 @@
           };
         }
 
-        etat.reservationsAvecInvites.add(idReservation);
-        marquerReservationAvecInvitesPlanning(idReservation, declencheur);
+        if (Number.isFinite(nbActifs) && nbActifs > 0) {
+          etat.reservationsAvecInvites.add(idReservation);
+        } else {
+          etat.reservationsAvecInvites.delete(idReservation);
+        }
+
+        actualiserBoutonsInvitationPlanning(idReservation, declencheur);
         await afficherAlerteInvitationReservation(resultat.message || "Liste des invités mise à jour.", declencheur);
         fermer(resultat);
       }
@@ -2297,18 +2364,7 @@
   }
 
   function reservationHorsAbonnementMembre(reservation) {
-    const dateReservation = extraireDateFranceReservation(reservation?.datebookd);
-    const aujourdHui = dateAujourdhuiParis();
-
-    if (!dateReservation) return true;
-
-    /* Règle planning : le passé reste seulement vert atténué.
-       L'affichage invitation ne concerne que les réservations à venir. */
-    if (dateReservation < aujourdHui) return false;
-
-    if (valeurBooleenneVraie(reservation?.invitation)) return true;
-
-    return !dateDansPeriodeAbonnementMembre(dateReservation);
+    return valeurBooleenneVraie(reservation?.invitation);
   }
 
   function dateDansPeriodeAbonnementMembre(dateIso) {
