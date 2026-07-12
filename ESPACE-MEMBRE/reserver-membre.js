@@ -39,13 +39,12 @@
   const ENDPOINT_PARTAGE_PAGE = construireEndpointApi(
     "workerPartagePageUrl",
     "WORKER_PARTAGE_PAGE_URL",
-    "partage-page-api"
+    "partage-pages-api"
   );
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_PLANNING_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/planning-membre.html");
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
-  const PAGE_PLANNING_PARC_PUBLIC = construireUrlPublic("/ESPACE-PUBLIC/planning-parc.html");
 
   let pageInitialisee = false;
   let etatMembre = { abonne: false, abonnementSuspendu: false, abonnementAnnuleNonPaye: false, paiementSuspension: null, statudaConnue: false, statuda: null, datenext: null };
@@ -1682,13 +1681,19 @@ async function afficherPlanningMoisLecture(etatPlanning) {
     return Array.isArray(data.planning) ? data.planning : [];
   }
 
-  async function ouvrirPartagePlanningParc(parc) {
+  async function ouvrirPartagePlanningParc(parc, typepartage = "planning") {
     const emails = await ouvrirDialoguePartageEmails();
 
     if (!emails) return;
 
-    await envoyerPartagePlanningParc(parc, emails);
-    await afficherAlerteSuperposee("La page a été partagée avec les membres.");
+    try {
+      const resultat = await envoyerPartagePlanningParc(parc, emails, typepartage);
+      await afficherAlerteSuperposee(resultat.message || "La page a été partagée.");
+    } catch (error) {
+      await afficherAlerteSuperposee(
+        normaliserMessageErreurPartage(error?.message)
+      );
+    }
   }
 
   async function ouvrirDialoguePartageEmails() {
@@ -1746,10 +1751,31 @@ async function afficherPlanningMoisLecture(etatPlanning) {
       }
 
       actions.appendChild(creerBoutonPartage("Envoyer", "lcdp-button-primary", () => {
-        const emails = Array.from(liste.querySelectorAll("input[type='email']"))
+        const emailsSaisis = Array.from(liste.querySelectorAll("input[type='email']"))
           .map((input) => nettoyerEmail(input.value))
-          .filter(Boolean)
-          .filter((email, index, array) => array.indexOf(email) === index);
+          .filter(Boolean);
+
+        const emailsInvalides = emailsSaisis.filter((email) => !emailValide(email));
+
+        if (!emailsSaisis.length) {
+          message.hidden = false;
+          message.textContent = "Renseignez au moins une adresse e-mail.";
+          return;
+        }
+
+        if (emailsInvalides.length) {
+          message.hidden = false;
+          message.textContent = "Une adresse e-mail est invalide.";
+          return;
+        }
+
+        const emails = emailsSaisis.filter((email, index, array) => array.indexOf(email) === index);
+
+        if (emails.length > 10) {
+          message.hidden = false;
+          message.textContent = "Le partage est limité à 10 adresses e-mail.";
+          return;
+        }
 
         fermer(emails);
       }));
@@ -1797,7 +1823,7 @@ async function afficherPlanningMoisLecture(etatPlanning) {
 
     const actionPartager = creerActionPartagerFicheParc();
     actionPartager.addEventListener("click", () => {
-      ouvrirPartagePlanningParc(parc).catch(console.error);
+      ouvrirPartagePlanningParc(parc, "fiche").catch(console.error);
     });
 
     actions.appendChild(boutonReserver);
@@ -1879,7 +1905,7 @@ async function afficherPlanningMoisLecture(etatPlanning) {
 
     const actionPartager = creerActionPartagerPage();
     actionPartager.addEventListener("click", () => {
-      ouvrirPartagePlanningParc(parc).catch(console.error);
+      ouvrirPartagePlanningParc(parc, "planning").catch(console.error);
     });
 
     actions.appendChild(boutonReserver);
@@ -1939,16 +1965,21 @@ async function afficherPlanningMoisLecture(etatPlanning) {
     return action;
   }
 
-  async function envoyerPartagePlanningParc(parc, emails) {
+  async function envoyerPartagePlanningParc(parc, emails, typepartage) {
     if (!ENDPOINT_PARTAGE_PAGE) {
-      return;
+      throw new Error("Le service de partage est temporairement indisponible.");
     }
 
-    const pageUrl = construireUrlPlanningParcPublic(parc);
-    const nomParc = String(parc.nom || parc.nomparc || "").trim() || "La Clé du Parc";
-    const titre = "Planning du parc de " + nomParc;
+    const typeNormalise = typepartage === "fiche" ? "fiche" : "planning";
+    const idparc = String(parc.idparc || parc.id || "").trim();
+    const nomparc = String(parc.nom || parc.nomparc || "").trim();
+    const dptmt = String(parc.dptmt || parc.departement || "").trim();
 
-    await fetch(ENDPOINT_PARTAGE_PAGE, {
+    if (!idparc || !nomparc) {
+      throw new Error("Le parc à partager est incomplet.");
+    }
+
+    const reponse = await fetch(ENDPOINT_PARTAGE_PAGE, {
       method: "POST",
       credentials: "include",
       cache: "no-store",
@@ -1957,27 +1988,66 @@ async function afficherPlanningMoisLecture(etatPlanning) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        pageUrl,
-        titre,
+        typepartage: typeNormalise,
+        idparc,
+        nomparc,
+        dptmt,
         emails
       })
-    }).catch((error) => {
-      console.warn("Partage page indisponible.", error);
     });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (!reponse.ok || !reponseApiOk(data)) {
+      throw new Error(
+        normaliserMessageErreurPartage(
+          messageErreurApi(data, "Le partage n’a pas pu être envoyé pour le moment. Merci de réessayer dans quelques instants.")
+        )
+      );
+    }
+
+    return data;
   }
 
-  function construireUrlPlanningParcPublic(parc) {
-    const url = new URL(PAGE_PLANNING_PARC_PUBLIC, window.location.href);
-    const idparc = String(parc.idparc || parc.id || "").trim();
-    const nom = String(parc.nom || parc.nomparc || "").trim();
-    const dptmt = String(parc.dptmt || parc.departement || "").trim();
+  function normaliserMessageErreurPartage(message) {
+    const texte = String(message || "").trim();
 
-    if (idparc) url.searchParams.set("idparc", idparc);
-    if (nom) url.searchParams.set("nom", nom);
-    if (dptmt) url.searchParams.set("dptmt", dptmt);
+    if (!texte) {
+      return "Le partage n’a pas pu être envoyé pour le moment. Merci de réessayer dans quelques instants.";
+    }
 
-    return url.toString();
+    if (
+      texte.includes("Session membre") ||
+      texte.includes("Compte membre invalide") ||
+      texte.includes("session membre")
+    ) {
+      return "Votre session membre a expiré. Merci de vous reconnecter pour partager cette page.";
+    }
+
+    if (
+      texte.includes("service de partage") ||
+      texte.includes("Variables manquantes") ||
+      texte.includes("configuration")
+    ) {
+      return "Le service de partage est temporairement indisponible.";
+    }
+
+    if (
+      texte.includes("Supabase") ||
+      texte.includes("Resend") ||
+      texte.includes("Failed to fetch") ||
+      texte.includes("NetworkError")
+    ) {
+      return "Le partage n’a pas pu être envoyé pour le moment. Merci de réessayer dans quelques instants.";
+    }
+
+    if (texte === "Le partage n’a pas pu être envoyé.") {
+      return "Le partage n’a pas pu être envoyé pour le moment. Merci de réessayer dans quelques instants.";
+    }
+
+    return texte;
   }
+
 
   async function obtenirCoquePlanningParcContenu() {
     const slot = document.getElementById("lcdp-lightbox-slot");
@@ -3192,6 +3262,10 @@ async function afficherPlanningMoisLecture(etatPlanning) {
     return String(value || "")
       .trim()
       .toLowerCase();
+  }
+
+  function emailValide(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""));
   }
 
   function nettoyerDepartement(valeur) {
