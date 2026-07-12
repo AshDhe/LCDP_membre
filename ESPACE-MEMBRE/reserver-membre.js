@@ -527,39 +527,26 @@
 
     const barre = document.createElement("div");
     barre.id = "lcdp-actions-persistantes-reserver";
-    barre.className = "lcdp-actions-persistantes-reserver";
+    barre.className = "lcdp-actions-persistantes-reserver lcdp-actions-persistantes-reserver--fixe";
     barre.hidden = true;
     barre.setAttribute("aria-hidden", "true");
-
-    const contenu = document.createElement("div");
-    contenu.className = "lcdp-actions-persistantes-reserver__inner";
-
-    const boutonStickyDepartement = document.createElement("button");
-    boutonStickyDepartement.type = "button";
-    boutonStickyDepartement.className = "lcdp-button lcdp-button-primary lcdp-actions-persistantes-reserver__button";
-    boutonStickyDepartement.textContent = "Département";
-    boutonStickyDepartement.setAttribute("aria-label", "Changer de département");
-    boutonStickyDepartement.title = "Changer de département";
-    boutonStickyDepartement.addEventListener("click", (event) => {
-      event.preventDefault();
-      boutonDepartement.click();
-    });
-
-    const boutonStickyIa = document.createElement("button");
-    boutonStickyIa.type = "button";
-    boutonStickyIa.className = "lcdp-button lcdp-button-orange lcdp-actions-persistantes-reserver__button";
-    boutonStickyIa.textContent = "Rechercher IA";
-    boutonStickyIa.setAttribute("aria-label", "Rechercher avec l’IA");
-    boutonStickyIa.title = "Rechercher avec l’IA";
-    boutonStickyIa.addEventListener("click", (event) => {
-      event.preventDefault();
-      boutonIa.click();
-    });
-
-    contenu.appendChild(boutonStickyDepartement);
-    contenu.appendChild(boutonStickyIa);
-    barre.appendChild(contenu);
+    barre.appendChild(creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa));
     document.body.appendChild(barre);
+
+    const barreAvantFooter = document.createElement("div");
+    barreAvantFooter.id = "lcdp-actions-persistantes-reserver-fin-page";
+    barreAvantFooter.className = "lcdp-actions-persistantes-reserver-inline";
+    barreAvantFooter.hidden = true;
+    barreAvantFooter.setAttribute("aria-hidden", "true");
+    barreAvantFooter.appendChild(creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa));
+
+    const slotFooter = document.getElementById("lcdp-footer-slot");
+
+    if (slotFooter && slotFooter.parentNode) {
+      slotFooter.parentNode.insertBefore(barreAvantFooter, slotFooter);
+    } else {
+      document.body.appendChild(barreAvantFooter);
+    }
 
     const cible = trouverBlocActionsInitialesReserver(boutonDepartement, boutonIa);
     let actionsInitialesVisibles = true;
@@ -569,14 +556,30 @@
       return Boolean(slotLightbox && slotLightbox.children.length > 0);
     }
 
+    function footerVisibleSurMobile() {
+      const largeurFenetre = window.innerWidth || document.documentElement.clientWidth || 0;
+
+      if (largeurFenetre >= 768 || !slotFooter) return false;
+
+      const rect = slotFooter.getBoundingClientRect();
+      const hauteurFenetre = window.innerHeight || document.documentElement.clientHeight || 0;
+      const margeAvantFooter = 120;
+
+      return rect.top < (hauteurFenetre + margeAvantFooter) && rect.bottom > 0;
+    }
+
     function actualiserAffichageBarre() {
-      actualiserOffsetFooterActionsPersistantesReserver();
-
       const afficher = actionsInitialesVisibles !== true && !lightboxOuverte();
+      const afficherEnFinPage = afficher && footerVisibleSurMobile();
+      const afficherFixe = afficher && !afficherEnFinPage;
 
-      barre.hidden = !afficher;
-      barre.setAttribute("aria-hidden", afficher ? "false" : "true");
-      document.body.classList.toggle("lcdp-actions-persistantes-reserver-actives", afficher);
+      barre.hidden = !afficherFixe;
+      barre.setAttribute("aria-hidden", afficherFixe ? "false" : "true");
+
+      barreAvantFooter.hidden = !afficherEnFinPage;
+      barreAvantFooter.setAttribute("aria-hidden", afficherEnFinPage ? "false" : "true");
+
+      document.body.classList.toggle("lcdp-actions-persistantes-reserver-actives", afficherFixe);
     }
 
     function actualiserDepuisPositionBoutons() {
@@ -607,8 +610,6 @@
       observateurLightbox.observe(slotLightbox, { childList: true });
     }
 
-    const slotFooter = document.getElementById("lcdp-footer-slot");
-
     if (slotFooter && "ResizeObserver" in window) {
       const observateurFooter = new ResizeObserver(actualiserDepuisPositionBoutons);
       observateurFooter.observe(slotFooter);
@@ -618,35 +619,36 @@
     window.setTimeout(actualiserDepuisPositionBoutons, 250);
   }
 
-  function actualiserOffsetFooterActionsPersistantesReserver() {
-    const largeurFenetre = window.innerWidth || document.documentElement.clientWidth || 0;
+  function creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa) {
+    const contenu = document.createElement("div");
+    contenu.className = "lcdp-actions-persistantes-reserver__inner";
 
-    if (largeurFenetre >= 768) {
-      document.documentElement.style.setProperty("--lcdp-actions-persistantes-footer-offset", "0px");
-      return;
-    }
+    const boutonStickyDepartement = document.createElement("button");
+    boutonStickyDepartement.type = "button";
+    boutonStickyDepartement.className = "lcdp-button lcdp-button-primary lcdp-actions-persistantes-reserver__button";
+    boutonStickyDepartement.textContent = "Département";
+    boutonStickyDepartement.setAttribute("aria-label", "Changer de département");
+    boutonStickyDepartement.title = "Changer de département";
+    boutonStickyDepartement.addEventListener("click", (event) => {
+      event.preventDefault();
+      boutonDepartement.click();
+    });
 
-    const footerSlot = document.getElementById("lcdp-footer-slot");
-    const footer = footerSlot && footerSlot.children.length ? footerSlot : null;
+    const boutonStickyIa = document.createElement("button");
+    boutonStickyIa.type = "button";
+    boutonStickyIa.className = "lcdp-button lcdp-button-orange lcdp-actions-persistantes-reserver__button";
+    boutonStickyIa.textContent = "Recherche IA";
+    boutonStickyIa.setAttribute("aria-label", "Rechercher avec l’IA");
+    boutonStickyIa.title = "Rechercher avec l’IA";
+    boutonStickyIa.addEventListener("click", (event) => {
+      event.preventDefault();
+      boutonIa.click();
+    });
 
-    if (!footer) {
-      document.documentElement.style.setProperty("--lcdp-actions-persistantes-footer-offset", "0px");
-      return;
-    }
+    contenu.appendChild(boutonStickyDepartement);
+    contenu.appendChild(boutonStickyIa);
 
-    const rect = footer.getBoundingClientRect();
-    const hauteurFenetre = window.innerHeight || document.documentElement.clientHeight || 0;
-    const stylesFooter = window.getComputedStyle(footer);
-    const footerPositionne = ["fixed", "sticky"].includes(stylesFooter.position);
-    const recouvrementBas = footerPositionne
-      ? Math.max(0, rect.height)
-      : Math.max(0, hauteurFenetre - rect.top);
-    const offset = Math.min(Math.ceil(recouvrementBas), Math.ceil(rect.height || 0));
-
-    document.documentElement.style.setProperty(
-      "--lcdp-actions-persistantes-footer-offset",
-      String(offset) + "px"
-    );
+    return contenu;
   }
 
   function trouverBlocActionsInitialesReserver(boutonDepartement, boutonIa) {
@@ -680,7 +682,8 @@
     const style = document.createElement("style");
     style.dataset.lcdpActionsPersistantesReserver = "true";
     style.textContent = `
-      .lcdp-actions-persistantes-reserver[hidden] {
+      .lcdp-actions-persistantes-reserver[hidden],
+      .lcdp-actions-persistantes-reserver-inline[hidden] {
         display: none !important;
       }
 
@@ -689,11 +692,17 @@
         left: 0;
         right: 0;
         bottom: 12px;
-        bottom: calc(12px + var(--lcdp-actions-persistantes-footer-offset, 0px) + env(safe-area-inset-bottom));
+        bottom: calc(12px + env(safe-area-inset-bottom));
         z-index: 4990;
         padding: 0 var(--lcdp-space-2);
         pointer-events: none;
         transform: translateZ(0);
+      }
+
+      .lcdp-actions-persistantes-reserver-inline {
+        width: 100%;
+        padding: var(--lcdp-space-3) var(--lcdp-space-2);
+        box-sizing: border-box;
       }
 
       .lcdp-actions-persistantes-reserver__inner {
@@ -710,6 +719,10 @@
         box-shadow: 0 10px 30px rgba(31, 42, 36, 0.18);
         pointer-events: auto;
         box-sizing: border-box;
+      }
+
+      .lcdp-actions-persistantes-reserver-inline .lcdp-actions-persistantes-reserver__inner {
+        background: var(--lcdp-color-surface);
       }
 
       .lcdp-actions-persistantes-reserver__button.lcdp-button {
@@ -737,7 +750,7 @@
       }
 
       body.lcdp-actions-persistantes-reserver-actives .lcdp-site-main {
-        padding-bottom: calc(88px + var(--lcdp-actions-persistantes-footer-offset, 0px));
+        padding-bottom: 88px;
       }
 
       @media (min-width: 768px) {
@@ -745,6 +758,10 @@
           top: calc(var(--lcdp-bandeau-height, 72px) + 10px);
           bottom: auto;
           padding: 0 var(--lcdp-space-3);
+        }
+
+        .lcdp-actions-persistantes-reserver-inline {
+          display: none !important;
         }
 
         .lcdp-actions-persistantes-reserver__inner {
