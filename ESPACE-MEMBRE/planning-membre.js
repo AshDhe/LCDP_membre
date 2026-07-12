@@ -95,28 +95,6 @@
         color: #ffffff !important;
       }
 
-      [data-lcdp-invitation-emails-overlay],
-      [data-lcdp-invitation-invites-overlay] {
-        position: fixed !important;
-        inset: 0 !important;
-        z-index: 2147483000 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        pointer-events: auto !important;
-      }
-
-      [data-lcdp-invitation-emails-overlay] [data-lcdp-box-card-listemails],
-      [data-lcdp-invitation-invites-overlay] [data-lcdp-box-card-listinvites-oui-non],
-      [data-lcdp-invitation-invites-overlay].lcdp-box-card-listinvites-oui-non {
-        position: fixed !important;
-        inset: 0 !important;
-        z-index: 2147483001 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-      }
-
       .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-row {
         width: 100% !important;
         margin: 0 0 var(--lcdp-space-2) !important;
@@ -1471,7 +1449,11 @@
     conteneur.setAttribute("aria-modal", "true");
     conteneur.setAttribute("aria-labelledby", "lcdp-listinvites-lecture-title");
 
-    document.body.appendChild(conteneur);
+    if (workflow && slot) {
+      slot.appendChild(conteneur);
+    } else {
+      document.body.appendChild(conteneur);
+    }
 
     const card = document.createElement("article");
     card.className = "lcdp-box-card-listinvites-oui-non__card lcdp-box-card-listinvites-oui-non__card--lecture";
@@ -1543,7 +1525,11 @@
     const conteneur = document.createElement("div");
     conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
 
-    document.body.appendChild(conteneur);
+    if (workflow && slot) {
+      slot.appendChild(conteneur);
+    } else {
+      document.body.appendChild(conteneur);
+    }
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-card-listinvites-oui-non.html");
     conteneur.appendChild(fragment);
@@ -1940,13 +1926,12 @@
   }
 
   async function ouvrirBoxEmailsInvitationReservation(declencheur) {
-    const workflow = declencheur
-      ? declencheur.closest("[data-lcdp-box-workflow-reservation]")
-      : document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
+    await chargerCssObjetUneFois("/BOX/04-box-listemails.css");
 
-    const slot = document.getElementById("lcdp-lightbox-slot");
     const conteneur = document.createElement("div");
     conteneur.dataset.lcdpInvitationEmailsOverlay = "true";
+    conteneur.style.position = "relative";
+    conteneur.style.zIndex = "9000";
 
     document.body.appendChild(conteneur);
 
