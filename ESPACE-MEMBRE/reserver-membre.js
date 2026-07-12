@@ -570,6 +570,8 @@
     }
 
     function actualiserAffichageBarre() {
+      actualiserOffsetFooterActionsPersistantesReserver();
+
       const afficher = actionsInitialesVisibles !== true && !lightboxOuverte();
 
       barre.hidden = !afficher;
@@ -605,8 +607,46 @@
       observateurLightbox.observe(slotLightbox, { childList: true });
     }
 
+    const slotFooter = document.getElementById("lcdp-footer-slot");
+
+    if (slotFooter && "ResizeObserver" in window) {
+      const observateurFooter = new ResizeObserver(actualiserDepuisPositionBoutons);
+      observateurFooter.observe(slotFooter);
+    }
+
     actualiserDepuisPositionBoutons();
     window.setTimeout(actualiserDepuisPositionBoutons, 250);
+  }
+
+  function actualiserOffsetFooterActionsPersistantesReserver() {
+    const largeurFenetre = window.innerWidth || document.documentElement.clientWidth || 0;
+
+    if (largeurFenetre >= 768) {
+      document.documentElement.style.setProperty("--lcdp-actions-persistantes-footer-offset", "0px");
+      return;
+    }
+
+    const footerSlot = document.getElementById("lcdp-footer-slot");
+    const footer = footerSlot && footerSlot.children.length ? footerSlot : null;
+
+    if (!footer) {
+      document.documentElement.style.setProperty("--lcdp-actions-persistantes-footer-offset", "0px");
+      return;
+    }
+
+    const rect = footer.getBoundingClientRect();
+    const hauteurFenetre = window.innerHeight || document.documentElement.clientHeight || 0;
+    const stylesFooter = window.getComputedStyle(footer);
+    const footerPositionne = ["fixed", "sticky"].includes(stylesFooter.position);
+    const recouvrementBas = footerPositionne
+      ? Math.max(0, rect.height)
+      : Math.max(0, hauteurFenetre - rect.top);
+    const offset = Math.min(Math.ceil(recouvrementBas), Math.ceil(rect.height || 0));
+
+    document.documentElement.style.setProperty(
+      "--lcdp-actions-persistantes-footer-offset",
+      String(offset) + "px"
+    );
   }
 
   function trouverBlocActionsInitialesReserver(boutonDepartement, boutonIa) {
@@ -649,8 +689,8 @@
         left: 0;
         right: 0;
         bottom: 12px;
-        bottom: calc(12px + env(safe-area-inset-bottom));
-        z-index: 4400;
+        bottom: calc(12px + var(--lcdp-actions-persistantes-footer-offset, 0px) + env(safe-area-inset-bottom));
+        z-index: 4990;
         padding: 0 var(--lcdp-space-2);
         pointer-events: none;
         transform: translateZ(0);
@@ -697,7 +737,7 @@
       }
 
       body.lcdp-actions-persistantes-reserver-actives .lcdp-site-main {
-        padding-bottom: 88px;
+        padding-bottom: calc(88px + var(--lcdp-actions-persistantes-footer-offset, 0px));
       }
 
       @media (min-width: 768px) {
