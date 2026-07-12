@@ -80,6 +80,21 @@
         color: #ffffff !important;
       }
 
+      .lcdp-box-card-reservation-membre [data-action="invitation"].lcdp-box-card-reservation-membre__micro-action--invit-recu {
+        border-color: #7b4ab8 !important;
+        background: #7b4ab8 !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        text-decoration: none !important;
+      }
+
+      .lcdp-box-card-reservation-membre [data-action="invitation"].lcdp-box-card-reservation-membre__micro-action--invit-recu:hover,
+      .lcdp-box-card-reservation-membre [data-action="invitation"].lcdp-box-card-reservation-membre__micro-action--invit-recu:focus-visible {
+        border-color: #6d3fa7 !important;
+        background: #6d3fa7 !important;
+        color: #ffffff !important;
+      }
+
       .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-row {
         width: 100% !important;
         margin: 0 0 var(--lcdp-space-2) !important;
@@ -870,12 +885,16 @@
     if (boutonInvitation) {
       boutonInvitation.dataset.id = idFlux;
       boutonInvitation.hidden = false;
-      boutonInvitation.classList.remove("lcdp-box-card-reservation-membre__micro-action--delai-depasse");
+      boutonInvitation.classList.remove(
+        "lcdp-box-card-reservation-membre__micro-action--delai-depasse",
+        "lcdp-box-card-reservation-membre__micro-action--invit-recu"
+      );
 
       if (estReservationHorsAbonnement) {
         boutonInvitation.textContent = "Invit’";
-        boutonInvitation.setAttribute("aria-disabled", "true");
-        boutonInvitation.title = "Réservation reçue comme invitation";
+        boutonInvitation.classList.add("lcdp-box-card-reservation-membre__micro-action--invit-recu");
+        boutonInvitation.setAttribute("aria-disabled", "false");
+        boutonInvitation.title = "Afficher le parrain";
       } else {
         boutonInvitation.textContent = reservationAvecInvitesPlanning(reservation) ? "Invité(s)" : "Inviter";
         boutonInvitation.setAttribute("aria-disabled", "false");
@@ -1247,7 +1266,11 @@
   }
 
   function formaterParrainInvitationRecue(reservation) {
-    const parrain = reservation?.parrain || {};
+    const affichage = nettoyerTexteSimple(reservation?.parrainInvitation?.affichage || "");
+
+    if (affichage) return affichage;
+
+    const parrain = reservation?.parrainInvitation || reservation?.parrain || {};
     const alias = nettoyerTexteSimple(
       parrain.alias ||
       parrain.aliasmembre ||
@@ -1342,12 +1365,16 @@
       if (!bouton) return;
 
       bouton.hidden = false;
-      bouton.classList.remove("lcdp-box-card-reservation-membre__micro-action--delai-depasse");
+      bouton.classList.remove(
+        "lcdp-box-card-reservation-membre__micro-action--delai-depasse",
+        "lcdp-box-card-reservation-membre__micro-action--invit-recu"
+      );
 
       if (reservationHorsAbonnementMembre(reservation)) {
         bouton.textContent = "Invit’";
-        bouton.setAttribute("aria-disabled", "true");
-        bouton.title = "Réservation reçue comme invitation";
+        bouton.classList.add("lcdp-box-card-reservation-membre__micro-action--invit-recu");
+        bouton.setAttribute("aria-disabled", "false");
+        bouton.title = "Afficher le parrain";
         return;
       }
 
