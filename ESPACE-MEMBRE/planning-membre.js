@@ -924,7 +924,7 @@
             try {
               window.alert(formaterParrainInvitationRecue(reservation));
             } catch {
-              window.alert("Parrain non renseigné");
+              window.alert("Invitation par : Parrain non renseigné");
             }
           });
         });
@@ -943,6 +943,7 @@
 
     if (boutonAnnuler) {
       boutonAnnuler.dataset.id = idFlux;
+      boutonAnnuler.textContent = "Annuler la réservation";
       boutonAnnuler.hidden = false;
       boutonAnnuler.classList.toggle("lcdp-box-card-reservation-membre__micro-action--delai-depasse", delaiActionDepasse);
       boutonAnnuler.setAttribute("aria-disabled", delaiActionDepasse ? "true" : "false");
@@ -1344,7 +1345,7 @@
   function formaterParrainInvitationRecue(reservation) {
     const affichage = nettoyerTexteSimple(reservation?.parrainInvitation?.affichage || "");
 
-    if (affichage) return affichage;
+    if (affichage) return "Invitation par : " + affichage;
 
     const parrain = reservation?.parrainInvitation || reservation?.parrain || {};
     const alias = nettoyerTexteSimple(
@@ -1355,7 +1356,7 @@
       ""
     );
 
-    if (alias) return alias;
+    if (alias) return "Invitation par : " + alias;
 
     const prenom = nettoyerTexteSimple(
       parrain.prenommembre ||
@@ -1374,7 +1375,7 @@
     const initialeNom = nom ? nom.charAt(0).toUpperCase() + "." : "";
     const identite = [prenom, initialeNom].filter(Boolean).join(" ");
 
-    return identite || "Parrain non renseigné";
+    return "Invitation par : " + (identite || "Parrain non renseigné");
   }
 
   function reservationAvecInvitesPlanning(reservation) {
