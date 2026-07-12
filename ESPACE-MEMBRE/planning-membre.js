@@ -1053,59 +1053,38 @@
   }
 
   async function remplirGalerieEntreeParc(slotGalerie, data) {
+    if (!slotGalerie) return;
+
     slotGalerie.innerHTML = "";
+    slotGalerie.classList.add("lcdp-box-card-acces-parc__photos");
 
-    const fragmentGalerie = await chargerFragmentObjet("/BOX/03-box-galerie.html");
-    slotGalerie.appendChild(fragmentGalerie);
-
-    const galerie = slotGalerie.querySelector("[data-lcdp-box-galerie]");
-    const titre = slotGalerie.querySelector("[data-lcdp-galerie-title]");
-    const liste = slotGalerie.querySelector("[data-lcdp-galerie-list]");
-
-    if (!galerie || !titre || !liste) {
-      throw new Error("Structure galerie accès parc incomplète.");
-    }
-
-    galerie.setAttribute("aria-label", "Photos de l’entrée du parc");
-    titre.textContent = "";
-
-    const headerGalerie = titre.closest(".lcdp-box-galerie__header");
-    if (headerGalerie) headerGalerie.hidden = true;
-
-    liste.innerHTML = "";
+    const liste = document.createElement("div");
+    liste.className = "lcdp-box-card-acces-parc__photos-list";
 
     ["entree1.webp", "entree2.webp"].forEach((fichier, index) => {
-      liste.appendChild(creerCarteGalerieEntreeParc({
+      liste.appendChild(creerPhotoEntreeParc({
         chemin: construireCheminImageParcFichier(data.nomParc, data.departement, fichier),
-        alt: "Entrée du parc de " + data.nomParc
+        alt: "Entrée " + String(index + 1) + " du parc de " + data.nomParc
       }));
     });
+
+    slotGalerie.appendChild(liste);
   }
 
-  function creerCarteGalerieEntreeParc(data) {
-    const article = document.createElement("article");
-    article.className = "lcdp-box-galerie__card";
-    article.dataset.lcdpEntreeParcImageCard = "true";
+  function creerPhotoEntreeParc(data) {
+    const figure = document.createElement("figure");
+    figure.className = "lcdp-box-card-acces-parc__photo";
 
     const image = document.createElement("img");
-    image.className = "lcdp-box-galerie__image";
+    image.className = "lcdp-box-card-acces-parc__photo-image";
     image.alt = data.alt || "Entrée du parc";
-    image.loading = "lazy";
+    image.loading = "eager";
     image.decoding = "async";
-    image.dataset.lcdpImageLoading = "true";
-
-    image.addEventListener("load", () => {
-      delete image.dataset.lcdpImageLoading;
-    });
-
-    image.addEventListener("error", () => {
-      article.remove();
-    });
-
     image.src = construireUrlImageParc(data.chemin || "");
-    article.appendChild(image);
 
-    return article;
+    figure.appendChild(image);
+
+    return figure;
   }
 
   function nettoyerCoordonneeParc(value) {
