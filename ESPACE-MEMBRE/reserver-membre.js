@@ -92,6 +92,7 @@
       afficherEtatMembre(etatMembre);
       await actualiserBurgerMembre(etatMembre.abonne);
       await initialiserListeParcs();
+      await initialiserCommandeBarReserver();
       initialiserBoutonDepartementPrincipal();
       initialiserActionsListeParcs();
       document.addEventListener("click", gererClicDocument);
@@ -508,6 +509,29 @@
     if (!etatPage.templateCardParc || !etatPage.templateFicheParc || !etatPage.templateMapParc || !etatPage.templateShiftDetailParc || !etatPage.templateJourMois || !etatPage.templateHeureJour) {
       throw new Error("Templates parc, fiche parc, carte parc, shift détail parc, jour ou heure introuvables.");
     }
+  }
+
+  async function initialiserCommandeBarReserver() {
+    const slot = document.getElementById("lcdp-commande-bar-reserver-slot");
+    const boutonDepartement = document.getElementById("bouton-changer-departement");
+    const boutonIa = document.getElementById("bouton-demander-ia");
+
+    if (!slot || !boutonDepartement || !boutonIa) {
+      throw new Error("Structure Command Bar réserver incomplète.");
+    }
+
+    const fragment = await chargerFragmentObjet("/BOX/04-box-commande-bar.html");
+    const commandeBar = fragment.querySelector("[data-lcdp-box-commande-bar]");
+    const actions = fragment.querySelector("[data-lcdp-commande-bar-actions]");
+
+    if (!commandeBar || !actions) {
+      throw new Error("Objet Command Bar incomplet.");
+    }
+
+    actions.appendChild(boutonDepartement);
+    actions.appendChild(boutonIa);
+
+    slot.replaceChildren(commandeBar);
   }
 
   function initialiserBoutonDepartementPrincipal() {
