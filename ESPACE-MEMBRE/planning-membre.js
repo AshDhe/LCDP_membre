@@ -572,7 +572,7 @@
     if (!reservations.length) {
       const message = document.createElement("p");
       message.className = "lcdp-box-liste-card__message";
-      message.textContent = "Aucune réservation dans votre planning.";
+      message.textContent = "Vous n’avez pas de réservation à l’agenda actuellement.";
       fragment.appendChild(message);
     } else {
       reservations.forEach((reservation) => {
