@@ -549,7 +549,7 @@
 
   async function gererValidationPresence(etat) {
     if (!etat.aReservationEnCours) {
-      await afficherAlerte("Vous n'avez pas de réservation en cours");
+      await afficherAlerte("Vous n'avez pas de réservation en cours.");
       return;
     }
 
@@ -636,6 +636,16 @@
     redirigerPublic("/ESPACE-PUBLIC/accueil-public.html");
   }
 
+
+  function normaliserPonctuationAlerte(message) {
+    const texte = String(message || "").trim();
+
+    if (!texte) return "";
+    if (/[.!?…]$/.test(texte)) return texte;
+
+    return texte + ".";
+  }
+
   async function afficherAlerte(message) {
     const slot = document.getElementById("lcdp-lightbox-slot");
 
@@ -655,7 +665,7 @@
       throw new Error("Structure de l’alerte incomplète.");
     }
 
-    texte.textContent = message || "";
+    texte.textContent = normaliserPonctuationAlerte(message);
 
     return new Promise((resolve) => {
       let resolu = false;
