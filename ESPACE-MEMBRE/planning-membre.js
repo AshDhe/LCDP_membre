@@ -204,6 +204,41 @@
         background: var(--lcdp-color-surface-soft) !important;
         color: var(--lcdp-color-text-muted) !important;
       }
+
+
+      [data-lcdp-invitation-invites-overlay] [data-lcdp-listinvites-close] {
+        display: none !important;
+      }
+
+      [data-lcdp-invitation-invites-overlay] [data-lcdp-listinvites-ajout].lcdp-listinvites-ajout-sans-titre {
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+      }
+
+      [data-lcdp-invitation-invites-overlay] [data-lcdp-listinvites-ajout].lcdp-listinvites-ajout-sans-titre > *:not([data-lcdp-listinvites-emails]):not(.lcdp-box-card-listinvites-oui-non__emails) {
+        display: none !important;
+      }
+
+      [data-lcdp-invitation-invites-overlay] .lcdp-listinvites-actions-compact {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: var(--lcdp-space-2, 12px) !important;
+        align-items: stretch !important;
+        justify-items: stretch !important;
+      }
+
+      [data-lcdp-invitation-invites-overlay] .lcdp-listinvites-actions-compact .lcdp-button {
+        width: 100% !important;
+        min-height: 58px !important;
+        margin: 0 !important;
+      }
+
+      @media (min-width: 768px) {
+        [data-lcdp-invitation-invites-overlay] .lcdp-listinvites-actions-compact {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+      }
     `;
 
     document.head.appendChild(style);
@@ -1678,6 +1713,22 @@
       throw new Error("Structure liste invités oui/non incomplète.");
     }
 
+    if (boutonFermer) {
+      boutonFermer.hidden = true;
+      boutonFermer.setAttribute("aria-hidden", "true");
+      boutonFermer.tabIndex = -1;
+    }
+
+    zoneAjout.classList.add("lcdp-listinvites-ajout-sans-titre");
+    actions.classList.add("lcdp-listinvites-actions-compact");
+
+    boutonAjouterEmail.textContent = "Ajouter un membre";
+    boutonAnnuler.textContent = "Annuler";
+
+    if (boutonAjouterEmail.parentNode !== actions) {
+      actions.insertBefore(boutonAjouterEmail, boutonMettreAJour);
+    }
+
     box.style.position = "fixed";
     box.style.inset = "0";
     box.style.zIndex = "13001";
@@ -1707,11 +1758,13 @@
 
     if (placesDisponibles <= 0) {
       zoneAjout.hidden = true;
+      boutonAjouterEmail.hidden = true;
       boutonAjouterEmail.disabled = true;
     } else {
       zoneAjout.hidden = false;
+      boutonAjouterEmail.hidden = false;
       boutonAjouterEmail.disabled = false;
-      boutonAjouterEmail.textContent = "Ajouter un e-mail";
+      boutonAjouterEmail.textContent = "Ajouter un membre";
     }
 
     function ajouterChampEmailInvite() {
@@ -1772,7 +1825,9 @@
         }
 
         enregistrementEnCours = true;
+        boutonAjouterEmail.disabled = true;
         boutonMettreAJour.disabled = true;
+        boutonAnnuler.disabled = true;
         boutonMettreAJour.textContent = "Mise à jour...";
         afficherMessage("");
 
@@ -1782,7 +1837,9 @@
         }, declencheur);
 
         enregistrementEnCours = false;
+        boutonAjouterEmail.disabled = false;
         boutonMettreAJour.disabled = false;
+        boutonAnnuler.disabled = false;
         boutonMettreAJour.textContent = "Mettre à jour";
 
         if (!resultat) return;
@@ -1806,8 +1863,9 @@
         }
 
         actualiserBoutonsInvitationPlanning(idReservation, declencheur);
-        await afficherAlerteInvitationReservation(resultat.message || "Liste des invités mise à jour.", declencheur);
+        const messageConfirmation = resultat.message || "Liste des invités mise à jour.";
         fermer(resultat);
+        await afficherAlerteInvitationReservation(messageConfirmation, declencheur);
       }
 
       boutonMettreAJour.addEventListener("click", mettreAJour);
@@ -2831,7 +2889,7 @@
     couche.dataset.lcdpAlerteOkOverlay = "true";
     couche.style.position = "fixed";
     couche.style.inset = "0";
-    couche.style.zIndex = "12000";
+    couche.style.zIndex = "15000";
     couche.style.pointerEvents = "auto";
     document.body.appendChild(couche);
 
@@ -2850,7 +2908,7 @@
 
     alerte.style.position = "fixed";
     alerte.style.inset = "0";
-    alerte.style.zIndex = "12001";
+    alerte.style.zIndex = "15001";
     alerte.style.display = "flex";
     alerte.style.alignItems = "center";
     alerte.style.justifyContent = "center";
