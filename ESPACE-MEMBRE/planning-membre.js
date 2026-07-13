@@ -441,6 +441,8 @@
 
     ajouterActionsPlanningMembre(actionsWrapper);
 
+    await chargerCssObjetUneFois("/BOX/04-box-calendrier-mois.css");
+
     const fragmentCalendrier = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
     slotPlanning.appendChild(fragmentCalendrier);
 
@@ -456,7 +458,10 @@
     const boutonFermer = calendrier.querySelector("[data-lcdp-calendrier-mois-close]");
     if (boutonFermer) boutonFermer.hidden = true;
 
-    calendrier.classList.add("lcdp-box-calendrier-mois--planning-membre");
+    calendrier.classList.add(
+      "lcdp-box-calendrier-mois--planning-membre",
+      "lcdp-box-calendrier-mois--inline"
+    );
 
     const titre = calendrier.querySelector("[data-lcdp-calendrier-mois-title]");
     if (titre) {
