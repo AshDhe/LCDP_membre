@@ -42,6 +42,9 @@
     calendrierMois: null,
     wrapperPlanning: null,
     slotPlanning: null,
+    slotCommandeListe: null,
+    slotCommandeAgenda: null,
+    commandeBar: null,
     modeAffichage: "agenda",
     membre: {
       abonne: false,
@@ -98,52 +101,6 @@
         color: #ffffff !important;
       }
 
-      .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-row {
-        width: 100% !important;
-        margin: 0 0 var(--lcdp-space-2) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-      }
-
-      .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-button {
-        position: static !important;
-        transform: none !important;
-        width: auto !important;
-        min-width: 112px !important;
-        max-width: none !important;
-        min-height: 38px !important;
-        margin: 0 !important;
-        padding: 8px 16px !important;
-        border: 2px solid var(--lcdp-color-orange) !important;
-        border-radius: 999px !important;
-        background: #ffffff !important;
-        color: var(--lcdp-color-orange) !important;
-        font: inherit !important;
-        font-size: 0.86rem !important;
-        line-height: 1 !important;
-        font-weight: 700 !important;
-        letter-spacing: 0.045em !important;
-        text-align: center !important;
-        text-decoration: none !important;
-        text-transform: uppercase !important;
-        white-space: nowrap !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        box-shadow: none !important;
-      }
-
-      .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-button:visited,
-      .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-button:hover {
-        color: var(--lcdp-color-orange) !important;
-        text-decoration: none !important;
-      }
-
-      .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-button:hover {
-        background: rgba(242, 162, 58, 0.10) !important;
-        border-color: var(--lcdp-color-orange) !important;
-      }
 
       .lcdp-box-card-reservation-membre--passe [data-lcdp-card-reservation-annuler] {
         display: inline-flex !important;
@@ -440,18 +397,6 @@
     }
 
     await chargerCssObjetUneFois("/BOX/04-box-commande-bar.css");
-
-    const fragmentCommande = await chargerFragmentObjet("/BOX/04-box-commande-bar.html");
-    slotCommande.appendChild(fragmentCommande);
-
-    const actionsCommande = slotCommande.querySelector("[data-lcdp-commande-bar-actions]");
-
-    if (!actionsCommande) {
-      throw new Error("Structure commande bar incomplète.");
-    }
-
-    ajouterActionsPlanningMembre(actionsCommande);
-
     await chargerCssObjetUneFois("/BOX/04-box-calendrier-mois.css");
 
     const fragmentCalendrier = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
@@ -462,6 +407,26 @@
     if (!calendrier) {
       throw new Error("Structure calendrier mois incomplète.");
     }
+
+    const slotCommandeAgenda = calendrier.querySelector(
+      "[data-lcdp-calendrier-mois-commande]"
+    );
+
+    if (!slotCommandeAgenda) {
+      throw new Error("Slot commande du calendrier mensuel introuvable.");
+    }
+
+    const fragmentCommande = await chargerFragmentObjet("/BOX/04-box-commande-bar.html");
+    slotCommandeAgenda.appendChild(fragmentCommande);
+
+    const commandeBar = slotCommandeAgenda.querySelector("[data-lcdp-box-commande-bar]");
+    const actionsCommande = slotCommandeAgenda.querySelector("[data-lcdp-commande-bar-actions]");
+
+    if (!commandeBar || !actionsCommande) {
+      throw new Error("Structure commande bar incomplète.");
+    }
+
+    ajouterActionsPlanningMembre(actionsCommande);
 
     calendrier.removeAttribute("role");
     calendrier.removeAttribute("aria-modal");
@@ -527,7 +492,11 @@
     etat.calendrierMois = calendrier;
     etat.wrapperPlanning = wrapperPlanning;
     etat.slotPlanning = slotPlanning;
+    etat.slotCommandeListe = slotCommande;
+    etat.slotCommandeAgenda = slotCommandeAgenda;
+    etat.commandeBar = commandeBar;
 
+    actualiserModeWrapperPlanning();
     afficherChargementCalendrier("Chargement de votre planning...");
   }
 
@@ -537,7 +506,8 @@
     actionsWrapper.innerHTML = "";
 
     const lienReserver = document.createElement("a");
-    lienReserver.className = "lcdp-button lcdp-planning-membre-reserver-button";
+    lienReserver.className =
+      "lcdp-button lcdp-button-mini lcdp-button-mini-orange lcdp-planning-membre-reserver-button";
     lienReserver.dataset.lcdpPlanningReserver = "true";
     lienReserver.href = PAGE_RESERVER_MEMBRE;
     lienReserver.textContent = "RÉSERVER";
@@ -545,7 +515,8 @@
 
     const boutonAffichage = document.createElement("button");
     boutonAffichage.type = "button";
-    boutonAffichage.className = "lcdp-button lcdp-button-secondary lcdp-planning-membre-affichage-button";
+    boutonAffichage.className =
+      "lcdp-button lcdp-button-secondary lcdp-button-mini lcdp-planning-membre-affichage-button";
     boutonAffichage.dataset.lcdpPlanningAffichage = "true";
     boutonAffichage.textContent = "Afficher en liste";
     boutonAffichage.setAttribute("aria-pressed", "false");
@@ -574,7 +545,13 @@
 
     window.requestAnimationFrame(() => {
       slotPlanning.replaceChildren(calendrier);
+
+      if (etat.slotCommandeAgenda && etat.commandeBar) {
+        etat.slotCommandeAgenda.appendChild(etat.commandeBar);
+      }
+
       etat.modeAffichage = "agenda";
+      actualiserModeWrapperPlanning();
       actualiserBoutonAffichagePlanningMembre();
 
       window.requestAnimationFrame(() => {
@@ -609,14 +586,34 @@
     slotPlanning.classList.add("lcdp-box-liste-card__list--transition");
 
     window.requestAnimationFrame(() => {
+      if (etat.slotCommandeListe && etat.commandeBar) {
+        etat.slotCommandeListe.appendChild(etat.commandeBar);
+      }
+
       slotPlanning.replaceChildren(fragment);
       etat.modeAffichage = "liste";
+      actualiserModeWrapperPlanning();
       actualiserBoutonAffichagePlanningMembre();
 
       window.requestAnimationFrame(() => {
         slotPlanning.classList.remove("lcdp-box-liste-card__list--transition");
       });
     });
+  }
+
+  function actualiserModeWrapperPlanning() {
+    if (!etat.wrapperPlanning) return;
+
+    const estListe = etat.modeAffichage === "liste";
+
+    etat.wrapperPlanning.classList.toggle(
+      "lcdp-box-liste-card--mode-liste",
+      estListe
+    );
+    etat.wrapperPlanning.classList.toggle(
+      "lcdp-box-liste-card--mode-agenda",
+      !estListe
+    );
   }
 
   function actualiserBoutonAffichagePlanningMembre() {
