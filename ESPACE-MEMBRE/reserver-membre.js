@@ -488,6 +488,14 @@
     slot.innerHTML = "";
     slot.appendChild(fragmentListe);
 
+    const listeCard = slot.querySelector("[data-lcdp-box-liste-card]");
+
+    if (!listeCard) {
+      throw new Error("Structure List Card parcs incomplète.");
+    }
+
+    listeCard.classList.add("lcdp-box-liste-card--encadree");
+
     const fragmentCard = await chargerFragmentObjet("/BOX/04-box-card-parc.html");
     etatPage.templateCardParc = fragmentCard.querySelector("[data-lcdp-box-card-parc]");
 
@@ -527,6 +535,8 @@
     if (!commandeBar || !actions) {
       throw new Error("Objet Command Bar incomplet.");
     }
+
+    commandeBar.classList.add("lcdp-box-commande-bar--encadree");
 
     actions.appendChild(boutonDepartement);
     actions.appendChild(boutonIa);
