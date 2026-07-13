@@ -1570,23 +1570,20 @@
   }
 
   async function ouvrirBoxListeInvitesLectureSeule(idflux, invites, declencheur) {
-    const workflow = declencheur
-      ? declencheur.closest("[data-lcdp-box-workflow-reservation]")
-      : document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
+    await chargerCssObjetUneFois("/BOX/04-box-card-listinvites-oui-non.css");
+    document.querySelectorAll("[data-lcdp-invitation-invites-overlay]").forEach((element) => element.remove());
 
-    const slot = document.getElementById("lcdp-lightbox-slot");
     const conteneur = document.createElement("div");
     conteneur.className = "lcdp-box-card-listinvites-oui-non lcdp-box-card-listinvites-oui-non--lecture";
     conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
     conteneur.setAttribute("role", "dialog");
     conteneur.setAttribute("aria-modal", "true");
     conteneur.setAttribute("aria-labelledby", "lcdp-listinvites-lecture-title");
+    conteneur.style.position = "fixed";
+    conteneur.style.inset = "0";
+    conteneur.style.zIndex = "13000";
 
-    if (workflow && slot) {
-      slot.appendChild(conteneur);
-    } else {
-      document.body.appendChild(conteneur);
-    }
+    document.body.appendChild(conteneur);
 
     const card = document.createElement("article");
     card.className = "lcdp-box-card-listinvites-oui-non__card lcdp-box-card-listinvites-oui-non__card--lecture";
@@ -1650,19 +1647,17 @@
 
   async function ouvrirBoxListeInvitesModifiable(idflux, invites, declencheur) {
     const idReservation = String(idflux || "").trim();
-    const workflow = declencheur
-      ? declencheur.closest("[data-lcdp-box-workflow-reservation]")
-      : document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
 
-    const slot = document.getElementById("lcdp-lightbox-slot");
+    await chargerCssObjetUneFois("/BOX/04-box-card-listinvites-oui-non.css");
+    document.querySelectorAll("[data-lcdp-invitation-invites-overlay]").forEach((element) => element.remove());
+
     const conteneur = document.createElement("div");
     conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
+    conteneur.style.position = "fixed";
+    conteneur.style.inset = "0";
+    conteneur.style.zIndex = "13000";
 
-    if (workflow && slot) {
-      slot.appendChild(conteneur);
-    } else {
-      document.body.appendChild(conteneur);
-    }
+    document.body.appendChild(conteneur);
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-card-listinvites-oui-non.html");
     conteneur.appendChild(fragment);
@@ -1682,6 +1677,10 @@
       conteneur.remove();
       throw new Error("Structure liste invités oui/non incomplète.");
     }
+
+    box.style.position = "fixed";
+    box.style.inset = "0";
+    box.style.zIndex = "13001";
 
     titre.textContent = "Invité(s)";
     liste.innerHTML = "";
