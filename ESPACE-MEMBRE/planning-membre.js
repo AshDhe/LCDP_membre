@@ -230,26 +230,43 @@
 
       [data-lcdp-invitation-invites-overlay] .lcdp-box-card-listinvites-oui-non__actions {
         display: grid !important;
-        grid-template-columns: 1fr !important;
-        gap: 10px !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+        gap: 10px 12px !important;
         align-items: stretch !important;
         justify-items: stretch !important;
         margin-top: 18px !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
       }
 
       [data-lcdp-invitation-invites-overlay] .lcdp-box-card-listinvites-oui-non__actions .lcdp-button {
         width: 100% !important;
-        min-height: 58px !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        min-height: 54px !important;
         margin: 0 !important;
+        padding: 10px 14px !important;
+        box-sizing: border-box !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
+        text-align: center !important;
+        white-space: normal !important;
       }
 
-      @media (min-width: 768px) {
-        [data-lcdp-invitation-invites-overlay] .lcdp-box-card-listinvites-oui-non__actions {
-          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-        }
+      [data-lcdp-invitation-invites-overlay] [data-lcdp-listinvites-add-email] {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+      }
+
+      [data-lcdp-invitation-invites-overlay] [data-lcdp-listinvites-update] {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+      }
+
+      [data-lcdp-invitation-invites-overlay] [data-lcdp-listinvites-cancel] {
+        grid-column: 1 !important;
+        grid-row: 2 !important;
       }
 
     `;
