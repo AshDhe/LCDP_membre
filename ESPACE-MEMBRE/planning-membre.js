@@ -866,7 +866,6 @@
 
     if (estPasse) jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--past");
     if (estDansAbonnementAvenir) jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--abonnement-avenir");
-    if (estAujourdhui) jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--today");
 
     PLAGES.forEach((plage) => {
       const slot = jour.querySelector(`[data-lcdp-card-jour-mois-slot="${plage}"]`);
