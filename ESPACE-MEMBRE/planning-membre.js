@@ -16,8 +16,13 @@
     "index-membre-api"
   );
 
+  const ENDPOINT_INVITER_MEMBRE = construireEndpointApi(
+    "workerInviterMembreUrl",
+    "WORKER_INVITER_MEMBRE_URL",
+    "inviter-membre-api"
+  );
+
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
-  const PAGE_INVITER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html");
   const PAGE_RESERVER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html");
 
   let pageInitialisee = false;
@@ -26,6 +31,8 @@
   const etat = {
     reservations: [],
     abonnements: [],
+    reservationsAvecInvites: new Set(),
+    maxInvitInvitation: 10,
     reservationsParDate: new Map(),
     moisCourant: debutMois(dateAujourdhuiParis()),
     templateJour: null,
@@ -70,6 +77,21 @@
       .lcdp-box-card-reservation-membre .lcdp-box-card-reservation-membre__micro-action--acces:hover {
         border-color: var(--lcdp-color-primary) !important;
         background: var(--lcdp-color-primary) !important;
+        color: #ffffff !important;
+      }
+
+      .lcdp-box-card-reservation-membre [data-action="invitation"].lcdp-box-card-reservation-membre__micro-action--invit-recu {
+        border-color: #7b4ab8 !important;
+        background: #7b4ab8 !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        text-decoration: none !important;
+      }
+
+      .lcdp-box-card-reservation-membre [data-action="invitation"].lcdp-box-card-reservation-membre__micro-action--invit-recu:hover,
+      .lcdp-box-card-reservation-membre [data-action="invitation"].lcdp-box-card-reservation-membre__micro-action--invit-recu:focus-visible {
+        border-color: #6d3fa7 !important;
+        background: #6d3fa7 !important;
         color: #ffffff !important;
       }
 
@@ -118,6 +140,69 @@
       .lcdp-box-calendrier-mois--planning-membre .lcdp-planning-membre-reserver-button:hover {
         background: rgba(242, 162, 58, 0.10) !important;
         border-color: var(--lcdp-color-orange) !important;
+      }
+
+      .lcdp-box-card-reservation-membre--passe [data-lcdp-card-reservation-annuler] {
+        display: inline-flex !important;
+      }
+
+      .lcdp-box-workflow-reservation--planning-reservation .lcdp-box-calendrier-mois__close,
+      .lcdp-box-workflow-reservation--planning-reservation [data-lcdp-calendrier-mois-close],
+      .lcdp-box-workflow-reservation--planning-reservation > .lcdp-box-workflow-reservation__card > button[aria-label="Fermer"],
+      .lcdp-box-workflow-reservation--planning-reservation .lcdp-box-card-reservation-membre [data-lcdp-card-reservation-close] {
+        display: none !important;
+      }
+
+      .lcdp-box-card-reservation-membre__place {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+        gap: 10px !important;
+      }
+
+      .lcdp-box-card-reservation-membre__place-line {
+        display: inline-flex !important;
+        align-items: baseline !important;
+        justify-content: flex-start !important;
+        flex-wrap: wrap !important;
+        gap: 6px 10px !important;
+        max-width: 100% !important;
+      }
+
+      .lcdp-box-card-reservation-membre__place .lcdp-box-card-reservation-membre__micro-action--annuler {
+        align-self: flex-start !important;
+        flex: 0 0 auto !important;
+        margin: 0 !important;
+      }
+
+      .lcdp-box-card-reservation-membre__actions .lcdp-box-card-reservation-membre__micro-action--fermer {
+        border-color: var(--lcdp-color-border) !important;
+        background: var(--lcdp-color-surface) !important;
+        color: var(--lcdp-color-text) !important;
+      }
+
+      @media (max-width: 767px) {
+        .lcdp-box-card-reservation-membre__place .lcdp-box-card-reservation-membre__micro-action--annuler {
+          align-self: flex-start !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          white-space: normal !important;
+        }
+      }
+
+      .lcdp-box-card-reservation-membre__micro-action--delai-depasse {
+        border-color: var(--lcdp-color-border) !important;
+        background: var(--lcdp-color-surface-soft) !important;
+        color: var(--lcdp-color-text-muted) !important;
+        opacity: 0.58 !important;
+        cursor: not-allowed !important;
+      }
+
+      .lcdp-box-card-reservation-membre__micro-action--delai-depasse:hover {
+        border-color: var(--lcdp-color-border) !important;
+        background: var(--lcdp-color-surface-soft) !important;
+        color: var(--lcdp-color-text-muted) !important;
       }
     `;
 
@@ -411,12 +496,62 @@
 
       etat.reservations = Array.isArray(data.reservations) ? data.reservations : [];
       etat.abonnements = normaliserAbonnementsMembre(data.abonnements || data.abos || []);
+      await chargerStatutsInvitationsPlanning();
       etat.reservationsParDate = indexerReservationsParDate(etat.reservations);
       ajusterMoisCourantSelonReservations();
       afficherCalendrierMois();
     } catch (error) {
       console.error("Erreur chargement planning membre :", error);
       afficherErreurCalendrier(error.message || "Erreur technique. Merci de réessayer.");
+    }
+  }
+
+  async function chargerStatutsInvitationsPlanning() {
+    if (!ENDPOINT_INVITER_MEMBRE || !etat.reservations.length) return;
+
+    try {
+      const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/reservations-invitables", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+      const data = await reponse.json().catch(() => null);
+
+      if (!reponse.ok || !data || !reponseApiOk(data) || !Array.isArray(data.reservations)) {
+        return;
+      }
+
+      const maxInvit = Number.parseInt(String(data.maxInvit || "0"), 10);
+
+      if (Number.isFinite(maxInvit) && maxInvit > 0) {
+        etat.maxInvitInvitation = Math.min(maxInvit, 10);
+      }
+
+      const statsParFlux = new Map();
+      etat.reservationsAvecInvites.clear();
+
+      data.reservations.forEach((reservation) => {
+        const idflux = String(reservation?.idflux || "").trim();
+        if (!idflux) return;
+        statsParFlux.set(idflux, reservation.invitationStats || { in: 0, out: 0 });
+      });
+
+      etat.reservations.forEach((reservation) => {
+        const idflux = String(reservation?.idflux || "").trim();
+        if (!idflux || !statsParFlux.has(idflux)) return;
+
+        reservation.invitationStats = statsParFlux.get(idflux);
+
+        if (Number(reservation.invitationStats?.in || 0) > 0) {
+          etat.reservationsAvecInvites.add(idflux);
+        }
+      });
+    } catch (error) {
+      console.warn("Statuts invitation indisponibles :", error);
     }
   }
 
@@ -667,12 +802,6 @@
       "lcdp-workflow-reservation-box"
     );
 
-    const boutonFermer = document.createElement("button");
-    boutonFermer.type = "button";
-    boutonFermer.className = "lcdp-box-calendrier-mois__close";
-    boutonFermer.setAttribute("aria-label", "Fermer");
-    boutonFermer.textContent = "×";
-
     const vues = document.createElement("div");
     vues.className = "lcdp-planning-reservation-vues";
     vues.dataset.lcdpPlanningReservationVues = "true";
@@ -685,7 +814,6 @@
     vueReservation.appendChild(card);
     vues.appendChild(vueReservation);
 
-    contenu.appendChild(boutonFermer);
     contenu.appendChild(vues);
 
     function fermer() {
@@ -705,7 +833,8 @@
       fermer();
     }
 
-    boutonFermer.addEventListener("click", fermer);
+    workflow._lcdpFermerReservationPlanning = fermer;
+
     workflow.addEventListener("click", (event) => {
       if (event.target === workflow) fermer();
     });
@@ -716,8 +845,8 @@
   function creerCardReservation(reservation) {
     const card = etat.templateReservation.cloneNode(true);
 
-    const dateReservation = new Date(reservation.datebookd);
-    const estPasse = extraireDateFranceReservation(reservation.datebookd) < dateAujourdhuiParis();
+    const estPasse = reservationPasseePlanning(reservation);
+    const delaiActionDepasse = reservationDelaiActionDepasse(reservation);
 
     const parc = reservation.parc || {};
     const nomParc = parc.nom || parc.nomparc || reservation.nomparc || "Parc";
@@ -725,11 +854,11 @@
     const idParc = parc.idparc || reservation.idparc || "";
     const idFlux = reservation.idflux || "";
     const imageParc =
-      construireCheminImageParcParDefaut(nomParc, departement) ||
       parc.imageparc ||
       parc.image ||
       reservation.imageparc ||
       reservation.image ||
+      construireCheminImageParcParDefaut(nomParc, departement) ||
       "";
 
     const media = card.querySelector("[data-lcdp-card-reservation-media]");
@@ -746,7 +875,7 @@
 
     card.dataset.idflux = idFlux;
 
-    if (estPasse || (Number.isFinite(dateReservation.getTime()) && dateReservation < new Date())) {
+    if (estPasse) {
       card.classList.add("lcdp-box-card-reservation-membre--passe");
     }
 
@@ -794,18 +923,57 @@
 
     if (boutonInvitation) {
       boutonInvitation.dataset.id = idFlux;
-      boutonInvitation.hidden = estPasse || estReservationHorsAbonnement;
+      boutonInvitation.hidden = false;
+      boutonInvitation.classList.remove(
+        "lcdp-box-card-reservation-membre__micro-action--delai-depasse",
+        "lcdp-box-card-reservation-membre__micro-action--invit-recu"
+      );
+
+      if (estReservationHorsAbonnement) {
+        boutonInvitation.textContent = "Invit’";
+        boutonInvitation.classList.add("lcdp-box-card-reservation-membre__micro-action--invit-recu");
+        boutonInvitation.setAttribute("aria-disabled", "false");
+        boutonInvitation.removeAttribute("disabled");
+        boutonInvitation.disabled = false;
+        boutonInvitation.style.pointerEvents = "auto";
+        boutonInvitation.title = "Afficher le parrain";
+        boutonInvitation.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          afficherParrainReservationInvitee(reservation).catch((error) => {
+            console.error("[LCDP invitation reçue] affichage parrain impossible", error);
+            try {
+              window.alert(formaterParrainInvitationRecue(reservation));
+            } catch {
+              window.alert("Invitation par : Parrain non renseigné");
+            }
+          });
+        });
+      } else {
+        boutonInvitation.textContent = reservationAvecInvitesPlanning(reservation) ? "Invité(s)" : "Inviter";
+        boutonInvitation.setAttribute("aria-disabled", "false");
+        boutonInvitation.removeAttribute("title");
+      }
     }
 
     if (badgeInvitation) {
-      badgeInvitation.textContent = "invit’";
-      badgeInvitation.hidden = !estReservationHorsAbonnement;
-      badgeInvitation.setAttribute("aria-label", "Invitation");
+      badgeInvitation.textContent = "";
+      badgeInvitation.hidden = true;
+      badgeInvitation.setAttribute("aria-hidden", "true");
     }
 
     if (boutonAnnuler) {
       boutonAnnuler.dataset.id = idFlux;
-      boutonAnnuler.hidden = estPasse;
+      boutonAnnuler.textContent = "Annuler la réservation";
+      boutonAnnuler.hidden = false;
+      boutonAnnuler.classList.toggle("lcdp-box-card-reservation-membre__micro-action--delai-depasse", delaiActionDepasse);
+      boutonAnnuler.setAttribute("aria-disabled", delaiActionDepasse ? "true" : "false");
+
+      if (delaiActionDepasse) {
+        boutonAnnuler.title = "Délai dépassé";
+      } else {
+        boutonAnnuler.removeAttribute("title");
+      }
     }
 
     return card;
@@ -830,9 +998,34 @@
   }
 
   async function gererClicDocument(event) {
+    const boutonRetourAcces = event.target.closest("[data-lcdp-card-acces-parc-retour]");
+    const boutonFermerReservation = event.target.closest("[data-action='fermer']");
     const boutonAdresse = event.target.closest("[data-action='adresse']");
     const boutonInvitation = event.target.closest("[data-action='invitation']");
     const boutonAnnuler = event.target.closest("[data-action='annuler']");
+
+    if (boutonRetourAcces) {
+      event.preventDefault();
+      event.stopPropagation();
+      const workflow = boutonRetourAcces.closest("[data-lcdp-box-workflow-reservation]");
+      fermerAccesParcDansReservation(workflow);
+      return;
+    }
+
+    if (boutonFermerReservation) {
+      event.preventDefault();
+      event.stopPropagation();
+      const workflow = boutonFermerReservation.closest("[data-lcdp-box-workflow-reservation]");
+
+      if (workflow && typeof workflow._lcdpFermerReservationPlanning === "function") {
+        workflow._lcdpFermerReservationPlanning();
+        return;
+      }
+
+      const slot = document.getElementById("lcdp-lightbox-slot");
+      if (slot) slot.innerHTML = "";
+      return;
+    }
 
     if (boutonAdresse) {
       const cardReservation = boutonAdresse.closest("[data-lcdp-box-card-reservation-membre]");
@@ -842,7 +1035,18 @@
     }
 
     if (boutonInvitation) {
-      await ouvrirPageInvitation(String(boutonInvitation.dataset.id || ""));
+      const cardReservation = boutonInvitation.closest("[data-lcdp-box-card-reservation-membre]");
+      const idflux = String(boutonInvitation.dataset.id || cardReservation?.dataset.idflux || "").trim();
+      const reservation = trouverReservationPlanningParId(idflux);
+
+      if (reservationHorsAbonnementMembre(reservation)) {
+        event.preventDefault();
+        event.stopPropagation();
+        await afficherParrainReservationInvitee(reservation);
+        return;
+      }
+
+      await ouvrirPageInvitation(idflux, boutonInvitation);
       return;
     }
 
@@ -911,7 +1115,7 @@
     vueAcces.classList.add("lcdp-planning-reservation-vue--active");
     workflow.classList.add("lcdp-box-workflow-reservation--acces-parc-ouvert");
 
-    const retour = boxAcces.querySelector("[data-lcdp-card-acces-parc-close]");
+    const retour = boxAcces.querySelector("[data-lcdp-card-acces-parc-retour]");
     const titre = boxAcces.querySelector("[data-lcdp-card-acces-parc-title]");
 
     if (retour && typeof retour.focus === "function") {
@@ -926,15 +1130,28 @@
     boxAcces.removeAttribute("aria-modal");
     boxAcces.setAttribute("role", "region");
 
-    const boutonFermer = boxAcces.querySelector("[data-lcdp-card-acces-parc-close]");
+    let boutonRetour = boxAcces.querySelector("[data-lcdp-card-acces-parc-retour]");
     const header = boxAcces.querySelector(".lcdp-box-card-acces-parc__header");
     const titre = boxAcces.querySelector("[data-lcdp-card-acces-parc-title]");
 
-    if (boutonFermer) {
-      boutonFermer.textContent = "← Retour";
-      boutonFermer.setAttribute("aria-label", "Retour à la réservation");
-      boutonFermer.classList.add("lcdp-box-card-acces-parc__close--retour");
-      boutonFermer.addEventListener("click", () => fermerAccesParcDansReservation(workflow));
+    if (!boutonRetour) {
+      boutonRetour = boxAcces.querySelector("[data-lcdp-card-acces-parc-close]");
+
+      if (boutonRetour) {
+        boutonRetour.removeAttribute("data-lcdp-card-acces-parc-close");
+        boutonRetour.setAttribute("data-lcdp-card-acces-parc-retour", "");
+        boutonRetour.setAttribute("aria-label", "Retour à la réservation");
+        boutonRetour.textContent = "← Retour";
+      }
+    }
+
+    if (boutonRetour) {
+      boutonRetour.classList.add("lcdp-box-card-acces-parc__close--retour");
+      boutonRetour.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        fermerAccesParcDansReservation(workflow);
+      });
 
       if (header) {
         let ligneRetour = boxAcces.querySelector(".lcdp-box-card-acces-parc__retour-row");
@@ -945,8 +1162,8 @@
           header.insertAdjacentElement("beforebegin", ligneRetour);
         }
 
-        if (boutonFermer.parentNode !== ligneRetour) {
-          ligneRetour.appendChild(boutonFermer);
+        if (boutonRetour.parentNode !== ligneRetour) {
+          ligneRetour.appendChild(boutonRetour);
         }
       }
     }
@@ -1053,59 +1270,38 @@
   }
 
   async function remplirGalerieEntreeParc(slotGalerie, data) {
+    if (!slotGalerie) return;
+
     slotGalerie.innerHTML = "";
+    slotGalerie.classList.add("lcdp-box-card-acces-parc__photos");
 
-    const fragmentGalerie = await chargerFragmentObjet("/BOX/03-box-galerie.html");
-    slotGalerie.appendChild(fragmentGalerie);
-
-    const galerie = slotGalerie.querySelector("[data-lcdp-box-galerie]");
-    const titre = slotGalerie.querySelector("[data-lcdp-galerie-title]");
-    const liste = slotGalerie.querySelector("[data-lcdp-galerie-list]");
-
-    if (!galerie || !titre || !liste) {
-      throw new Error("Structure galerie accès parc incomplète.");
-    }
-
-    galerie.setAttribute("aria-label", "Photos de l’entrée du parc");
-    titre.textContent = "";
-
-    const headerGalerie = titre.closest(".lcdp-box-galerie__header");
-    if (headerGalerie) headerGalerie.hidden = true;
-
-    liste.innerHTML = "";
+    const liste = document.createElement("div");
+    liste.className = "lcdp-box-card-acces-parc__photos-list";
 
     ["entree1.webp", "entree2.webp"].forEach((fichier, index) => {
-      liste.appendChild(creerCarteGalerieEntreeParc({
+      liste.appendChild(creerPhotoEntreeParc({
         chemin: construireCheminImageParcFichier(data.nomParc, data.departement, fichier),
-        alt: "Entrée du parc de " + data.nomParc
+        alt: "Entrée " + String(index + 1) + " du parc de " + data.nomParc
       }));
     });
+
+    slotGalerie.appendChild(liste);
   }
 
-  function creerCarteGalerieEntreeParc(data) {
-    const article = document.createElement("article");
-    article.className = "lcdp-box-galerie__card";
-    article.dataset.lcdpEntreeParcImageCard = "true";
+  function creerPhotoEntreeParc(data) {
+    const figure = document.createElement("figure");
+    figure.className = "lcdp-box-card-acces-parc__photo";
 
     const image = document.createElement("img");
-    image.className = "lcdp-box-galerie__image";
+    image.className = "lcdp-box-card-acces-parc__photo-image";
     image.alt = data.alt || "Entrée du parc";
-    image.loading = "lazy";
+    image.loading = "eager";
     image.decoding = "async";
-    image.dataset.lcdpImageLoading = "true";
-
-    image.addEventListener("load", () => {
-      delete image.dataset.lcdpImageLoading;
-    });
-
-    image.addEventListener("error", () => {
-      article.remove();
-    });
-
     image.src = construireUrlImageParc(data.chemin || "");
-    article.appendChild(image);
 
-    return article;
+    figure.appendChild(image);
+
+    return figure;
   }
 
   function nettoyerCoordonneeParc(value) {
@@ -1118,19 +1314,1001 @@
     return String(Math.round(nombre * 1000000) / 1000000);
   }
 
-  async function ouvrirPageInvitation(idflux) {
+  async function ouvrirPageInvitation(idflux, declencheur) {
     const idReservation = String(idflux || "").trim();
 
     if (!idReservation) {
-      await afficherAlerte("Réservation manquante.");
+      await afficherAlerteInvitationReservation("Réservation manquante.", declencheur);
       return;
     }
 
-    const acces = await verifierAccesReservationPlanning();
-    if (!acces) return;
+    const reservation = trouverReservationPlanningParId(idReservation);
 
-    const separateur = PAGE_INVITER_MEMBRE.includes("?") ? "&" : "?";
-    window.location.href = PAGE_INVITER_MEMBRE + separateur + "idflux=" + encodeURIComponent(idReservation);
+    if (!reservation) {
+      await afficherAlerteInvitationReservation("Réservation introuvable.", declencheur);
+      return;
+    }
+
+    if (reservationHorsAbonnementMembre(reservation)) {
+      await afficherAlerteInvitationReservation(formaterParrainInvitationRecue(reservation), declencheur);
+      return;
+    }
+
+    if (reservationAvecInvitesPlanning(reservation)) {
+      await ouvrirListeInvitesReservation(idReservation, declencheur);
+      return;
+    }
+
+    const blocageInvitation = determinerBlocageInvitationReservation(reservation);
+
+    if (blocageInvitation) {
+      await afficherAlerteInvitationReservation(blocageInvitation, declencheur);
+      return;
+    }
+
+    const blocageAcces = determinerBlocageReservationPlanning(etat.membre || creerEtatMembreFallback());
+
+    if (blocageAcces) {
+      await afficherAlerteInvitationReservation(blocageAcces, declencheur);
+      return;
+    }
+
+    const resultat = await ouvrirBoxEmailsInvitationReservation(idReservation, declencheur);
+
+    if (!resultat) return;
+
+    if (invitationReservationCreee(resultat)) {
+      marquerReservationAvecInvitesPlanning(idReservation, declencheur);
+      await afficherAlerteInvitationReservation(resultat.message || "Invitation envoyée.", declencheur);
+    }
+  }
+
+  function trouverReservationPlanningParId(idflux) {
+    const idReservation = String(idflux || "").trim();
+
+    if (!idReservation) return null;
+
+    return etat.reservations.find((item) => String(item.idflux || "") === idReservation) || null;
+  }
+
+  async function afficherParrainReservationInvitee(reservation) {
+    const message = formaterParrainInvitationRecue(reservation);
+
+    try {
+      await afficherAlerteOkParDessusLightbox(message);
+    } catch (error) {
+      console.error("[LCDP invitation reçue] alerte objet impossible", error);
+      window.alert(message);
+    }
+  }
+
+  function nettoyerTexteSimple(value) {
+    return String(value || "")
+      .trim()
+      .replace(/\s+/g, " ");
+  }
+
+  function nettoyerEmail(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase();
+  }
+
+  function emailValide(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+  }
+
+  function formaterParrainInvitationRecue(reservation) {
+    const affichage = nettoyerTexteSimple(reservation?.parrainInvitation?.affichage || "");
+
+    if (affichage) return "Invitation par : " + affichage;
+
+    const parrain = reservation?.parrainInvitation || reservation?.parrain || {};
+    const alias = nettoyerTexteSimple(
+      parrain.alias ||
+      parrain.aliasmembre ||
+      reservation?.aliasparrain ||
+      reservation?.aliasParrain ||
+      ""
+    );
+
+    if (alias) return "Invitation par : " + alias;
+
+    const prenom = nettoyerTexteSimple(
+      parrain.prenommembre ||
+      parrain.prenom ||
+      reservation?.prenomparrain ||
+      reservation?.prenomParrain ||
+      ""
+    );
+    const nom = nettoyerTexteSimple(
+      parrain.nommembre ||
+      parrain.nom ||
+      reservation?.nomparrain ||
+      reservation?.nomParrain ||
+      ""
+    );
+    const initialeNom = nom ? nom.charAt(0).toUpperCase() + "." : "";
+    const identite = [prenom, initialeNom].filter(Boolean).join(" ");
+
+    return "Invitation par : " + (identite || "Parrain non renseigné");
+  }
+
+  function reservationAvecInvitesPlanning(reservation) {
+    const idflux = String(reservation?.idflux || "").trim();
+
+    if (!idflux) return false;
+    if (etat.reservationsAvecInvites.has(idflux)) return true;
+    if (reservationDelaiActionDepasse(reservation)) return true;
+
+    const stats = reservation?.invitationStats || reservation?.invitationsStats || null;
+    const invitesActifs = Number(stats?.in || stats?.actifs || stats?.invites || 0);
+
+    return Number.isFinite(invitesActifs) && invitesActifs > 0;
+  }
+
+  function invitationReservationCreee(data) {
+    if (!data || !reponseApiOk(data)) return false;
+
+    if (Array.isArray(data.invitations) && data.invitations.length > 0) return true;
+    if (Array.isArray(data.emailsValides) && data.emailsValides.length > 0) return true;
+
+    return Number(data.nbInvitations || 0) > 0;
+  }
+
+  function marquerReservationAvecInvitesPlanning(idflux, declencheur) {
+    const idReservation = String(idflux || "").trim();
+
+    if (!idReservation) return;
+
+    etat.reservationsAvecInvites.add(idReservation);
+
+    const reservation = trouverReservationPlanningParId(idReservation);
+
+    if (reservation) {
+      const statsActuelles = reservation.invitationStats || {};
+      const invitesActifs = Number(statsActuelles.in || 0);
+      const invitesAnnules = Number(statsActuelles.out || 0);
+
+      reservation.invitationStats = {
+        ...statsActuelles,
+        in: invitesActifs > 0 ? invitesActifs : (invitesAnnules > 0 ? 0 : 1),
+        out: invitesAnnules > 0 ? invitesAnnules : Number(statsActuelles.out || 0)
+      };
+    }
+
+    actualiserBoutonsInvitationPlanning(idReservation, declencheur);
+  }
+
+  function actualiserBoutonsInvitationPlanning(idflux, declencheur) {
+    const idReservation = String(idflux || "").trim();
+    const reservation = trouverReservationPlanningParId(idReservation);
+
+    if (!idReservation || !reservation) return;
+
+    const boutons = [];
+
+    if (declencheur) boutons.push(declencheur);
+
+    document
+      .querySelectorAll('[data-action="invitation"][data-id="' + echapperSelecteurCss(idReservation) + '"]')
+      .forEach((bouton) => boutons.push(bouton));
+
+    boutons.forEach((bouton) => {
+      if (!bouton) return;
+
+      bouton.hidden = false;
+      bouton.classList.remove(
+        "lcdp-box-card-reservation-membre__micro-action--delai-depasse",
+        "lcdp-box-card-reservation-membre__micro-action--invit-recu"
+      );
+
+      if (reservationHorsAbonnementMembre(reservation)) {
+        bouton.textContent = "Invit’";
+        bouton.classList.add("lcdp-box-card-reservation-membre__micro-action--invit-recu");
+        bouton.setAttribute("aria-disabled", "false");
+        bouton.title = "Afficher le parrain";
+        return;
+      }
+
+      bouton.textContent = reservationAvecInvitesPlanning(reservation) ? "Invité(s)" : "Inviter";
+      bouton.setAttribute("aria-disabled", "false");
+      bouton.removeAttribute("title");
+    });
+  }
+
+  async function ouvrirListeInvitesReservation(idflux, declencheur) {
+    const idReservation = String(idflux || "").trim();
+    const reservation = trouverReservationPlanningParId(idReservation);
+    const invites = await chargerInvitesReservation(idReservation, declencheur);
+
+    if (!invites) return;
+
+    if (reservation && reservationDelaiActionDepasse(reservation)) {
+      await ouvrirBoxListeInvitesLectureSeule(idReservation, invites, declencheur);
+      return;
+    }
+
+    await ouvrirBoxListeInvitesModifiable(idReservation, invites, declencheur);
+  }
+
+  async function chargerInvitesReservation(idflux, declencheur) {
+    const idReservation = String(idflux || "").trim();
+
+    if (!idReservation) {
+      await afficherAlerteInvitationReservation("Réservation manquante.", declencheur);
+      return null;
+    }
+
+    if (!ENDPOINT_INVITER_MEMBRE) {
+      await afficherAlerteInvitationReservation("Le service invitation membre n’est pas configuré.", declencheur);
+      return null;
+    }
+
+    const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/invites?idflux=" + encodeURIComponent(idReservation), {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return null;
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      await afficherAlerteInvitationReservation(messageErreurApi(data, "Impossible de charger la liste des invités."), declencheur);
+      return null;
+    }
+
+    return Array.isArray(data.invites) ? data.invites : [];
+  }
+
+  async function ouvrirBoxListeInvitesLectureSeule(idflux, invites, declencheur) {
+    const workflow = declencheur
+      ? declencheur.closest("[data-lcdp-box-workflow-reservation]")
+      : document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
+
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    const conteneur = document.createElement("div");
+    conteneur.className = "lcdp-box-card-listinvites-oui-non lcdp-box-card-listinvites-oui-non--lecture";
+    conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
+    conteneur.setAttribute("role", "dialog");
+    conteneur.setAttribute("aria-modal", "true");
+    conteneur.setAttribute("aria-labelledby", "lcdp-listinvites-lecture-title");
+
+    if (workflow && slot) {
+      slot.appendChild(conteneur);
+    } else {
+      document.body.appendChild(conteneur);
+    }
+
+    const card = document.createElement("article");
+    card.className = "lcdp-box-card-listinvites-oui-non__card lcdp-box-card-listinvites-oui-non__card--lecture";
+
+    const titre = document.createElement("h2");
+    titre.className = "lcdp-box-card-listinvites-oui-non__title";
+    titre.id = "lcdp-listinvites-lecture-title";
+    titre.textContent = "Invité(s)";
+
+    const liste = document.createElement("ul");
+    liste.className = "lcdp-box-card-listinvites-oui-non__list lcdp-box-card-listinvites-oui-non__list--lecture";
+
+    const invitesActifs = Array.isArray(invites) ? invites : [];
+
+    if (!invitesActifs.length) {
+      const message = document.createElement("p");
+      message.className = "lcdp-box-card-listinvites-oui-non__message";
+      message.textContent = "Aucun invité enregistré pour cette réservation.";
+      card.appendChild(titre);
+      card.appendChild(message);
+    } else {
+      invitesActifs.forEach((invite) => {
+        liste.appendChild(creerLigneInviteLectureSeule(invite));
+      });
+
+      card.appendChild(titre);
+      card.appendChild(liste);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "lcdp-box-card-listinvites-oui-non__actions";
+
+    const boutonOk = document.createElement("button");
+    boutonOk.type = "button";
+    boutonOk.className = "lcdp-button lcdp-button-primary";
+    boutonOk.textContent = "OK";
+    actions.appendChild(boutonOk);
+
+    card.appendChild(actions);
+    conteneur.appendChild(card);
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer() {
+        if (resolu) return;
+        resolu = true;
+        document.removeEventListener("keydown", gererEchap);
+        conteneur.remove();
+        resolve(true);
+      }
+
+      function gererEchap(event) {
+        if (event.key === "Escape") fermer();
+      }
+
+      boutonOk.addEventListener("click", fermer);
+      document.addEventListener("keydown", gererEchap);
+    });
+  }
+
+  async function ouvrirBoxListeInvitesModifiable(idflux, invites, declencheur) {
+    const idReservation = String(idflux || "").trim();
+    const workflow = declencheur
+      ? declencheur.closest("[data-lcdp-box-workflow-reservation]")
+      : document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
+
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    const conteneur = document.createElement("div");
+    conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
+
+    if (workflow && slot) {
+      slot.appendChild(conteneur);
+    } else {
+      document.body.appendChild(conteneur);
+    }
+
+    const fragment = await chargerFragmentObjet("/BOX/04-box-card-listinvites-oui-non.html");
+    conteneur.appendChild(fragment);
+
+    const box = conteneur.querySelector("[data-lcdp-box-card-listinvites-oui-non]");
+    const titre = conteneur.querySelector("[data-lcdp-listinvites-title]");
+    const message = conteneur.querySelector("[data-lcdp-listinvites-message]");
+    const liste = conteneur.querySelector("[data-lcdp-listinvites-list]");
+    const zoneAjout = conteneur.querySelector("[data-lcdp-listinvites-ajout]");
+    const listeEmails = conteneur.querySelector("[data-lcdp-listinvites-emails]");
+    const boutonAjouterEmail = conteneur.querySelector("[data-lcdp-listinvites-add-email]");
+    const boutonFermer = conteneur.querySelector("[data-lcdp-listinvites-close]");
+    const boutonMettreAJour = conteneur.querySelector("[data-lcdp-listinvites-update]");
+    const boutonAnnuler = conteneur.querySelector("[data-lcdp-listinvites-cancel]");
+
+    if (!box || !titre || !message || !liste || !zoneAjout || !listeEmails || !boutonAjouterEmail || !boutonMettreAJour || !boutonAnnuler) {
+      conteneur.remove();
+      throw new Error("Structure liste invités oui/non incomplète.");
+    }
+
+    titre.textContent = "Invité(s)";
+    liste.innerHTML = "";
+    listeEmails.innerHTML = "";
+
+    const invitesListe = Array.isArray(invites) ? invites : [];
+    const limiteTotale = limiteEmailsInvitation();
+    const placesDisponibles = Math.max(0, limiteTotale - invitesListe.length);
+
+    function afficherMessage(texte, estErreur = false) {
+      message.hidden = !texte;
+      message.textContent = texte || "";
+      message.classList.toggle("lcdp-box-card-listinvites-oui-non__message--erreur", estErreur === true);
+    }
+
+    if (!invitesListe.length) {
+      afficherMessage("Aucun invité actif enregistré pour cette réservation.");
+    } else {
+      afficherMessage("");
+      invitesListe.forEach((invite) => {
+        liste.appendChild(creerLigneInviteOuiNon(invite));
+      });
+    }
+
+    if (placesDisponibles <= 0) {
+      zoneAjout.hidden = true;
+      boutonAjouterEmail.disabled = true;
+    } else {
+      zoneAjout.hidden = false;
+      boutonAjouterEmail.disabled = false;
+      boutonAjouterEmail.textContent = "Ajouter un e-mail";
+    }
+
+    function ajouterChampEmailInvite() {
+      if (listeEmails.querySelectorAll("input[type='email']").length >= placesDisponibles) {
+        afficherMessage("Votre droit d'invitation est limité à " + String(limiteTotale) + " invité" + (limiteTotale > 1 ? "s" : "") + ".", true);
+        return;
+      }
+
+      listeEmails.appendChild(creerChampEmailInviteSupplementaire());
+    }
+
+    boutonAjouterEmail.addEventListener("click", ajouterChampEmailInvite);
+
+    return new Promise((resolve) => {
+      let resolu = false;
+      let enregistrementEnCours = false;
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        document.removeEventListener("keydown", gererEchap);
+        conteneur.remove();
+        resolve(valeur);
+      }
+
+      function gererEchap(event) {
+        if (event.key === "Escape") fermer(null);
+      }
+
+      async function mettreAJour() {
+        if (enregistrementEnCours || !idReservation) return;
+
+        const lignes = Array.from(liste.querySelectorAll("[data-lcdp-listinvites-item]"));
+        const majInvites = lignes
+          .map((ligne) => {
+            const idmembre = String(ligne.dataset.idmembre || "").trim();
+            const toggle = ligne.querySelector("[data-lcdp-listinvites-toggle]");
+
+            if (!idmembre || !toggle) return null;
+
+            return {
+              idmembre,
+              invit: toggle.checked ? "true" : "cancd"
+            };
+          })
+          .filter(Boolean);
+
+        const emails = collecterEmailsSupplementairesInvitation(listeEmails);
+
+        if (emails.erreur) {
+          afficherMessage(emails.erreur, true);
+          return;
+        }
+
+        if (!majInvites.length && !emails.valeurs.length) {
+          afficherMessage("Aucun invité à mettre à jour.", true);
+          return;
+        }
+
+        enregistrementEnCours = true;
+        boutonMettreAJour.disabled = true;
+        boutonMettreAJour.textContent = "Mise à jour...";
+        afficherMessage("");
+
+        const resultat = await enregistrerListeInvitesReservation(idReservation, {
+          invites: majInvites,
+          emails: emails.valeurs
+        }, declencheur);
+
+        enregistrementEnCours = false;
+        boutonMettreAJour.disabled = false;
+        boutonMettreAJour.textContent = "Mettre à jour";
+
+        if (!resultat) return;
+
+        const reservation = trouverReservationPlanningParId(idReservation);
+        const nbActifs = Number(resultat.nbInvitesActifs || 0);
+        const nbAnnules = Number(resultat.nbInvitesAnnules || 0);
+
+        if (reservation) {
+          reservation.invitationStats = {
+            ...(reservation.invitationStats || {}),
+            in: Number.isFinite(nbActifs) ? nbActifs : 0,
+            out: Number.isFinite(nbAnnules) ? nbAnnules : 0
+          };
+        }
+
+        if (Number.isFinite(nbActifs) && nbActifs > 0) {
+          etat.reservationsAvecInvites.add(idReservation);
+        } else {
+          etat.reservationsAvecInvites.delete(idReservation);
+        }
+
+        actualiserBoutonsInvitationPlanning(idReservation, declencheur);
+        await afficherAlerteInvitationReservation(resultat.message || "Liste des invités mise à jour.", declencheur);
+        fermer(resultat);
+      }
+
+      boutonMettreAJour.addEventListener("click", mettreAJour);
+      boutonAnnuler.addEventListener("click", () => fermer(null));
+
+      if (boutonFermer) {
+        boutonFermer.addEventListener("click", () => fermer(null));
+      }
+
+      box.addEventListener("click", (event) => {
+        if (event.target === box) fermer(null);
+      });
+
+      document.addEventListener("keydown", gererEchap);
+    });
+  }
+
+  function creerLigneInviteLectureSeule(invite) {
+    const item = document.createElement("li");
+    item.className = "lcdp-box-card-listinvites-oui-non__item lcdp-box-card-listinvites-oui-non__item--lecture";
+
+    const identite = document.createElement("span");
+    identite.className = "lcdp-box-card-listinvites-oui-non__identite";
+    identite.textContent = formaterLigneInviteReservation(invite);
+
+    item.appendChild(identite);
+    return item;
+  }
+
+  function creerLigneInviteOuiNon(invite) {
+    const item = document.createElement("li");
+    item.className = "lcdp-box-card-listinvites-oui-non__item";
+    item.dataset.lcdpListinvitesItem = "true";
+    item.dataset.idmembre = String(invite?.idmembre || "").trim();
+
+    const identite = document.createElement("span");
+    identite.className = "lcdp-box-card-listinvites-oui-non__identite";
+    identite.textContent = formaterLigneInviteReservation(invite);
+
+    const label = document.createElement("label");
+    label.className = "lcdp-box-card-listinvites-oui-non__switch";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.className = "lcdp-box-card-listinvites-oui-non__switch-input";
+    input.dataset.lcdpListinvitesToggle = "true";
+    input.checked = normaliserStatutInvitationInvite(invite?.invit) !== "cancd";
+    input.setAttribute("aria-label", "Invitation active pour " + identite.textContent);
+
+    const curseur = document.createElement("span");
+    curseur.className = "lcdp-box-card-listinvites-oui-non__switch-slider";
+    curseur.setAttribute("aria-hidden", "true");
+
+    const etatTexte = document.createElement("span");
+    etatTexte.className = "lcdp-box-card-listinvites-oui-non__switch-text";
+    etatTexte.textContent = input.checked ? "Oui" : "Non";
+
+    item.classList.toggle("lcdp-box-card-listinvites-oui-non__item--cancd", !input.checked);
+
+    input.addEventListener("change", () => {
+      etatTexte.textContent = input.checked ? "Oui" : "Non";
+      item.classList.toggle("lcdp-box-card-listinvites-oui-non__item--cancd", !input.checked);
+    });
+
+    label.appendChild(input);
+    label.appendChild(curseur);
+    label.appendChild(etatTexte);
+
+    item.appendChild(identite);
+    item.appendChild(label);
+
+    return item;
+  }
+
+  function creerChampEmailInviteSupplementaire() {
+    const item = document.createElement("li");
+    item.className = "lcdp-box-card-listinvites-oui-non__email-item";
+
+    const input = document.createElement("input");
+    input.type = "email";
+    input.placeholder = "Adresse e-mail du membre invité";
+    input.autocomplete = "email";
+    input.className = "lcdp-box-card-listinvites-oui-non__email-input";
+
+    item.appendChild(input);
+    input.focus();
+    return item;
+  }
+
+  function collecterEmailsSupplementairesInvitation(listeEmails) {
+    const saisies = Array.from(listeEmails.querySelectorAll("input[type='email']"))
+      .map((input) => nettoyerEmail(input.value))
+      .filter(Boolean);
+
+    const valeurs = saisies.filter((email, index, array) => array.indexOf(email) === index);
+    const invalide = valeurs.find((email) => !emailValide(email));
+
+    if (invalide) {
+      return { valeurs: [], erreur: "Une adresse e-mail est invalide." };
+    }
+
+    return { valeurs, erreur: "" };
+  }
+
+  function normaliserStatutInvitationInvite(value) {
+    const statut = normaliserTexteTechnique(value);
+    return statut || "true";
+  }
+
+  async function enregistrerListeInvitesReservation(idflux, payload, declencheur) {
+    const idReservation = String(idflux || "").trim();
+    const donnees = payload || {};
+    const invites = Array.isArray(donnees.invites) ? donnees.invites : [];
+    const emails = Array.isArray(donnees.emails) ? donnees.emails : [];
+
+    if (!idReservation) {
+      await afficherAlerteInvitationReservation("Réservation manquante.", declencheur);
+      return null;
+    }
+
+    if (!ENDPOINT_INVITER_MEMBRE) {
+      await afficherAlerteInvitationReservation("Le service invitation membre n’est pas configuré.", declencheur);
+      return null;
+    }
+
+    const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/invites", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        idflux: idReservation,
+        invites,
+        emails
+      })
+    });
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return null;
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      await afficherAlerteInvitationReservation(messageErreurApi(data, "Impossible de mettre à jour la liste des invités."), declencheur);
+      return null;
+    }
+
+    return data;
+  }
+
+  function formaterLigneInviteReservation(invite) {
+    const nom = [invite?.prenommembre, invite?.nommembre]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .join(" ");
+
+    const email = nettoyerEmail(invite?.emailmembre || "");
+
+    if (nom && email) return nom + " — " + email;
+    if (nom) return nom;
+    if (email) return email;
+
+    return "Membre invité";
+  }
+
+  function echapperSelecteurCss(value) {
+    if (window.CSS && typeof window.CSS.escape === "function") {
+      return window.CSS.escape(String(value || ""));
+    }
+
+    return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  }
+
+  function reservationPasseePlanning(reservation) {
+    const date = new Date(reservation?.datebookd || "");
+
+    if (Number.isNaN(date.getTime())) return false;
+
+    const reservationParis = dateHeureParis(date);
+    const maintenantParis = dateHeureParis(new Date());
+
+    if (!reservationParis.dateIso || !maintenantParis.dateIso) return false;
+    if (reservationParis.dateIso < maintenantParis.dateIso) return true;
+    if (reservationParis.dateIso > maintenantParis.dateIso) return false;
+
+    const minutesReservation = (reservationParis.heure * 60) + reservationParis.minute;
+    const minutesMaintenant = (maintenantParis.heure * 60) + maintenantParis.minute;
+
+    return minutesMaintenant >= minutesReservation;
+  }
+
+  function reservationDelaiActionDepasse(reservation) {
+    const date = new Date(reservation?.datebookd || "");
+
+    if (Number.isNaN(date.getTime())) return false;
+
+    return Date.now() >= date.getTime() - (30 * 60 * 1000);
+  }
+
+  function determinerBlocageInvitationReservation(reservation) {
+    const dateReservation = extraireDateFranceReservation(reservation?.datebookd);
+
+    if (!dateReservation) return "";
+
+    const abonnement = trouverAbonnementPourDateInvitation(dateReservation);
+    const statutabo = normaliserTexteTechnique(abonnement?.statutabo || "");
+
+    if (statutabo === "impaye") {
+      return "Votre abonnement est suspendu (impayé). Vous devez régulariser votre abonnement avant de pouvoir utiliser la fonction Inviter.";
+    }
+
+    if (statutabo === "cancd" && dateReservation > dateAujourdhuiParis()) {
+      return "Vous avez annulé votre abonnement. Cette réservation est annulée ce soir à minuit. Vous ne pouvez donc pas utiliser la fonction Inviter pour cette date.";
+    }
+
+    return "";
+  }
+
+  function trouverAbonnementPourDateInvitation(dateIso) {
+    const date = String(dateIso || "").trim().slice(0, 10);
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+
+    return (Array.isArray(etat.abonnements) ? etat.abonnements : []).find((abonnement) => {
+      const debut = String(abonnement?.debut || "").slice(0, 10);
+      const fin = String(abonnement?.finInitiale || abonnement?.fin || "").slice(0, 10);
+
+      return debut && fin && date >= debut && date <= fin;
+    }) || null;
+  }
+
+  async function afficherAlerteInvitationReservation(message, declencheur) {
+    const workflow = declencheur
+      ? declencheur.closest("[data-lcdp-box-workflow-reservation]")
+      : document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
+
+    if (workflow) {
+      await afficherAlerteOkParDessusLightbox(message);
+      return;
+    }
+
+    await afficherAlerteOk(message);
+  }
+
+  async function ouvrirBoxEmailsInvitationReservation(idflux, declencheur) {
+    const idReservation = String(idflux || "").trim();
+
+    if (!idReservation) {
+      await afficherAlerteInvitationReservation("Réservation manquante.", declencheur);
+      return null;
+    }
+
+    await chargerCssObjetUneFois("/BOX/04-box-listemails.css");
+
+    const conteneur = document.createElement("div");
+    conteneur.dataset.lcdpInvitationEmailsOverlay = "true";
+    conteneur.style.position = "relative";
+    conteneur.style.zIndex = "9000";
+
+    document.body.appendChild(conteneur);
+
+    const fragment = await chargerFragmentObjet("/BOX/04-box-listemails.html");
+    conteneur.appendChild(fragment);
+
+    const box = conteneur.querySelector("[data-lcdp-box-card-listemails]");
+    const titre = conteneur.querySelector("[data-lcdp-listemails-title]");
+    const message = conteneur.querySelector("[data-lcdp-listemails-message]");
+    const liste = conteneur.querySelector("[data-lcdp-listemails-list]");
+    const actions = conteneur.querySelector("[data-lcdp-listemails-actions]");
+    const boutonFermer = conteneur.querySelector("[data-lcdp-listemails-close]");
+
+    if (!box || !titre || !message || !liste || !actions) {
+      conteneur.remove();
+      throw new Error("Structure liste e-mails incomplète.");
+    }
+
+    titre.textContent = "Inviter";
+    message.hidden = true;
+    message.textContent = "";
+
+    const limiteEmails = limiteEmailsInvitation();
+    let traitementEnCours = false;
+    let fermerBox = () => {};
+
+    function afficherMessageEmails(texte, estErreur = false) {
+      message.hidden = !texte;
+      message.textContent = texte || "";
+      message.dataset.lcdpMessageType = estErreur ? "erreur" : "information";
+      message.classList.toggle("lcdp-box-card-listemails__message--erreur", estErreur === true);
+    }
+
+    function definirTraitementEnCours(valeur) {
+      traitementEnCours = valeur === true;
+
+      Array.from(liste.querySelectorAll("input[type='email']")).forEach((input) => {
+        input.disabled = traitementEnCours;
+      });
+
+      Array.from(actions.querySelectorAll("button")).forEach((bouton) => {
+        bouton.disabled = traitementEnCours;
+      });
+
+      if (boutonFermer) {
+        boutonFermer.disabled = traitementEnCours;
+        boutonFermer.setAttribute("aria-disabled", traitementEnCours ? "true" : "false");
+      }
+    }
+
+    function ajouterChamp(valeur = "") {
+      if (traitementEnCours) return;
+
+      if (liste.querySelectorAll("input[type='email']").length >= limiteEmails) {
+        afficherMessageEmails("Votre droit d'invitation est limité à " + String(limiteEmails) + " e-mail" + (limiteEmails > 1 ? "s" : "") + ".", true);
+        return;
+      }
+
+      const item = document.createElement("li");
+      item.className = "lcdp-box-card-listemails__item";
+
+      const input = document.createElement("input");
+      input.type = "email";
+      input.value = valeur;
+      input.placeholder = "Adresse e-mail du membre invité";
+      input.autocomplete = "email";
+      input.className = "lcdp-box-card-listemails__input";
+
+      item.appendChild(input);
+      liste.appendChild(item);
+      input.focus();
+    }
+
+    function collecterEmailsBox() {
+      const emailsSaisis = Array.from(liste.querySelectorAll("input[type='email']"))
+        .map((input) => nettoyerEmail(input.value))
+        .filter(Boolean);
+
+      const emails = emailsSaisis.filter((email, index, array) => array.indexOf(email) === index);
+      const emailInvalide = emails.find((email) => !emailValide(email));
+
+      if (!emails.length) {
+        return { emails: [], erreur: "Renseignez au moins une adresse e-mail." };
+      }
+
+      if (emailInvalide) {
+        return { emails: [], erreur: "Une adresse e-mail est invalide." };
+      }
+
+      if (emails.length > limiteEmails) {
+        return {
+          emails: [],
+          erreur: "Votre droit d'invitation est limité à " + String(limiteEmails) + " e-mail" + (limiteEmails > 1 ? "s" : "") + "."
+        };
+      }
+
+      return { emails, erreur: "" };
+    }
+
+    ajouterChamp();
+
+    actions.innerHTML = "";
+
+    const boutonAjouter = creerBoutonInvitationEmails("Ajouter un e-mail", "lcdp-button-secondary", () => ajouterChamp());
+    const boutonInviter = creerBoutonInvitationEmails("Inviter", "lcdp-button-primary", async () => {
+      if (traitementEnCours) return;
+
+      const collecte = collecterEmailsBox();
+
+      if (collecte.erreur) {
+        afficherMessageEmails(collecte.erreur, true);
+        return;
+      }
+
+      definirTraitementEnCours(true);
+      boutonInviter.textContent = "Envoi en cours...";
+      afficherMessageEmails("Patientez, l’invitation est en cours d’enregistrement...");
+
+      try {
+        console.info("[LCDP invitation] POST /inviter-reservation", {
+          idflux: idReservation,
+          nbEmails: collecte.emails.length
+        });
+
+        const resultat = await posterInvitationReservation(idReservation, collecte.emails);
+
+        console.info("[LCDP invitation] invitation enregistrée", resultat);
+        fermerBox(resultat);
+      } catch (error) {
+        console.error("[LCDP invitation] échec invitation", error);
+        definirTraitementEnCours(false);
+        boutonInviter.textContent = "Inviter";
+        afficherMessageEmails(error.message || "Impossible d’envoyer l’invitation.", true);
+      }
+    });
+    const boutonAnnuler = creerBoutonInvitationEmails("Annuler", "lcdp-button-secondary", () => fermerBox(null));
+
+    actions.appendChild(boutonAjouter);
+    actions.appendChild(boutonInviter);
+    actions.appendChild(boutonAnnuler);
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      fermerBox = (valeur) => {
+        if (traitementEnCours && !valeur) return;
+        if (resolu) return;
+        resolu = true;
+        document.removeEventListener("keydown", gererEchap);
+        conteneur.remove();
+        resolve(valeur || null);
+      };
+
+      function gererEchap(event) {
+        if (event.key === "Escape") fermerBox(null);
+      }
+
+      if (boutonFermer) {
+        boutonFermer.addEventListener("click", () => fermerBox(null));
+      }
+
+      box.addEventListener("click", (event) => {
+        if (event.target === box) fermerBox(null);
+      });
+
+      document.addEventListener("keydown", gererEchap);
+    });
+  }
+
+  function creerBoutonInvitationEmails(label, style, action) {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "lcdp-button " + (style || "lcdp-button-primary");
+    bouton.textContent = label;
+    bouton.addEventListener("click", action);
+    return bouton;
+  }
+
+  function limiteEmailsInvitation() {
+    const maxInvit = Number.parseInt(String(etat.maxInvitInvitation || "0"), 10);
+
+    if (Number.isFinite(maxInvit) && maxInvit > 0) {
+      return Math.min(maxInvit, 10);
+    }
+
+    return 10;
+  }
+
+  async function posterInvitationReservation(idflux, emails) {
+    if (!ENDPOINT_INVITER_MEMBRE) {
+      throw new Error("Le service invitation membre n’est pas configuré.");
+    }
+
+    let reponse = null;
+
+    try {
+      reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/inviter-reservation", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          idflux,
+          emails
+        })
+      });
+    } catch (error) {
+      console.error("[LCDP invitation] fetch impossible", error);
+      throw new Error("Le service invitation membre est indisponible.");
+    }
+
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      throw new Error("Session membre inactive.");
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      throw new Error(messageErreurApi(data, "Impossible d’envoyer l’invitation."));
+    }
+
+    return data;
+  }
+
+  async function envoyerInvitationReservation(idflux, emails, declencheur) {
+    try {
+      const data = await posterInvitationReservation(idflux, emails);
+      await afficherAlerteInvitationReservation(data.message || "Invitation envoyée.", declencheur);
+      return data;
+    } catch (error) {
+      await afficherAlerteInvitationReservation(error.message || "Impossible d’envoyer l’invitation.", declencheur);
+      return null;
+    }
   }
 
   async function traiterAnnulationReservation(boutonAnnuler) {
@@ -1141,7 +2319,31 @@
       return;
     }
 
-    const confirmation = await ouvrirDialogueBoutons({
+    const workflowReservation = boutonAnnuler
+      ? boutonAnnuler.closest("[data-lcdp-box-workflow-reservation]")
+      : null;
+
+    const reservation = trouverReservationPlanningParId(idflux);
+
+    if (!reservation) {
+      if (workflowReservation) {
+        await afficherAlerteOkParDessusLightbox("Réservation introuvable.");
+      } else {
+        await afficherAlerteOk("Réservation introuvable.");
+      }
+      return;
+    }
+
+    if (reservationDelaiActionDepasse(reservation)) {
+      if (workflowReservation) {
+        await afficherAlerteOkParDessusLightbox("Vous ne pouvez plus utiliser la fonction annuler (délai dépassé).");
+      } else {
+        await afficherAlerteOk("Vous ne pouvez plus utiliser la fonction annuler (délai dépassé).");
+      }
+      return;
+    }
+
+    const optionsDialogue = {
       titre: "Confirmer l’annulation",
       texte: "Voulez-vous vraiment annuler cette date ?",
       boutons: [
@@ -1156,7 +2358,11 @@
           style: "lcdp-button-primary"
         }
       ]
-    });
+    };
+
+    const confirmation = workflowReservation
+      ? await ouvrirDialogueBoutonsParDessusLightbox(optionsDialogue)
+      : await ouvrirDialogueBoutons(optionsDialogue);
 
     if (confirmation !== "oui") return;
 
@@ -1378,30 +2584,20 @@
         const statutabo = normaliserTexteTechnique(abonnement?.statutabo || abonnement?.statut || "");
         const debut = dateIsoDepuisValeur(abonnement?.debut || abonnement?.debutabo || abonnement?.dateDebut || "");
         let fin = dateIsoDepuisValeur(abonnement?.fin || abonnement?.finabo || abonnement?.dateFin || "");
+        const finInitiale = fin;
 
         /* Un abonnement cancd reste couvert uniquement le jour d'annulation. */
         if (statutabo === "cancd" && fin && fin > aujourdHui) {
           fin = aujourdHui;
         }
 
-        return { debut, fin, statutabo };
+        return { debut, fin, finInitiale, statutabo };
       })
       .filter((abonnement) => abonnement.debut && abonnement.fin && abonnement.fin >= abonnement.debut);
   }
 
   function reservationHorsAbonnementMembre(reservation) {
-    const dateReservation = extraireDateFranceReservation(reservation?.datebookd);
-    const aujourdHui = dateAujourdhuiParis();
-
-    if (!dateReservation) return true;
-
-    /* Règle planning : le passé reste seulement vert atténué.
-       L'affichage invitation ne concerne que les réservations à venir. */
-    if (dateReservation < aujourdHui) return false;
-
-    if (valeurBooleenneVraie(reservation?.invitation)) return true;
-
-    return !dateDansPeriodeAbonnementMembre(dateReservation);
+    return valeurBooleenneVraie(reservation?.invitation);
   }
 
   function dateDansPeriodeAbonnementMembre(dateIso) {
@@ -1592,6 +2788,162 @@
     });
   }
 
+  async function afficherAlerteOk(message) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) return null;
+
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    slot.appendChild(fragment);
+
+    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
+    const texte = slot.querySelector("[data-lcdp-alerte-message]");
+    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
+    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
+
+    if (!alerte || !texte || !boutonOk) {
+      throw new Error("Structure de l’alerte incomplète.");
+    }
+
+    texte.textContent = message || "";
+
+    if (boutonFermer) boutonFermer.hidden = true;
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer() {
+        if (resolu) return;
+        resolu = true;
+        slot.innerHTML = "";
+        resolve(true);
+      }
+
+      boutonOk.addEventListener("click", fermer);
+    });
+  }
+
+  async function afficherAlerteOkParDessusLightbox(message) {
+    document.querySelectorAll("[data-lcdp-alerte-ok-overlay]").forEach((element) => element.remove());
+
+    const couche = document.createElement("div");
+    couche.dataset.lcdpAlerteOkOverlay = "true";
+    couche.style.position = "fixed";
+    couche.style.inset = "0";
+    couche.style.zIndex = "12000";
+    couche.style.pointerEvents = "auto";
+    document.body.appendChild(couche);
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    couche.appendChild(fragment);
+
+    const alerte = couche.querySelector("[data-lcdp-box-alerte]");
+    const texte = couche.querySelector("[data-lcdp-alerte-message]");
+    const boutonFermer = couche.querySelector("[data-lcdp-alerte-close]");
+    const boutonOk = couche.querySelector("[data-lcdp-alerte-ok]");
+
+    if (!alerte || !texte || !boutonOk) {
+      couche.remove();
+      throw new Error("Structure de l’alerte incomplète.");
+    }
+
+    alerte.style.position = "fixed";
+    alerte.style.inset = "0";
+    alerte.style.zIndex = "12001";
+    alerte.style.display = "flex";
+    alerte.style.alignItems = "center";
+    alerte.style.justifyContent = "center";
+
+    texte.textContent = message || "";
+
+    if (boutonFermer) boutonFermer.hidden = true;
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer() {
+        if (resolu) return;
+        resolu = true;
+        couche.remove();
+        resolve(true);
+      }
+
+      boutonOk.addEventListener("click", fermer);
+      alerte.addEventListener("click", (event) => {
+        if (event.target === alerte) fermer();
+      });
+    });
+  }
+
+  async function ouvrirDialogueBoutonsParDessusLightbox(options) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) return null;
+
+    const coucheExistante = slot.querySelector("[data-lcdp-dialogue-bouton-overlay]");
+    if (coucheExistante) coucheExistante.remove();
+
+    const couche = document.createElement("div");
+    couche.dataset.lcdpDialogueBoutonOverlay = "true";
+    slot.appendChild(couche);
+
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    couche.appendChild(fragment);
+
+    const dialogue = couche.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = couche.querySelector("[data-lcdp-dialogue-title]");
+    const texte = couche.querySelector("[data-lcdp-dialogue-text]");
+    const actions = couche.querySelector("[data-lcdp-dialogue-actions]");
+    const boutonFermer = couche.querySelector("[data-lcdp-dialogue-close]");
+
+    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
+      couche.remove();
+      throw new Error("Structure de dialogue bouton incomplète.");
+    }
+
+    titre.textContent = options.titre || "";
+    texte.textContent = options.texte || "";
+    actions.innerHTML = "";
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer(valeur) {
+        if (resolu) return;
+        resolu = true;
+        document.removeEventListener("keydown", gererEchap);
+        couche.remove();
+        resolve(valeur || null);
+      }
+
+      function gererEchap(event) {
+        if (event.key === "Escape") fermer(null);
+      }
+
+      (options.boutons || []).forEach((configuration) => {
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "lcdp-button " + (configuration.style || "lcdp-button-primary");
+        bouton.textContent = configuration.label || "Valider";
+
+        bouton.addEventListener("click", () => {
+          fermer(configuration.valeur || configuration.label || true);
+        });
+
+        actions.appendChild(bouton);
+      });
+
+      boutonFermer.addEventListener("click", () => fermer(null));
+      dialogue.addEventListener("click", (event) => {
+        if (event.target === dialogue) fermer(null);
+      });
+
+      document.addEventListener("keydown", gererEchap);
+    });
+  }
+
   async function ouvrirDialogueBoutons(options) {
     const slot = document.getElementById("lcdp-lightbox-slot");
 
@@ -1651,6 +3003,32 @@
         },
         { once: true }
       );
+    });
+  }
+
+  function chargerCssObjetUneFois(chemin) {
+    const valeur = String(chemin || "").trim();
+
+    if (!valeur) return Promise.resolve();
+
+    const href = construireUrlObjet(valeur);
+
+    if (document.querySelector('link[data-lcdp-css-objet="' + valeur + '"]')) {
+      return Promise.resolve();
+    }
+
+    if (Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some((link) => link.href === href)) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      link.dataset.lcdpCssObjet = valeur;
+      link.onload = resolve;
+      link.onerror = () => reject(new Error("CSS OBJET introuvable : " + valeur));
+      document.head.appendChild(link);
     });
   }
 
@@ -1789,7 +3167,7 @@
 
     if (!nom || !dptmt || !nomFichier) return "";
 
-    return "/OBJET/IMAG/PARC/" + dptmt + "/" + nom + "/" + nomFichier;
+    return "/IMAG/PARC/" + dptmt + "/" + nom + "/" + nomFichier;
   }
 
   function normaliserSegmentCheminImageParc(value) {
@@ -1828,6 +3206,14 @@
 
     if (!chemin) return "";
     if (estUrlExterneOuAncre(chemin)) return chemin;
+
+    const cheminParc = chemin
+      .replace(/^\/?OBJET\/IMAG\/PARC\//i, "/IMAG/PARC/")
+      .replace(/^\/?IMAG\/PARC\//i, "/IMAG/PARC/");
+
+    if (cheminParc.startsWith("/IMAG/PARC/")) {
+      return construireUrlPublic(cheminParc);
+    }
 
     const cheminObjet = chemin.replace(/^\/?OBJET\/?/, "/");
 
