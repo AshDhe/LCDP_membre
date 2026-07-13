@@ -425,10 +425,10 @@
 
     const wrapperPlanning = contenu.querySelector("[data-lcdp-box-liste-card]");
     const titreWrapper = contenu.querySelector("[data-lcdp-liste-card-title]");
-    const actionsWrapper = contenu.querySelector("[data-lcdp-liste-card-actions]");
+    const slotCommande = contenu.querySelector("[data-lcdp-liste-card-commande]");
     const slotPlanning = contenu.querySelector("[data-lcdp-liste-card-list]");
 
-    if (!wrapperPlanning || !actionsWrapper || !slotPlanning) {
+    if (!wrapperPlanning || !slotCommande || !slotPlanning) {
       throw new Error("Structure wrapper planning membre incomplète.");
     }
 
@@ -439,7 +439,18 @@
       titreWrapper.hidden = true;
     }
 
-    ajouterActionsPlanningMembre(actionsWrapper);
+    await chargerCssObjetUneFois("/BOX/04-box-commande-bar.css");
+
+    const fragmentCommande = await chargerFragmentObjet("/BOX/04-box-commande-bar.html");
+    slotCommande.appendChild(fragmentCommande);
+
+    const actionsCommande = slotCommande.querySelector("[data-lcdp-commande-bar-actions]");
+
+    if (!actionsCommande) {
+      throw new Error("Structure commande bar incomplète.");
+    }
+
+    ajouterActionsPlanningMembre(actionsCommande);
 
     await chargerCssObjetUneFois("/BOX/04-box-calendrier-mois.css");
 
@@ -460,7 +471,8 @@
 
     calendrier.classList.add(
       "lcdp-box-calendrier-mois--planning-membre",
-      "lcdp-box-calendrier-mois--inline"
+      "lcdp-box-calendrier-mois--inline",
+      "lcdp-box-calendrier-mois--embedded"
     );
 
     const titre = calendrier.querySelector("[data-lcdp-calendrier-mois-title]");
