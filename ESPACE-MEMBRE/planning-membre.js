@@ -205,40 +205,53 @@
         color: var(--lcdp-color-text-muted) !important;
       }
 
+      [data-lcdp-invitation-invites-overlay] {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 11000 !important;
+        pointer-events: auto !important;
+      }
 
-      [data-lcdp-invitation-invites-overlay] [data-lcdp-listinvites-close] {
+      [data-lcdp-invitation-invites-overlay] .lcdp-box-card-listinvites-oui-non {
+        z-index: 11001 !important;
+      }
+
+      [data-lcdp-invitation-invites-overlay] .lcdp-box-card-listinvites-oui-non__close {
         display: none !important;
       }
 
-      [data-lcdp-invitation-invites-overlay] [data-lcdp-listinvites-ajout].lcdp-listinvites-ajout-sans-titre {
-        margin: 0 !important;
-        padding: 0 !important;
-        border: 0 !important;
+      [data-lcdp-invitation-invites-overlay] .lcdp-box-card-listinvites-oui-non__header {
+        padding-right: 0 !important;
       }
 
-      [data-lcdp-invitation-invites-overlay] [data-lcdp-listinvites-ajout].lcdp-listinvites-ajout-sans-titre > *:not([data-lcdp-listinvites-emails]):not(.lcdp-box-card-listinvites-oui-non__emails) {
+      [data-lcdp-invitation-invites-overlay] .lcdp-box-card-listinvites-oui-non__ajout-title {
         display: none !important;
       }
 
-      [data-lcdp-invitation-invites-overlay] .lcdp-listinvites-actions-compact {
+      [data-lcdp-invitation-invites-overlay] .lcdp-box-card-listinvites-oui-non__actions {
         display: grid !important;
         grid-template-columns: 1fr !important;
-        gap: var(--lcdp-space-2, 12px) !important;
+        gap: 10px !important;
         align-items: stretch !important;
         justify-items: stretch !important;
+        margin-top: 18px !important;
       }
 
-      [data-lcdp-invitation-invites-overlay] .lcdp-listinvites-actions-compact .lcdp-button {
+      [data-lcdp-invitation-invites-overlay] .lcdp-box-card-listinvites-oui-non__actions .lcdp-button {
         width: 100% !important;
         min-height: 58px !important;
         margin: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
       }
 
       @media (min-width: 768px) {
-        [data-lcdp-invitation-invites-overlay] .lcdp-listinvites-actions-compact {
+        [data-lcdp-invitation-invites-overlay] .lcdp-box-card-listinvites-oui-non__actions {
           grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
         }
       }
+
     `;
 
     document.head.appendChild(style);
@@ -1606,7 +1619,6 @@
 
   async function ouvrirBoxListeInvitesLectureSeule(idflux, invites, declencheur) {
     await chargerCssObjetUneFois("/BOX/04-box-card-listinvites-oui-non.css");
-    document.querySelectorAll("[data-lcdp-invitation-invites-overlay]").forEach((element) => element.remove());
 
     const conteneur = document.createElement("div");
     conteneur.className = "lcdp-box-card-listinvites-oui-non lcdp-box-card-listinvites-oui-non--lecture";
@@ -1614,9 +1626,6 @@
     conteneur.setAttribute("role", "dialog");
     conteneur.setAttribute("aria-modal", "true");
     conteneur.setAttribute("aria-labelledby", "lcdp-listinvites-lecture-title");
-    conteneur.style.position = "fixed";
-    conteneur.style.inset = "0";
-    conteneur.style.zIndex = "13000";
 
     document.body.appendChild(conteneur);
 
@@ -1684,13 +1693,9 @@
     const idReservation = String(idflux || "").trim();
 
     await chargerCssObjetUneFois("/BOX/04-box-card-listinvites-oui-non.css");
-    document.querySelectorAll("[data-lcdp-invitation-invites-overlay]").forEach((element) => element.remove());
 
     const conteneur = document.createElement("div");
     conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
-    conteneur.style.position = "fixed";
-    conteneur.style.inset = "0";
-    conteneur.style.zIndex = "13000";
 
     document.body.appendChild(conteneur);
 
@@ -1713,29 +1718,30 @@
       throw new Error("Structure liste invités oui/non incomplète.");
     }
 
+    titre.textContent = "Invité(s)";
+    liste.innerHTML = "";
+    listeEmails.innerHTML = "";
+
+    const titreAjout = conteneur.querySelector(".lcdp-box-card-listinvites-oui-non__ajout-title");
+
     if (boutonFermer) {
       boutonFermer.hidden = true;
       boutonFermer.setAttribute("aria-hidden", "true");
-      boutonFermer.tabIndex = -1;
     }
 
-    zoneAjout.classList.add("lcdp-listinvites-ajout-sans-titre");
-    actions.classList.add("lcdp-listinvites-actions-compact");
+    if (titreAjout) {
+      titreAjout.hidden = true;
+      titreAjout.setAttribute("aria-hidden", "true");
+    }
 
     boutonAjouterEmail.textContent = "Ajouter un membre";
     boutonAnnuler.textContent = "Annuler";
 
-    if (boutonAjouterEmail.parentNode !== actions) {
+    const actions = boutonMettreAJour.closest(".lcdp-box-card-listinvites-oui-non__actions");
+
+    if (actions && boutonAjouterEmail.parentNode !== actions) {
       actions.insertBefore(boutonAjouterEmail, boutonMettreAJour);
     }
-
-    box.style.position = "fixed";
-    box.style.inset = "0";
-    box.style.zIndex = "13001";
-
-    titre.textContent = "Invité(s)";
-    liste.innerHTML = "";
-    listeEmails.innerHTML = "";
 
     const invitesListe = Array.isArray(invites) ? invites : [];
     const limiteTotale = limiteEmailsInvitation();
@@ -1826,10 +1832,10 @@
 
         enregistrementEnCours = true;
         boutonAjouterEmail.disabled = true;
-        boutonMettreAJour.disabled = true;
         boutonAnnuler.disabled = true;
+        boutonMettreAJour.disabled = true;
         boutonMettreAJour.textContent = "Mise à jour...";
-        afficherMessage("");
+        afficherMessage("Patientez, la liste des invités est en cours de mise à jour.");
 
         const resultat = await enregistrerListeInvitesReservation(idReservation, {
           invites: majInvites,
@@ -1837,9 +1843,9 @@
         }, declencheur);
 
         enregistrementEnCours = false;
-        boutonAjouterEmail.disabled = false;
-        boutonMettreAJour.disabled = false;
+        boutonAjouterEmail.disabled = placesDisponibles <= 0;
         boutonAnnuler.disabled = false;
+        boutonMettreAJour.disabled = false;
         boutonMettreAJour.textContent = "Mettre à jour";
 
         if (!resultat) return;
@@ -1863,9 +1869,8 @@
         }
 
         actualiserBoutonsInvitationPlanning(idReservation, declencheur);
-        const messageConfirmation = resultat.message || "Liste des invités mise à jour.";
+        await afficherAlerteInvitationReservation(resultat.message || "Liste des invités mise à jour.", declencheur);
         fermer(resultat);
-        await afficherAlerteInvitationReservation(messageConfirmation, declencheur);
       }
 
       boutonMettreAJour.addEventListener("click", mettreAJour);
@@ -2889,7 +2894,7 @@
     couche.dataset.lcdpAlerteOkOverlay = "true";
     couche.style.position = "fixed";
     couche.style.inset = "0";
-    couche.style.zIndex = "15000";
+    couche.style.zIndex = "12000";
     couche.style.pointerEvents = "auto";
     document.body.appendChild(couche);
 
@@ -2908,7 +2913,7 @@
 
     alerte.style.position = "fixed";
     alerte.style.inset = "0";
-    alerte.style.zIndex = "15001";
+    alerte.style.zIndex = "12001";
     alerte.style.display = "flex";
     alerte.style.alignItems = "center";
     alerte.style.justifyContent = "center";
