@@ -40,6 +40,9 @@
     workflowPlanning: null,
     contenuWorkflowPlanning: null,
     calendrierMois: null,
+    wrapperPlanning: null,
+    slotPlanning: null,
+    modeAffichage: "agenda",
     membre: {
       abonne: false,
       abonnementSuspendu: false,
@@ -415,10 +418,31 @@
       "lcdp-workflow-reservation-box"
     );
 
-    const fragmentCalendrier = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
-    contenu.appendChild(fragmentCalendrier);
+    const fragmentWrapper = await chargerFragmentObjet("/BOX/04-box-liste-card.html");
+    contenu.appendChild(fragmentWrapper);
 
-    const calendrier = contenu.querySelector("[data-lcdp-box-calendrier-mois]");
+    const wrapperPlanning = contenu.querySelector("[data-lcdp-box-liste-card]");
+    const titreWrapper = contenu.querySelector("[data-lcdp-liste-card-title]");
+    const actionsWrapper = contenu.querySelector("[data-lcdp-liste-card-actions]");
+    const slotPlanning = contenu.querySelector("[data-lcdp-liste-card-list]");
+
+    if (!wrapperPlanning || !actionsWrapper || !slotPlanning) {
+      throw new Error("Structure wrapper planning membre incomplète.");
+    }
+
+    wrapperPlanning.classList.add("lcdp-box-liste-card--planning-membre");
+
+    if (titreWrapper) {
+      titreWrapper.textContent = "";
+      titreWrapper.hidden = true;
+    }
+
+    ajouterActionsPlanningMembre(actionsWrapper);
+
+    const fragmentCalendrier = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
+    slotPlanning.appendChild(fragmentCalendrier);
+
+    const calendrier = slotPlanning.querySelector("[data-lcdp-box-calendrier-mois]");
 
     if (!calendrier) {
       throw new Error("Structure calendrier mois incomplète.");
@@ -446,8 +470,6 @@
 
     const boutonPrecedent = calendrier.querySelector("[data-lcdp-calendrier-mois-prev]");
     const boutonSuivant = calendrier.querySelector("[data-lcdp-calendrier-mois-next]");
-
-    ajouterBoutonReserverPlanning(calendrier);
 
     if (boutonPrecedent) {
       boutonPrecedent.addEventListener("click", () => {
@@ -484,50 +506,110 @@
     etat.workflowPlanning = workflow;
     etat.contenuWorkflowPlanning = contenu;
     etat.calendrierMois = calendrier;
+    etat.wrapperPlanning = wrapperPlanning;
+    etat.slotPlanning = slotPlanning;
 
     afficherChargementCalendrier("Chargement de votre planning...");
   }
 
-  function ajouterBoutonReserverPlanning(calendrier) {
-    const card = calendrier ? calendrier.querySelector(".lcdp-box-calendrier-mois__card") : null;
-    const header = calendrier ? calendrier.querySelector(".lcdp-box-calendrier-mois__header") : null;
-    const body = calendrier ? calendrier.querySelector(".lcdp-box-calendrier-mois__body") : null;
-    const navigation = calendrier ? calendrier.querySelector(".lcdp-box-calendrier-mois__navigation") : null;
+  function ajouterActionsPlanningMembre(actionsWrapper) {
+    if (!actionsWrapper) return;
 
-    if (!card || !header) return;
+    actionsWrapper.innerHTML = "";
 
-    /* Sécurité : la navigation mensuelle doit rester dans le body du calendrier. */
-    if (body && navigation && navigation.parentNode !== body) {
-      body.insertBefore(navigation, body.firstElementChild);
+    const lienReserver = document.createElement("a");
+    lienReserver.className = "lcdp-button lcdp-planning-membre-reserver-button";
+    lienReserver.dataset.lcdpPlanningReserver = "true";
+    lienReserver.href = PAGE_RESERVER_MEMBRE;
+    lienReserver.textContent = "RÉSERVER";
+    lienReserver.setAttribute("aria-label", "Réserver une nouvelle date");
+
+    const boutonAffichage = document.createElement("button");
+    boutonAffichage.type = "button";
+    boutonAffichage.className = "lcdp-button lcdp-button-secondary lcdp-planning-membre-affichage-button";
+    boutonAffichage.dataset.lcdpPlanningAffichage = "true";
+    boutonAffichage.textContent = "Afficher en liste";
+    boutonAffichage.setAttribute("aria-pressed", "false");
+    boutonAffichage.addEventListener("click", basculerAffichagePlanningMembre);
+
+    actionsWrapper.appendChild(lienReserver);
+    actionsWrapper.appendChild(boutonAffichage);
+  }
+
+  function basculerAffichagePlanningMembre() {
+    if (etat.modeAffichage === "agenda") {
+      afficherPlanningMembreEnListe();
+      return;
     }
 
-    let ligneReserver = card.querySelector("[data-lcdp-planning-reserver-row]");
+    afficherPlanningMembreEnAgenda();
+  }
 
-    if (!ligneReserver) {
-      ligneReserver = document.createElement("div");
-      ligneReserver.className = "lcdp-planning-membre-reserver-row";
-      ligneReserver.dataset.lcdpPlanningReserverRow = "true";
+  function afficherPlanningMembreEnAgenda() {
+    const slotPlanning = etat.slotPlanning;
+    const calendrier = etat.calendrierMois;
+
+    if (!slotPlanning || !calendrier) return;
+
+    slotPlanning.classList.add("lcdp-box-liste-card__list--transition");
+
+    window.requestAnimationFrame(() => {
+      slotPlanning.replaceChildren(calendrier);
+      etat.modeAffichage = "agenda";
+      actualiserBoutonAffichagePlanningMembre();
+
+      window.requestAnimationFrame(() => {
+        slotPlanning.classList.remove("lcdp-box-liste-card__list--transition");
+      });
+    });
+  }
+
+  function afficherPlanningMembreEnListe() {
+    const slotPlanning = etat.slotPlanning;
+
+    if (!slotPlanning || !etat.templateReservation) return;
+
+    const fragment = document.createDocumentFragment();
+    const reservations = [...etat.reservations].sort((a, b) =>
+      String(a?.datebookd || "").localeCompare(String(b?.datebookd || ""))
+    );
+
+    if (!reservations.length) {
+      const message = document.createElement("p");
+      message.className = "lcdp-box-liste-card__message";
+      message.textContent = "Aucune réservation dans votre planning.";
+      fragment.appendChild(message);
+    } else {
+      reservations.forEach((reservation) => {
+        const card = creerCardReservation(reservation);
+        card.classList.add("lcdp-box-card-reservation-membre--liste");
+        fragment.appendChild(card);
+      });
     }
 
-    if (ligneReserver.parentNode !== card || ligneReserver.nextElementSibling !== header) {
-      card.insertBefore(ligneReserver, header);
-    }
+    slotPlanning.classList.add("lcdp-box-liste-card__list--transition");
 
-    let lien = calendrier.querySelector("[data-lcdp-planning-reserver]");
+    window.requestAnimationFrame(() => {
+      slotPlanning.replaceChildren(fragment);
+      etat.modeAffichage = "liste";
+      actualiserBoutonAffichagePlanningMembre();
 
-    if (!lien) {
-      lien = document.createElement("a");
-      lien.dataset.lcdpPlanningReserver = "true";
-      lien.textContent = "RÉSERVER";
-      lien.setAttribute("aria-label", "Réserver une nouvelle date");
-    }
+      window.requestAnimationFrame(() => {
+        slotPlanning.classList.remove("lcdp-box-liste-card__list--transition");
+      });
+    });
+  }
 
-    lien.className = "lcdp-button lcdp-planning-membre-reserver-button";
-    lien.href = PAGE_RESERVER_MEMBRE;
+  function actualiserBoutonAffichagePlanningMembre() {
+    const bouton = etat.wrapperPlanning
+      ? etat.wrapperPlanning.querySelector("[data-lcdp-planning-affichage]")
+      : null;
 
-    if (lien.parentNode !== ligneReserver) {
-      ligneReserver.appendChild(lien);
-    }
+    if (!bouton) return;
+
+    const estListe = etat.modeAffichage === "liste";
+    bouton.textContent = estListe ? "Afficher en agenda" : "Afficher en liste";
+    bouton.setAttribute("aria-pressed", estListe ? "true" : "false");
   }
 
   async function chargerReservations() {
@@ -565,6 +647,10 @@
       etat.reservationsParDate = indexerReservationsParDate(etat.reservations);
       ajusterMoisCourantSelonReservations();
       afficherCalendrierMois();
+
+      if (etat.modeAffichage === "liste") {
+        afficherPlanningMembreEnListe();
+      }
     } catch (error) {
       console.error("Erreur chargement planning membre :", error);
       afficherErreurCalendrier(error.message || "Erreur technique. Merci de réessayer.");
