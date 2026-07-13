@@ -418,6 +418,8 @@
       "lcdp-workflow-reservation-box"
     );
 
+    await chargerCssObjetUneFois("/BOX/04-box-liste-card.css");
+
     const fragmentWrapper = await chargerFragmentObjet("/BOX/04-box-liste-card.html");
     contenu.appendChild(fragmentWrapper);
 
