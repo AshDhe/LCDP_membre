@@ -436,8 +436,7 @@
 
     calendrier.classList.add(
       "lcdp-box-calendrier-mois--planning-membre",
-      "lcdp-box-calendrier-mois--inline",
-      "lcdp-box-calendrier-mois--embedded"
+      "lcdp-box-calendrier-mois--inline"
     );
 
     const titre = calendrier.querySelector("[data-lcdp-calendrier-mois-title]");
