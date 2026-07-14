@@ -1030,6 +1030,9 @@
       image.alt = "Image du parc " + nom;
       image.loading = "lazy";
       image.decoding = "async";
+      image.addEventListener("error", () => {
+        image.src = construireUrlObjet(DOSSIER_IMAGES_PARC_OBJET + "/cardlogo.webp");
+      }, { once: true });
     }
 
     if (badgePrepa) {
