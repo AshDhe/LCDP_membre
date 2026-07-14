@@ -1013,6 +1013,7 @@
     const description = nettoyerTexteCourt(parc.prez || parc.presentation || "", 190);
 
     const image = card.querySelector("[data-lcdp-card-parc-image]");
+    const badgePrepa = card.querySelector("[data-lcdp-card-parc-badge-prepa]");
     const titre = card.querySelector("[data-lcdp-card-parc-title]");
     const meta = card.querySelector("[data-lcdp-card-parc-meta]");
     const texte = card.querySelector("[data-lcdp-card-parc-description]");
@@ -1027,6 +1028,10 @@
       image.alt = "Image du parc " + nom;
       image.loading = "lazy";
       image.decoding = "async";
+    }
+
+    if (badgePrepa) {
+      badgePrepa.hidden = String(parc.statut || "").trim().toLowerCase() !== "prepa";
     }
 
     if (titre) titre.textContent = nom;
