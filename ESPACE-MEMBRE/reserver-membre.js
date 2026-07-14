@@ -542,6 +542,8 @@
     actions.appendChild(boutonIa);
 
     slot.replaceChildren(commandeBar);
+    slot.hidden = false;
+    slot.setAttribute("aria-hidden", "false");
   }
 
   function initialiserBoutonDepartementPrincipal() {
