@@ -3222,12 +3222,6 @@ async function afficherPlanningMoisLecture(etatPlanning) {
   }
 
   function construireUrlImageParc(parc) {
-    const cheminImageExplicite = String(parc?.imageparc || "").trim();
-
-    if (cheminImageExplicite && cheminImageExplicite.includes("/")) {
-      return construireUrlObjet("/" + cheminImageExplicite.replace(/^\/+/, ""));
-    }
-
     const departement = nettoyerDepartement(parc?.dptmt || parc?.departement || "");
     const dossierParc = normaliserNomParcPourChemin(parc?.nom || parc?.nomparc || "");
 
@@ -3245,13 +3239,8 @@ async function afficherPlanningMoisLecture(etatPlanning) {
 
   function normaliserNomParcPourChemin(valeur) {
     return String(valeur || "")
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
       .trim()
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "")
-      .replace(/_+/g, "_");
+      .replace(/[ -]/g, "_");
   }
 
   function redirigerConnexionMembre(motif) {

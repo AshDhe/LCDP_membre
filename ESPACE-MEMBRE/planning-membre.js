@@ -1018,13 +1018,10 @@
     const departement = parc.dptmt || parc.departement || reservation.dptmt || "";
     const idParc = parc.idparc || reservation.idparc || "";
     const idFlux = reservation.idflux || "";
-    const imageParc =
-      parc.imageparc ||
-      parc.image ||
-      reservation.imageparc ||
-      reservation.image ||
-      construireCheminImageParcParDefaut(nomParc, departement) ||
-      "";
+    const cheminImageCard = construireCheminImageParcParDefaut(
+      nomParc,
+      departement
+    );
 
     const media = card.querySelector("[data-lcdp-card-reservation-media]");
     const image = card.querySelector("[data-lcdp-card-reservation-image]");
@@ -1051,7 +1048,7 @@
     }
 
     if (image && media) {
-      const srcImage = construireUrlImageParc(imageParc);
+      const srcImage = construireUrlImageParc(cheminImageCard);
 
       if (srcImage) {
         image.src = srcImage;
@@ -3352,13 +3349,7 @@
   function normaliserSegmentCheminImageParc(value) {
     return String(value || "")
       .trim()
-      .replace(/^parc\s+d[’']\s*/i, "")
-      .replace(/^parc\s+(?:de|du|des)\s+/i, "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "");
+      .replace(/[ -]/g, "_");
   }
 
   function normaliserDepartementCheminImageParc(value) {
@@ -3391,7 +3382,7 @@
       .replace(/^\/?IMAG\/PARC\//i, "/IMAG/PARC/");
 
     if (cheminParc.startsWith("/IMAG/PARC/")) {
-      return construireUrlPublic(cheminParc);
+      return construireUrlObjet(cheminParc);
     }
 
     const cheminObjet = chemin.replace(/^\/?OBJET\/?/, "/");
