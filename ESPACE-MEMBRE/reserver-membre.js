@@ -1720,8 +1720,9 @@
       const uniteEcran = viewBoxCourante[2] / largeurEcran;
       const rayonParc = Math.max(0.04, uniteEcran * 6);
       const rayonLocalite = Math.max(0.035, uniteEcran * 4.2);
-      const tailleLibelle = Math.max(0.12, uniteEcran * 11);
-      const decalageLibelle = Math.max(0.08, uniteEcran * 7);
+      const carteMobile = largeurMesuree <= 520;
+      const tailleLibelle = Math.max(0.12, uniteEcran * (carteMobile ? 12.5 : 11));
+      const decalageLibelle = Math.max(0.08, uniteEcran * (carteMobile ? 10 : 7));
 
       coucheParcs
         .querySelectorAll(".lcdp-carte-dynamique__marker")
@@ -1735,8 +1736,19 @@
         .querySelectorAll(".lcdp-carte-dynamique__localite-label")
         .forEach((libelle) => {
           const x = Number(libelle.dataset.pointX);
+          const y = Number(libelle.dataset.pointY);
+
           libelle.setAttribute("font-size", String(tailleLibelle));
-          libelle.setAttribute("x", String(x + decalageLibelle));
+
+          if (carteMobile) {
+            libelle.setAttribute("x", String(x));
+            libelle.setAttribute("y", String(y - decalageLibelle));
+            libelle.setAttribute("text-anchor", "middle");
+          } else {
+            libelle.setAttribute("x", String(x + decalageLibelle));
+            libelle.setAttribute("y", String(y));
+            libelle.setAttribute("text-anchor", "start");
+          }
         });
     }
 
@@ -1768,11 +1780,88 @@
     boutonZoomMoins.addEventListener("click", () => zoomer(1.22));
 
     let glissement = null;
+    const pointeursTactiles = new Map();
+    let pincement = null;
+
+    function distanceEntrePointeurs(a, b) {
+      return Math.hypot(b.x - a.x, b.y - a.y);
+    }
+
+    function centreEntrePointeurs(a, b) {
+      return {
+        x: (a.x + b.x) / 2,
+        y: (a.y + b.y) / 2
+      };
+    }
+
+    function bornerDimensionsViewBox(largeur, hauteur) {
+      const largeurMin = Math.max(0.25, viewBoxInitiale[2] / 12);
+      const hauteurMin = Math.max(0.25, viewBoxInitiale[3] / 12);
+
+      return {
+        largeur: Math.min(viewBoxLimite[2], Math.max(largeurMin, largeur)),
+        hauteur: Math.min(viewBoxLimite[3], Math.max(hauteurMin, hauteur))
+      };
+    }
+
+    function demarrerPincement() {
+      if (pointeursTactiles.size < 2) {
+        pincement = null;
+        return;
+      }
+
+      const [premier, second] = Array.from(pointeursTactiles.values()).slice(0, 2);
+      const distance = distanceEntrePointeurs(premier, second);
+
+      if (!(distance > 0)) {
+        pincement = null;
+        return;
+      }
+
+      const centre = centreEntrePointeurs(premier, second);
+      const rect = svg.getBoundingClientRect();
+      const largeurEcran = Math.max(1, rect.width);
+      const hauteurEcran = Math.max(1, rect.height);
+
+      pincement = {
+        distance,
+        centre,
+        viewBox: [...viewBoxCourante],
+        ancreX:
+          viewBoxCourante[0] +
+          ((centre.x - rect.left) / largeurEcran) * viewBoxCourante[2],
+        ancreY:
+          viewBoxCourante[1] +
+          ((centre.y - rect.top) / hauteurEcran) * viewBoxCourante[3]
+      };
+    }
 
     svg.addEventListener("pointerdown", (event) => {
       const cible = event.target instanceof Element ? event.target : null;
 
       if (cible?.closest(".lcdp-carte-dynamique__marker")) {
+        return;
+      }
+
+      if (event.pointerType === "touch") {
+        pointeursTactiles.set(event.pointerId, {
+          x: event.clientX,
+          y: event.clientY
+        });
+
+        if (pointeursTactiles.size >= 2) {
+          pointeursTactiles.forEach((_, pointerId) => {
+            try {
+              svg.setPointerCapture(pointerId);
+            } catch {
+              // Le premier doigt peut déjà être géré par le défilement natif.
+            }
+          });
+
+          demarrerPincement();
+          event.preventDefault();
+        }
+
         return;
       }
 
@@ -1786,6 +1875,61 @@
     });
 
     svg.addEventListener("pointermove", (event) => {
+      if (event.pointerType === "touch") {
+        if (!pointeursTactiles.has(event.pointerId)) {
+          return;
+        }
+
+        pointeursTactiles.set(event.pointerId, {
+          x: event.clientX,
+          y: event.clientY
+        });
+
+        if (pointeursTactiles.size < 2) {
+          return;
+        }
+
+        if (!pincement) {
+          demarrerPincement();
+        }
+
+        if (!pincement) {
+          return;
+        }
+
+        event.preventDefault();
+
+        const [premier, second] = Array.from(pointeursTactiles.values()).slice(0, 2);
+        const distance = distanceEntrePointeurs(premier, second);
+        const centre = centreEntrePointeurs(premier, second);
+
+        if (!(distance > 0)) {
+          return;
+        }
+
+        const facteur = pincement.distance / distance;
+        const dimensions = bornerDimensionsViewBox(
+          pincement.viewBox[2] * facteur,
+          pincement.viewBox[3] * facteur
+        );
+
+        const rect = svg.getBoundingClientRect();
+        const largeurEcran = Math.max(1, rect.width);
+        const hauteurEcran = Math.max(1, rect.height);
+
+        viewBoxCourante = [
+          pincement.ancreX -
+            ((centre.x - rect.left) / largeurEcran) * dimensions.largeur,
+          pincement.ancreY -
+            ((centre.y - rect.top) / hauteurEcran) * dimensions.hauteur,
+          dimensions.largeur,
+          dimensions.hauteur
+        ];
+
+        appliquerViewBox();
+        return;
+      }
+
       if (!glissement) return;
 
       const largeurEcran = Math.max(1, svg.getBoundingClientRect().width);
@@ -1802,7 +1946,23 @@
       appliquerViewBox();
     });
 
-    function terminerGlissement(event) {
+    function terminerInteractionPointeur(event) {
+      if (event?.pointerType === "touch") {
+        pointeursTactiles.delete(event.pointerId);
+
+        if (svg.hasPointerCapture(event.pointerId)) {
+          svg.releasePointerCapture(event.pointerId);
+        }
+
+        if (pointeursTactiles.size >= 2) {
+          demarrerPincement();
+        } else {
+          pincement = null;
+        }
+
+        return;
+      }
+
       if (
         glissement &&
         event?.pointerId !== undefined &&
@@ -1815,8 +1975,8 @@
       svg.classList.remove("is-dragging");
     }
 
-    svg.addEventListener("pointerup", terminerGlissement);
-    svg.addEventListener("pointercancel", terminerGlissement);
+    svg.addEventListener("pointerup", terminerInteractionPointeur);
+    svg.addEventListener("pointercancel", terminerInteractionPointeur);
     window.addEventListener("resize", actualiserTailleElementsCarte);
 
     (Array.isArray(parc.localitesCarte) ? parc.localitesCarte : [])
@@ -1849,6 +2009,7 @@
           "lcdp-carte-dynamique__localite-label"
         );
         libelle.dataset.pointX = String(point.x);
+        libelle.dataset.pointY = String(point.y);
         libelle.textContent = String(localite.nom || "")
           .trim()
           .toLocaleUpperCase("fr");
