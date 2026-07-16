@@ -1233,6 +1233,8 @@
         throw new Error("Template shift détail parc introuvable.");
       }
 
+      shift.hidden = true;
+      shift.classList.add("lcdp-box-shift-detail-parc--preparation");
       slot.appendChild(shift);
       racine = shift;
 
@@ -1299,36 +1301,81 @@
       throw new Error("Zone contenu shift détail parc introuvable.");
     }
 
+    const vue = vueDemandee || "fiche";
+    const premiereOuverture =
+      detail.racine.hidden === true ||
+      detail.racine.classList.contains("lcdp-box-shift-detail-parc--preparation");
+
+    const contenuPrepare = document.createElement("div");
+    contenuPrepare.className = "lcdp-box-shift-detail-parc__content-preparation";
+
+    try {
+      await rendreVueShiftDetailParcDansConteneur(contenuPrepare, parc, vue);
+    } catch (error) {
+      if (premiereOuverture) {
+        fermerShiftDetailParc();
+      }
+
+      throw error;
+    }
+
     if (detail.alerteSlot) {
       detail.alerteSlot.innerHTML = "";
     }
 
-    const vue = vueDemandee || "fiche";
     etatPage.shiftDetailParc = { parc, vue };
     detail.racine.dataset.lcdpShiftVue = vue;
 
-    await preparerTransitionShiftDetailParc(detail.contenu);
+    if (premiereOuverture) {
+      detail.contenu.replaceChildren(...Array.from(contenuPrepare.childNodes));
+      detail.racine.hidden = false;
+      detail.racine.classList.remove("lcdp-box-shift-detail-parc--preparation");
+      detail.racine.classList.add("lcdp-box-shift-detail-parc--apparition");
 
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          detail.racine.classList.remove("lcdp-box-shift-detail-parc--apparition");
+        });
+      });
+
+      return;
+    }
+
+    await remplacerContenuShiftDetailParc(detail.contenu, contenuPrepare);
+  }
+
+  async function rendreVueShiftDetailParcDansConteneur(contenu, parc, vue) {
     if (vue === "planning") {
-      await afficherPlanningMoisParcDansConteneur(detail.contenu, parc);
+      await afficherPlanningMoisParcDansConteneur(contenu, parc);
       return;
     }
 
     if (vue === "reservation") {
-      await afficherReservationMoisParcDansConteneur(detail.contenu, parc, true);
+      await afficherReservationMoisParcDansConteneur(contenu, parc, true);
       return;
     }
 
-    await afficherFicheParcDansConteneur(detail.contenu, parc);
+    await afficherFicheParcDansConteneur(contenu, parc);
   }
 
-  async function preparerTransitionShiftDetailParc(contenu) {
-    if (!contenu) return;
+  async function remplacerContenuShiftDetailParc(contenu, contenuPrepare) {
+    if (!contenu || !contenuPrepare) return;
+
+    const hauteurCourante = Math.ceil(contenu.getBoundingClientRect().height || 0);
+
+    if (hauteurCourante > 0) {
+      contenu.style.minHeight = hauteurCourante + "px";
+    }
 
     contenu.classList.add("lcdp-box-shift-detail-parc__content--transition");
-    await attendre(90);
-    contenu.innerHTML = "";
+    await attendre(150);
+
+    contenu.replaceChildren(...Array.from(contenuPrepare.childNodes));
+    void contenu.offsetHeight;
     contenu.classList.remove("lcdp-box-shift-detail-parc__content--transition");
+
+    await attendre(170);
+    contenu.style.removeProperty("min-height");
   }
 
   async function afficherAlerteDetailParcOuPage(message) {
@@ -2211,7 +2258,7 @@
 
       changerMois(etatPlanning, -1);
       actualiserNavigationPlanning();
-      afficherPlanningMoisLecture(etatPlanning).catch(console.error);
+      afficherPlanningMoisLecture(etatPlanning, calendrier).catch(console.error);
     });
 
     boutonSuivant.addEventListener("click", () => {
@@ -2219,16 +2266,16 @@
 
       changerMois(etatPlanning, 1);
       actualiserNavigationPlanning();
-      afficherPlanningMoisLecture(etatPlanning).catch(console.error);
+      afficherPlanningMoisLecture(etatPlanning, calendrier).catch(console.error);
     });
 
     actualiserNavigationPlanning();
 
-    await afficherPlanningMoisLecture(etatPlanning);
+    await afficherPlanningMoisLecture(etatPlanning, calendrier);
   }
 
-async function afficherPlanningMoisLecture(etatPlanning) {
-  const racine = document.querySelector("[data-lcdp-planning-parc-lecture='true']");
+async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
+  const racine = calendrierRacine || document.querySelector("[data-lcdp-planning-parc-lecture='true']");
   const moisCourant = racine?.querySelector("[data-lcdp-calendrier-mois-current]");
   const message = racine?.querySelector("[data-lcdp-calendrier-mois-message]");
   const grille = racine?.querySelector("[data-lcdp-calendrier-mois-grid]");
@@ -2825,21 +2872,22 @@ async function afficherPlanningMoisLecture(etatPlanning) {
 
     boutonPrecedent.addEventListener("click", () => {
       changerMois(etatCalendrier, -1);
-      afficherCalendrierMois(etatCalendrier).catch(console.error);
+      afficherCalendrierMois(etatCalendrier, calendrier).catch(console.error);
     });
 
     boutonSuivant.addEventListener("click", () => {
       changerMois(etatCalendrier, 1);
-      afficherCalendrierMois(etatCalendrier).catch(console.error);
+      afficherCalendrierMois(etatCalendrier, calendrier).catch(console.error);
     });
 
-    await afficherCalendrierMois(etatCalendrier);
+    await afficherCalendrierMois(etatCalendrier, calendrier);
   }
 
-  async function afficherCalendrierMois(etatCalendrier) {
-    const moisCourant = document.querySelector("[data-lcdp-calendrier-mois-current]");
-    const message = document.querySelector("[data-lcdp-calendrier-mois-message]");
-    const grille = document.querySelector("[data-lcdp-calendrier-mois-grid]");
+  async function afficherCalendrierMois(etatCalendrier, calendrierRacine) {
+    const racineCalendrier = calendrierRacine || document;
+    const moisCourant = racineCalendrier.querySelector("[data-lcdp-calendrier-mois-current]");
+    const message = racineCalendrier.querySelector("[data-lcdp-calendrier-mois-message]");
+    const grille = racineCalendrier.querySelector("[data-lcdp-calendrier-mois-grid]");
 
     if (!moisCourant || !message || !grille) return;
 
