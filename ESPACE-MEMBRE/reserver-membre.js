@@ -1780,8 +1780,7 @@
     boutonZoomMoins.addEventListener("click", () => zoomer(1.22));
 
     let glissement = null;
-    const pointeursTactiles = new Map();
-    let pincement = null;
+    let pincementTactile = null;
 
     function distanceEntrePointeurs(a, b) {
       return Math.hypot(b.x - a.x, b.y - a.y);
@@ -1804,17 +1803,25 @@
       };
     }
 
-    function demarrerPincement() {
-      if (pointeursTactiles.size < 2) {
-        pincement = null;
+    function convertirTouchEnPoint(touch) {
+      return {
+        x: touch.clientX,
+        y: touch.clientY
+      };
+    }
+
+    function demarrerPincementTactile(touches) {
+      if (!touches || touches.length < 2) {
+        pincementTactile = null;
         return;
       }
 
-      const [premier, second] = Array.from(pointeursTactiles.values()).slice(0, 2);
+      const premier = convertirTouchEnPoint(touches[0]);
+      const second = convertirTouchEnPoint(touches[1]);
       const distance = distanceEntrePointeurs(premier, second);
 
       if (!(distance > 0)) {
-        pincement = null;
+        pincementTactile = null;
         return;
       }
 
@@ -1823,9 +1830,8 @@
       const largeurEcran = Math.max(1, rect.width);
       const hauteurEcran = Math.max(1, rect.height);
 
-      pincement = {
+      pincementTactile = {
         distance,
-        centre,
         viewBox: [...viewBoxCourante],
         ancreX:
           viewBoxCourante[0] +
@@ -1837,31 +1843,13 @@
     }
 
     svg.addEventListener("pointerdown", (event) => {
-      const cible = event.target instanceof Element ? event.target : null;
-
-      if (cible?.closest(".lcdp-carte-dynamique__marker")) {
+      if (event.pointerType === "touch") {
         return;
       }
 
-      if (event.pointerType === "touch") {
-        pointeursTactiles.set(event.pointerId, {
-          x: event.clientX,
-          y: event.clientY
-        });
+      const cible = event.target instanceof Element ? event.target : null;
 
-        if (pointeursTactiles.size >= 2) {
-          pointeursTactiles.forEach((_, pointerId) => {
-            try {
-              svg.setPointerCapture(pointerId);
-            } catch {
-              // Le premier doigt peut déjà être géré par le défilement natif.
-            }
-          });
-
-          demarrerPincement();
-          event.preventDefault();
-        }
-
+      if (cible?.closest(".lcdp-carte-dynamique__marker")) {
         return;
       }
 
@@ -1875,62 +1863,9 @@
     });
 
     svg.addEventListener("pointermove", (event) => {
-      if (event.pointerType === "touch") {
-        if (!pointeursTactiles.has(event.pointerId)) {
-          return;
-        }
-
-        pointeursTactiles.set(event.pointerId, {
-          x: event.clientX,
-          y: event.clientY
-        });
-
-        if (pointeursTactiles.size < 2) {
-          return;
-        }
-
-        if (!pincement) {
-          demarrerPincement();
-        }
-
-        if (!pincement) {
-          return;
-        }
-
-        event.preventDefault();
-
-        const [premier, second] = Array.from(pointeursTactiles.values()).slice(0, 2);
-        const distance = distanceEntrePointeurs(premier, second);
-        const centre = centreEntrePointeurs(premier, second);
-
-        if (!(distance > 0)) {
-          return;
-        }
-
-        const facteur = pincement.distance / distance;
-        const dimensions = bornerDimensionsViewBox(
-          pincement.viewBox[2] * facteur,
-          pincement.viewBox[3] * facteur
-        );
-
-        const rect = svg.getBoundingClientRect();
-        const largeurEcran = Math.max(1, rect.width);
-        const hauteurEcran = Math.max(1, rect.height);
-
-        viewBoxCourante = [
-          pincement.ancreX -
-            ((centre.x - rect.left) / largeurEcran) * dimensions.largeur,
-          pincement.ancreY -
-            ((centre.y - rect.top) / hauteurEcran) * dimensions.hauteur,
-          dimensions.largeur,
-          dimensions.hauteur
-        ];
-
-        appliquerViewBox();
+      if (event.pointerType === "touch" || !glissement) {
         return;
       }
-
-      if (!glissement) return;
 
       const largeurEcran = Math.max(1, svg.getBoundingClientRect().width);
       const hauteurEcran = Math.max(1, svg.getBoundingClientRect().height);
@@ -1948,18 +1883,6 @@
 
     function terminerInteractionPointeur(event) {
       if (event?.pointerType === "touch") {
-        pointeursTactiles.delete(event.pointerId);
-
-        if (svg.hasPointerCapture(event.pointerId)) {
-          svg.releasePointerCapture(event.pointerId);
-        }
-
-        if (pointeursTactiles.size >= 2) {
-          demarrerPincement();
-        } else {
-          pincement = null;
-        }
-
         return;
       }
 
@@ -1977,6 +1900,92 @@
 
     svg.addEventListener("pointerup", terminerInteractionPointeur);
     svg.addEventListener("pointercancel", terminerInteractionPointeur);
+
+    svg.addEventListener("touchstart", (event) => {
+      if (event.touches.length < 2) {
+        pincementTactile = null;
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      demarrerPincementTactile(event.touches);
+    }, { passive: false });
+
+    svg.addEventListener("touchmove", (event) => {
+      if (event.touches.length < 2) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!pincementTactile) {
+        demarrerPincementTactile(event.touches);
+      }
+
+      if (!pincementTactile) {
+        return;
+      }
+
+      const premier = convertirTouchEnPoint(event.touches[0]);
+      const second = convertirTouchEnPoint(event.touches[1]);
+      const distance = distanceEntrePointeurs(premier, second);
+      const centre = centreEntrePointeurs(premier, second);
+
+      if (!(distance > 0)) {
+        return;
+      }
+
+      const facteur = pincementTactile.distance / distance;
+      const dimensions = bornerDimensionsViewBox(
+        pincementTactile.viewBox[2] * facteur,
+        pincementTactile.viewBox[3] * facteur
+      );
+
+      const rect = svg.getBoundingClientRect();
+      const largeurEcran = Math.max(1, rect.width);
+      const hauteurEcran = Math.max(1, rect.height);
+
+      viewBoxCourante = [
+        pincementTactile.ancreX -
+          ((centre.x - rect.left) / largeurEcran) * dimensions.largeur,
+        pincementTactile.ancreY -
+          ((centre.y - rect.top) / hauteurEcran) * dimensions.hauteur,
+        dimensions.largeur,
+        dimensions.hauteur
+      ];
+
+      appliquerViewBox();
+    }, { passive: false });
+
+    svg.addEventListener("touchend", (event) => {
+      if (event.touches.length >= 2) {
+        demarrerPincementTactile(event.touches);
+      } else {
+        pincementTactile = null;
+      }
+    }, { passive: true });
+
+    svg.addEventListener("touchcancel", () => {
+      pincementTactile = null;
+    }, { passive: true });
+
+    const bloquerZoomNavigateurDansCarte = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    svg.addEventListener("gesturestart", bloquerZoomNavigateurDansCarte, {
+      passive: false
+    });
+    svg.addEventListener("gesturechange", bloquerZoomNavigateurDansCarte, {
+      passive: false
+    });
+    svg.addEventListener("gestureend", bloquerZoomNavigateurDansCarte, {
+      passive: false
+    });
+
     window.addEventListener("resize", actualiserTailleElementsCarte);
 
     (Array.isArray(parc.localitesCarte) ? parc.localitesCarte : [])
