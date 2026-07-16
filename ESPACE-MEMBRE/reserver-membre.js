@@ -6,6 +6,29 @@
   const DOSSIER_IMAGES_PARC_OBJET = "/IMAG/PARC";
   const NOM_IMAGE_CARD_PARC = "card1.webp";
 
+  const CLES_PLAGES_AFFICHAGE = [
+    "plage1",
+    "plage2",
+    "plage3",
+    "plage4",
+    "plage5"
+  ];
+
+  const CLES_PLAGES_RESERVATION_ACTUELLES = [
+    "plage1",
+    "plage2",
+    "plage3"
+  ];
+
+  const COULEURS_CSS_PLANNING = {
+    "gris-moyen": "#9ca09e",
+    "bleu-clair": "#cfe3f7",
+    "bleu-fonce": "#2f6fb3",
+    "violet": "#7b5aa6",
+    "orange-clair": "#ffd8a8",
+    "orange-fonce": "#f2a23a"
+  };
+
   const ENDPOINT_NOUVELLE_DATE_MEMBRE = construireEndpointApi(
     "workerNouvelleDateMembreUrl",
     "WORKER_NOUVELLE_DATE_MEMBRE_URL",
@@ -2230,6 +2253,7 @@
       annee: moisMinimumPlanning.getFullYear(),
       mois: moisMinimumPlanning.getMonth() + 1,
       planning: [],
+      modePlanning: "lecture",
       moisMinimum: {
         annee: moisMinimumPlanning.getFullYear(),
         mois: moisMinimumPlanning.getMonth() + 1
@@ -2839,7 +2863,8 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
       parc,
       annee: maintenant.getFullYear(),
       mois: maintenant.getMonth() + 1,
-      planning: []
+      planning: [],
+      modePlanning: "reservation"
     };
 
     etatPage.calendrierMoisActif = etatCalendrier;
@@ -2981,17 +3006,34 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
   function creerCardJourCalendrier(etatCalendrier, dateIso, numeroJour, planningJour) {
     const card = etatPage.templateJourMois.cloneNode(true);
     const numero = card.querySelector("[data-lcdp-card-jour-mois-number]");
-
+    const modeLecture = etatCalendrier.modePlanning === "lecture";
     const ouvert = Boolean(planningJour && planningJour.ouvert);
     const estPasse = dateIso < dateAujourdhuiIso();
     const estAujourdhui = dateIso === dateAujourdhuiIso();
 
     card.dataset.date = dateIso;
-    card.dataset.idparc = String(etatCalendrier.parc.idparc || etatCalendrier.parc.id || "");
-    card.setAttribute("aria-label", construireLibelleJour(dateIso, ouvert));
+    card.dataset.idparc = String(
+      etatCalendrier.parc.idparc ||
+      etatCalendrier.parc.id ||
+      ""
+    );
+    card.setAttribute(
+      "aria-label",
+      construireLibelleJour(dateIso, ouvert)
+    );
 
     if (numero) {
       numero.textContent = String(numeroJour);
+    }
+
+    if (modeLecture) {
+      card.classList.add(
+        "lcdp-box-card-jour-in-calendrier-mois--planning-lecture"
+      );
+    } else {
+      card.classList.add(
+        "lcdp-box-card-jour-in-calendrier-mois--reservation-trois-plages"
+      );
     }
 
     if (estAujourdhui) {
@@ -3008,21 +3050,57 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
       card.disabled = true;
     }
 
-    remplirPlagesJour(card, planningJour);
+    if (modeLecture) {
+      card.disabled = true;
+      card.setAttribute("aria-disabled", "true");
+    }
+
+    remplirPlagesJour(
+      card,
+      planningJour,
+      modeLecture ? "lecture" : "reservation"
+    );
 
     return card;
   }
 
-  function remplirPlagesJour(card, planningJour) {
-    ["plage1", "plage2", "plage3"].forEach((nomPlage) => {
-      const slot = card.querySelector('[data-lcdp-card-jour-mois-slot="' + nomPlage + '"]');
+  function remplirPlagesJour(card, planningJour, mode) {
+    const clesActives = mode === "lecture"
+      ? CLES_PLAGES_AFFICHAGE
+      : CLES_PLAGES_RESERVATION_ACTUELLES;
+
+    CLES_PLAGES_AFFICHAGE.forEach((nomPlage) => {
+      const slot = card.querySelector(
+        '[data-lcdp-card-jour-mois-slot="' + nomPlage + '"]'
+      );
 
       if (!slot) return;
 
-      const plage = planningJour && planningJour.plages ? planningJour.plages[nomPlage] : null;
-      const couleur = normaliserCouleurClasse(plage && plage.ouverte ? plage.couleur : "gris_clair");
+      slot.hidden = !clesActives.includes(nomPlage);
+      slot.className = "lcdp-box-card-jour-in-calendrier-mois__slot";
+      slot.removeAttribute("style");
+      slot.removeAttribute("title");
 
-      slot.className = "lcdp-box-card-jour-in-calendrier-mois__slot lcdp-box-card-jour-in-calendrier-mois__slot--" + couleur;
+      if (slot.hidden) {
+        return;
+      }
+
+      const plage = planningJour?.plages?.[nomPlage] || null;
+
+      if (mode === "lecture") {
+        appliquerRenduPlageLecture(slot, nomPlage, plage);
+        return;
+      }
+
+      const couleur = normaliserCouleurClasse(
+        plage && plage.ouverte
+          ? plage.couleur
+          : "gris_clair"
+      );
+
+      slot.classList.add(
+        "lcdp-box-card-jour-in-calendrier-mois__slot--" + couleur
+      );
     });
   }
 
@@ -4005,15 +4083,161 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     return libelleDate + (ouvert ? " disponible" : " indisponible");
   }
 
+
+  function appliquerRenduPlageLecture(slot, nomPlage, plage) {
+    const plageOuverte = plage && plage.ouverte === true;
+    const couleurs = plageOuverte
+      ? normaliserListeCouleursPlanning(plage)
+      : ["gris-moyen"];
+
+    if (couleurs.length > 1) {
+      slot.classList.add(
+        "lcdp-box-card-jour-in-calendrier-mois__slot--multicolore"
+      );
+      slot.style.setProperty(
+        "--lcdp-plage-fond",
+        construireDegradeCouleursPlanning(couleurs)
+      );
+    } else {
+      slot.classList.add(
+        "lcdp-box-card-jour-in-calendrier-mois__slot--" +
+        (couleurs[0] || "gris-moyen")
+      );
+    }
+
+    const largeurJauge = normaliserLargeurJauge(plage?.jauge);
+
+    if (largeurJauge > 0 && plageOuverte) {
+      slot.classList.add(
+        "lcdp-box-card-jour-in-calendrier-mois__slot--avec-jauge"
+      );
+      slot.style.setProperty(
+        "--lcdp-jauge-largeur",
+        largeurJauge + "%"
+      );
+    }
+
+    slot.title = construireTitrePlagePlanning(
+      nomPlage,
+      plageOuverte ? plage : null
+    );
+  }
+
+  function normaliserListeCouleursPlanning(plage) {
+    const valeurs = Array.isArray(plage?.couleurs)
+      ? plage.couleurs
+      : [plage?.couleur];
+
+    const couleurs = valeurs
+      .map(normaliserCouleurClasse)
+      .filter((couleur) => {
+        return Object.prototype.hasOwnProperty.call(
+          COULEURS_CSS_PLANNING,
+          couleur
+        );
+      });
+
+    return couleurs.length ? couleurs : ["gris-moyen"];
+  }
+
+  function construireDegradeCouleursPlanning(couleurs) {
+    const nombre = couleurs.length;
+    const segments = [];
+
+    couleurs.forEach((couleur, index) => {
+      const debut = (index * 100) / nombre;
+      const fin = ((index + 1) * 100) / nombre;
+      const valeurCss = COULEURS_CSS_PLANNING[couleur] ||
+        COULEURS_CSS_PLANNING["gris-moyen"];
+
+      segments.push(
+        valeurCss + " " + debut + "%",
+        valeurCss + " " + fin + "%"
+      );
+    });
+
+    return "linear-gradient(to right, " + segments.join(", ") + ")";
+  }
+
+  function normaliserLargeurJauge(value) {
+    const largeur = Number(value);
+
+    if (![0, 60, 80, 100].includes(largeur)) {
+      return 0;
+    }
+
+    return largeur;
+  }
+
+  function construireTitrePlagePlanning(nomPlage, plage) {
+    const numero = String(nomPlage || "").replace("plage", "");
+
+    if (!plage || plage.ouverte !== true) {
+      return "Plage " + numero + " fermée";
+    }
+
+    const categories = Array.isArray(plage.categories)
+      ? plage.categories
+      : [];
+
+    const libellesCategories = categories.map((categorie) => {
+      if (categorie === "DUO") return "Duo";
+      if (categorie === "COACH") return "Coach";
+      if (categorie === "FAMILLE") return "Famille";
+      return String(categorie || "");
+    }).filter(Boolean);
+
+    const morceaux = [
+      "Plage " + numero,
+      plage.debut && plage.fin
+        ? plage.debut + "–" + plage.fin
+        : "horaire ouvert",
+      libellesCategories.length
+        ? libellesCategories.join(" + ")
+        : "ouverte"
+    ];
+
+    if (plage.privatisation) {
+      morceaux.push("privatisation");
+    }
+
+    const ratio = Number(plage.ratio);
+
+    if (Number.isFinite(ratio) && ratio >= 0) {
+      morceaux.push(
+        "occupation " + Math.round(ratio * 100) + " %"
+      );
+    }
+
+    return morceaux.join(" · ");
+  }
+
   function normaliserCouleurClasse(couleur) {
-    const valeur = String(couleur || "gris_clair").trim().toLowerCase();
+    const valeur = String(couleur || "gris_clair")
+      .trim()
+      .toLowerCase()
+      .replaceAll("_", "-");
 
-    if (valeur === "vert") return "vert";
-    if (valeur === "rouge_clair" || valeur === "rouge-clair") return "rouge-clair";
-    if (valeur === "rouge") return "rouge";
-    if (valeur === "orange") return "orange";
-    if (valeur === "gris_fonce" || valeur === "gris-fonce" || valeur === "fonce") return "gris-fonce";
+    if (
+      [
+        "gris-moyen",
+        "bleu-clair",
+        "bleu-fonce",
+        "violet",
+        "orange-clair",
+        "orange-fonce",
+        "vert",
+        "orange",
+        "rouge-clair",
+        "rouge",
+        "gris-fonce",
+        "gris-clair"
+      ].includes(valeur)
+    ) {
+      return valeur;
+    }
 
+    if (valeur === "fonce") return "gris-fonce";
     return "gris-clair";
   }
 
