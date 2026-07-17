@@ -4488,16 +4488,22 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
   }
 
   function normaliserListeCouleursPlanning(plage) {
+    const categories = new Set(
+      (Array.isArray(plage?.categories) ? plage.categories : [])
+        .map((categorie) => String(categorie || "").toUpperCase())
+        .filter((categorie) => {
+          return ["DUO", "COACH", "FAMILLE"].includes(categorie);
+        })
+    );
+
     const valeurs = Array.isArray(plage?.couleurs)
       ? plage.couleurs
       : [plage?.couleur];
 
-    const couleurs = valeurs
+    const couleursExplicites = valeurs
       .map(normaliserCouleurClasse)
       .map((couleur) => {
-        return couleur === "gris-clair" || couleur === "gris-moyen"
-          ? "bleu-clair"
-          : couleur;
+        return couleur === "orange" ? "orange-fonce" : couleur;
       })
       .filter((couleur) => {
         return Object.prototype.hasOwnProperty.call(
@@ -4506,7 +4512,47 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
         );
       });
 
-    return couleurs.length ? couleurs : ["bleu-clair"];
+    if (plage?.privatisation) {
+      const couleursPrivatisation = [
+        categories.has("DUO") ? "bleu-fonce" : null,
+        categories.has("COACH") ? "violet" : null,
+        categories.has("FAMILLE") ? "orange-clair" : null
+      ].filter(Boolean);
+
+      if (couleursPrivatisation.length) {
+        return couleursPrivatisation;
+      }
+
+      if (couleursExplicites.length) {
+        return couleursExplicites;
+      }
+    }
+
+    if (couleursExplicites.includes("orange-fonce")) {
+      return ["orange-fonce"];
+    }
+
+    if (categories.has("FAMILLE")) {
+      return ["orange-clair"];
+    }
+
+    if (categories.size === 1 && categories.has("COACH")) {
+      return ["violet"];
+    }
+
+    if (categories.size === 1 && categories.has("DUO")) {
+      return ["bleu-fonce"];
+    }
+
+    const couleursDisponibles = couleursExplicites.filter((couleur) => {
+      return couleur !== "gris-clair" && couleur !== "gris-moyen";
+    });
+
+    if (couleursDisponibles.length) {
+      return couleursDisponibles;
+    }
+
+    return ["bleu-clair"];
   }
 
   function construireDegradeCouleursPlanning(couleurs) {
