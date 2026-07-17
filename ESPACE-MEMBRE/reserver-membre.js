@@ -5,6 +5,7 @@
   const SOURCE_PAGE = "reserver-membre";
   const DOSSIER_IMAGES_PARC_OBJET = "/IMAG/PARC";
   const NOM_IMAGE_CARD_PARC = "card1.webp";
+  const CHEMIN_PICTOWAIT = "/BOX/pictowait.gif";
 
   const CLES_PLAGES_AFFICHAGE = [
     "plage1",
@@ -98,6 +99,10 @@
     pageInitialisee = true;
 
     document.body.classList.add("lcdp-page-reserver");
+    afficherPictowaitListeParcs(
+      "Construction de la liste des parcs…",
+      false
+    );
 
     try {
       const promesseFooter = initialiserFooter()
@@ -508,9 +513,10 @@
       throw new Error("Slot liste des parcs introuvable.");
     }
 
-    slot.replaceChildren();
-    slot.hidden = true;
-    slot.setAttribute("aria-hidden", "true");
+    afficherPictowaitListeParcs(
+      "Construction de la liste des parcs…",
+      false
+    );
 
     const fragmentListe = await chargerFragmentObjet(
       "/BOX/04-box-liste-card.html"
@@ -952,6 +958,71 @@
     await chargerParcsDepartement(departement);
   }
 
+  function afficherPictowaitListeParcs(
+    message,
+    conserverListe
+  ) {
+    const slot = document.getElementById(
+      "lcdp-liste-card-parcs-slot"
+    );
+
+    if (!slot) return;
+
+    const attenteExistante = slot.querySelector(
+      "[data-lcdp-pictowait]"
+    );
+
+    if (attenteExistante) {
+      attenteExistante.remove();
+    }
+
+    const attente = document.createElement("div");
+    attente.className = "lcdp-pictowait";
+    attente.dataset.lcdpPictowait = "";
+    attente.setAttribute("role", "status");
+    attente.setAttribute("aria-live", "polite");
+
+    if (conserverListe === true) {
+      attente.classList.add("lcdp-pictowait--avec-liste");
+    }
+
+    const image = document.createElement("img");
+    image.className = "lcdp-pictowait__image";
+    image.src = construireUrlObjet(CHEMIN_PICTOWAIT);
+    image.alt = "";
+    image.width = 56;
+    image.height = 56;
+    image.decoding = "async";
+    image.setAttribute("aria-hidden", "true");
+
+    const texte = document.createElement("p");
+    texte.className = "lcdp-pictowait__message";
+    texte.textContent =
+      message || "Chargement en cours…";
+
+    attente.appendChild(image);
+    attente.appendChild(texte);
+
+    if (conserverListe === true && slot.children.length > 0) {
+      slot.prepend(attente);
+    } else {
+      slot.replaceChildren(attente);
+    }
+
+    slot.hidden = false;
+    slot.setAttribute("aria-hidden", "false");
+  }
+
+  function masquerPictowaitListeParcs() {
+    const attente = document.querySelector(
+      "#lcdp-liste-card-parcs-slot [data-lcdp-pictowait]"
+    );
+
+    if (attente) {
+      attente.remove();
+    }
+  }
+
   function construireListeParcsPreparee(parcs, departement) {
     if (!etatPage.templateListeParcs) {
       throw new Error("Template de liste des parcs indisponible.");
@@ -1121,6 +1192,11 @@
       return;
     }
 
+    afficherPictowaitListeParcs(
+      "Construction de la liste des parcs…",
+      listeParcsDejaVisible()
+    );
+
     try {
       const reponse = await fetch(
         ENDPOINT_NOUVELLE_DATE_MEMBRE +
@@ -1176,6 +1252,7 @@
         "Erreur technique. Merci de réessayer.";
 
       if (listeParcsDejaVisible()) {
+        masquerPictowaitListeParcs();
         await afficherAlerte(message);
         return;
       }
@@ -4465,7 +4542,7 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     } else {
       slot.classList.add(
         "lcdp-box-card-jour-in-calendrier-mois__slot--" +
-        (couleurs[0] || "gris-moyen")
+        (couleurs[0] || "bleu-clair")
       );
     }
 
@@ -4488,71 +4565,23 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
   }
 
   function normaliserListeCouleursPlanning(plage) {
-    const categories = new Set(
-      (Array.isArray(plage?.categories) ? plage.categories : [])
-        .map((categorie) => String(categorie || "").toUpperCase())
-        .filter((categorie) => {
-          return ["DUO", "COACH", "FAMILLE"].includes(categorie);
-        })
-    );
-
     const valeurs = Array.isArray(plage?.couleurs)
       ? plage.couleurs
       : [plage?.couleur];
 
-    const couleursExplicites = valeurs
+    const couleursAutorisees = new Set([
+      "bleu-clair",
+      "bleu-fonce",
+      "violet",
+      "orange-clair",
+      "orange-fonce"
+    ]);
+
+    const couleurs = valeurs
       .map(normaliserCouleurClasse)
-      .map((couleur) => {
-        return couleur === "orange" ? "orange-fonce" : couleur;
-      })
-      .filter((couleur) => {
-        return Object.prototype.hasOwnProperty.call(
-          COULEURS_CSS_PLANNING,
-          couleur
-        );
-      });
+      .filter((couleur) => couleursAutorisees.has(couleur));
 
-    if (plage?.privatisation) {
-      const couleursPrivatisation = [
-        categories.has("DUO") ? "bleu-fonce" : null,
-        categories.has("COACH") ? "violet" : null,
-        categories.has("FAMILLE") ? "orange-clair" : null
-      ].filter(Boolean);
-
-      if (couleursPrivatisation.length) {
-        return couleursPrivatisation;
-      }
-
-      if (couleursExplicites.length) {
-        return couleursExplicites;
-      }
-    }
-
-    if (couleursExplicites.includes("orange-fonce")) {
-      return ["orange-fonce"];
-    }
-
-    if (categories.has("FAMILLE")) {
-      return ["orange-clair"];
-    }
-
-    if (categories.size === 1 && categories.has("COACH")) {
-      return ["violet"];
-    }
-
-    if (categories.size === 1 && categories.has("DUO")) {
-      return ["bleu-fonce"];
-    }
-
-    const couleursDisponibles = couleursExplicites.filter((couleur) => {
-      return couleur !== "gris-clair" && couleur !== "gris-moyen";
-    });
-
-    if (couleursDisponibles.length) {
-      return couleursDisponibles;
-    }
-
-    return ["bleu-clair"];
+    return couleurs.length ? couleurs : ["bleu-clair"];
   }
 
   function construireDegradeCouleursPlanning(couleurs) {
@@ -4563,7 +4592,7 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
       const debut = (index * 100) / nombre;
       const fin = ((index + 1) * 100) / nombre;
       const valeurCss = COULEURS_CSS_PLANNING[couleur] ||
-        COULEURS_CSS_PLANNING["gris-moyen"];
+        COULEURS_CSS_PLANNING["bleu-clair"];
 
       segments.push(
         valeurCss + " " + debut + "%",
