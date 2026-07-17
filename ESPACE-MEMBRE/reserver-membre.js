@@ -4515,6 +4515,11 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
 
     const couleurs = valeurs
       .map(normaliserCouleurClasse)
+      .map((couleur) => {
+        return couleur === "gris-clair" || couleur === "gris-moyen"
+          ? "bleu-clair"
+          : couleur;
+      })
       .filter((couleur) => {
         return Object.prototype.hasOwnProperty.call(
           COULEURS_CSS_PLANNING,
@@ -4522,7 +4527,7 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
         );
       });
 
-    return couleurs.length ? couleurs : ["gris-moyen"];
+    return couleurs.length ? couleurs : ["bleu-clair"];
   }
 
   function construireDegradeCouleursPlanning(couleurs) {
