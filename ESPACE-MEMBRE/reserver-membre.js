@@ -995,13 +995,12 @@
     image.decoding = "async";
     image.setAttribute("aria-hidden", "true");
 
-    const texte = document.createElement("p");
-    texte.className = "lcdp-pictowait__message";
-    texte.textContent =
-      message || "Chargement en cours…";
+    attente.setAttribute(
+      "aria-label",
+      message || "Chargement en cours"
+    );
 
     attente.appendChild(image);
-    attente.appendChild(texte);
 
     if (conserverListe === true && slot.children.length > 0) {
       slot.prepend(attente);
