@@ -101,14 +101,11 @@
 
     try {
       const promesseFooter = initialiserFooter()
-        .then(() => {
-          initialiserActionsPersistantesReserver();
-          actualiserEspaceFooterReserver();
-        })
         .catch((error) => {
-          console.warn("Footer indisponible sur la page Réserver.", error);
-          initialiserActionsPersistantesReserver();
-          actualiserEspaceFooterReserver();
+          console.warn(
+            "Footer indisponible sur la page Réserver.",
+            error
+          );
         });
 
       await initialiserBandeau();
@@ -123,6 +120,9 @@
       await chargerReservationsMembrePourBlocages();
       await chargerParcsDepartementMembre();
       await promesseFooter;
+
+      initialiserActionsPersistantesReserver();
+      actualiserEspaceFooterReserver();
     } catch (error) {
       console.error("Erreur réserver membre :", error);
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -583,6 +583,22 @@
     actions.appendChild(boutonIa);
 
     slot.replaceChildren(commandeBar);
+    slot.hidden = true;
+    slot.setAttribute("aria-hidden", "true");
+  }
+
+  function afficherCommandeBarReserver() {
+    const slot = document.getElementById(
+      "lcdp-commande-bar-reserver-slot"
+    );
+
+    if (
+      !slot ||
+      !slot.querySelector("[data-lcdp-box-commande-bar]")
+    ) {
+      return;
+    }
+
     slot.hidden = false;
     slot.setAttribute("aria-hidden", "false");
   }
@@ -1016,6 +1032,8 @@
     slot.replaceChildren(listeCard);
     slot.hidden = false;
     slot.setAttribute("aria-hidden", "false");
+
+    afficherCommandeBarReserver();
   }
 
   function listeParcsDejaVisible() {
