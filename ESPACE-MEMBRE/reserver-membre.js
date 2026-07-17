@@ -76,6 +76,7 @@
     departement: "",
     parcs: [],
     reservationsMembre: [],
+    templateListeParcs: null,
     templateCardParc: null,
     templateJourMois: null,
     templateHeureJour: null,
@@ -97,6 +98,7 @@
     pageInitialisee = true;
 
     document.body.classList.add("lcdp-page-reserver");
+    injecterStylesPlanningParcLecture();
 
     try {
       const promesseFooter = initialiserFooter()
@@ -500,6 +502,44 @@
     }
   }
 
+  function injecterStylesPlanningParcLecture() {
+    if (
+      document.querySelector(
+        'style[data-lcdp-planning-parc-lecture="true"]'
+      )
+    ) {
+      return;
+    }
+
+    const style = document.createElement("style");
+    style.dataset.lcdpPlanningParcLecture = "true";
+    style.textContent = `
+      .lcdp-box-card-jour-in-calendrier-mois--planning-lecture.lcdp-box-card-jour-in-calendrier-mois--past {
+        background: #f4f2ec !important;
+        color: var(--lcdp-color-text-muted) !important;
+        opacity: 1 !important;
+      }
+
+      .lcdp-box-card-jour-in-calendrier-mois--planning-lecture.lcdp-box-card-jour-in-calendrier-mois--past
+      .lcdp-box-card-jour-in-calendrier-mois__slots {
+        visibility: hidden !important;
+      }
+
+      .lcdp-box-card-jour-in-calendrier-mois--planning-lecture.lcdp-box-card-jour-in-calendrier-mois--closed:not(.lcdp-box-card-jour-in-calendrier-mois--past) {
+        background: #ffffff !important;
+        color: var(--lcdp-color-text) !important;
+        opacity: 1 !important;
+      }
+
+      .lcdp-box-card-jour-in-calendrier-mois--planning-lecture.lcdp-box-card-jour-in-calendrier-mois--closed:not(.lcdp-box-card-jour-in-calendrier-mois--past)
+      .lcdp-box-card-jour-in-calendrier-mois__slots {
+        visibility: hidden !important;
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
   async function initialiserListeParcs() {
     const slot = document.getElementById("lcdp-liste-card-parcs-slot");
 
@@ -507,17 +547,23 @@
       throw new Error("Slot liste des parcs introuvable.");
     }
 
-    const fragmentListe = await chargerFragmentObjet("/BOX/04-box-liste-card.html");
-    slot.innerHTML = "";
-    slot.appendChild(fragmentListe);
+    slot.replaceChildren();
+    slot.hidden = true;
+    slot.setAttribute("aria-hidden", "true");
 
-    const listeCard = slot.querySelector("[data-lcdp-box-liste-card]");
+    const fragmentListe = await chargerFragmentObjet(
+      "/BOX/04-box-liste-card.html"
+    );
+    const listeCard = fragmentListe.querySelector(
+      "[data-lcdp-box-liste-card]"
+    );
 
     if (!listeCard) {
       throw new Error("Structure List Card parcs incomplète.");
     }
 
     listeCard.classList.add("lcdp-box-liste-card--encadree");
+    etatPage.templateListeParcs = listeCard;
 
     const fragmentCard = await chargerFragmentObjet("/BOX/04-box-card-parc.html");
     etatPage.templateCardParc = fragmentCard.querySelector("[data-lcdp-box-card-parc]");
@@ -537,8 +583,19 @@
     const fragmentHeure = await chargerFragmentObjet("/BOX/04-box-card-heure-in-calendrier-jour.html");
     etatPage.templateHeureJour = fragmentHeure.querySelector("[data-lcdp-card-heure-jour]");
 
-    if (!etatPage.templateCardParc || !etatPage.templateFicheParc || !etatPage.templateMapParc || !etatPage.templateShiftDetailParc || !etatPage.templateJourMois || !etatPage.templateHeureJour) {
-      throw new Error("Templates parc, fiche parc, carte parc, shift détail parc, jour ou heure introuvables.");
+    if (
+      !etatPage.templateListeParcs ||
+      !etatPage.templateCardParc ||
+      !etatPage.templateFicheParc ||
+      !etatPage.templateMapParc ||
+      !etatPage.templateShiftDetailParc ||
+      !etatPage.templateJourMois ||
+      !etatPage.templateHeureJour
+    ) {
+      throw new Error(
+        "Templates liste, parc, fiche parc, carte parc, " +
+        "shift détail parc, jour ou heure introuvables."
+      );
     }
   }
 
@@ -845,7 +902,9 @@
   }
 
   function initialiserActionsListeParcs() {
-    const zoneActions = document.querySelector("[data-lcdp-liste-card-actions]");
+    const zoneActions = etatPage.templateListeParcs?.querySelector(
+      "[data-lcdp-liste-card-actions]"
+    );
 
     if (!zoneActions) return;
 
@@ -916,60 +975,113 @@
     await chargerParcsDepartement(departement);
   }
 
-  async function chargerParcsDepartementMembre() {
-    if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
-      afficherErreurListe("Le service de réservation membre n’est pas configuré.");
-      return;
+  function construireListeParcsPreparee(parcs, departement) {
+    if (!etatPage.templateListeParcs) {
+      throw new Error("Template de liste des parcs indisponible.");
     }
 
-    try {
-      masquerMessageListe();
+    const listeCard = etatPage.templateListeParcs.cloneNode(true);
+    const titre = listeCard.querySelector(
+      "[data-lcdp-liste-card-title]"
+    );
+    const zoneListe = listeCard.querySelector(
+      "[data-lcdp-liste-card-list]"
+    );
+    const zoneMessage = listeCard.querySelector(
+      "[data-lcdp-liste-card-message]"
+    );
+    const zoneActions = listeCard.querySelector(
+      "[data-lcdp-liste-card-actions]"
+    );
 
-      const zoneListe = obtenirZoneListe();
-      if (zoneListe) zoneListe.innerHTML = "";
-
-      const reponse = await fetch(ENDPOINT_NOUVELLE_DATE_MEMBRE + "/autour-de-moi", {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-          "Accept": "application/json"
-        }
-      });
-
-      const data = await reponse.json().catch(() => null);
-
-      if (reponse.status === 401) {
-        redirigerConnexionMembre("inactive");
-        return;
-      }
-
-      if (!reponse.ok || !data || !reponseApiOk(data)) {
-        throw new Error(messageErreurApi(data, "Impossible de charger les parcs du département."));
-      }
-
-      etatPage.departement = String(data.departement || "");
-      etatPage.parcs = Array.isArray(data.parcs) ? data.parcs : [];
-
-      afficherTitreListe();
-      afficherParcs(etatPage.parcs);
-    } catch (error) {
-      console.error("Erreur chargement parcs du département membre :", error);
-      afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
+    if (!titre || !zoneListe || !zoneMessage) {
+      throw new Error("Structure de la liste des parcs incomplète.");
     }
+
+    titre.textContent =
+      "Parcs dans le " + (departement || "département");
+    zoneListe.innerHTML = "";
+
+    if (zoneActions) {
+      zoneActions.innerHTML = "";
+    }
+
+    if (!Array.isArray(parcs) || parcs.length < 1) {
+      zoneMessage.hidden = false;
+      zoneMessage.textContent =
+        "Aucun parc trouvé pour ce département";
+      zoneMessage.dataset.lcdpMessageType = "information";
+      return listeCard;
+    }
+
+    zoneMessage.hidden = true;
+    zoneMessage.textContent = "";
+    delete zoneMessage.dataset.lcdpMessageType;
+
+    parcs.forEach((parc) => {
+      zoneListe.appendChild(creerCardParc(parc));
+    });
+
+    return listeCard;
   }
 
-  async function chargerParcsDepartement(departement) {
+  function construireListeParcsErreur(message) {
+    const listeCard = construireListeParcsPreparee(
+      [],
+      etatPage.departement
+    );
+    const zoneMessage = listeCard.querySelector(
+      "[data-lcdp-liste-card-message]"
+    );
+
+    if (zoneMessage) {
+      zoneMessage.hidden = false;
+      zoneMessage.textContent = String(message || "").trim();
+      zoneMessage.dataset.lcdpMessageType = "erreur";
+    }
+
+    return listeCard;
+  }
+
+  function publierListeParcs(listeCard) {
+    const slot = document.getElementById(
+      "lcdp-liste-card-parcs-slot"
+    );
+
+    if (!slot || !listeCard) {
+      return;
+    }
+
+    slot.replaceChildren(listeCard);
+    slot.hidden = false;
+    slot.setAttribute("aria-hidden", "false");
+  }
+
+  function listeParcsDejaVisible() {
+    const slot = document.getElementById(
+      "lcdp-liste-card-parcs-slot"
+    );
+
+    return Boolean(
+      slot &&
+      slot.hidden !== true &&
+      slot.querySelector("[data-lcdp-box-liste-card]")
+    );
+  }
+
+  async function chargerParcsDepartementMembre() {
     if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
-      afficherErreurListe("Le service de réservation membre n’est pas configuré.");
+      publierListeParcs(
+        construireListeParcsErreur(
+          "Le service de réservation membre n’est pas configuré."
+        )
+      );
       return;
     }
 
     try {
-      afficherChargementListe("Chargement des parcs du département...");
-
       const reponse = await fetch(
-        ENDPOINT_NOUVELLE_DATE_MEMBRE + "/departement?dptmt=" + encodeURIComponent(departement),
+        ENDPOINT_NOUVELLE_DATE_MEMBRE + "/autour-de-moi",
         {
           method: "GET",
           credentials: "include",
@@ -988,17 +1100,110 @@
       }
 
       if (!reponse.ok || !data || !reponseApiOk(data)) {
-        throw new Error(messageErreurApi(data, "Impossible de charger les parcs de ce département."));
+        throw new Error(
+          messageErreurApi(
+            data,
+            "Impossible de charger les parcs du département."
+          )
+        );
       }
 
-      etatPage.departement = String(data.departement || departement);
-      etatPage.parcs = Array.isArray(data.parcs) ? data.parcs : [];
+      const departement = String(data.departement || "");
+      const parcs = Array.isArray(data.parcs) ? data.parcs : [];
+      const listePreparee = construireListeParcsPreparee(
+        parcs,
+        departement
+      );
 
-      afficherTitreListe();
-      afficherParcs(etatPage.parcs);
+      etatPage.departement = departement;
+      etatPage.parcs = parcs;
+
+      publierListeParcs(listePreparee);
     } catch (error) {
-      console.error("Erreur chargement parcs département :", error);
-      afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
+      console.error(
+        "Erreur chargement parcs du département membre :",
+        error
+      );
+
+      publierListeParcs(
+        construireListeParcsErreur(
+          error.message ||
+          "Erreur technique. Merci de réessayer."
+        )
+      );
+    }
+  }
+
+  async function chargerParcsDepartement(departement) {
+    if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
+      await afficherAlerte(
+        "Le service de réservation membre n’est pas configuré."
+      );
+      return;
+    }
+
+    try {
+      const reponse = await fetch(
+        ENDPOINT_NOUVELLE_DATE_MEMBRE +
+        "/departement?dptmt=" +
+        encodeURIComponent(departement),
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            "Accept": "application/json"
+          }
+        }
+      );
+
+      const data = await reponse.json().catch(() => null);
+
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+
+      if (!reponse.ok || !data || !reponseApiOk(data)) {
+        throw new Error(
+          messageErreurApi(
+            data,
+            "Impossible de charger les parcs de ce département."
+          )
+        );
+      }
+
+      const departementRecu = String(
+        data.departement || departement
+      );
+      const parcs = Array.isArray(data.parcs) ? data.parcs : [];
+      const listePreparee = construireListeParcsPreparee(
+        parcs,
+        departementRecu
+      );
+
+      etatPage.departement = departementRecu;
+      etatPage.parcs = parcs;
+
+      publierListeParcs(listePreparee);
+    } catch (error) {
+      console.error(
+        "Erreur chargement parcs département :",
+        error
+      );
+
+      const message =
+        error.message ||
+        "Erreur technique. Merci de réessayer.";
+
+      if (listeParcsDejaVisible()) {
+        await afficherAlerte(message);
+        return;
+      }
+
+      publierListeParcs(
+        construireListeParcsErreur(message)
+      );
     }
   }
 
@@ -4256,9 +4461,19 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
 
   function appliquerRenduPlageLecture(slot, nomPlage, plage) {
     const plageOuverte = plage && plage.ouverte === true;
-    const couleurs = plageOuverte
-      ? normaliserListeCouleursPlanning(plage)
-      : ["gris-moyen"];
+
+    if (!plageOuverte) {
+      slot.style.visibility = "hidden";
+      slot.title = construireTitrePlagePlanning(
+        nomPlage,
+        null
+      );
+      return;
+    }
+
+    slot.style.removeProperty("visibility");
+
+    const couleurs = normaliserListeCouleursPlanning(plage);
 
     if (couleurs.length > 1) {
       slot.classList.add(
