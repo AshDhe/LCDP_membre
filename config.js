@@ -47,6 +47,7 @@
     invitationMembre: "https://invitation-membre-api.lacleduparc.fr",
     aboMembre: "https://abo-membre-api.lacleduparc.fr",
     factuPaiement: "https://factupaiement-api.lacleduparc.fr",
+    partagePage: "https://partage-page-api.lacleduparc.fr",
 
     monCompteMembre: "https://mon-compte-membre-api.lacleduparc.fr",
     majEmailMembre: "https://maj-email-membre-api.lacleduparc.fr",
@@ -90,6 +91,7 @@
     workerInvitationMembreUrl: WORKERS.invitationMembre,
     workerAboMembreUrl: WORKERS.aboMembre,
     workerFactuPaiementUrl: WORKERS.factuPaiement,
+    workerPartagePageUrl: WORKERS.partagePage,
 
     workerMonCompteMembreUrl: WORKERS.monCompteMembre,
     workerMajEmailMembreUrl: WORKERS.majEmailMembre,
@@ -119,6 +121,7 @@
     WORKER_INVITATION_MEMBRE_URL: WORKERS.invitationMembre,
     WORKER_ABO_MEMBRE_URL: WORKERS.aboMembre,
     WORKER_FACTUPAIEMENT_URL: WORKERS.factuPaiement,
+    WORKER_PARTAGE_PAGE_URL: WORKERS.partagePage,
 
     WORKER_MON_COMPTE_MEMBRE_URL: WORKERS.monCompteMembre,
     WORKER_MAJ_EMAIL_MEMBRE_URL: WORKERS.majEmailMembre,
