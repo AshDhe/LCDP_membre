@@ -98,7 +98,6 @@
     pageInitialisee = true;
 
     document.body.classList.add("lcdp-page-reserver");
-    injecterStylesPlanningParcLecture();
 
     try {
       const promesseFooter = initialiserFooter()
@@ -500,44 +499,6 @@
         }
       });
     }
-  }
-
-  function injecterStylesPlanningParcLecture() {
-    if (
-      document.querySelector(
-        'style[data-lcdp-planning-parc-lecture="true"]'
-      )
-    ) {
-      return;
-    }
-
-    const style = document.createElement("style");
-    style.dataset.lcdpPlanningParcLecture = "true";
-    style.textContent = `
-      .lcdp-box-card-jour-in-calendrier-mois--planning-lecture.lcdp-box-card-jour-in-calendrier-mois--past {
-        background: #f4f2ec !important;
-        color: var(--lcdp-color-text-muted) !important;
-        opacity: 1 !important;
-      }
-
-      .lcdp-box-card-jour-in-calendrier-mois--planning-lecture.lcdp-box-card-jour-in-calendrier-mois--past
-      .lcdp-box-card-jour-in-calendrier-mois__slots {
-        visibility: hidden !important;
-      }
-
-      .lcdp-box-card-jour-in-calendrier-mois--planning-lecture.lcdp-box-card-jour-in-calendrier-mois--closed:not(.lcdp-box-card-jour-in-calendrier-mois--past) {
-        background: #ffffff !important;
-        color: var(--lcdp-color-text) !important;
-        opacity: 1 !important;
-      }
-
-      .lcdp-box-card-jour-in-calendrier-mois--planning-lecture.lcdp-box-card-jour-in-calendrier-mois--closed:not(.lcdp-box-card-jour-in-calendrier-mois--past)
-      .lcdp-box-card-jour-in-calendrier-mois__slots {
-        visibility: hidden !important;
-      }
-    `;
-
-    document.head.appendChild(style);
   }
 
   async function initialiserListeParcs() {
