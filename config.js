@@ -47,7 +47,7 @@
     invitationMembre: "https://invitation-membre-api.lacleduparc.fr",
     aboMembre: "https://abo-membre-api.lacleduparc.fr",
     factuPaiement: "https://factupaiement-api.lacleduparc.fr",
-    partagePage: "https://partage-page-api.lacleduparc.fr",
+    partagePage: "https://partage-pages-api.lacleduparc.fr",
 
     monCompteMembre: "https://mon-compte-membre-api.lacleduparc.fr",
     majEmailMembre: "https://maj-email-membre-api.lacleduparc.fr",
