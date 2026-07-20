@@ -1784,7 +1784,7 @@
     if (acces) {
       remplirBlocTexteFiche(
         acces,
-        nettoyerTexteFiche(parc.horaire || "") || "Horaires d’accès non renseignés."
+        construireTexteAccesParc(parc)
       );
     }
 
@@ -2583,6 +2583,54 @@
     return document.createElementNS("http://www.w3.org/2000/svg", nom);
   }
 
+  function construireTexteAccesParc(parc) {
+    const horaire = String(parc?.horaire || "").trim() ||
+      "Horaires d’accès non renseignés.";
+    const dateActualisation = formaterDateMajHoraire(
+      parc?.datemajhoraire
+    );
+    const mentionActualisation = dateActualisation
+      ? "Informations actualisées le " + dateActualisation + "."
+      : "Informations actualisées : date non disponible.";
+
+    return horaire + "\n" + mentionActualisation;
+  }
+
+  function formaterDateMajHoraire(value) {
+    const date = new Date(value || "");
+
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    const morceaux = new Intl.DateTimeFormat(
+      "fr-FR",
+      {
+        timeZone: "Europe/Paris",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23"
+      }
+    ).formatToParts(date);
+    const lire = (type) =>
+      morceaux.find((item) => item.type === type)?.value || "";
+
+    return (
+      lire("day") +
+      " " +
+      lire("month") +
+      " " +
+      lire("year") +
+      " à " +
+      lire("hour") +
+      " h " +
+      lire("minute")
+    );
+  }
+
   function construireTexteContactParc(parc) {
     const responsable = parc && parc.resparc ? parc.resparc : null;
     const nomResponsable = [
@@ -3023,8 +3071,9 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     boutonFiche.type = "button";
     boutonFiche.className = "lcdp-button lcdp-button-secondary lcdp-box-calendrier-mois__action-fiche";
     boutonFiche.textContent = "Fiche parc";
-    boutonFiche.addEventListener("click", () => {
-      afficherVueShiftDetailParc(parc, "fiche").catch(console.error);
+    boutonFiche.addEventListener("click", async () => {
+      const parcComplet = await chargerFicheParcComplete(parc);
+      await afficherVueShiftDetailParc(parcComplet, "fiche");
     });
 
     const boutonReserver = document.createElement("button");
