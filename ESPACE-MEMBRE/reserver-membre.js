@@ -3753,8 +3753,8 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     const boutonFermerTechnique = slot.querySelector(
       "[data-lcdp-calendrier-jour-close]"
     );
-    const entete = slot.querySelector(
-      ".lcdp-box-calendrier-jour__header"
+    const corps = slot.querySelector(
+      ".lcdp-box-calendrier-jour__body"
     );
 
     if (
@@ -3764,7 +3764,7 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
       !message ||
       !grille ||
       !boutonFermerTechnique ||
-      !entete
+      !corps
     ) {
       throw new Error("Structure calendrier jour incomplète.");
     }
@@ -3772,10 +3772,6 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     calendrier.classList.add(
       "lcdp-box-calendrier-jour--shift-detail",
       "lcdp-box-calendrier-jour--planning-lecture"
-    );
-    appliquerClasseCoquePlanningParc(
-      calendrier,
-      "calendrier-jour"
     );
 
     const parc = contexte.parc || {};
@@ -3786,27 +3782,45 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
       parc.dptmt || parc.departement || ""
     ).trim();
 
-    titre.textContent = "Horaires du parc";
-    meta.textContent =
-      formaterDateFr(contexte.jour.date) +
-      " · " +
+    titre.className = "lcdp-box-calendrier-mois__title";
+    titre.textContent =
+      "Parc de " +
       nomParc +
-      (departement ? " · " + departement : "");
+      (departement ? " - " + departement : "");
+
+    meta.className =
+      "lcdp-box-calendrier-mois__meta " +
+      "lcdp-box-calendrier-mois__meta--partage";
+    meta.textContent = "";
+    meta.appendChild(creerActionsPlanningParc(parc));
 
     boutonFermerTechnique.hidden = true;
+
+    const navigation = document.createElement("div");
+    navigation.className = "lcdp-box-calendrier-mois__navigation";
 
     const boutonRetour = document.createElement("button");
     boutonRetour.type = "button";
     boutonRetour.className =
-      "lcdp-button lcdp-button-secondary " +
-      "lcdp-box-calendrier-jour__retour-mois";
-    boutonRetour.textContent = "Retour au mois";
+      "lcdp-box-calendrier-mois__nav-button";
+    boutonRetour.setAttribute(
+      "aria-label",
+      "Retour au planning mensuel"
+    );
+    boutonRetour.textContent = "←";
     boutonRetour.addEventListener("click", () => {
       retournerPlanningMoisLecture(
         contexte.etatPlanning
       ).catch(console.error);
     });
-    entete.appendChild(boutonRetour);
+
+    const dateCourante = document.createElement("h3");
+    dateCourante.className = "lcdp-box-calendrier-mois__month";
+    dateCourante.textContent = formaterDateFr(contexte.jour.date);
+
+    navigation.appendChild(boutonRetour);
+    navigation.appendChild(dateCourante);
+    corps.insertBefore(navigation, message);
 
     remplirGrillePlanningJourLecture(
       grille,
