@@ -1815,6 +1815,13 @@
     lignes.forEach((ligne) => {
       const paragraphe = document.createElement("p");
       paragraphe.textContent = ligne;
+
+      if (ligne.startsWith("Actualisation :")) {
+        paragraphe.classList.add(
+          "lcdp-box-fiche-parc__actualisation"
+        );
+      }
+
       conteneur.appendChild(paragraphe);
     });
   }
@@ -2590,8 +2597,8 @@
       parc?.datemajhoraire
     );
     const mentionActualisation = dateActualisation
-      ? "Informations actualisées le " + dateActualisation + "."
-      : "Informations actualisées : date non disponible.";
+      ? "Actualisation : " + dateActualisation + "."
+      : "Actualisation : date non disponible.";
 
     return horaire + "\n" + mentionActualisation;
   }
