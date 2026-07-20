@@ -1002,7 +1002,7 @@
 
     const liens = [
       {
-        label: "La Clé du Parc",
+        label: "Accueil La Clé du Parc",
         espace: "membre",
         href: "/ESPACE-MEMBRE/accueil-membre.html"
       }
