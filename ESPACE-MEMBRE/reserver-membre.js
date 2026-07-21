@@ -1312,7 +1312,6 @@
     const texte = card.querySelector("[data-lcdp-card-parc-description]");
     const boutonFiche = card.querySelector("[data-action='ouvrir-fiche-parc']");
     const boutonPlanning = card.querySelector("[data-action='voir-planning-parc']");
-    const boutonReserver = card.querySelector("[data-action='nouvelle-date-parc']");
 
     card.dataset.idparc = idparc;
 
@@ -1343,16 +1342,12 @@
 
     if (boutonFiche) {
       boutonFiche.dataset.idparc = idparc;
+      boutonFiche.textContent = "Présentation du parc";
     }
 
     if (boutonPlanning) {
       boutonPlanning.dataset.idparc = idparc;
-      boutonPlanning.textContent = "Planning Parc";
-    }
-
-    if (boutonReserver) {
-      boutonReserver.dataset.idparc = idparc;
-      boutonReserver.textContent = "Réserver";
+      boutonPlanning.textContent = "Accès La Clé du Parc";
     }
 
     return card;
@@ -2314,7 +2309,6 @@
       const badgePrepa = card.querySelector("[data-lcdp-card-parc-badge-prepa]");
       const boutonFiche = card.querySelector("[data-action='ouvrir-fiche-parc']");
       const boutonPlanning = card.querySelector("[data-action='voir-planning-parc']");
-      const boutonReserver = card.querySelector("[data-action='nouvelle-date-parc']");
 
       if (titre) {
         titre.textContent = nettoyerTexteFiche(parcCarte?.nom) || "Parc";
@@ -2352,7 +2346,7 @@
       }
 
       if (boutonFiche) {
-        boutonFiche.textContent = "Le parc";
+        boutonFiche.textContent = "Présentation du parc";
         boutonFiche.addEventListener("click", async (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -2363,22 +2357,12 @@
       }
 
       if (boutonPlanning) {
-        boutonPlanning.textContent = "Planning Parc";
+        boutonPlanning.textContent = "Accès La Clé du Parc";
         boutonPlanning.addEventListener("click", async (event) => {
           event.preventDefault();
           event.stopPropagation();
           fermerCardParc();
           await afficherVueShiftDetailParc(parcCarte, "planning");
-        });
-      }
-
-      if (boutonReserver) {
-        boutonReserver.textContent = "Réserver";
-        boutonReserver.addEventListener("click", async (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          fermerCardParc();
-          await demarrerReservationParc(parcCarte);
         });
       }
 
