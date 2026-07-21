@@ -1647,21 +1647,13 @@
   async function remplacerContenuShiftDetailParc(contenu, contenuPrepare) {
     if (!contenu || !contenuPrepare) return;
 
-    const hauteurCourante = Math.ceil(contenu.getBoundingClientRect().height || 0);
-
-    if (hauteurCourante > 0) {
-      contenu.style.minHeight = hauteurCourante + "px";
-    }
-
-    contenu.classList.add("lcdp-box-shift-detail-parc__content--transition");
-    await attendre(150);
-
-    contenu.replaceChildren(...Array.from(contenuPrepare.childNodes));
-    void contenu.offsetHeight;
-    contenu.classList.remove("lcdp-box-shift-detail-parc__content--transition");
-
-    await attendre(170);
+    contenu.classList.remove(
+      "lcdp-box-shift-detail-parc__content--transition"
+    );
     contenu.style.removeProperty("min-height");
+    contenu.replaceChildren(
+      ...Array.from(contenuPrepare.childNodes)
+    );
   }
 
   async function afficherAlerteDetailParcOuPage(message) {
@@ -3017,7 +3009,7 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     const boutonPlanning = document.createElement("button");
     boutonPlanning.type = "button";
     boutonPlanning.className = "lcdp-button lcdp-button-primary lcdp-box-fiche-parc__action-planning";
-    boutonPlanning.textContent = "Planning parc";
+    boutonPlanning.textContent = "Planning Parc";
     boutonPlanning.addEventListener("click", () => {
       afficherVueShiftDetailParc(parc, "planning").catch(console.error);
     });
@@ -3782,22 +3774,23 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
       parc.dptmt || parc.departement || ""
     ).trim();
 
-    titre.className = "lcdp-box-calendrier-mois__title";
     titre.textContent =
       "Parc de " +
       nomParc +
       (departement ? " - " + departement : "");
 
-    meta.className =
-      "lcdp-box-calendrier-mois__meta " +
-      "lcdp-box-calendrier-mois__meta--partage";
     meta.textContent = "";
+    meta.classList.add(
+      "lcdp-box-calendrier-jour__meta--actions"
+    );
     meta.appendChild(creerActionsPlanningParc(parc));
 
     boutonFermerTechnique.hidden = true;
 
     const navigation = document.createElement("div");
-    navigation.className = "lcdp-box-calendrier-mois__navigation";
+    navigation.className =
+      "lcdp-box-calendrier-mois__navigation " +
+      "lcdp-box-calendrier-jour__navigation-planning";
 
     const boutonRetour = document.createElement("button");
     boutonRetour.type = "button";
@@ -3815,11 +3808,21 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     });
 
     const dateCourante = document.createElement("h3");
-    dateCourante.className = "lcdp-box-calendrier-mois__month";
-    dateCourante.textContent = formaterDateFr(contexte.jour.date);
+    dateCourante.className =
+      "lcdp-box-calendrier-mois__month";
+    dateCourante.textContent = formaterDateFr(
+      contexte.jour.date
+    );
+
+    const espaceNavigation = document.createElement("span");
+    espaceNavigation.className =
+      "lcdp-box-calendrier-mois__nav-button " +
+      "lcdp-box-calendrier-jour__navigation-placeholder";
+    espaceNavigation.setAttribute("aria-hidden", "true");
 
     navigation.appendChild(boutonRetour);
     navigation.appendChild(dateCourante);
+    navigation.appendChild(espaceNavigation);
     corps.insertBefore(navigation, message);
 
     remplirGrillePlanningJourLecture(
