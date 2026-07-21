@@ -2625,29 +2625,23 @@
   }
 
   function construireTexteContactParc(parc) {
-    const responsable = parc && parc.resparc ? parc.resparc : null;
-    const nomResponsable = [
-      nettoyerTexteFiche(responsable?.prenomresp),
-      nettoyerTexteFiche(responsable?.nomresp)
-    ]
-      .filter(Boolean)
-      .join(" ");
+    const responsable = parc?.resparc || null;
+    const email = nettoyerTexteFiche(responsable?.emailresp);
+    const telephone = nettoyerTexteFiche(responsable?.telresp);
 
-    const lignes = [
-      nomResponsable,
-      parc.contact,
-      parc.contactparc,
-      parc.emailparc,
-      parc.email,
-      parc.telephone,
-      parc.telparc,
-      parc.tel
-    ]
-      .map(nettoyerTexteFiche)
-      .filter(Boolean)
-      .filter((valeur, index, liste) => liste.indexOf(valeur) === index);
+    if (email && telephone) {
+      return email + " | Standard téléphonique : " + telephone;
+    }
 
-    return lignes.length ? lignes.join("\n") : "Contact non renseigné.";
+    if (email) {
+      return email;
+    }
+
+    if (telephone) {
+      return "Standard téléphonique : " + telephone;
+    }
+
+    return "Contact non renseigné.";
   }
 
   function construireUrlImageParcFichier(parc, fichier) {
