@@ -100,6 +100,13 @@
     pageInitialisee = true;
 
     document.body.classList.add("lcdp-page-reserver");
+
+    const titrePage = document.querySelector(".lcdp-title-page-center");
+
+    if (titrePage) {
+      titrePage.textContent = "Planifier";
+    }
+
     afficherPictowaitListeParcs(
       "Construction de la liste des parcs…",
       false
