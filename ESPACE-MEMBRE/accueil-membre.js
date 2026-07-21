@@ -514,17 +514,17 @@
 
     const boutons = [
       {
-        label: "RÉSERVER",
+        label: "PLANIFIER",
         style: "lcdp-button-accueil lcdp-button-accueil-orange",
         action: () => redirigerMembre("/ESPACE-MEMBRE/reserver-membre.html")
       },
       {
-        label: "PLANNING",
+        label: "MON AGENDA",
         style: "lcdp-button-accueil lcdp-button-accueil-green",
         action: () => redirigerMembre("/ESPACE-MEMBRE/planning-membre.html")
       },
       {
-        label: "CLÉ DU PARC",
+        label: "LA CLÉ DU PARC",
         style: "lcdp-button-accueil lcdp-button-accueil-blue",
         action: () => gererValidationPresence(etat)
       }
