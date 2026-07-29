@@ -549,7 +549,10 @@
 
   async function gererValidationPresence(etat) {
     if (!etat.aReservationEnCours) {
-      await afficherAlerte("Vous n'avez pas de réservation en cours.");
+      await afficherAlerte(
+        "Vous n'avez pas de réservation en cours.",
+        { variante: "ouvrir" }
+      );
       return;
     }
 
@@ -646,7 +649,40 @@
     return texte + ".";
   }
 
-  async function afficherAlerte(message) {
+  function assurerStyleAlerteAccueilMembre() {
+    if (document.querySelector('style[data-lcdp-alerte-accueil-membre="true"]')) {
+      return;
+    }
+
+    const style = document.createElement("style");
+    style.dataset.lcdpAlerteAccueilMembre = "true";
+    style.textContent = `
+      .lcdp-page-accueil-membre .lcdp-alerte-accueil-ouvrir [data-lcdp-alerte-ok] {
+        background: var(--lcdp-color-blue, #2f6fb3);
+        border-color: var(--lcdp-color-blue, #2f6fb3);
+        color: #ffffff;
+      }
+
+      .lcdp-page-accueil-membre .lcdp-alerte-accueil-ouvrir [data-lcdp-alerte-ok]:hover {
+        background: var(--lcdp-color-blue-hover, #255c96);
+        border-color: var(--lcdp-color-blue-hover, #255c96);
+        color: #ffffff;
+      }
+    `.trim();
+
+    document.head.appendChild(style);
+  }
+
+  function appliquerVarianteAlerteAccueilMembre(alerte, variante) {
+    if (variante !== "ouvrir") {
+      return;
+    }
+
+    assurerStyleAlerteAccueilMembre();
+    alerte.classList.add("lcdp-alerte-accueil-ouvrir");
+  }
+
+  async function afficherAlerte(message, options = {}) {
     const slot = document.getElementById("lcdp-lightbox-slot");
 
     if (!slot) return;
@@ -666,6 +702,7 @@
     }
 
     texte.textContent = normaliserPonctuationAlerte(message);
+    appliquerVarianteAlerteAccueilMembre(alerte, options.variante);
 
     return new Promise((resolve) => {
       let resolu = false;
