@@ -524,7 +524,7 @@
         action: () => redirigerMembre("/ESPACE-MEMBRE/planning-membre.html")
       },
       {
-        label: "LA CLÉ DU PARC",
+        label: "MA CLÉ",
         style: "lcdp-button-accueil lcdp-button-accueil-blue",
         action: () => gererValidationPresence(etat)
       }
