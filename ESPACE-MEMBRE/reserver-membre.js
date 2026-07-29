@@ -1342,12 +1342,12 @@
 
     if (boutonFiche) {
       boutonFiche.dataset.idparc = idparc;
-      boutonFiche.textContent = "Présentation du parc";
+      boutonFiche.textContent = "Présentation";
     }
 
     if (boutonPlanning) {
       boutonPlanning.dataset.idparc = idparc;
-      boutonPlanning.textContent = "Accès La Clé du Parc";
+      boutonPlanning.textContent = "Planning";
     }
 
     return card;
@@ -2346,7 +2346,7 @@
       }
 
       if (boutonFiche) {
-        boutonFiche.textContent = "Présentation du parc";
+        boutonFiche.textContent = "Présentation";
         boutonFiche.addEventListener("click", async (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -2357,7 +2357,7 @@
       }
 
       if (boutonPlanning) {
-        boutonPlanning.textContent = "Accès La Clé du Parc";
+        boutonPlanning.textContent = "Planning";
         boutonPlanning.addEventListener("click", async (event) => {
           event.preventDefault();
           event.stopPropagation();
