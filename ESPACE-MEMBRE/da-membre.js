@@ -260,6 +260,7 @@
     await Promise.all([
       chargerCssObjetUneFois("/BOX/03-box-formulaire.css"),
       chargerCssObjetUneFois("/BOX/03-box-champ-formulaire.css"),
+      chargerCssObjetUneFois("/BOX/04-box-dialogue-champ.css"),
       chargerScriptObjetUneFois("/BOX/03-box-formulaire.js")
     ]);
 
@@ -413,7 +414,7 @@
     ajouterBlocInfoDa(
       bloc,
       "À confirmer ou compléter",
-      "Votre état civil (nom, prénom), votre alias dans l'application (si souhaité), une adrese e-mail personnelle valide, votre n° de téléphone mobile personnel, vos qualités, loisirs et motivation à devenir membre abonné, les valeurs du club, votre parrain actuel dans l'application (si vous en avez un), vos coordonnées bancaires personnels afin de vous rembourser en cas d'annulation d'abonnement."
+      "Votre état civil (nom, prénom), votre alias dans l'application (si souhaité), une adrese e-mail personnelle valide, votre n° de téléphone mobile personnel, vos qualités, loisirs et motivation à devenir membre abonné, les valeurs du club, votre parrain actuel dans l'application (si vous en avez un), vos coordonnées bancaires personnelles afin de vous rembourser en cas d'annulation d'abonnement."
     );
     ajouterBlocInfoDa(
       bloc,
@@ -506,7 +507,7 @@
         champLectureSeule("da-email-membre", "emailmembre", "", "email", "Déjà renseigné"),
         champTexte("da-tel", "tel", "N° de mobile personnel", true, "Numéro de téléphone mobile personnel", "tel", "numeric"),
         champTexte("da-autoquali", "autoquali", "Vos trois qualités", true, "Vos 3 qualités", "text", "text", 100),
-        champTexte("da-autoloisir", "autoloisir", "Vos trois hobbies", true, "Vos 3 loisirs", "text", "text", 100),
+        champTexte("da-autoloisir", "autoloisir", "Vos trois loisirs préférés", true, "Vos 3 loisirs", "text", "text", 100),
         champTexte("da-autonouschoisir", "autonouschoisir", "Pourquoi La Clé du Parc ?", true, "Votre motivation", "text", "text", 100),
         {
           type: "checkbox",
@@ -559,7 +560,8 @@
     if (sectionEtatCivil) {
       const wrapperNom = deplacerChampDansSectionDa(form, sectionEtatCivil, "nommembre");
       const wrapperPrenom = deplacerChampDansSectionDa(form, sectionEtatCivil, "prenommembre");
-      ajouterBoutonMajEtatCivilDa(form, sectionEtatCivil, wrapperNom, wrapperPrenom);
+      ajouterActionModificationEtatCivilDa(form, wrapperNom, "nommembre", "Nom", "modifier-nom-da-membre");
+      ajouterActionModificationEtatCivilDa(form, wrapperPrenom, "prenommembre", "Prénom", "modifier-prenom-da-membre");
       deplacerChampDansSectionDa(form, sectionEtatCivil, "alias");
       deplacerChampDansSectionDa(form, sectionEtatCivil, "emailmembre");
       masquerLibelleChampDa(form, "nommembre");
@@ -658,87 +660,153 @@
     }
   }
 
-  function ajouterBoutonMajEtatCivilDa(form, section, wrapperNom, wrapperPrenom) {
-    if (!section) return;
+  function ajouterActionModificationEtatCivilDa(form, wrapper, name, label, boutonId) {
+    const input = form.querySelector(`[name="${name}"]`);
+    const zoneControl = wrapper?.querySelector("[data-lcdp-champ-control]") || input?.parentNode;
 
-    const hiddenMaj = obtenirChampEtatCivilMajDa(form);
-    const inputNomLecture = form.querySelector('[name="nommembre"]');
-    const inputPrenomLecture = form.querySelector('[name="prenommembre"]');
+    if (!input || !wrapper || !zoneControl || document.getElementById(boutonId)) {
+      return;
+    }
+
+    wrapper.classList.add(
+      "lcdp-box-champ-formulaire--compte-action",
+      "lcdp-box-champ-formulaire--modifiable"
+    );
+    zoneControl.classList.add("lcdp-box-champ-formulaire__control--modifiable");
 
     const bouton = document.createElement("button");
+    bouton.id = boutonId;
     bouton.type = "button";
-    bouton.className = "lcdp-button lcdp-button-secondary";
-    bouton.textContent = "Mettre à jour";
+    bouton.className = "lcdp-box-champ-formulaire__action-edit";
+    bouton.setAttribute("aria-label", "Modifier " + label.toLowerCase());
+    bouton.title = "Modifier " + label.toLowerCase();
+    bouton.innerHTML = `
+      <svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+        <path d="M4 16.8V20h3.2L17.9 9.3l-3.2-3.2L4 16.8Z"></path>
+        <path d="M19.2 8 16 4.8l1.1-1.1a1.7 1.7 0 0 1 2.4 0l.8.8a1.7 1.7 0 0 1 0 2.4L19.2 8Z"></path>
+      </svg>
+    `;
 
-    const box = document.createElement("div");
-    box.className = "lcdp-da-maj-etat-civil";
-    box.hidden = true;
-
-    const champNom = creerChampMajEtatCivilDa("Nom", inputNomLecture?.value || "");
-    const champPrenom = creerChampMajEtatCivilDa("Prénom", inputPrenomLecture?.value || "");
-
-    const boutonValider = document.createElement("button");
-    boutonValider.type = "button";
-    boutonValider.className = "lcdp-button lcdp-button-primary";
-    boutonValider.textContent = "Valider";
-
-    bouton.addEventListener("click", (event) => {
+    bouton.addEventListener("click", async (event) => {
       event.preventDefault();
-      box.hidden = !box.hidden;
+      event.stopPropagation();
 
-      if (!box.hidden) {
-        champNom.input.value = inputNomLecture?.value || "";
-        champPrenom.input.value = inputPrenomLecture?.value || "";
-        champNom.input.focus();
+      const nouvelleValeur = await ouvrirDialogueEtatCivilDa({
+        label,
+        name,
+        value: input.value || "",
+        autocomplete: name === "nommembre" ? "family-name" : "given-name"
+      });
+
+      if (nouvelleValeur === null) {
+        return;
       }
+
+      input.value = nouvelleValeur;
+      obtenirChampEtatCivilMajDa(form).value = "true";
     });
 
-    boutonValider.addEventListener("click", (event) => {
-      event.preventDefault();
-
-      if (inputNomLecture) inputNomLecture.value = champNom.input.value.trim();
-      if (inputPrenomLecture) inputPrenomLecture.value = champPrenom.input.value.trim();
-
-      hiddenMaj.value = "true";
-      box.hidden = true;
-    });
-
-    box.appendChild(champNom.wrapper);
-    box.appendChild(champPrenom.wrapper);
-    box.appendChild(boutonValider);
-
-    if (wrapperPrenom && wrapperPrenom.parentNode === section) {
-      wrapperPrenom.insertAdjacentElement("afterend", box);
-      wrapperPrenom.insertAdjacentElement("afterend", bouton);
-      return;
-    }
-
-    if (wrapperNom && wrapperNom.parentNode === section) {
-      wrapperNom.insertAdjacentElement("afterend", box);
-      wrapperNom.insertAdjacentElement("afterend", bouton);
-      return;
-    }
-
-    section.appendChild(bouton);
-    section.appendChild(box);
+    zoneControl.appendChild(bouton);
   }
 
-  function creerChampMajEtatCivilDa(labelTexte, valeur) {
-    const wrapper = document.createElement("label");
-    wrapper.className = "lcdp-da-maj-etat-civil__champ";
+  async function ouvrirDialogueEtatCivilDa(options) {
+    const conteneur = document.createElement("div");
+    document.body.appendChild(conteneur);
 
-    const span = document.createElement("span");
-    span.textContent = labelTexte;
+    try {
+      const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ.html");
+      conteneur.appendChild(fragment);
 
-    const input = document.createElement("input");
-    input.type = "text";
-    input.value = valeur || "";
-    input.autocomplete = labelTexte === "Nom" ? "family-name" : "given-name";
+      const dialogue = conteneur.querySelector("[data-lcdp-box-dialogue-champ]");
+      const titre = conteneur.querySelector("[data-lcdp-dialogue-champ-title]");
+      const formulaire = conteneur.querySelector("[data-lcdp-dialogue-champ-form]");
+      const zoneContent = conteneur.querySelector("[data-lcdp-dialogue-champ-content]");
+      const erreur = conteneur.querySelector("[data-lcdp-dialogue-champ-error]");
+      const boutonFermer = conteneur.querySelector("[data-lcdp-dialogue-champ-close]");
+      const boutonAnnuler = conteneur.querySelector("[data-lcdp-dialogue-champ-cancel]");
 
-    wrapper.appendChild(span);
-    wrapper.appendChild(input);
+      if (!dialogue || !titre || !formulaire || !zoneContent || !erreur || !boutonFermer || !boutonAnnuler) {
+        throw new Error("Structure dialogue champ incomplète.");
+      }
 
-    return { wrapper, input };
+      titre.textContent = "Modifier " + options.label.toLowerCase();
+
+      const champFragment = await chargerFragmentObjet("/BOX/03-box-champ-formulaire.html");
+      const champ = champFragment.querySelector("[data-lcdp-box-champ-formulaire]");
+      const zoneLabel = champFragment.querySelector("[data-lcdp-champ-label-zone]");
+      const zoneControl = champFragment.querySelector("[data-lcdp-champ-control]");
+
+      if (!champ || !zoneLabel || !zoneControl) {
+        throw new Error("Structure champ formulaire incomplète.");
+      }
+
+      const id = "da-modification-" + options.name;
+      const label = document.createElement("label");
+      label.className = "lcdp-box-champ-formulaire__label";
+      label.setAttribute("for", id);
+      label.textContent = options.label;
+
+      const input = document.createElement("input");
+      input.id = id;
+      input.name = options.name;
+      input.type = "text";
+      input.required = true;
+      input.autocomplete = options.autocomplete || "off";
+      input.value = options.value || "";
+
+      zoneLabel.appendChild(label);
+      zoneControl.appendChild(input);
+      zoneContent.appendChild(champFragment);
+
+      return await new Promise((resolve) => {
+        let resolu = false;
+
+        function fermer(valeur) {
+          if (resolu) return;
+          resolu = true;
+          conteneur.remove();
+          resolve(valeur);
+        }
+
+        boutonFermer.addEventListener("click", () => fermer(null));
+        boutonAnnuler.addEventListener("click", () => fermer(null));
+
+        dialogue.addEventListener("click", (event) => {
+          if (event.target === dialogue) fermer(null);
+        });
+
+        formulaire.addEventListener("submit", (event) => {
+          event.preventDefault();
+
+          const valeur = String(input.value || "").trim().replace(/\s+/g, " ");
+
+          if (!valeur) {
+            erreur.textContent = options.label + " est obligatoire.";
+            erreur.hidden = false;
+            input.focus();
+            return;
+          }
+
+          erreur.hidden = true;
+          erreur.textContent = "";
+          fermer(valeur);
+        });
+
+        document.addEventListener(
+          "keydown",
+          (event) => {
+            if (event.key === "Escape") fermer(null);
+          },
+          { once: true }
+        );
+
+        input.focus();
+        input.select();
+      });
+    } catch (error) {
+      conteneur.remove();
+      throw error;
+    }
   }
 
   function obtenirChampEtatCivilMajDa(form) {
@@ -952,7 +1020,7 @@
     if (payload.emailparrain && !emailValide(payload.emailparrain)) return "L’adresse e-mail du parrain est invalide.";
     if (!/^\d{10}$/.test(payload.tel)) return "Votre numéro de mobile doit contenir 10 chiffres, sans espace.";
     if (!payload.autoquali) return "Vos trois qualités sont obligatoires.";
-    if (!payload.autoloisir) return "Vos trois hobbies sont obligatoires.";
+    if (!payload.autoloisir) return "Vos trois loisirs sont obligatoires.";
     if (!payload.autonouschoisir) return "Pourquoi La Clé du Parc ? est obligatoire.";
     if (payload.autoquali.length > 100 || payload.autoloisir.length > 100 || payload.autonouschoisir.length > 100) return "Les champs limités ne doivent pas dépasser 100 caractères.";
     if (!payload.iban && !payload.swift && !payload.rib) return "Les coordonnées bancaires de remboursement sont obligatoires.";
