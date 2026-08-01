@@ -401,29 +401,29 @@
 
     const intro = document.createElement("p");
     intro.className = "lcdp-text-muted";
-    intro.textContent = "Avant de prendre votre premier abonnement La Clé du Parc, vous devez faire une demande d'abonnement.";
+    intro.textContent = "Avant de prendre votre premier abonnement La Clé du Parc, vous devez faire une DA. Une DA retenue ou non n'emporte aucune obligation d'abonnement.";
     bloc.appendChild(intro);
 
     ajouterBlocInfoDa(
       bloc,
       "Qu'est-ce qu'une DA ?",
-      "La DA permet au club de prendre connaissance de votre motivation à être membre abonné. Le club s'attache à fournir un service nominatif de qualité et à promouvoir des valeurs de respect, de convivialité et de curiosité. Le club s'appuie sur plusieurs réseaux internes de membre actifs."
+      "La DA permet au club de mieux faire votre connaissance et de vous identifier comme candidat membre abonné. Le club s'attache à fournir un service nominatif de qualité et à promouvoir des valeurs de respect, de convivialité et de curiosité. Cela implique un réseau de partenaires."
     );
 
     ajouterBlocInfoDa(
       bloc,
       "À confirmer ou compléter",
-      "Etat civil (nom, prénom), alias dans l'application (si souhaité), adrese e-mail personnelle, n° de téléphone mobile personnel, qualités, loisirs, motivation, valeurs du club, parrain dans l'application (si vous en avez un), coordonnées bancaires pour votre remboursement en cas d'annulation d'un abonnement."
+      "Votre état civil (nom, prénom), votre alias dans l'application (si souhaité), une adrese e-mail personnelle valide, votre n° de téléphone mobile personnel, vos qualités, loisirs et motivation à devenir membre abonné, les valeurs du club, votre parrain actuel dans l'application (si vous en avez un), vos coordonnées bancaires personnels afin de vous rembourser en cas d'annulation d'abonnement."
     );
     ajouterBlocInfoDa(
       bloc,
       "Après envoi",
-      "Votre DA est étudiée par le club avec attention. Elle peut donner lieu à un échange avec un responsable (visio, visu). Vous êtes tenu(e) informé(e) de la décision. Une copie numérique de votre pièce d'identité est nécessaire pour finaliser votre demande si elle a été acceptée. Vous pouvez refaire une DA trois mois après un précédent refus."
+      "Votre DA est prise en compte par le club. Un échange visio ou visu peut être organisé. Vous êtes informé(e) de la suite donnée par le club à votre DA (retenue ou non retenue). Une copie numérique de votre pièce d'identité sera demandée par e-mail pour finaliser votre DA retenue. Vous pouvez faire une nouvelle DA après trois mois si la précédente n'a pas été retenue."
     );
 
 
     const actions = document.createElement("div");
-    actions.className = "lcdp-box-formulaire__actions";
+    actions.className = "lcdp-box-formulaire__actions lcdp-workflow-abonnement__actions-full";
 
     const bouton = document.createElement("button");
     bouton.type = "button";
