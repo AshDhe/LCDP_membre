@@ -401,7 +401,7 @@
 
     const intro = document.createElement("p");
     intro.className = "lcdp-text-muted";
-    intro.textContent = "Avant de prendre votre premier abonnement La Clé du Parc, vous devez faire une DA. Une DA retenue ou non n'emporte aucune obligation d'abonnement.";
+    intro.textContent = "Vous devez faire une DA avant de prendre votre premier abonnement La Clé du Parc. La DA n'emporte aucune obligation d'abonnement, qu'elle soit retenue ou non.";
     bloc.appendChild(intro);
 
     ajouterBlocInfoDa(
