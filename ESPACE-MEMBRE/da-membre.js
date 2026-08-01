@@ -576,6 +576,12 @@
       deplacerChampDansSectionDa(form, sectionTelephone, "tel");
     }
 
+    const wrapperParrain = trouverWrapperChampDa(form, "emailparrain");
+
+    if (wrapperParrain) {
+      ajouterActionModificationParrainDa(form, wrapperParrain);
+    }
+
     const sectionRemboursement = creerSectionFormulaireDa(form, "Coordonnées bancaires de remboursement *", "iban");
 
     if (sectionRemboursement) {
@@ -709,6 +715,69 @@
     zoneControl.appendChild(bouton);
   }
 
+  function ajouterActionModificationParrainDa(form, wrapper) {
+    const input = form.querySelector('[name="emailparrain"]');
+    const zoneControl = wrapper?.querySelector("[data-lcdp-champ-control]") || input?.parentNode;
+    const boutonId = "modifier-parrain-da-membre";
+
+    if (!input || !wrapper || !zoneControl || document.getElementById(boutonId)) {
+      return;
+    }
+
+    input.readOnly = true;
+    input.setAttribute("aria-readonly", "true");
+
+    wrapper.classList.add(
+      "lcdp-box-champ-formulaire--compte-action",
+      "lcdp-box-champ-formulaire--modifiable"
+    );
+    zoneControl.classList.add("lcdp-box-champ-formulaire__control--modifiable");
+
+    const bouton = document.createElement("button");
+    bouton.id = boutonId;
+    bouton.type = "button";
+    bouton.className = "lcdp-box-champ-formulaire__action-edit";
+    bouton.setAttribute("aria-label", "Modifier le parrain");
+    bouton.title = "Modifier le parrain";
+    bouton.innerHTML = `
+      <svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+        <path d="M4 16.8V20h3.2L17.9 9.3l-3.2-3.2L4 16.8Z"></path>
+        <path d="M19.2 8 16 4.8l1.1-1.1a1.7 1.7 0 0 1 2.4 0l.8.8a1.7 1.7 0 0 1 0 2.4L19.2 8Z"></path>
+      </svg>
+    `;
+
+    bouton.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const nouvelleValeur = await ouvrirDialogueEtatCivilDa({
+        titre: "Modifier le parrain",
+        label: "E-mail du parrain",
+        name: "emailparrain",
+        value: input.value || "",
+        type: "email",
+        required: false,
+        autocomplete: "email",
+        nettoyer: nettoyerEmail,
+        valider: (valeur) => {
+          if (!valeur || emailValide(valeur)) {
+            return "";
+          }
+
+          return "L’adresse e-mail du parrain est invalide.";
+        }
+      });
+
+      if (nouvelleValeur === null) {
+        return;
+      }
+
+      input.value = nouvelleValeur;
+    });
+
+    zoneControl.appendChild(bouton);
+  }
+
   async function ouvrirDialogueEtatCivilDa(options) {
     const conteneur = document.createElement("div");
     document.body.appendChild(conteneur);
@@ -729,7 +798,7 @@
         throw new Error("Structure dialogue champ incomplète.");
       }
 
-      titre.textContent = "Modifier " + options.label.toLowerCase();
+      titre.textContent = options.titre || "Modifier " + options.label.toLowerCase();
 
       const champFragment = await chargerFragmentObjet("/BOX/03-box-champ-formulaire.html");
       const champ = champFragment.querySelector("[data-lcdp-box-champ-formulaire]");
@@ -749,8 +818,8 @@
       const input = document.createElement("input");
       input.id = id;
       input.name = options.name;
-      input.type = "text";
-      input.required = true;
+      input.type = options.type || "text";
+      input.required = options.required !== false;
       input.autocomplete = options.autocomplete || "off";
       input.value = options.value || "";
 
@@ -778,10 +847,24 @@
         formulaire.addEventListener("submit", (event) => {
           event.preventDefault();
 
-          const valeur = String(input.value || "").trim().replace(/\s+/g, " ");
+          const valeurBrute = String(input.value || "");
+          const valeur = typeof options.nettoyer === "function"
+            ? options.nettoyer(valeurBrute)
+            : valeurBrute.trim().replace(/\s+/g, " ");
 
-          if (!valeur) {
+          if (options.required !== false && !valeur) {
             erreur.textContent = options.label + " est obligatoire.";
+            erreur.hidden = false;
+            input.focus();
+            return;
+          }
+
+          const messageValidation = typeof options.valider === "function"
+            ? options.valider(valeur)
+            : "";
+
+          if (messageValidation) {
+            erreur.textContent = messageValidation;
             erreur.hidden = false;
             input.focus();
             return;
@@ -859,7 +942,7 @@
     remplirInput(form, "nommembre", membre.nommembre || "", true);
     remplirInput(form, "prenommembre", membre.prenommembre || "", true);
     remplirInput(form, "emailmembre", membre.emailmembre || "", true);
-    remplirInput(form, "emailparrain", parrain.emailparrain || membre.emailparrain || "", false);
+    remplirInput(form, "emailparrain", parrain.emailparrain || membre.emailparrain || "", true);
     remplirInput(form, "alias", membre.alias || "", false);
     remplirInput(form, "tel", membre.tel || "", false);
     remplirInput(form, "autoquali", membre.autoquali || "", false);
