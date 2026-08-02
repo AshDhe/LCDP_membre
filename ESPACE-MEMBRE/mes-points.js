@@ -87,8 +87,6 @@
       const actif = bouton.dataset.lcdpOnglet === nom;
       bouton.setAttribute("aria-selected", String(actif));
       bouton.tabIndex = actif ? 0 : -1;
-      bouton.classList.toggle("lcdp-button-primary", actif);
-      bouton.classList.toggle("lcdp-button-secondary", !actif);
     });
 
     panneaux.forEach((panneau) => {
