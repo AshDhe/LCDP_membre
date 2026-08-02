@@ -9,6 +9,12 @@
     "W_INDEX_MEMBRE_URL",
     "index-membre-api"
   );
+  const ENDPOINT_DA_MEMBRE = construireEndpointApiBurger(
+    "workerDaMembreUrl",
+    "WORKER_DA_MEMBRE_URL",
+    "",
+    "da-membre-api"
+  );
   const ENDPOINT_DECONNEXION_MEMBRE = construireEndpointApiBurger(
     "",
     "W_DECONNEXION_URL",
@@ -212,6 +218,15 @@
       month: "2-digit",
       year: "numeric"
     });
+  }
+
+  function dateDaAtteinteBurger(value) {
+    if (!value) return false;
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return false;
+
+    return date.getTime() <= Date.now();
   }
 
   function normaliserStatutabo(value) {
@@ -865,21 +880,57 @@
     let statudaConnue = contexte && contexte.statudaConnue === true;
     let statuda = normaliserStatuda(contexte?.statuda);
     let datenext = contexte?.datenext || null;
+    let daactive = contexte?.daactive === true
+      ? true
+      : contexte?.daactive === false
+        ? false
+        : null;
 
-    if (!statudaConnue) {
+    const contexteDa = await chargerContexteDaBurger();
+
+    if (contexteDa && contexteDa.statudaConnue === true) {
+      statudaConnue = true;
+      statuda = normaliserStatuda(contexteDa.statuda);
+      datenext = contexteDa.datenext || null;
+      daactive = contexteDa.daactive;
+    } else if (!statudaConnue) {
       const statutCharge = await chargerStatutDaDepuisIndexBurger();
 
       if (statutCharge && statutCharge.statudaConnue === true) {
         statudaConnue = true;
         statuda = normaliserStatuda(statutCharge.statuda);
         datenext = statutCharge.datenext || null;
-
-        if (contexte) {
-          contexte.statudaConnue = true;
-          contexte.statuda = statuda;
-          contexte.datenext = datenext;
-        }
       }
+    }
+
+    if (contexte) {
+      contexte.statudaConnue = statudaConnue;
+      contexte.statuda = statuda;
+      contexte.datenext = datenext;
+
+      if (daactive === true || daactive === false) {
+        contexte.daactive = daactive;
+      }
+    }
+
+    if (daactive === true) {
+      if (statuda === "oui") {
+        window.location.href = construireUrlMembre(PAGE_ABONNEMENT_MEMBRE);
+        return;
+      }
+
+      await afficherAlerteBurger("Votre DA est en cours. Les abonnements sont accessibles après confirmation.");
+      return;
+    }
+
+    if (daactive === false) {
+      if (!dateDaAtteinteBurger(datenext)) {
+        await afficherAlerteBurger("Vous pouvez nous transmettre votre DA à partir du " + formaterDateDa(datenext) + ".");
+        return;
+      }
+
+      await ouvrirPremiereDaDepuisBurger(contexte, boutonBurger, navBurger);
+      return;
     }
 
     if (statuda === "oui") {
@@ -903,6 +954,41 @@
     }
 
     await ouvrirPremiereDaDepuisBurger(contexte, boutonBurger, navBurger);
+  }
+
+  async function chargerContexteDaBurger() {
+    if (!ENDPOINT_DA_MEMBRE) return null;
+
+    try {
+      const reponse = await fetch(ENDPOINT_DA_MEMBRE + "/contexte", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+      const data = await reponse.json().catch(() => null);
+
+      if (!reponse.ok || !data || !(data.ok === true || data.success === true)) {
+        return null;
+      }
+
+      return {
+        statudaConnue: Object.prototype.hasOwnProperty.call(data, "statuda"),
+        statuda: normaliserStatuda(data.statuda),
+        datenext: data.datenext || null,
+        daactive: data.daactive === true
+          ? true
+          : data.daactive === false
+            ? false
+            : null
+      };
+    } catch (error) {
+      console.error("Erreur vérification DA burger :", error);
+      return null;
+    }
   }
 
   async function chargerStatutDaDepuisIndexBurger() {
@@ -952,6 +1038,10 @@
           contexte.statudaConnue = true;
           contexte.statuda = normaliserStatuda(donnees.statuda);
           contexte.datenext = donnees.datenext || contexte.datenext || null;
+
+          if (donnees.daactive === true || donnees.daactive === false) {
+            contexte.daactive = donnees.daactive;
+          }
         },
         onTerminee: () => {
           ouvrirMenu(boutonBurger, navBurger);
@@ -980,7 +1070,12 @@
       fin: etatMembre.fin || etatMembre.finabo || etatMembre.dateFin || etatMembre.datefin || "",
       statudaConnue: Object.prototype.hasOwnProperty.call(etatMembre, "statuda"),
       statuda: normaliserStatuda(etatMembre.statuda),
-      datenext: etatMembre.datenext || null
+      datenext: etatMembre.datenext || null,
+      daactive: etatMembre.daactive === true
+        ? true
+        : etatMembre.daactive === false
+          ? false
+          : null
     };
 
     await completerContexteInviterBurger(contexte);
