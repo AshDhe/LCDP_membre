@@ -168,6 +168,15 @@
     });
   }
 
+  function dateDaAtteinte(value) {
+    if (!value) return false;
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return false;
+
+    return date.getTime() <= Date.now();
+  }
+
   function obtenirLightboxSlotDa() {
     let slot = document.getElementById("lcdp-lightbox-slot");
 
@@ -305,20 +314,46 @@
       const parrain = data.parrain || {};
       const statuda = normaliserStatuda(data.statuda);
       const datenext = data.datenext || contexte.datenext || null;
+      const daactive = data.daactive === true
+        ? true
+        : data.daactive === false
+          ? false
+          : null;
 
       majContexte(options, {
         statuda,
         dateda: data.dateda || null,
-        datenext
+        datenext,
+        daactive
       });
 
-      if (statuda === "encours") {
+      if (daactive === true) {
+        if (statuda === "oui") {
+          window.location.href = construireUrlMembre(PAGE_ABONNEMENT_MEMBRE);
+          return;
+        }
+
         await afficherAlerteDa("Vous avez une DA en cours.");
+        return;
+      }
+
+      if (daactive === false) {
+        if (!dateDaAtteinte(datenext)) {
+          await afficherAlerteDa("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(datenext) + ".");
+          return;
+        }
+
+        await afficherIntroductionDa(membre, parrain, options);
         return;
       }
 
       if (statuda === "oui") {
         window.location.href = construireUrlMembre(PAGE_ABONNEMENT_MEMBRE);
+        return;
+      }
+
+      if (statuda === "encours") {
+        await afficherAlerteDa("Vous avez une DA en cours.");
         return;
       }
 
@@ -342,13 +377,22 @@
       contexte.statuda = normaliserStatuda(donnees.statuda);
       contexte.dateda = donnees.dateda || contexte.dateda || null;
       contexte.datenext = donnees.datenext || contexte.datenext || null;
+
+      if (donnees.daactive === true || donnees.daactive === false) {
+        contexte.daactive = donnees.daactive;
+      }
     }
 
     if (typeof options?.onStatudaChange === "function") {
       options.onStatudaChange({
         statuda: normaliserStatuda(donnees.statuda),
         dateda: donnees.dateda || null,
-        datenext: donnees.datenext || null
+        datenext: donnees.datenext || null,
+        daactive: donnees.daactive === true
+          ? true
+          : donnees.daactive === false
+            ? false
+            : null
       });
     }
   }
@@ -576,12 +620,6 @@
       deplacerChampDansSectionDa(form, sectionTelephone, "tel");
     }
 
-    const wrapperParrain = trouverWrapperChampDa(form, "emailparrain");
-
-    if (wrapperParrain) {
-      ajouterActionModificationParrainDa(form, wrapperParrain);
-    }
-
     const sectionRemboursement = creerSectionFormulaireDa(form, "Coordonnées bancaires de remboursement *", "iban");
 
     if (sectionRemboursement) {
@@ -715,69 +753,6 @@
     zoneControl.appendChild(bouton);
   }
 
-  function ajouterActionModificationParrainDa(form, wrapper) {
-    const input = form.querySelector('[name="emailparrain"]');
-    const zoneControl = wrapper?.querySelector("[data-lcdp-champ-control]") || input?.parentNode;
-    const boutonId = "modifier-parrain-da-membre";
-
-    if (!input || !wrapper || !zoneControl || document.getElementById(boutonId)) {
-      return;
-    }
-
-    input.readOnly = true;
-    input.setAttribute("aria-readonly", "true");
-
-    wrapper.classList.add(
-      "lcdp-box-champ-formulaire--compte-action",
-      "lcdp-box-champ-formulaire--modifiable"
-    );
-    zoneControl.classList.add("lcdp-box-champ-formulaire__control--modifiable");
-
-    const bouton = document.createElement("button");
-    bouton.id = boutonId;
-    bouton.type = "button";
-    bouton.className = "lcdp-box-champ-formulaire__action-edit";
-    bouton.setAttribute("aria-label", "Modifier le parrain");
-    bouton.title = "Modifier le parrain";
-    bouton.innerHTML = `
-      <svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-        <path d="M4 16.8V20h3.2L17.9 9.3l-3.2-3.2L4 16.8Z"></path>
-        <path d="M19.2 8 16 4.8l1.1-1.1a1.7 1.7 0 0 1 2.4 0l.8.8a1.7 1.7 0 0 1 0 2.4L19.2 8Z"></path>
-      </svg>
-    `;
-
-    bouton.addEventListener("click", async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const nouvelleValeur = await ouvrirDialogueEtatCivilDa({
-        titre: "Modifier le parrain",
-        label: "E-mail du parrain",
-        name: "emailparrain",
-        value: input.value || "",
-        type: "email",
-        required: false,
-        autocomplete: "email",
-        nettoyer: nettoyerEmail,
-        valider: (valeur) => {
-          if (!valeur || emailValide(valeur)) {
-            return "";
-          }
-
-          return "L’adresse e-mail du parrain est invalide.";
-        }
-      });
-
-      if (nouvelleValeur === null) {
-        return;
-      }
-
-      input.value = nouvelleValeur;
-    });
-
-    zoneControl.appendChild(bouton);
-  }
-
   async function ouvrirDialogueEtatCivilDa(options) {
     const conteneur = document.createElement("div");
     document.body.appendChild(conteneur);
@@ -798,7 +773,7 @@
         throw new Error("Structure dialogue champ incomplète.");
       }
 
-      titre.textContent = options.titre || "Modifier " + options.label.toLowerCase();
+      titre.textContent = "Modifier " + options.label.toLowerCase();
 
       const champFragment = await chargerFragmentObjet("/BOX/03-box-champ-formulaire.html");
       const champ = champFragment.querySelector("[data-lcdp-box-champ-formulaire]");
@@ -818,8 +793,8 @@
       const input = document.createElement("input");
       input.id = id;
       input.name = options.name;
-      input.type = options.type || "text";
-      input.required = options.required !== false;
+      input.type = "text";
+      input.required = true;
       input.autocomplete = options.autocomplete || "off";
       input.value = options.value || "";
 
@@ -847,24 +822,10 @@
         formulaire.addEventListener("submit", (event) => {
           event.preventDefault();
 
-          const valeurBrute = String(input.value || "");
-          const valeur = typeof options.nettoyer === "function"
-            ? options.nettoyer(valeurBrute)
-            : valeurBrute.trim().replace(/\s+/g, " ");
+          const valeur = String(input.value || "").trim().replace(/\s+/g, " ");
 
-          if (options.required !== false && !valeur) {
+          if (!valeur) {
             erreur.textContent = options.label + " est obligatoire.";
-            erreur.hidden = false;
-            input.focus();
-            return;
-          }
-
-          const messageValidation = typeof options.valider === "function"
-            ? options.valider(valeur)
-            : "";
-
-          if (messageValidation) {
-            erreur.textContent = messageValidation;
             erreur.hidden = false;
             input.focus();
             return;
@@ -942,7 +903,7 @@
     remplirInput(form, "nommembre", membre.nommembre || "", true);
     remplirInput(form, "prenommembre", membre.prenommembre || "", true);
     remplirInput(form, "emailmembre", membre.emailmembre || "", true);
-    remplirInput(form, "emailparrain", parrain.emailparrain || membre.emailparrain || "", true);
+    remplirInput(form, "emailparrain", parrain.emailparrain || membre.emailparrain || "", false);
     remplirInput(form, "alias", membre.alias || "", false);
     remplirInput(form, "tel", membre.tel || "", false);
     remplirInput(form, "autoquali", membre.autoquali || "", false);
@@ -1025,7 +986,8 @@
       majContexte(options, {
         statuda: "encours",
         dateda: data.dateda || null,
-        datenext: data.datenext || null
+        datenext: data.datenext || null,
+        daactive: true
       });
 
       await afficherAlerteDa("Votre DA est envoyée. Merci. Nous espérons vous compter prochainement parmi nos membres abonnés !");
