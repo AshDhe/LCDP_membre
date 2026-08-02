@@ -34,7 +34,7 @@
   let pageInitialisee = false;
   let emailMembreActuel = "";
 
-  const PAGE_POINTS_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/points-membre.html");
+  const PAGE_POINTS_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-points.html");
   const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
   const PAGE_FACTURES_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-factures-membre.html");
 
@@ -142,7 +142,7 @@
       type: "text",
       key: "pointsClubAffichage",
       action: {
-        id: "voir-points-membre",
+        id: "voir-mes-points",
         texte: "Voir mes points"
       },
       badge: {
@@ -640,7 +640,7 @@
   function initialiserActionsModification() {
     const boutonAlias = document.getElementById("modifier-alias-membre");
     const boutonEmail = document.getElementById("modifier-email-membre");
-    const boutonPoints = document.getElementById("voir-points-membre");
+    const boutonPoints = document.getElementById("voir-mes-points");
     const boutonParrain = document.getElementById("modifier-parrain-membre");
     const boutonDepartement = document.getElementById("modifier-departement-membre");
     const actionsAdresseFacturation = [
