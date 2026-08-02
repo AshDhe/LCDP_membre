@@ -28,6 +28,12 @@
     "maj-dptmt-membre-api"
   );
 
+  const ENDPOINT_MES_POINTS = construireEndpointApi(
+    "workerMesPointsUrl",
+    "WORKER_MES_POINTS_URL",
+    "mes-points-api"
+  );
+
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
 
@@ -693,9 +699,90 @@
       throw new Error(messageErreurApi(resultat, "Impossible de charger vos informations."));
     }
 
-    afficherCompteMembre(resultat.compte);
-    afficherEtatMembreCompte(resultat.compte);
-    await actualiserBurgerMembre(compteIndiqueAbonne(resultat.compte));
+    const pointActuel = await chargerPointActuelMembre();
+    const compte = appliquerPointActuelCompte(
+      resultat.compte,
+      pointActuel
+    );
+
+    afficherCompteMembre(compte);
+    afficherEtatMembreCompte(compte);
+    await actualiserBurgerMembre(compteIndiqueAbonne(compte));
+  }
+
+  async function chargerPointActuelMembre() {
+    if (!ENDPOINT_MES_POINTS) {
+      return undefined;
+    }
+
+    const reponse = await fetch(
+      ENDPOINT_MES_POINTS + "/referent?limit=1",
+      {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      }
+    );
+
+    const resultat = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return undefined;
+    }
+
+    if (!reponse.ok || !resultat || resultat.ok !== true) {
+      console.error(
+        "Erreur points Mon compte :",
+        messageErreurApi(
+          resultat,
+          "Impossible de charger vos points."
+        )
+      );
+      return undefined;
+    }
+
+    return Array.isArray(resultat.rows) && resultat.rows.length > 0
+      ? resultat.rows[0]
+      : null;
+  }
+
+  function appliquerPointActuelCompte(compte, pointActuel) {
+    const base = compte && typeof compte === "object"
+      ? compte
+      : {};
+
+    if (pointActuel === undefined) {
+      return base;
+    }
+
+    if (!pointActuel) {
+      return {
+        ...base,
+        pointsClub: "",
+        datePointsClub: "",
+        centilePointsClub: "",
+        statutPointsClub: "",
+        points: null
+      };
+    }
+
+    return {
+      ...base,
+      pointsClub: pointActuel.points ?? "",
+      datePointsClub: pointActuel.date || "",
+      centilePointsClub: pointActuel.centile ?? "",
+      statutPointsClub: pointActuel.statut || "",
+      points: {
+        points: pointActuel.points ?? "",
+        date: pointActuel.date || "",
+        centile: pointActuel.centile ?? "",
+        statut: pointActuel.statut || ""
+      }
+    };
   }
 
   async function actualiserBurgerMembre(abonne) {

@@ -143,32 +143,124 @@
       throw new Error("Zone Passion introuvable.");
     }
 
-    await installerTable(zone);
+    zone.innerHTML = "";
 
-    try {
-      const data = await lireApi("/passion");
-      const rows = (Array.isArray(data.rows) ? data.rows : []).map((row) => ({
-        date: row.date,
-        passion: row.description,
-        type: row.type,
-        points: row.valpoint
-      }));
+    const navigation = creerNavigationMoisPassion();
+    const zoneTable = document.createElement("div");
 
-      window.LCDP_TABLE_LECTURE.initialiser({
-        slot: zone,
-        ariaLabel: "Détail des points Passion",
-        emptyMessage: "Aucun point Passion pour ce mois.",
-        columns: [
-          { key: "date", label: "Date", type: "date" },
-          { key: "passion", label: "Passion" },
-          { key: "type", label: "Type" },
-          { key: "points", label: "Points", type: "number" }
-        ],
-        rows
-      });
-    } catch (error) {
-      afficherErreurTable(zone, error);
+    zoneTable.className = "lcdp-table-lecture__month-content";
+    zone.appendChild(navigation.racine);
+    zone.appendChild(zoneTable);
+
+    await installerTable(zoneTable);
+
+    const controleur = window.LCDP_TABLE_LECTURE.initialiser({
+      slot: zoneTable,
+      ariaLabel: "Détail des points Passion",
+      emptyMessage: "Aucun point Passion pour ce mois.",
+      columns: [
+        { key: "date", label: "Date", type: "date" },
+        { key: "passion", label: "Passion" },
+        { key: "type", label: "Type" },
+        { key: "points", label: "Points", type: "number" }
+      ],
+      rows: []
+    });
+
+    let moisPrecedent = null;
+    let moisSuivant = null;
+    let chargement = false;
+
+    async function chargerMois(mois = "") {
+      if (chargement) {
+        return;
+      }
+
+      chargement = true;
+      navigation.precedent.disabled = true;
+      navigation.suivant.disabled = true;
+
+      try {
+        const chemin = mois
+          ? "/passion?mois=" + encodeURIComponent(mois)
+          : "/passion";
+        const data = await lireApi(chemin);
+        const rows = (Array.isArray(data.rows) ? data.rows : []).map((row) => ({
+          date: row.date,
+          passion: row.description,
+          type: row.type,
+          points: row.valpoint
+        }));
+
+        moisPrecedent = data.moisPrecedent || null;
+        moisSuivant = data.moisSuivant || null;
+        navigation.libelle.textContent = formaterMois(data.mois);
+        controleur.mettreAJour(rows);
+      } catch (error) {
+        moisPrecedent = null;
+        moisSuivant = null;
+        controleur.afficherErreur(
+          String(error?.message || error || "Erreur de chargement.")
+        );
+      } finally {
+        chargement = false;
+        navigation.precedent.disabled = !moisPrecedent;
+        navigation.suivant.disabled = !moisSuivant;
+      }
     }
+
+    navigation.precedent.addEventListener("click", () => {
+      if (moisPrecedent) {
+        chargerMois(moisPrecedent);
+      }
+    });
+
+    navigation.suivant.addEventListener("click", () => {
+      if (moisSuivant) {
+        chargerMois(moisSuivant);
+      }
+    });
+
+    await chargerMois();
+  }
+
+  function creerNavigationMoisPassion() {
+    const racine = document.createElement("nav");
+    const precedent = document.createElement("button");
+    const libelle = document.createElement("p");
+    const suivant = document.createElement("button");
+
+    racine.className = "lcdp-table-lecture__month-navigation";
+    racine.setAttribute("aria-label", "Navigation dans le journal des points");
+
+    precedent.type = "button";
+    precedent.className = "lcdp-table-lecture__month-button";
+    precedent.textContent = "‹";
+    precedent.setAttribute("aria-label", "Afficher le mois précédent");
+    precedent.title = "Mois précédent";
+    precedent.disabled = true;
+
+    libelle.className = "lcdp-table-lecture__month-label";
+    libelle.textContent = "Chargement…";
+    libelle.setAttribute("aria-live", "polite");
+
+    suivant.type = "button";
+    suivant.className = "lcdp-table-lecture__month-button";
+    suivant.textContent = "›";
+    suivant.setAttribute("aria-label", "Afficher le mois suivant");
+    suivant.title = "Mois suivant";
+    suivant.disabled = true;
+
+    racine.appendChild(precedent);
+    racine.appendChild(libelle);
+    racine.appendChild(suivant);
+
+    return {
+      racine,
+      precedent,
+      libelle,
+      suivant
+    };
   }
 
   async function installerTable(zone) {
