@@ -42,7 +42,7 @@
 
     slot.innerHTML = "";
     slot.appendChild(
-      await chargerFragmentObjet("/BOX/05-wraper-onglets.html")
+      await chargerFragmentObjet("/BOX/05-wraper-onglets.html?v=20260803-0838")
     );
 
     const racine = slot.querySelector("[data-lcdp-wraper-onglets]");
@@ -98,7 +98,7 @@
     const zone = racine.querySelector('[data-lcdp-contenu-onglet="referent"]');
 
     if (!zone) {
-      throw new Error("Zone Référent introuvable.");
+      throw new Error("Zone Total introuvable.");
     }
 
     await installerTable(zone);
@@ -114,12 +114,12 @@
 
       window.LCDP_TABLE_LECTURE.initialiser({
         slot: zone,
-        ariaLabel: "Historique du statut référent",
+        ariaLabel: "Historique du total de points et du statut référent",
         emptyMessage: "Aucun historique de points.",
         columns: [
           { key: "mois", label: "Mois" },
-          { key: "referent", label: "Référent" },
           { key: "points", label: "Points", type: "number" },
+          { key: "referent", label: "Référent" },
           { key: "badge", label: "Badge" }
         ],
         rows,
@@ -140,7 +140,7 @@
     const zone = racine.querySelector('[data-lcdp-contenu-onglet="passion"]');
 
     if (!zone) {
-      throw new Error("Zone Passion introuvable.");
+      throw new Error("Zone Détail introuvable.");
     }
 
     zone.innerHTML = "";
@@ -156,12 +156,11 @@
 
     const controleur = window.LCDP_TABLE_LECTURE.initialiser({
       slot: zoneTable,
-      ariaLabel: "Détail des points Passion",
-      emptyMessage: "Aucun point Passion pour ce mois.",
+      ariaLabel: "Détail du journal des points",
+      emptyMessage: "Aucun point pour ce mois.",
       columns: [
         { key: "date", label: "Date", type: "date" },
-        { key: "passion", label: "Passion" },
-        { key: "type", label: "Type" },
+        { key: "passion", label: "Journal" },
         { key: "points", label: "Points", type: "number" }
       ],
       rows: []
@@ -188,7 +187,6 @@
         const rows = (Array.isArray(data.rows) ? data.rows : []).map((row) => ({
           date: row.date,
           passion: row.description,
-          type: row.type,
           points: row.valpoint
         }));
 
