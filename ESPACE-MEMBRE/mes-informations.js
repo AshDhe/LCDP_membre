@@ -304,6 +304,7 @@
     const form = await window.LCDP_creerFormulaire("lcdp-mes-informations-slot", {
       id: "form-mes-informations-membre",
       ariaLabel: "Informations du compte membre",
+      mode: "lecture",
       titre: "",
       sousTitre: "",
       champs: champsCompte.map((champ) => ({
@@ -343,7 +344,10 @@
       const input = document.getElementById(champ.id);
 
       if (input) {
-        input.readOnly = true;
+        if ("readOnly" in input) {
+          input.readOnly = true;
+        }
+
         input.value = "Chargement...";
       }
 
