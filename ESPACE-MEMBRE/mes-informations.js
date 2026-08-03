@@ -1131,7 +1131,7 @@
 
   function formaterPointsClub(compte) {
     const pointsObjet = compte?.points || {};
-    const statut = nettoyerTexteSimple(compte?.statutPointsClub || pointsObjet.statut || "");
+    const statut = nettoyerTexteSimple(compte?.statutPointsClub || pointsObjet.statut || "").toLowerCase();
     const points = compte?.pointsClub ?? compte?.pointsclub ?? pointsObjet.points ?? null;
     const date = compte?.datePointsClub || pointsObjet.date || "";
 
@@ -1151,7 +1151,7 @@
     if (!badge || !image) return;
 
     const pointsObjet = compte?.points || {};
-    const badgePoints = normaliserBadgePoints(compte?.statutPointsClub || pointsObjet.statut || "").toLowerCase;
+    const badgePoints = normaliserBadgePoints(compte?.statutPointsClub || pointsObjet.statut || "");
 
     if (!badgePoints) {
       badge.hidden = true;
