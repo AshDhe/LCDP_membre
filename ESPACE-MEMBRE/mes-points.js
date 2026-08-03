@@ -147,12 +147,15 @@
 
     const navigation = creerNavigationMoisPassion();
     const totalMois = creerTotalMoisPassion();
+    const contenuMois = document.createElement("div");
     const zoneTable = document.createElement("div");
 
+    contenuMois.className = "lcdp-stack-small";
     zoneTable.className = "lcdp-table-lecture__month-content";
+    contenuMois.appendChild(totalMois);
+    contenuMois.appendChild(zoneTable);
     zone.appendChild(navigation.racine);
-    zone.appendChild(totalMois);
-    zone.appendChild(zoneTable);
+    zone.appendChild(contenuMois);
 
     await installerTable(zoneTable);
 
@@ -204,7 +207,7 @@
       } catch (error) {
         moisPrecedent = null;
         moisSuivant = null;
-        totalMois.textContent = "Total des mouvements du mois : —";
+        totalMois.textContent = "Total du mois : —";
         controleur.afficherErreur(
           String(error?.message || error || "Erreur de chargement.")
         );
@@ -234,7 +237,7 @@
     const total = document.createElement("p");
 
     total.className = "lcdp-table-lecture__month-label";
-    total.textContent = "Total des mouvements du mois : chargement…";
+    total.textContent = "Total du mois : chargement…";
     total.setAttribute("aria-live", "polite");
 
     return total;
@@ -245,7 +248,7 @@
     const libelle = Math.abs(total) === 1 ? "point" : "points";
 
     element.textContent =
-      "Total des mouvements du mois : " +
+      "Total du mois : " +
       total.toLocaleString("fr-FR") +
       " " +
       libelle;
