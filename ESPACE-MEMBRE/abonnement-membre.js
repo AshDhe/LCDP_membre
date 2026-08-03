@@ -16,6 +16,12 @@
     "factupaiement-api"
   );
 
+  const ENDPOINT_AVOIR_ABO = construireEndpointApi(
+    "workerAvoirAboUrl",
+    "WORKER_AVOIR_ABO_URL",
+    "avoir-abo-api"
+  );
+
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_ACCUEIL_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html");
   const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
@@ -484,18 +490,22 @@
     const confirmation = await afficherAlerte("Voulez-vous annuler l'abonnement ?");
     if (!confirmation) return;
 
-    const confirmationRetenue = await afficherAlerte("Une retenue de garantie s'applique conformément aux Conditions Générales de Vente.");
+    const confirmationRetenue = await afficherAlerte("Des frais de traitement d’annulation s’appliquent conformément aux Conditions Générales de Vente.");
     if (!confirmationRetenue) return;
 
-    await enregistrerAnnulationAvoir(card);
+    const resultat = await enregistrerAnnulationAvoir(card);
 
-    await afficherAlerte("Votre commande est enregistrée. Vous serez remboursé sous 10 jours conformément aux Conditions Générales de Vente. L'annulation vous a été confirmée par e-mail.");
+    await afficherAlerte(
+      resultat?.emailEnvoye === true
+        ? "Votre demande d'annulation est enregistrée. L'annulation prendra effet demain à 02 h 00. Un e-mail de confirmation avec le lien vers votre avoir vous a été envoyé."
+        : "Votre demande d'annulation est enregistrée. L'annulation prendra effet demain à 02 h 00. Votre avoir est disponible dans Mes factures."
+    );
     await chargerAbonnements();
   }
 
   async function enregistrerAnnulationAvoir(card) {
-    if (!ENDPOINT_ABO_MEMBRE) {
-      throw new Error("Le service abonnement membre n’est pas configuré.");
+    if (!ENDPOINT_AVOIR_ABO) {
+      throw new Error("Le service des avoirs n’est pas configuré.");
     }
 
     const idabo = String(card.dataset.idabo || "").trim();
@@ -504,7 +514,7 @@
       throw new Error("Abonnement introuvable.");
     }
 
-    const reponse = await fetch(ENDPOINT_ABO_MEMBRE + "/annuler-avoir", {
+    const reponse = await fetch(ENDPOINT_AVOIR_ABO + "/demander-annulation", {
       method: "POST",
       credentials: "include",
       cache: "no-store",
@@ -2675,8 +2685,8 @@
       return;
     }
 
-    if (!ENDPOINT_ABO_MEMBRE) {
-      await afficherAlerte("Le service abonnement membre n’est pas configuré.");
+    if (!ENDPOINT_AVOIR_ABO) {
+      await afficherAlerte("Le service des avoirs n’est pas configuré.");
       return;
     }
 
@@ -2684,7 +2694,7 @@
 
     try {
       const reponse = await fetch(
-        ENDPOINT_ABO_MEMBRE + "/avoir?idabo=" + encodeURIComponent(idabo),
+        ENDPOINT_AVOIR_ABO + "/avoir?idabo=" + encodeURIComponent(idabo),
         {
           method: "GET",
           credentials: "include",
@@ -2753,8 +2763,8 @@
 
       boutonImprimer.addEventListener("click", () => {
         const urlAvoir = construireUrlMembre(
-          "/ESPACE-MEMBRE/avoir-abonnement.html?idabo=" +
-          encodeURIComponent(idabo)
+          "/ESPACE-MEMBRE/avoir-abonnement.html?avoirid=" +
+          encodeURIComponent(avoir.avoirid || avoir.numeroavoir || "")
         );
 
         window.open(urlAvoir, "_blank", "noopener");
@@ -2964,19 +2974,55 @@
 
     if (estAvoir) {
       remplacerTexteExact(fragment, "Prix", "Annulation");
-      remplirTexte(fragment, "[data-lcdp-facture-prix-brut-label]", "Avoir TTC (TVA " + formaterTaux(prix.tva1) + "%) €");
-      remplirTexte(fragment, "[data-lcdp-facture-prix-brut]", formaterMontant(prix.montantAvoirTtc ?? prix.montantFactureTtc ?? prix.bruttc));
-      remplirTexte(fragment, "[data-lcdp-facture-prix-apayer]", formaterMontant(prix.montantRembourseTtc ?? prix.netnettc));
-      remplirTexte(fragment, "[data-lcdp-facture-prix-ht]", formaterMontant(prix.montantRembourseHt ?? prix.ht));
-      remplirTexte(fragment, "[data-lcdp-facture-prix-tva]", formaterMontant(prix.montantRembourseTva ?? prix.tva));
-      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-apayer]", "À rembourser (TTC) € *");
-      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-ht]", "HT €");
+      remplirTexte(
+        fragment,
+        "[data-lcdp-facture-prix-brut-label]",
+        "Paiements pris en compte (TTC) €"
+      );
+      remplirTexte(
+        fragment,
+        "[data-lcdp-facture-prix-brut]",
+        formaterMontant(prix.montantPayeMoisTtc)
+      );
+      remplirTexte(
+        fragment,
+        "[data-lcdp-facture-prix-apayer]",
+        formaterMontant(prix.montantRembourseTtc ?? prix.netnettc)
+      );
+      remplirTexte(
+        fragment,
+        "[data-lcdp-facture-prix-ht]",
+        formaterMontant(prix.montantRembourseHt ?? prix.ht)
+      );
+      remplirTexte(
+        fragment,
+        "[data-lcdp-facture-prix-tva]",
+        formaterMontant(prix.montantRembourseTva ?? prix.tva)
+      );
+      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-apayer]", "Remboursement dû (TTC) €");
+      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-ht]", "Remboursement HT €");
       renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-tva]", "TVA €");
 
       if (listeRemises) {
         listeRemises.innerHTML = "";
-        ajouterLignePrixAvoir(listeRemises, "HT €", prix.montantAvoirHt);
-        ajouterLignePrixAvoir(listeRemises, "TVA €", prix.montantAvoirTva);
+        ajouterLignePrixAvoir(
+          listeRemises,
+          "Frais de traitement (TTC) €",
+          prix.fraistraitementTtc,
+          { negatif: true }
+        );
+        ajouterLignePrixAvoir(
+          listeRemises,
+          "Remise paiement 1x déduite (TTC) €",
+          prix.remisePaiement1xTtc,
+          { negatif: true, masquerZero: true }
+        );
+        ajouterLignePrixAvoir(
+          listeRemises,
+          "Remise sur frais de traitement (TTC) €",
+          prix.remiseFraisTraitementTtc,
+          { positif: true, masquerZero: true }
+        );
       }
 
       return fragment;
@@ -3021,6 +3067,7 @@
     const valeur = nombreOuNull(montant);
 
     if (!liste || valeur === null) return;
+    if (options.masquerZero === true && valeur === 0) return;
 
     const row = document.createElement("div");
     row.className = "lcdp-box-card-prix-in-facture__row";
@@ -3029,7 +3076,8 @@
     label.textContent = libelle;
 
     const prix = document.createElement("strong");
-    prix.textContent = options.negatif ? "-" + formaterMontant(valeur) : formaterMontant(valeur);
+    const prefixe = options.negatif ? "-" : options.positif ? "+" : "";
+    prix.textContent = prefixe + formaterMontant(Math.abs(valeur));
 
     row.appendChild(label);
     row.appendChild(prix);
@@ -3038,6 +3086,9 @@
 
   async function creerCardPaiementFacture(paiement) {
     const fragment = await chargerFragmentObjet("/BOX/04-box-card-paiement-in-facture.html");
+    if (String(paiement?.type || "").trim().toLowerCase() === "avoir") {
+      remplacerTexteExact(fragment, "Paiement", paiement.titre || "Remboursement");
+    }
     const echeances = fragment.querySelector("[data-lcdp-facture-paiement-echeances]");
     const ribRow = fragment.querySelector("[data-lcdp-facture-paiement-rib-row]");
     const rib = fragment.querySelector("[data-lcdp-facture-paiement-rib]");
@@ -3055,9 +3106,13 @@
 
         const valeur = document.createElement("strong");
         const montant = nombreOuNull(echeance.montant);
-        valeur.textContent = montant === null
-          ? formaterDate(echeance.date)
-          : formaterDate(echeance.date) + " - " + formaterMontant(montant);
+        if (montant === null) {
+          valeur.textContent = formaterDate(echeance.date);
+        } else if (!echeance.date && String(echeance.statut || "") === "a_payer") {
+          valeur.textContent = "À venir - " + formaterMontant(montant);
+        } else {
+          valeur.textContent = formaterDate(echeance.date) + " - " + formaterMontant(montant);
+        }
 
         row.appendChild(label);
         row.appendChild(valeur);

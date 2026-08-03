@@ -4,10 +4,10 @@
   const CONFIG_PAGE = window.SITE_CONFIG || {};
   const SOURCE_PAGE = "avoir-abonnement";
 
-  const ENDPOINT_ABO_MEMBRE = construireEndpointApi(
-    "workerAboMembreUrl",
-    "WORKER_ABO_MEMBRE_URL",
-    "abo-membre-api"
+  const ENDPOINT_AVOIR_ABO = construireEndpointApi(
+    "workerAvoirAboUrl",
+    "WORKER_AVOIR_ABO_URL",
+    "avoir-abo-api"
   );
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
@@ -22,25 +22,26 @@
   async function initialiserPageAvoir() {
     const racine = document.getElementById("lcdp-avoir-a4-root");
     const params = new URLSearchParams(window.location.search);
+    const avoirid = String(params.get("avoirid") || "").trim();
     const idabo = String(params.get("idabo") || "").trim();
 
     if (!racine) return;
 
-    if (!idabo) {
-      afficherMessage(racine, "Identifiant d'abonnement manquant.");
+    if (!avoirid && !idabo) {
+      afficherMessage(racine, "Numéro d'avoir manquant.");
       return;
     }
 
-    if (!ENDPOINT_ABO_MEMBRE) {
-      afficherMessage(racine, "Le service abonnement membre n’est pas configuré.");
+    if (!ENDPOINT_AVOIR_ABO) {
+      afficherMessage(racine, "Le service des avoirs n’est pas configuré.");
       return;
     }
 
     try {
-      const avoir = await chargerAvoir(idabo);
+      const avoir = await chargerAvoir({ avoirid, idabo });
       await afficherAvoirA4(racine, avoir);
 
-      document.title = "Avoir " + (avoir?.numeroavoir || avoir?.orderid || idabo) + " - La Clé du Parc";
+      document.title = "Avoir " + (avoir?.avoirid || avoir?.numeroavoir || avoir?.orderid || avoirid || idabo) + " - La Clé du Parc";
 
     } catch (error) {
       console.error("Erreur avoir abonnement :", error);
@@ -48,9 +49,12 @@
     }
   }
 
-  async function chargerAvoir(idabo) {
+  async function chargerAvoir({ avoirid, idabo }) {
+    const recherche = avoirid
+      ? "avoirid=" + encodeURIComponent(avoirid)
+      : "idabo=" + encodeURIComponent(idabo);
     const reponse = await fetch(
-      ENDPOINT_ABO_MEMBRE + "/avoir?idabo=" + encodeURIComponent(idabo),
+      ENDPOINT_AVOIR_ABO + "/avoir?" + recherche,
       {
         method: "GET",
         credentials: "include",
@@ -214,19 +218,55 @@
 
     if (estAvoir) {
       remplacerTexteExact(fragment, "Prix", "Annulation");
-      remplirTexte(fragment, "[data-lcdp-facture-prix-brut-label]", "Avoir TTC (TVA " + formaterTaux(prix.tva1) + "%) €");
-      remplirTexte(fragment, "[data-lcdp-facture-prix-brut]", formaterMontant(prix.montantAvoirTtc ?? prix.montantFactureTtc ?? prix.bruttc));
-      remplirTexte(fragment, "[data-lcdp-facture-prix-apayer]", formaterMontant(prix.montantRembourseTtc ?? prix.netnettc));
-      remplirTexte(fragment, "[data-lcdp-facture-prix-ht]", formaterMontant(prix.montantRembourseHt ?? prix.ht));
-      remplirTexte(fragment, "[data-lcdp-facture-prix-tva]", formaterMontant(prix.montantRembourseTva ?? prix.tva));
-      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-apayer]", "À rembourser (TTC) € *");
-      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-ht]", "HT €");
+      remplirTexte(
+        fragment,
+        "[data-lcdp-facture-prix-brut-label]",
+        "Paiements pris en compte (TTC) €"
+      );
+      remplirTexte(
+        fragment,
+        "[data-lcdp-facture-prix-brut]",
+        formaterMontant(prix.montantPayeMoisTtc)
+      );
+      remplirTexte(
+        fragment,
+        "[data-lcdp-facture-prix-apayer]",
+        formaterMontant(prix.montantRembourseTtc ?? prix.netnettc)
+      );
+      remplirTexte(
+        fragment,
+        "[data-lcdp-facture-prix-ht]",
+        formaterMontant(prix.montantRembourseHt ?? prix.ht)
+      );
+      remplirTexte(
+        fragment,
+        "[data-lcdp-facture-prix-tva]",
+        formaterMontant(prix.montantRembourseTva ?? prix.tva)
+      );
+      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-apayer]", "Remboursement dû (TTC) €");
+      renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-ht]", "Remboursement HT €");
       renommerLibelleLigne(fragment, "[data-lcdp-facture-prix-tva]", "TVA €");
 
       if (listeRemises) {
         listeRemises.innerHTML = "";
-        ajouterLignePrixAvoir(listeRemises, "HT €", prix.montantAvoirHt);
-        ajouterLignePrixAvoir(listeRemises, "TVA €", prix.montantAvoirTva);
+        ajouterLignePrixAvoir(
+          listeRemises,
+          "Frais de traitement (TTC) €",
+          prix.fraistraitementTtc,
+          { negatif: true }
+        );
+        ajouterLignePrixAvoir(
+          listeRemises,
+          "Remise paiement 1x déduite (TTC) €",
+          prix.remisePaiement1xTtc,
+          { negatif: true, masquerZero: true }
+        );
+        ajouterLignePrixAvoir(
+          listeRemises,
+          "Remise sur frais de traitement (TTC) €",
+          prix.remiseFraisTraitementTtc,
+          { positif: true, masquerZero: true }
+        );
       }
 
       return fragment;
@@ -271,6 +311,7 @@
     const valeur = nombreOuNull(montant);
 
     if (!liste || valeur === null) return;
+    if (options.masquerZero === true && valeur === 0) return;
 
     const row = document.createElement("div");
     row.className = "lcdp-box-card-prix-in-facture__row";
@@ -279,7 +320,8 @@
     label.textContent = libelle;
 
     const prix = document.createElement("strong");
-    prix.textContent = options.negatif ? "-" + formaterMontant(valeur) : formaterMontant(valeur);
+    const prefixe = options.negatif ? "-" : options.positif ? "+" : "";
+    prix.textContent = prefixe + formaterMontant(Math.abs(valeur));
 
     row.appendChild(label);
     row.appendChild(prix);
@@ -288,11 +330,9 @@
 
   async function creerCardPaiementFacture(paiement) {
     const fragment = await chargerFragmentObjet("/BOX/04-box-card-paiement-in-facture.html");
-
     if (String(paiement?.type || "").trim().toLowerCase() === "avoir") {
-      remplacerTexteExact(fragment, "Paiement", paiement.titre || "Paiement *");
+      remplacerTexteExact(fragment, "Paiement", paiement.titre || "Remboursement");
     }
-
     const echeances = fragment.querySelector("[data-lcdp-facture-paiement-echeances]");
     const ribRow = fragment.querySelector("[data-lcdp-facture-paiement-rib-row]");
     const rib = fragment.querySelector("[data-lcdp-facture-paiement-rib]");
@@ -310,9 +350,13 @@
 
         const valeur = document.createElement("strong");
         const montant = nombreOuNull(echeance.montant);
-        valeur.textContent = montant === null
-          ? formaterDate(echeance.date)
-          : formaterDate(echeance.date) + " - " + formaterMontant(montant);
+        if (montant === null) {
+          valeur.textContent = formaterDate(echeance.date);
+        } else if (!echeance.date && String(echeance.statut || "") === "a_payer") {
+          valeur.textContent = "À venir - " + formaterMontant(montant);
+        } else {
+          valeur.textContent = formaterDate(echeance.date) + " - " + formaterMontant(montant);
+        }
 
         row.appendChild(label);
         row.appendChild(valeur);
@@ -321,9 +365,12 @@
     }
 
     if (ribRow && rib) {
-      const afficherRib = paiement.afficherRib === true;
-      ribRow.hidden = !afficherRib;
-      if (afficherRib && paiement.rib) {
+      const afficherRib = paiementParCarteBancaire(paiement) ? false : paiement.afficherRib === true;
+
+      if (!afficherRib) {
+        ribRow.remove();
+      } else if (paiement.rib) {
+        ribRow.hidden = false;
         rib.textContent = paiement.rib;
       }
     }
