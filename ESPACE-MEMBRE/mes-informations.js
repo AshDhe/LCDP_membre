@@ -1087,7 +1087,7 @@
 
   function formaterAliasAffichage(value) {
     const alias = nettoyerTexteSimple(value);
-    return "Alias : " + (alias || "alias non renseigné");
+    return "Alias : " + (alias || "non renseigné");
   }
 
   function formaterMembreDepuis(value) {
