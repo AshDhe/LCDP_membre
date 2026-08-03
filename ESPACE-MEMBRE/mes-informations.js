@@ -570,7 +570,7 @@
     }
 
     const wrapper = document.createElement("div");
-    wrapper.className = "lcdp-box-formulaire__actions";
+    wrapper.className = "lcdp-box-formulaire__actions lcdp-compte-actions-adresse";
 
     const bouton = document.createElement("button");
     bouton.id = action.id;
