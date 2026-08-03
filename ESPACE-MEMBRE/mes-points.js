@@ -171,24 +171,24 @@
       rows: []
     });
 
-    let moisPrecedent = null;
-    let moisSuivant = null;
+    const moisCourant = obtenirMoisCourantParis();
+    let moisAffiche = moisCourant;
     let chargement = false;
 
-    async function chargerMois(mois = "") {
+    async function chargerMois(mois = moisCourant) {
       if (chargement) {
         return;
       }
 
+      moisAffiche = mois || moisCourant;
       chargement = true;
       navigation.precedent.disabled = true;
       navigation.suivant.disabled = true;
 
       try {
-        const chemin = mois
-          ? "/passion?mois=" + encodeURIComponent(mois)
-          : "/passion";
-        const data = await lireApi(chemin);
+        const data = await lireApi(
+          "/passion?mois=" + encodeURIComponent(moisAffiche)
+        );
         const rows = (Array.isArray(data.rows) ? data.rows : []).map((row) => ({
           date: row.date,
           passion: row.description,
@@ -199,38 +199,34 @@
           0
         );
 
-        moisPrecedent = data.moisPrecedent || null;
-        moisSuivant = data.moisSuivant || null;
-        navigation.libelle.textContent = formaterMois(data.mois);
+        moisAffiche = data.mois || moisAffiche;
+        navigation.libelle.textContent = formaterMois(moisAffiche);
         actualiserTotalMoisPassion(totalMois, totalMouvements);
         controleur.mettreAJour(rows);
       } catch (error) {
-        moisPrecedent = null;
-        moisSuivant = null;
+        navigation.libelle.textContent = formaterMois(moisAffiche);
         totalMois.textContent = "Total du mois : —";
         controleur.afficherErreur(
           String(error?.message || error || "Erreur de chargement.")
         );
       } finally {
         chargement = false;
-        navigation.precedent.disabled = !moisPrecedent;
-        navigation.suivant.disabled = !moisSuivant;
+        navigation.precedent.disabled = moisAffiche >= moisCourant;
+        navigation.suivant.disabled = false;
       }
     }
 
     navigation.precedent.addEventListener("click", () => {
-      if (moisPrecedent) {
-        chargerMois(moisPrecedent);
+      if (moisAffiche < moisCourant) {
+        chargerMois(decalerMois(moisAffiche, 1));
       }
     });
 
     navigation.suivant.addEventListener("click", () => {
-      if (moisSuivant) {
-        chargerMois(moisSuivant);
-      }
+      chargerMois(decalerMois(moisAffiche, -1));
     });
 
-    await chargerMois();
+    await chargerMois(moisCourant);
   }
 
   function creerTotalMoisPassion() {
@@ -272,8 +268,8 @@
     precedent.type = "button";
     precedent.className = "lcdp-table-lecture__month-button";
     precedent.textContent = "‹";
-    precedent.setAttribute("aria-label", "Afficher le mois précédent");
-    precedent.title = "Mois précédent";
+    precedent.setAttribute("aria-label", "Afficher le mois suivant");
+    precedent.title = "Mois suivant";
     precedent.disabled = true;
 
     libelle.className = "lcdp-table-lecture__month-label";
@@ -283,8 +279,8 @@
     suivant.type = "button";
     suivant.className = "lcdp-table-lecture__month-button";
     suivant.textContent = "›";
-    suivant.setAttribute("aria-label", "Afficher le mois suivant");
-    suivant.title = "Mois suivant";
+    suivant.setAttribute("aria-label", "Afficher le mois précédent");
+    suivant.title = "Mois précédent";
     suivant.disabled = true;
 
     racine.appendChild(precedent);
@@ -383,6 +379,38 @@
     return ["bronze", "argent", "or", "platine"].includes(nom)
       ? nom
       : "";
+  }
+
+
+  function obtenirMoisCourantParis() {
+    const morceaux = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris",
+      year: "numeric",
+      month: "2-digit"
+    }).formatToParts(new Date());
+
+    const annee = morceaux.find((item) => item.type === "year")?.value || "";
+    const mois = morceaux.find((item) => item.type === "month")?.value || "";
+
+    return annee && mois ? annee + "-" + mois : "";
+  }
+
+  function decalerMois(value, delta) {
+    const match = String(value || "").match(/^(\d{4})-(\d{2})$/);
+
+    if (!match) {
+      return obtenirMoisCourantParis();
+    }
+
+    const date = new Date(
+      Date.UTC(Number(match[1]), Number(match[2]) - 1 + Number(delta || 0), 1, 12)
+    );
+
+    return (
+      String(date.getUTCFullYear()) +
+      "-" +
+      String(date.getUTCMonth() + 1).padStart(2, "0")
+    );
   }
 
   function formaterMois(value) {
