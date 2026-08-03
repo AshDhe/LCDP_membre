@@ -64,7 +64,7 @@
       onglets: [
         { key: "factures", label: "Mes factures" },
         { key: "paiements", label: "Mes paiements" },
-        { key: "remboursements", label: "Mes remboursements" }
+        { key: "remboursements", label: "Mes avoirs" }
       ]
     });
   }
@@ -95,8 +95,11 @@
         { key: "paiement3", label: "Paiement 3" }
       ],
       renderCell: ({ column, value }) => {
-        if (column.key !== "facture") return null;
-        return creerLienFacture(value);
+        if (column.key === "facture") return creerLienFacture(value);
+        if (["paiement1", "paiement2", "paiement3"].includes(column.key)) {
+          return creerAffichagePaiement(value);
+        }
+        return null;
       }
     });
 
@@ -200,13 +203,32 @@
 
     if (!date) return "—";
 
-    if (etat === "paye") {
-      return formaterMontant(ligne?.["valmois" + String(numero)]) +
-        " le " + formaterDate(date);
+    return {
+      principal: etat === "paye"
+        ? formaterMontant(ligne?.["valmois" + String(numero)])
+        : (dateFuture(date) ? "À venir" : "Non payé"),
+      secondaire: "le " + formaterDate(date)
+    };
+  }
+
+  function creerAffichagePaiement(value) {
+    if (!value || typeof value !== "object") {
+      return document.createTextNode(String(value || "—"));
     }
 
-    return (dateFuture(date) ? "À venir" : "Non payé") +
-      " le " + formaterDate(date);
+    const fragment = document.createDocumentFragment();
+    fragment.appendChild(
+      document.createTextNode(String(value.principal || "—"))
+    );
+
+    if (value.secondaire) {
+      fragment.appendChild(document.createElement("br"));
+      fragment.appendChild(
+        document.createTextNode(String(value.secondaire))
+      );
+    }
+
+    return fragment;
   }
 
   function libelleRemboursement(ligne) {
