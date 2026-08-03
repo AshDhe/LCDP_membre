@@ -1135,7 +1135,7 @@
       return "";
     }
 
-    const libellePoint = Number(points) === 1 ? "point club" : "points club";
+    const libellePoint = Number(points) === 1 ? "point" : "points";
 
     return "Référent " + (statut || "Non classé") + " : " + String(points) + " " + libellePoint + " au " + formaterDate(date);
   }
@@ -1147,7 +1147,7 @@
     if (!badge || !image) return;
 
     const pointsObjet = compte?.points || {};
-    const badgePoints = normaliserBadgePoints(compte?.statutPointsClub || pointsObjet.statut || "");
+    const badgePoints = normaliserBadgePoints(compte?.statutPointsClub || pointsObjet.statut || "").toLowerCase;
 
     if (!badgePoints) {
       badge.hidden = true;
