@@ -1141,7 +1141,7 @@
 
     const libellePoint = Number(points) === 1 ? "point" : "points";
 
-    return "Référent " + (statut || "Non classé") + " : " + String(points) + " " + libellePoint + " au " + formaterDate(date);
+    return "Référent : " + (statut || "Non classé") + " (" + String(points) + " " + libellePoint + " au " + formaterDate(date) + ")";
   }
 
   function actualiserBadgePointsClub(compte) {
