@@ -354,11 +354,11 @@
     }
 
     const image = document.createElement("img");
-    image.src = urlObjet("/IMAG/BADG/" + nom + "96.webp");
+    image.src = urlObjet("/IMAG/BADG/badge-" + nom + "-96.webp");
     image.srcset = [
-      urlObjet("/IMAG/BADG/" + nom + "64.webp") + " 64w",
-      urlObjet("/IMAG/BADG/" + nom + "96.webp") + " 96w",
-      urlObjet("/IMAG/BADG/" + nom + "192.webp") + " 192w"
+      urlObjet("/IMAG/BADG/badge-" + nom + "-64.webp") + " 64w",
+      urlObjet("/IMAG/BADG/badge-" + nom + "-96.webp") + " 96w",
+      urlObjet("/IMAG/BADG/badge-" + nom + "-192.webp") + " 192w"
     ].join(", ");
     image.sizes = "48px";
     image.alt = "Badge " + statut;

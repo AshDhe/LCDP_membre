@@ -1161,7 +1161,7 @@
       return;
     }
 
-    const cheminBadge = "/IMAG/BADG/" + badgePoints;
+    const cheminBadge = "/IMAG/BADG/badge-" + badgePoints + "-";
 
     image.src = construireUrlObjet(cheminBadge + "96.webp");
     image.srcset = [
