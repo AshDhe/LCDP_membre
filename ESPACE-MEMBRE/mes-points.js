@@ -146,10 +146,12 @@
     zone.innerHTML = "";
 
     const navigation = creerNavigationMoisPassion();
+    const totalMois = creerTotalMoisPassion();
     const zoneTable = document.createElement("div");
 
     zoneTable.className = "lcdp-table-lecture__month-content";
     zone.appendChild(navigation.racine);
+    zone.appendChild(totalMois);
     zone.appendChild(zoneTable);
 
     await installerTable(zoneTable);
@@ -189,14 +191,20 @@
           passion: row.description,
           points: row.valpoint
         }));
+        const totalMouvements = rows.reduce(
+          (total, row) => total + normaliserValeurPoints(row.points),
+          0
+        );
 
         moisPrecedent = data.moisPrecedent || null;
         moisSuivant = data.moisSuivant || null;
         navigation.libelle.textContent = formaterMois(data.mois);
+        actualiserTotalMoisPassion(totalMois, totalMouvements);
         controleur.mettreAJour(rows);
       } catch (error) {
         moisPrecedent = null;
         moisSuivant = null;
+        totalMois.textContent = "Total des mouvements du mois : —";
         controleur.afficherErreur(
           String(error?.message || error || "Erreur de chargement.")
         );
@@ -220,6 +228,33 @@
     });
 
     await chargerMois();
+  }
+
+  function creerTotalMoisPassion() {
+    const total = document.createElement("p");
+
+    total.className = "lcdp-table-lecture__month-label";
+    total.textContent = "Total des mouvements du mois : chargement…";
+    total.setAttribute("aria-live", "polite");
+
+    return total;
+  }
+
+  function actualiserTotalMoisPassion(element, valeur) {
+    const total = Number.isFinite(Number(valeur)) ? Number(valeur) : 0;
+    const libelle = Math.abs(total) === 1 ? "point" : "points";
+
+    element.textContent =
+      "Total des mouvements du mois : " +
+      total.toLocaleString("fr-FR") +
+      " " +
+      libelle;
+  }
+
+  function normaliserValeurPoints(value) {
+    const nombre = Number(String(value ?? 0).replace(",", "."));
+
+    return Number.isFinite(nombre) ? nombre : 0;
   }
 
   function creerNavigationMoisPassion() {
