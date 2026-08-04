@@ -1100,7 +1100,7 @@
 
   function formaterParrainAffichage(value) {
     const email = nettoyerEmail(value);
-    return email || "Pas de parrain indiqué";
+    return "Parrain : " + (email || "Non renseigné");
   }
 
   function formaterDepartementAffichage(value) {
