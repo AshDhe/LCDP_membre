@@ -28,12 +28,6 @@
     "maj-dptmt-membre-api"
   );
 
-  const ENDPOINT_MES_POINTS = construireEndpointApi(
-    "workerMesPointsUrl",
-    "WORKER_MES_POINTS_URL",
-    "mes-points-api"
-  );
-
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
 
@@ -712,98 +706,11 @@
       throw new Error(messageErreurApi(resultat, "Impossible de charger vos informations."));
     }
 
-    const pointActuel = await chargerPointActuelMembre();
-    const compte = appliquerPointActuelCompte(
-      resultat.compte,
-      pointActuel
-    );
+    const compte = resultat.compte;
 
     afficherCompteMembre(compte);
     afficherEtatMembreCompte(compte);
     await actualiserBurgerMembre(compteIndiqueAbonne(compte));
-  }
-
-  async function chargerPointActuelMembre() {
-    if (!ENDPOINT_MES_POINTS) {
-      return undefined;
-    }
-
-    const reponse = await fetch(
-      ENDPOINT_MES_POINTS + "/referent?limit=1",
-      {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-          "Accept": "application/json"
-        }
-      }
-    );
-
-    const resultat = await reponse.json().catch(() => null);
-
-    if (reponse.status === 401) {
-      redirigerConnexionMembre("inactive");
-      return undefined;
-    }
-
-    if (!reponse.ok || !resultat || resultat.ok !== true) {
-      console.error(
-        "Erreur points Mon compte :",
-        messageErreurApi(
-          resultat,
-          "Impossible de charger vos points."
-        )
-      );
-      return undefined;
-    }
-
-    if (!Array.isArray(resultat.rows) || resultat.rows.length < 1) {
-      return null;
-    }
-
-    return {
-      ...resultat.rows[0],
-      seuilBronze: resultat?.seuils?.bronze ?? null
-    };
-  }
-
-  function appliquerPointActuelCompte(compte, pointActuel) {
-    const base = compte && typeof compte === "object"
-      ? compte
-      : {};
-
-    if (pointActuel === undefined) {
-      return base;
-    }
-
-    if (!pointActuel) {
-      return {
-        ...base,
-        pointsClub: "",
-        datePointsClub: "",
-        centilePointsClub: "",
-        statutPointsClub: "",
-        seuilBronzePointsClub: "",
-        points: null
-      };
-    }
-
-    return {
-      ...base,
-      pointsClub: pointActuel.points ?? "",
-      datePointsClub: pointActuel.date || "",
-      centilePointsClub: pointActuel.centile ?? "",
-      statutPointsClub: pointActuel.statut || "",
-      seuilBronzePointsClub: pointActuel.seuilBronze ?? "",
-      points: {
-        points: pointActuel.points ?? "",
-        date: pointActuel.date || "",
-        centile: pointActuel.centile ?? "",
-        statut: pointActuel.statut || "",
-        seuilBronze: pointActuel.seuilBronze ?? ""
-      }
-    };
   }
 
   async function actualiserBurgerMembre(abonne) {
@@ -1148,52 +1055,97 @@
 
   function formaterPointsClub(compte) {
     const pointsObjet = compte?.points || {};
-    const statut = compte?.statutPointsClub || pointsObjet.statut || "";
+    const statut =
+      compte?.statutPointsClub ||
+      pointsObjet.statut ||
+      "";
     const badgePoints = normaliserBadgePoints(statut);
-    const points = compte?.pointsClub ?? compte?.pointsclub ?? pointsObjet.points ?? null;
-    const date = compte?.datePointsClub || pointsObjet.date || "";
-    const seuilBronzeBrut =
-      compte?.seuilBronzePointsClub ??
-      pointsObjet.seuilBronze ??
+    const points =
+      compte?.pointsClub ??
+      compte?.pointsclub ??
+      pointsObjet.points ??
       null;
-    const seuilBronze =
-      seuilBronzeBrut === null ||
-      seuilBronzeBrut === undefined ||
-      seuilBronzeBrut === ""
-        ? null
-        : Number(seuilBronzeBrut);
+    const dateCalcul =
+      compte?.dateCalculPointsClub ||
+      compte?.datePointsClub ||
+      pointsObjet.date ||
+      "";
+    const prochainReferent =
+      compte?.prochainReferentPointsClub ||
+      null;
 
-    if (points === null || points === undefined || points === "") {
+    if (
+      points === null ||
+      points === undefined ||
+      points === ""
+    ) {
       return "";
     }
 
-    const libellePoint = Number(points) === 1 ? "point" : "points";
-    const score = String(points) + " " + libellePoint;
+    const libellePoint =
+      Number(points) === 1 ? "point" : "points";
+    const score =
+      String(points) + " " + libellePoint;
+    const total =
+      score +
+      ", total mis à jour le " +
+      formaterDate(dateCalcul);
+    const seuilSuivant =
+      nombreOuNullCompte(prochainReferent?.seuil);
+    const statutSuivant =
+      normaliserBadgePoints(
+        prochainReferent?.statut || ""
+      );
 
-    if (!badgePoints) {
-      const total =
-        score +
-        ", total mis à jour le " +
-        formaterDate(date);
+    let affichage = badgePoints
+      ? capitaliserBadgePoints(badgePoints) +
+        " : " +
+        total
+      : total;
 
-      if (!Number.isFinite(seuilBronze)) {
-        return total;
-      }
-
+    if (
+      statutSuivant &&
+      seuilSuivant !== null
+    ) {
       const libelleSeuil =
-        seuilBronze === 1 ? "point" : "points";
+        seuilSuivant === 1 ? "point" : "points";
 
-      return (
-        total +
-        " (référent bronze à partir de " +
-        String(seuilBronze) +
+      affichage +=
+        " (référent " +
+        statutSuivant +
+        " à partir de " +
+        String(seuilSuivant) +
         " " +
         libelleSeuil +
-        ")"
-      );
+        ")";
     }
 
-    return badgePoints + " : " + score + " au " + formaterDate(date);
+    return affichage;
+  }
+
+  function nombreOuNullCompte(value) {
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+      return null;
+    }
+
+    const nombre = Number(value);
+
+    return Number.isFinite(nombre)
+      ? nombre
+      : null;
+  }
+
+  function capitaliserBadgePoints(value) {
+    const badge = normaliserBadgePoints(value);
+
+    return badge
+      ? badge.charAt(0).toUpperCase() +
+        badge.slice(1)
+      : "";
   }
 
   function actualiserBadgePointsClub(compte) {
