@@ -758,9 +758,14 @@
       return undefined;
     }
 
-    return Array.isArray(resultat.rows) && resultat.rows.length > 0
-      ? resultat.rows[0]
-      : null;
+    if (!Array.isArray(resultat.rows) || resultat.rows.length < 1) {
+      return null;
+    }
+
+    return {
+      ...resultat.rows[0],
+      seuilBronze: resultat?.seuils?.bronze ?? null
+    };
   }
 
   function appliquerPointActuelCompte(compte, pointActuel) {
@@ -779,6 +784,7 @@
         datePointsClub: "",
         centilePointsClub: "",
         statutPointsClub: "",
+        seuilBronzePointsClub: "",
         points: null
       };
     }
@@ -789,11 +795,13 @@
       datePointsClub: pointActuel.date || "",
       centilePointsClub: pointActuel.centile ?? "",
       statutPointsClub: pointActuel.statut || "",
+      seuilBronzePointsClub: pointActuel.seuilBronze ?? "",
       points: {
         points: pointActuel.points ?? "",
         date: pointActuel.date || "",
         centile: pointActuel.centile ?? "",
-        statut: pointActuel.statut || ""
+        statut: pointActuel.statut || "",
+        seuilBronze: pointActuel.seuilBronze ?? ""
       }
     };
   }
@@ -1144,6 +1152,16 @@
     const badgePoints = normaliserBadgePoints(statut);
     const points = compte?.pointsClub ?? compte?.pointsclub ?? pointsObjet.points ?? null;
     const date = compte?.datePointsClub || pointsObjet.date || "";
+    const seuilBronzeBrut =
+      compte?.seuilBronzePointsClub ??
+      pointsObjet.seuilBronze ??
+      null;
+    const seuilBronze =
+      seuilBronzeBrut === null ||
+      seuilBronzeBrut === undefined ||
+      seuilBronzeBrut === ""
+        ? null
+        : Number(seuilBronzeBrut);
 
     if (points === null || points === undefined || points === "") {
       return "";
@@ -1153,7 +1171,26 @@
     const score = String(points) + " " + libellePoint;
 
     if (!badgePoints) {
-      return score + ", total mis à jour le " + formaterDate(date);
+      const total =
+        score +
+        ", total mis à jour le " +
+        formaterDate(date);
+
+      if (!Number.isFinite(seuilBronze)) {
+        return total;
+      }
+
+      const libelleSeuil =
+        seuilBronze === 1 ? "point" : "points";
+
+      return (
+        total +
+        " (référent bronze à partir de " +
+        String(seuilBronze) +
+        " " +
+        libelleSeuil +
+        ")"
+      );
     }
 
     return badgePoints + " : " + score + " au " + formaterDate(date);
