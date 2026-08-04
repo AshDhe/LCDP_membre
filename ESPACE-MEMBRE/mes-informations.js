@@ -227,12 +227,12 @@
       section: "Coordonnées de remboursement IBAN",
       id: "champ-rib-membre",
       name: "rib",
-      label: "RIB",
+      label: "Nom du titulaire",
       type: "text",
       key: "rib",
       action: {
         id: "modifier-rib-membre",
-        texte: "Modifier le RIB",
+        texte: "Modifier le nom du titulaire",
         mode: "picto",
         champ: "rib",
         pictoRouge: true,
@@ -683,7 +683,7 @@
     if (boutonFactures) boutonFactures.addEventListener("click", ouvrirPageFacturesMembre);
     if (boutonIban) boutonIban.addEventListener("click", () => ouvrirDialogueCoordonneeRemboursementMembre("iban", "IBAN"));
     if (boutonSwift) boutonSwift.addEventListener("click", () => ouvrirDialogueCoordonneeRemboursementMembre("swift", "SWIFT"));
-    if (boutonRib) boutonRib.addEventListener("click", () => ouvrirDialogueCoordonneeRemboursementMembre("rib", "RIB"));
+    if (boutonRib) boutonRib.addEventListener("click", () => ouvrirDialogueCoordonneeRemboursementMembre("rib", "Nom du titulaire"));
   }
 
   async function chargerCompteMembre() {
@@ -1402,7 +1402,7 @@
     }
 
     const resultat = await ouvrirDialogueChamp({
-      titre: "Modifier " + label,
+      titre: champAutorise === "rib" ? "Modifier le nom du titulaire" : "Modifier " + label,
       champs: [
         {
           id: "nouvelle-coordonnee-remboursement-membre",
@@ -1412,7 +1412,9 @@
           required: true,
           value: compteMembreActuel?.[champAutorise] || "",
           nettoyer: (valeur) => normaliserValeurCoordonneeRemboursement(champAutorise, valeur),
-          messageRequis: label + " est obligatoire.",
+          messageRequis: champAutorise === "rib"
+            ? "Le nom du titulaire est obligatoire."
+            : label + " est obligatoire.",
           valider: (valeur) => messageValidationCoordonneeRemboursement(champAutorise, valeur)
         }
       ]
@@ -1467,10 +1469,10 @@
   }
 
   function normaliserValeurCoordonneeRemboursement(champ, valeur) {
-    const texte = nettoyerTexteSimple(valeur).toUpperCase();
+    const texte = nettoyerTexteSimple(valeur);
 
-    if (["iban", "swift", "rib"].includes(champ)) {
-      return texte.replace(/\s+/g, "");
+    if (["iban", "swift"].includes(champ)) {
+      return texte.toUpperCase().replace(/\s+/g, "");
     }
 
     return texte;
@@ -1498,17 +1500,13 @@
       return "Le SWIFT/BIC saisi doit contenir 8 ou 11 caractères au format bancaire attendu.";
     }
 
-    if (champAutorise === "rib" && !/^[A-Z0-9]{21}[0-9]{2}$/.test(texte)) {
-      return "Le RIB saisi doit contenir 23 caractères, avec une clé RIB finale sur 2 chiffres.";
-    }
-
     return "";
   }
 
   function libelleChampRemboursement(champ) {
     if (champ === "iban") return "IBAN";
     if (champ === "swift") return "SWIFT";
-    if (champ === "rib") return "RIB";
+    if (champ === "rib") return "Le nom du titulaire";
 
     return "Coordonnée de remboursement";
   }
