@@ -1461,7 +1461,7 @@
 
       remplirChamp("champ-" + champAutorise + "-membre", nouvelleValeur);
 
-      await afficherAlerte(messageErreurApi(resultat, "Vos coordonnées de remboursement sont mises à jour."));
+      await afficherAlerte("Vos coordonnées de remboursement sont mises à jour.");
     } catch (error) {
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
