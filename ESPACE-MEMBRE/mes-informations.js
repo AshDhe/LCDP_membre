@@ -1386,7 +1386,7 @@
       remplirChamp("champ-adresse2-membre", compteMembreActuel.adresse2);
       remplirChamp("champ-adresse3-membre", compteMembreActuel.adresse3);
 
-      await afficherAlerte(messageErreurApi(resultat, "Votre adresse de facturation est enregistrée."));
+      await afficherAlerte(messageErreurApi(resultat, "Votre adresse de facturation est mise à jour."));
     } catch (error) {
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -1461,7 +1461,7 @@
 
       remplirChamp("champ-" + champAutorise + "-membre", nouvelleValeur);
 
-      await afficherAlerte(messageErreurApi(resultat, "Vos coordonnées de remboursement sont enregistrées."));
+      await afficherAlerte(messageErreurApi(resultat, "Vos coordonnées de remboursement sont mises à jour."));
     } catch (error) {
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -1575,7 +1575,7 @@
 
       remplirChamp("champ-alias-membre", formaterAliasAffichage(compteMembreActuel.alias));
 
-      await afficherAlerte(messageErreurApi(resultat, "Votre alias est enregistré."));
+      await afficherAlerte(messageErreurApi(resultat, "Votre alias est mis à jour."));
     } catch (error) {
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
