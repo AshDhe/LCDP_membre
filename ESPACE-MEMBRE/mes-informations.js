@@ -1699,8 +1699,7 @@
           name: "dptmtmembre",
           label: "Nouveau département",
           type: "text",
-          required: true,
-          value: compteMembreActuel?.departement || ""
+          required: true,          
         }
       ]
     });
