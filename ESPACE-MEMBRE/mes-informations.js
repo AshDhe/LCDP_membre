@@ -166,48 +166,29 @@
       }
     },
     {
-      section: "Adresse de facturation",
-      id: "champ-adresse1-membre",
-      name: "adresse1",
-      label: "Adresse 1",
+      section: "Acceptation du règlement",
+      id: "champ-reglement-club",
+      name: "reglementClubAffichage",
+      label: "Club",
       type: "text",
-      key: "adresse1",
-      action: {
-        id: "modifier-adresse1-membre",
-        texte: "Modifier l'adresse de facturation",
-        mode: "picto",
-        pictoRouge: true,
-        affichageDaOui: true
+      key: "reglementClubAffichage",
+      lien: {
+        texteAvant: "Lire le ",
+        texteLien: "règlement du club",
+        href: "/ESPACE-PUBLIC/reglement-club.html"
       }
     },
     {
-      section: "Adresse de facturation",
-      id: "champ-adresse2-membre",
-      name: "adresse2",
-      label: "Adresse 2",
+      section: "Acceptation du règlement",
+      id: "champ-reglement-application",
+      name: "reglementApplicationAffichage",
+      label: "Application",
       type: "text",
-      key: "adresse2",
-      action: {
-        id: "modifier-adresse2-membre",
-        texte: "Modifier l'adresse de facturation",
-        mode: "picto",
-        pictoRouge: true,
-        affichageDaOui: true
-      }
-    },
-    {
-      section: "Adresse de facturation",
-      id: "champ-adresse3-membre",
-      name: "adresse3",
-      label: "Adresse 3",
-      type: "text",
-      key: "adresse3",
-      action: {
-        id: "modifier-adresse3-membre",
-        texte: "Modifier l'adresse de facturation",
-        mode: "picto",
-        pictoRouge: true,
-        affichageDaOui: true
+      key: "reglementApplicationAffichage",
+      lien: {
+        texteAvant: "Lire le ",
+        texteLien: "règlement de l'application",
+        href: "/ESPACE-PUBLIC/reglement-app.html"
       }
     },
     {
@@ -259,31 +240,50 @@
       }
     },
     {
-      section: "Acceptation du règlement",
-      id: "champ-reglement-club",
-      name: "reglementClubAffichage",
-      label: "Club",
+      section: "Adresse de facturation",
+      id: "champ-adresse1-membre",
+      name: "adresse1",
+      label: "Adresse 1",
       type: "text",
-      key: "reglementClubAffichage",
-      lien: {
-        texteAvant: "Lire le ",
-        texteLien: "règlement du club",
-        href: "/ESPACE-PUBLIC/reglement-club.html"
+      key: "adresse1",
+      action: {
+        id: "modifier-adresse1-membre",
+        texte: "Modifier l'adresse de facturation",
+        mode: "picto",
+        pictoRouge: true,
+        affichageDaOui: true
       }
     },
     {
-      section: "Acceptation du règlement",
-      id: "champ-reglement-application",
-      name: "reglementApplicationAffichage",
-      label: "Application",
+      section: "Adresse de facturation",
+      id: "champ-adresse2-membre",
+      name: "adresse2",
+      label: "Adresse 2",
       type: "text",
-      key: "reglementApplicationAffichage",
-      lien: {
-        texteAvant: "Lire le ",
-        texteLien: "règlement de l'application",
-        href: "/ESPACE-PUBLIC/reglement-app.html"
+      key: "adresse2",
+      action: {
+        id: "modifier-adresse2-membre",
+        texte: "Modifier l'adresse de facturation",
+        mode: "picto",
+        pictoRouge: true,
+        affichageDaOui: true
       }
-    }
+    },
+    {
+      section: "Adresse de facturation",
+      id: "champ-adresse3-membre",
+      name: "adresse3",
+      label: "Adresse 3",
+      type: "text",
+      key: "adresse3",
+      action: {
+        id: "modifier-adresse3-membre",
+        texte: "Modifier l'adresse de facturation",
+        mode: "picto",
+        pictoRouge: true,
+        affichageDaOui: true
+      }
+    },
   ];
 
   if (document.readyState === "loading") {
