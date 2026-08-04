@@ -1140,7 +1140,8 @@
 
   function formaterPointsClub(compte) {
     const pointsObjet = compte?.points || {};
-    const statut = nettoyerTexteSimple(compte?.statutPointsClub || pointsObjet.statut || "").toLowerCase();
+    const statut = compte?.statutPointsClub || pointsObjet.statut || "";
+    const badgePoints = normaliserBadgePoints(statut);
     const points = compte?.pointsClub ?? compte?.pointsclub ?? pointsObjet.points ?? null;
     const date = compte?.datePointsClub || pointsObjet.date || "";
 
@@ -1149,13 +1150,20 @@
     }
 
     const libellePoint = Number(points) === 1 ? "point" : "points";
+    const score = String(points) + " " + libellePoint;
 
-    return (statut || "non classé") + " : " + String(points) + " " + libellePoint + " au " + formaterDate(date);
+    if (!badgePoints) {
+      return score;
+    }
+
+    return badgePoints + " : " + score + " au " + formaterDate(date);
   }
 
   function actualiserBadgePointsClub(compte) {
     const badge = document.getElementById("badge-points-club-membre");
     const image = badge ? badge.querySelector(".lcdp-box-champ-formulaire__badge-image") : null;
+    const champ = badge ? badge.closest("[data-lcdp-box-champ-formulaire]") : null;
+    const zoneControl = badge ? badge.closest("[data-lcdp-champ-control]") : null;
 
     if (!badge || !image) return;
 
@@ -1167,8 +1175,13 @@
       image.removeAttribute("src");
       image.removeAttribute("srcset");
       image.removeAttribute("sizes");
+      champ?.classList.remove("lcdp-box-champ-formulaire--badge");
+      zoneControl?.classList.remove("lcdp-box-champ-formulaire__control--badge");
       return;
     }
+
+    champ?.classList.add("lcdp-box-champ-formulaire--badge");
+    zoneControl?.classList.add("lcdp-box-champ-formulaire__control--badge");
 
     const cheminBadge = "/IMAG/BADG/badge-" + badgePoints + "-";
 
