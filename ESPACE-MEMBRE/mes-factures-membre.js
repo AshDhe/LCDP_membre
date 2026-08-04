@@ -27,6 +27,7 @@
       await Promise.all([initialiserBandeau(), initialiserFooter()]);
 
       const controleurOnglets = await initialiserOngletsFactures();
+      await initialiserOngletsBoutique();
       const tables = await initialiserTables(controleurOnglets.zones);
 
       await Promise.all([
@@ -65,6 +66,34 @@
         { key: "factures", label: "Mes factures" },
         { key: "paiements", label: "Mes paiements" },
         { key: "remboursements", label: "Mes avoirs" }
+      ]
+    });
+  }
+
+  async function initialiserOngletsBoutique() {
+    const slot = document.getElementById("lcdp-mes-factures-boutique-slot");
+
+    if (!slot) throw new Error("Slot Boutique introuvable.");
+    if (!window.LCDP_WRAPER_ONGLETS) {
+      throw new Error("Objet générique onglets indisponible.");
+    }
+
+    slot.innerHTML = "";
+    slot.appendChild(
+      await chargerFragmentObjet("/BOX/05-wraper-onglets.html?v=20260803-1650")
+    );
+
+    const racine = slot.querySelector("[data-lcdp-wraper-onglets]");
+    if (!racine) throw new Error("Objet onglets Boutique introuvable.");
+
+    return window.LCDP_WRAPER_ONGLETS.initialiser({
+      racine,
+      idPrefix: "lcdp-mes-factures-boutique",
+      ariaLabel: "Navigation des factures de la boutique",
+      navigationAriaLabel: "Sections Boutique",
+      actif: "factures",
+      onglets: [
+        { key: "factures", label: "Mes factures" }
       ]
     });
   }
