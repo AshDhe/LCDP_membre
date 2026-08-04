@@ -1153,7 +1153,7 @@
     const score = String(points) + " " + libellePoint;
 
     if (!badgePoints) {
-      return score;
+      return score + ", total mis à jour le " + formaterDate(date);
     }
 
     return badgePoints + " : " + score + " au " + formaterDate(date);
