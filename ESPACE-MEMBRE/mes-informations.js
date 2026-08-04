@@ -46,6 +46,15 @@
 
   let compteMembreActuel = null;
 
+  const CHAMPS_A_RENSEIGNER_AVEC_DA = new Set([
+    "adresse1",
+    "adresse2",
+    "adresse3",
+    "iban",
+    "swift",
+    "rib"
+  ]);
+
   const champsCompte = [
     {
       section: "Etat civil",
@@ -1214,7 +1223,13 @@
     };
 
     champsCompte.forEach((champ) => {
-      remplirChamp(champ.id, compteAffiche[champ.key]);
+      remplirChamp(
+        champ.id,
+        compteAffiche[champ.key],
+        CHAMPS_A_RENSEIGNER_AVEC_DA.has(champ.key)
+          ? "À renseigner avec votre DA"
+          : "Non renseigné"
+      );
     });
 
     actualiserBadgePointsClub(compteMembreActuel);
@@ -2214,12 +2229,12 @@
     return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
   }
 
-  function remplirChamp(id, valeur) {
+  function remplirChamp(id, valeur, texteSiVide = "Non renseigné") {
     const element = document.getElementById(id);
 
     if (!element) return;
 
-    const texte = valeur || "Non renseigné";
+    const texte = valeur || texteSiVide;
 
     if ("value" in element) {
       element.value = texte;
