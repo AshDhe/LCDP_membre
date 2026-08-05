@@ -162,11 +162,8 @@
 
   const COOKIE_RETOUR_MEMBRE = "retour_membre";
   const COOKIE_SESSION_MEMBRE_NEXT_REFRESH = "lcdp_session_membre_next_refresh";
-  const DUREE_SESSION_MEMBRE_SECONDES = 60 * 60 * 10;
-  const SEUIL_RENOUVELLEMENT_SESSION_MEMBRE_SECONDES = 60 * 60 * 2;
-  const DELAI_VERIFICATION_SESSION_MEMBRE_SECONDES =
-    DUREE_SESSION_MEMBRE_SECONDES - SEUIL_RENOUVELLEMENT_SESSION_MEMBRE_SECONDES;
   const DELAI_REESSAI_REFRESH_ERREUR_SECONDES = 60 * 10;
+  const MARGE_COOKIE_PROCHAINE_VERIFICATION_SECONDES = 60 * 60;
   const DUREE_MEMOIRE_RETOUR_MEMBRE_SECONDES = 60 * 60 * 24 * 30;
   const CHEMINS_MEMBRE_SANS_SESSION = new Set([
     "/ESPACE-MEMBRE/mdp-membre.html"
@@ -229,7 +226,7 @@
   function initialiserRenouvellementSessionMembre() {
     if (!estUrlDansSiteMembre(window.location.href)) return;
     if (estPageMembreSansSession(window.location.href)) return;
-    if (!WORKERS.indexMembre) return;
+    if (!WORKERS.connexionMembre) return;
 
     const fetchNatif = window.fetch.bind(window);
     let refreshPromiseEnCours = null;
@@ -259,7 +256,7 @@
 
       refreshPromiseEnCours = (async () => {
         try {
-          const reponse = await fetchNatif(nettoyerBaseUrl(WORKERS.indexMembre) + "/session-refresh", {
+          const reponse = await fetchNatif(nettoyerBaseUrl(WORKERS.connexionMembre) + "/session-refresh", {
             method: "GET",
             credentials: "include",
             cache: "no-store",
@@ -282,7 +279,7 @@
           }
 
           programmerProchaineVerificationSessionMembre(
-            nombreSecondesValide(data.nextRefreshInSeconds, DELAI_VERIFICATION_SESSION_MEMBRE_SECONDES)
+            nombreSecondesValide(data.nextRefreshInSeconds, DELAI_REESSAI_REFRESH_ERREUR_SECONDES)
           );
 
           return true;
@@ -354,7 +351,7 @@
       return false;
     }
 
-    if (url.href === nettoyerBaseUrl(WORKERS.indexMembre) + "/session-refresh") {
+    if (url.href === nettoyerBaseUrl(WORKERS.connexionMembre) + "/session-refresh") {
       return false;
     }
 
@@ -362,13 +359,17 @@
   }
 
   function programmerProchaineVerificationSessionMembre(delaiSecondes) {
-    const delai = nombreSecondesValide(delaiSecondes, DELAI_VERIFICATION_SESSION_MEMBRE_SECONDES);
+    const delai = nombreSecondesValide(
+      delaiSecondes,
+      DELAI_REESSAI_REFRESH_ERREUR_SECONDES
+    );
     const timestamp = Date.now() + delai * 1000;
 
     ecrireCookiePartage(
       COOKIE_SESSION_MEMBRE_NEXT_REFRESH,
       String(timestamp),
-      DUREE_SESSION_MEMBRE_SECONDES
+      delai +
+        MARGE_COOKIE_PROCHAINE_VERIFICATION_SECONDES
     );
   }
 
