@@ -1576,6 +1576,7 @@
         parc,
         {
           chargerFragmentObjet,
+          construireUrlObjet,
           templateJourMois: etatPage.templateJourMois,
           templateHeureJour: etatPage.templateHeureJour,
           chargerPlanningMois: chargerPlanningParcMoisLecture,
