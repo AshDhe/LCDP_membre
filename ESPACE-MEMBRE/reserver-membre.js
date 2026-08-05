@@ -1330,19 +1330,19 @@
     bouton.setAttribute("aria-label", configuration.ariaLabel);
     bouton.title = configuration.ariaLabel;
 
-    const icone = document.createElement("span");
+    const icone = document.createElement("img");
     icone.className =
       "lcdp-box-card-parc__action-icone " +
       "lcdp-box-card-parc__action-icone--" +
       configuration.icone;
-    icone.style.setProperty(
-      "--lcdp-action-icone-url",
-      'url("' +
-      construireUrlObjet(
-        "/IMAG/PICTO/picto-" + configuration.icone + ".svg"
-      ) +
-      '")'
+    icone.src = construireUrlObjet(
+      "/IMAG/PICTO/picto-" + configuration.icone + ".svg"
     );
+    icone.alt = "";
+    icone.width = 22;
+    icone.height = 22;
+    icone.decoding = "async";
+    icone.draggable = false;
     icone.setAttribute("aria-hidden", "true");
 
     const libelle = document.createElement("span");
