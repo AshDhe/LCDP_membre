@@ -1301,8 +1301,8 @@
         }),
         creerBoutonActionCardParc({
           action: "nouvelle-date-parc",
-          libelle: "RÉSERVER",
-          ariaLabel: "Réserver dans le parc " + nom,
+          libelle: "Planifier",
+          ariaLabel: "Planifier dans le parc " + nom,
           icone: "reserver",
           variante: "orange-plein",
           idparc
