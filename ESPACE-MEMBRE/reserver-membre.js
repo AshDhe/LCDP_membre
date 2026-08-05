@@ -1230,7 +1230,7 @@
     const idparc = String(parc.idparc || parc.id || "");
     const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
     const departement = String(parc.dptmt || parc.departement || "").trim();
-    const description = nettoyerTexteCourt(parc.prez || parc.presentation || "", 190);
+    const description = nettoyerTexteCourt(parc.prez || parc.presentation || "", 145);
 
     const image = card.querySelector("[data-lcdp-card-parc-image]");
     const badgePrepa = card.querySelector("[data-lcdp-card-parc-badge-prepa]");
@@ -1256,10 +1256,13 @@
       badgePrepa.hidden = String(parc.statut || "").trim().toLowerCase() !== "prepa";
     }
 
-    if (titre) titre.textContent = nom;
+    if (titre) {
+      titre.textContent = nom + (departement ? " (" + departement + ")" : "");
+    }
 
     if (meta) {
-      meta.textContent = departement ? "Département " + departement : "Département non renseigné";
+      meta.textContent = "";
+      meta.hidden = true;
     }
 
     if (texte) {
@@ -1305,6 +1308,10 @@
           idparc
         })
       );
+
+      if (texte && texte.parentNode) {
+        texte.parentNode.insertBefore(actions, texte);
+      }
     }
 
     return card;
