@@ -1389,11 +1389,6 @@
     if (jourCalendrier && !jourCalendrier.disabled) {
       event.preventDefault();
 
-      if (jourCalendrier.closest("[data-lcdp-planning-parc-lecture='true']")) {
-        await ouvrirPlanningJourLectureDepuisCard(jourCalendrier);
-        return;
-      }
-
       await ouvrirCalendrierJourDepuisCard(jourCalendrier);
       return;
     }
@@ -1627,14 +1622,6 @@
     parc,
     vue
   ) {
-    if (vue === "planning") {
-      await afficherPlanningMoisParcDansConteneur(
-        contenu,
-        parc
-      );
-      return;
-    }
-
     if (vue === "reservation") {
       await afficherReservationMoisParcDansConteneur(
         contenu,
@@ -1645,6 +1632,36 @@
     }
 
     const constructeur = await chargerConstructeurFicheParc();
+
+    if (vue === "planning") {
+      await constructeur.rendrePlanningDansConteneur(
+        contenu,
+        parc,
+        {
+          chargerFragmentObjet,
+          templateJourMois: etatPage.templateJourMois,
+          templateHeureJour: etatPage.templateHeureJour,
+          chargerPlanningMois: chargerPlanningParcMoisLecture,
+          chargerPlanningJour: chargerPlanningParcJourLecture,
+          onReserver: demarrerReservationParc,
+          onPartager: (parcCible) =>
+            ouvrirPartagePlanningParc(
+              parcCible,
+              "planning"
+            ),
+          onRetourPresentation: async (parcCible) => {
+            const parcComplet =
+              await chargerFicheParcComplete(parcCible);
+            await afficherVueShiftDetailParc(
+              parcComplet,
+              "fiche"
+            );
+          },
+          onErreur: afficherAlerteDetailParcOuPage
+        }
+      );
+      return;
+    }
 
     await constructeur.rendreDansConteneur(
       contenu,
@@ -1794,148 +1811,6 @@
   async function ouvrirPlanningMoisParc(parc) {
     await ouvrirShiftDetailParc(parc, "planning");
   }
-
-  async function afficherPlanningMoisParcDansConteneur(
-    slot,
-    parc,
-    etatPlanningExistant = null
-  ) {
-    if (!slot) return;
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
-    slot.appendChild(fragment);
-
-    const calendrier = slot.querySelector("[data-lcdp-box-calendrier-mois]");
-    const titre = slot.querySelector("[data-lcdp-calendrier-mois-title]");
-    const meta = slot.querySelector("[data-lcdp-calendrier-mois-meta]");
-    const boutonFermer = slot.querySelector("[data-lcdp-calendrier-mois-close]");
-    const boutonPrecedent = slot.querySelector("[data-lcdp-calendrier-mois-prev]");
-    const boutonSuivant = slot.querySelector("[data-lcdp-calendrier-mois-next]");
-
-    if (!calendrier || !titre || !meta || !boutonFermer || !boutonPrecedent || !boutonSuivant) {
-      throw new Error("Structure calendrier mois incomplète.");
-    }
-
-    calendrier.dataset.lcdpPlanningParcLecture = "true";
-    calendrier.classList.add("lcdp-box-calendrier-mois--shift-detail");
-    appliquerClasseCoquePlanningParc(calendrier, "calendrier-mois");
-
-    const nomParc = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
-    const departement = String(parc.dptmt || parc.departement || "").trim();
-
-    titre.textContent = "Parc de " + nomParc + (departement ? " - " + departement : "");
-    meta.textContent = "";
-    meta.classList.add("lcdp-box-calendrier-mois__meta--partage");
-
-    meta.appendChild(creerActionsPlanningParc(parc));
-
-    const maintenant = new Date();
-    const moisMinimumPlanning = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
-    const moisMaximumPlanning = new Date(maintenant.getFullYear(), maintenant.getMonth() + 3, 1);
-
-    const etatPlanning = etatPlanningExistant || {
-      parc,
-      annee: moisMinimumPlanning.getFullYear(),
-      mois: moisMinimumPlanning.getMonth() + 1,
-      planning: [],
-      modePlanning: "lecture",
-      moisMinimum: {
-        annee: moisMinimumPlanning.getFullYear(),
-        mois: moisMinimumPlanning.getMonth() + 1
-      },
-      moisMaximum: {
-        annee: moisMaximumPlanning.getFullYear(),
-        mois: moisMaximumPlanning.getMonth() + 1
-      }
-    };
-
-    etatPlanning.parc = parc;
-    etatPlanning.modePlanning = "lecture";
-    etatPage.planningParcLectureActif = etatPlanning;
-
-    boutonFermer.addEventListener("click", fermerShiftDetailParc);
-
-    function actualiserNavigationPlanning() {
-      const auMoisMinimum = moisPlanningIdentique(etatPlanning, etatPlanning.moisMinimum);
-      const auMoisMaximum = moisPlanningIdentique(etatPlanning, etatPlanning.moisMaximum);
-
-      boutonPrecedent.disabled = auMoisMinimum;
-      boutonPrecedent.setAttribute("aria-disabled", auMoisMinimum ? "true" : "false");
-
-      boutonSuivant.disabled = auMoisMaximum;
-      boutonSuivant.setAttribute("aria-disabled", auMoisMaximum ? "true" : "false");
-    }
-
-    boutonPrecedent.addEventListener("click", () => {
-      if (moisPlanningIdentique(etatPlanning, etatPlanning.moisMinimum)) return;
-
-      changerMois(etatPlanning, -1);
-      actualiserNavigationPlanning();
-      afficherPlanningMoisLecture(etatPlanning, calendrier).catch(console.error);
-    });
-
-    boutonSuivant.addEventListener("click", () => {
-      if (moisPlanningIdentique(etatPlanning, etatPlanning.moisMaximum)) return;
-
-      changerMois(etatPlanning, 1);
-      actualiserNavigationPlanning();
-      afficherPlanningMoisLecture(etatPlanning, calendrier).catch(console.error);
-    });
-
-    actualiserNavigationPlanning();
-
-    await afficherPlanningMoisLecture(etatPlanning, calendrier);
-  }
-
-async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
-  const racine = calendrierRacine || document.querySelector("[data-lcdp-planning-parc-lecture='true']");
-  const moisCourant = racine?.querySelector("[data-lcdp-calendrier-mois-current]");
-  const message = racine?.querySelector("[data-lcdp-calendrier-mois-message]");
-  const grille = racine?.querySelector("[data-lcdp-calendrier-mois-grid]");
-
-  if (!moisCourant || !message || !grille) return;
-
-  moisCourant.textContent = formaterMoisAnnee(etatPlanning.annee, etatPlanning.mois);
-
-  message.hidden = true;
-  message.textContent = "";
-
-  grille.classList.add("lcdp-box-calendrier-mois__grid--loading");
-  grille.setAttribute("aria-busy", "true");
-
-  try {
-    const planning = await chargerPlanningParcMoisLecture(etatPlanning);
-    etatPlanning.planning = planning;
-
-    const grilleTemp = document.createElement("div");
-    remplirGrilleCalendrier(grilleTemp, etatPlanning, planning);
-
-    grilleTemp.querySelectorAll("[data-lcdp-card-jour-mois]").forEach((jour) => {
-      jour.dataset.lcdpPlanningLecture = "true";
-      const suffixe = jour.disabled
-        ? " — consultation uniquement"
-        : " — afficher le détail de la journée";
-      jour.setAttribute(
-        "aria-label",
-        (jour.getAttribute("aria-label") || "") + suffixe
-      );
-    });
-
-    grille.replaceChildren(...Array.from(grilleTemp.childNodes));
-  } catch (error) {
-    console.error("Erreur planning parc lecture :", error);
-
-    if (!grille.children.length) {
-      message.hidden = false;
-      message.textContent = error.message || "Impossible de charger le planning du parc.";
-    }
-  } finally {
-    grille.classList.remove("lcdp-box-calendrier-mois__grid--loading");
-    grille.removeAttribute("aria-busy");
-  }
-}  
 
   async function chargerPlanningParcMoisLecture(etatPlanning) {
     if (!ENDPOINT_PLANNING_PARC) {
@@ -2097,89 +1972,6 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     return bouton;
   }
 
-  function creerActionsPlanningParc(parc) {
-    const actions = document.createElement("div");
-    actions.className = "lcdp-box-calendrier-mois__actions-parc";
-
-    const boutonFiche = document.createElement("button");
-    boutonFiche.type = "button";
-    boutonFiche.className = "lcdp-button lcdp-button-secondary lcdp-box-calendrier-mois__action-fiche";
-    boutonFiche.textContent = "Fiche parc";
-    boutonFiche.addEventListener("click", async () => {
-      const parcComplet = await chargerFicheParcComplete(parc);
-      await afficherVueShiftDetailParc(parcComplet, "fiche");
-    });
-
-    const boutonReserver = document.createElement("button");
-    boutonReserver.type = "button";
-    boutonReserver.className = "lcdp-button lcdp-box-calendrier-mois__action-reserver";
-    boutonReserver.textContent = "RÉSERVER";
-    boutonReserver.addEventListener("click", () => {
-      demarrerReservationParc(parc).catch(console.error);
-    });
-
-    const actionPartager = creerActionPartagerPage();
-    actionPartager.addEventListener("click", () => {
-      ouvrirPartagePlanningParc(parc, "planning").catch(console.error);
-    });
-
-    actions.appendChild(boutonReserver);
-    actions.appendChild(actionPartager);
-    actions.appendChild(boutonFiche);
-
-    return actions;
-  }
-
-  function creerActionPartagerPage() {
-    const action = document.createElement("span");
-    action.className = "lcdp-box-calendrier-mois__partage";
-    action.setAttribute("role", "button");
-    action.setAttribute("tabindex", "0");
-    action.setAttribute("aria-label", "Partager la page par e-mail");
-
-    const bouton = document.createElement("span");
-    bouton.className = "lcdp-box-calendrier-mois__partage-icone";
-    bouton.setAttribute("aria-hidden", "true");
-
-    const icone = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    icone.setAttribute("viewBox", "0 0 24 24");
-    icone.setAttribute("width", "20");
-    icone.setAttribute("height", "20");
-    icone.setAttribute("aria-hidden", "true");
-    icone.setAttribute("focusable", "false");
-    icone.setAttribute("fill", "none");
-    icone.setAttribute("stroke", "currentColor");
-    icone.setAttribute("stroke-width", "2");
-    icone.setAttribute("stroke-linecap", "round");
-    icone.setAttribute("stroke-linejoin", "round");
-
-    const trace = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    trace.setAttribute("d", "M22 2 11 13");
-
-    const trace2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    trace2.setAttribute("d", "M22 2 15 22 11 13 2 9 22 2Z");
-
-    icone.appendChild(trace);
-    icone.appendChild(trace2);
-    bouton.appendChild(icone);
-
-    const libelle = document.createElement("span");
-    libelle.className = "lcdp-box-calendrier-mois__partage-libelle";
-    libelle.textContent = "Partager la page";
-
-    action.appendChild(bouton);
-    action.appendChild(libelle);
-
-    action.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        action.click();
-      }
-    });
-
-    return action;
-  }
-
   async function envoyerPartagePlanningParc(parc, emails, typepartage) {
     if (!ENDPOINT_PARTAGE_PAGE) {
       throw new Error("Le service de partage est temporairement indisponible.");
@@ -2263,62 +2055,6 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     return texte;
   }
 
-
-  async function obtenirCoquePlanningParcContenu() {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) {
-      throw new Error("Slot lightbox introuvable.");
-    }
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/BOX/04-box-workflow-reservation.html");
-    slot.appendChild(fragment);
-
-    const coque = slot.querySelector("[data-lcdp-box-workflow-reservation]");
-
-    if (!coque) {
-      throw new Error("Structure de coque planning incomplète.");
-    }
-
-    const contenu = coque.querySelector("[data-lcdp-workflow-reservation-content]");
-
-    if (!contenu) {
-      throw new Error("Zone contenu planning introuvable.");
-    }
-
-    return contenu;
-  }
-
-  async function preparerTransitionCoquePlanningParc(slot) {
-    if (!slot) return;
-
-    slot.classList.add("lcdp-box-workflow-reservation__content--transition");
-    await attendre(70);
-    slot.innerHTML = "";
-    slot.classList.remove("lcdp-box-workflow-reservation__content--transition");
-  }
-
-  function appliquerClasseCoquePlanningParc(box, variante) {
-    if (!box) return;
-
-    box.classList.add("lcdp-workflow-reservation-box");
-
-    const coque = box.closest("[data-lcdp-box-workflow-reservation]");
-
-    if (!coque) return;
-
-    Array.from(coque.classList).forEach((nomClasse) => {
-      if (nomClasse.startsWith("lcdp-box-workflow-reservation--")) {
-        coque.classList.remove(nomClasse);
-      }
-    });
-
-    if (variante) {
-      coque.classList.add("lcdp-box-workflow-reservation--" + variante);
-    }
-  }
 
   function attendre(delaiMs) {
     return new Promise((resolve) => {
@@ -2617,68 +2353,6 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     });
   }
 
-  async function ouvrirPlanningJourLectureDepuisCard(cardJour) {
-    try {
-      const dateIso = String(cardJour.dataset.date || "").trim();
-      const etatPlanning = etatPage.planningParcLectureActif;
-
-      if (!dateIso || !etatPlanning || !etatPlanning.parc) {
-        await afficherAlerteDetailParcOuPage("Date ou parc manquant.");
-        return;
-      }
-
-      const planningJourMois = (etatPlanning.planning || [])
-        .find((jour) => String(jour.date || "") === dateIso);
-
-      if (!planningJourMois || planningJourMois.ouvert !== true) {
-        await afficherAlerteDetailParcOuPage(
-          "Aucun horaire disponible pour cette date."
-        );
-        return;
-      }
-
-      const jour = await chargerPlanningParcJourLecture(
-        etatPlanning,
-        dateIso
-      );
-      const detail = obtenirShiftDetailParcActif();
-
-      if (!detail || !detail.contenu) {
-        throw new Error("Zone de détail du parc introuvable.");
-      }
-
-      const contenuPrepare = document.createElement("div");
-      contenuPrepare.className =
-        "lcdp-box-shift-detail-parc__content-preparation";
-
-      await afficherPlanningJourLectureDansConteneur(
-        contenuPrepare,
-        {
-          parc: etatPlanning.parc,
-          etatPlanning,
-          jour
-        }
-      );
-
-      etatPage.shiftDetailParc = {
-        parc: etatPlanning.parc,
-        vue: "planning-jour"
-      };
-      detail.racine.dataset.lcdpShiftVue = "planning-jour";
-
-      await remplacerContenuShiftDetailParc(
-        detail.contenu,
-        contenuPrepare
-      );
-    } catch (error) {
-      console.error("Erreur détail journalier du planning parc :", error);
-      await afficherAlerteDetailParcOuPage(
-        error?.message ||
-        "Impossible de charger le détail de cette journée."
-      );
-    }
-  }
-
   async function chargerPlanningParcJourLecture(
     etatPlanning,
     dateIso
@@ -2733,263 +2407,6 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
       ouvert: false,
       segments: []
     };
-  }
-
-  async function afficherPlanningJourLectureDansConteneur(
-    slot,
-    contexte
-  ) {
-    if (!slot) return;
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet(
-      "/BOX/04-box-calendrier-jour.html"
-    );
-    slot.appendChild(fragment);
-
-    const calendrier = slot.querySelector(
-      "[data-lcdp-box-calendrier-jour]"
-    );
-    const titre = slot.querySelector(
-      "[data-lcdp-calendrier-jour-title]"
-    );
-    const meta = slot.querySelector(
-      "[data-lcdp-calendrier-jour-meta]"
-    );
-    const message = slot.querySelector(
-      "[data-lcdp-calendrier-jour-message]"
-    );
-    const grille = slot.querySelector(
-      "[data-lcdp-calendrier-jour-grid]"
-    );
-    const boutonFermerTechnique = slot.querySelector(
-      "[data-lcdp-calendrier-jour-close]"
-    );
-    const corps = slot.querySelector(
-      ".lcdp-box-calendrier-jour__body"
-    );
-
-    if (
-      !calendrier ||
-      !titre ||
-      !meta ||
-      !message ||
-      !grille ||
-      !boutonFermerTechnique ||
-      !corps
-    ) {
-      throw new Error("Structure calendrier jour incomplète.");
-    }
-
-    calendrier.classList.add(
-      "lcdp-box-calendrier-jour--shift-detail",
-      "lcdp-box-calendrier-jour--planning-lecture"
-    );
-
-    const parc = contexte.parc || {};
-    const nomParc = String(
-      parc.nom || parc.nomparc || "Parc"
-    ).trim() || "Parc";
-    const departement = String(
-      parc.dptmt || parc.departement || ""
-    ).trim();
-
-    titre.textContent =
-      "Parc de " +
-      nomParc +
-      (departement ? " - " + departement : "");
-
-    meta.textContent = "";
-    meta.classList.add(
-      "lcdp-box-calendrier-jour__meta--actions"
-    );
-    meta.appendChild(creerActionsPlanningParc(parc));
-
-    boutonFermerTechnique.hidden = true;
-
-    const navigation = document.createElement("div");
-    navigation.className =
-      "lcdp-box-calendrier-mois__navigation " +
-      "lcdp-box-calendrier-jour__navigation-planning";
-
-    const boutonRetour = document.createElement("button");
-    boutonRetour.type = "button";
-    boutonRetour.className =
-      "lcdp-box-calendrier-mois__nav-button";
-    boutonRetour.setAttribute(
-      "aria-label",
-      "Retour au planning mensuel"
-    );
-    boutonRetour.textContent = "←";
-    boutonRetour.addEventListener("click", () => {
-      retournerPlanningMoisLecture(
-        contexte.etatPlanning
-      ).catch(console.error);
-    });
-
-    const dateCourante = document.createElement("h3");
-    dateCourante.className =
-      "lcdp-box-calendrier-mois__month";
-    dateCourante.textContent = formaterDateFr(
-      contexte.jour.date
-    );
-
-    const espaceNavigation = document.createElement("span");
-    espaceNavigation.className =
-      "lcdp-box-calendrier-mois__nav-button " +
-      "lcdp-box-calendrier-jour__navigation-placeholder";
-    espaceNavigation.setAttribute("aria-hidden", "true");
-
-    navigation.appendChild(boutonRetour);
-    navigation.appendChild(dateCourante);
-    navigation.appendChild(espaceNavigation);
-    corps.insertBefore(navigation, message);
-
-    remplirGrillePlanningJourLecture(
-      grille,
-      message,
-      contexte.jour
-    );
-  }
-
-  async function retournerPlanningMoisLecture(etatPlanning) {
-    const detail = obtenirShiftDetailParcActif();
-
-    if (!detail || !detail.contenu || !etatPlanning?.parc) {
-      throw new Error("Planning mensuel introuvable.");
-    }
-
-    const contenuPrepare = document.createElement("div");
-    contenuPrepare.className =
-      "lcdp-box-shift-detail-parc__content-preparation";
-
-    await afficherPlanningMoisParcDansConteneur(
-      contenuPrepare,
-      etatPlanning.parc,
-      etatPlanning
-    );
-
-    etatPage.shiftDetailParc = {
-      parc: etatPlanning.parc,
-      vue: "planning"
-    };
-    detail.racine.dataset.lcdpShiftVue = "planning";
-
-    await remplacerContenuShiftDetailParc(
-      detail.contenu,
-      contenuPrepare
-    );
-  }
-
-  function remplirGrillePlanningJourLecture(
-    grille,
-    message,
-    jour
-  ) {
-    grille.innerHTML = "";
-
-    const segments = Array.isArray(jour?.segments)
-      ? jour.segments
-      : [];
-
-    segments.forEach((segment) => {
-      grille.appendChild(
-        creerCardSegmentPlanningJourLecture(segment)
-      );
-    });
-
-    if (!grille.children.length) {
-      message.hidden = false;
-      message.textContent =
-        "Aucun horaire n’est disponible pour cette date.";
-      return;
-    }
-
-    message.hidden = true;
-    message.textContent = "";
-  }
-
-  function creerCardSegmentPlanningJourLecture(segment) {
-    const card = etatPage.templateHeureJour.cloneNode(true);
-    const label = card.querySelector(
-      "[data-lcdp-card-heure-jour-label]"
-    );
-    const couleurs = normaliserListeCouleursPlanning(segment);
-    const libelle = construireLibelleSegmentPlanningJour(segment);
-
-    card.removeAttribute("data-action");
-    card.disabled = true;
-    card.setAttribute("aria-disabled", "true");
-    card.classList.add(
-      "lcdp-box-card-heure-in-calendrier-jour--planning-lecture"
-    );
-
-    if (couleurs.length > 1) {
-      card.classList.add(
-        "lcdp-box-card-heure-in-calendrier-jour--multicolore"
-      );
-      card.style.setProperty(
-        "--lcdp-heure-fond",
-        construireDegradeCouleursPlanning(couleurs)
-      );
-    } else {
-      card.classList.add(
-        "lcdp-box-card-heure-in-calendrier-jour--" +
-        (couleurs[0] || "bleu-clair")
-      );
-    }
-
-    card.title = libelle;
-    card.setAttribute("aria-label", libelle);
-
-    if (label) {
-      label.textContent = libelle;
-    }
-
-    return card;
-  }
-
-  function construireLibelleSegmentPlanningJour(segment) {
-    const categories = Array.isArray(segment?.categories)
-      ? segment.categories
-      : [];
-    const libellesCategories = categories
-      .map((categorie) => {
-        if (categorie === "DUO") return "Duo";
-        if (categorie === "COACH") return "Coach";
-        if (categorie === "FAMILLE") return "Famille";
-        return String(categorie || "");
-      })
-      .filter(Boolean);
-    const morceaux = [
-      formaterHeureAffichee(segment?.debut) +
-        "–" +
-        formaterHeureAffichee(segment?.fin),
-      libellesCategories.length
-        ? libellesCategories.join(" + ")
-        : "Ouvert"
-    ];
-
-    if (segment?.privatisation) {
-      morceaux.push("Privatisation");
-    }
-
-    const capacite = Number(segment?.capacite);
-
-    if (Number.isFinite(capacite) && capacite > 0) {
-      morceaux.push("capacité " + String(capacite));
-    }
-
-    const ratio = Number(segment?.ratio);
-
-    if (Number.isFinite(ratio) && ratio >= 0) {
-      morceaux.push(
-        "occupation " + Math.round(ratio * 100) + " %"
-      );
-    }
-
-    return morceaux.join(" · ");
   }
 
   async function ouvrirCalendrierJourDepuisCard(cardJour) {
@@ -3693,6 +3110,8 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     if (
       window.LCDP_FicheParc &&
       typeof window.LCDP_FicheParc.rendreDansConteneur ===
+        "function" &&
+      typeof window.LCDP_FicheParc.rendrePlanningDansConteneur ===
         "function"
     ) {
       return window.LCDP_FicheParc;
@@ -3705,6 +3124,8 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     if (
       !window.LCDP_FicheParc ||
       typeof window.LCDP_FicheParc.rendreDansConteneur !==
+        "function" ||
+      typeof window.LCDP_FicheParc.rendrePlanningDansConteneur !==
         "function"
     ) {
       throw new Error(
