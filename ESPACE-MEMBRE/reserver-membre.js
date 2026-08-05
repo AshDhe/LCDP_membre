@@ -1281,8 +1281,7 @@
         "aria-label",
         "Ouvrir la présentation du parc " + nom
       );
-      texte.title = "Ouvrir la présentation du parc " + nom;
-      texte.textContent = description;
+      rendreDescriptionCardParc(texte, description);
       texte.hidden = !descriptionComplete;
     }
 
@@ -3458,12 +3457,37 @@
           texte.dataset.lcdpDescriptionComplete || ""
         );
 
-        texte.textContent = nettoyerTexteCourt(
-          descriptionComplete,
-          longueurMax
+        rendreDescriptionCardParc(
+          texte,
+          nettoyerTexteCourt(descriptionComplete, longueurMax)
         );
         texte.hidden = !descriptionComplete;
       });
+  }
+
+  function rendreDescriptionCardParc(texte, description) {
+    if (!texte) return;
+
+    texte.replaceChildren();
+
+    if (!description) return;
+
+    const contenu = document.createElement("span");
+    contenu.className = "lcdp-box-card-parc__description-texte";
+    contenu.textContent = description;
+
+    const icone = document.createElement("img");
+    icone.className = "lcdp-box-card-parc__description-icone";
+    icone.src = construireUrlObjet("/IMAG/PICTO/picto-presentation.svg");
+    icone.alt = "";
+    icone.width = 14;
+    icone.height = 14;
+    icone.decoding = "async";
+    icone.draggable = false;
+    icone.setAttribute("aria-hidden", "true");
+
+    texte.appendChild(contenu);
+    texte.appendChild(icone);
   }
 
   function nettoyerTexteDescription(valeur) {
