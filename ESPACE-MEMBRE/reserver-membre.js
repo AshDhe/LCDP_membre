@@ -1537,7 +1537,7 @@
     detail.racine.dataset.lcdpShiftVue = vue;
 
     if (premiereOuverture) {
-      detail.contenu.replaceChildren(...Array.from(contenuPrepare.childNodes));
+      detail.contenu.replaceChildren(contenuPrepare);
       detail.racine.hidden = false;
       detail.racine.classList.remove("lcdp-box-shift-detail-parc--preparation");
       detail.racine.classList.add("lcdp-box-shift-detail-parc--apparition");
@@ -1650,9 +1650,7 @@
       "lcdp-box-shift-detail-parc__content--transition"
     );
     contenu.style.removeProperty("min-height");
-    contenu.replaceChildren(
-      ...Array.from(contenuPrepare.childNodes)
-    );
+    contenu.replaceChildren(contenuPrepare);
   }
 
   async function afficherAlerteDetailParcOuPage(message) {
