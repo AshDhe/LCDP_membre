@@ -81,8 +81,6 @@
     templateCardParc: null,
     templateJourMois: null,
     templateHeureJour: null,
-    templateFicheParc: null,
-    templateMapParc: null,
     templateShiftDetailParc: null,
     calendrierMoisActif: null,
     planningParcLectureActif: null,
@@ -543,12 +541,6 @@
     const fragmentCard = await chargerFragmentObjet("/BOX/04-box-card-parc.html");
     etatPage.templateCardParc = fragmentCard.querySelector("[data-lcdp-box-card-parc]");
 
-    const fragmentFicheParc = await chargerFragmentObjet("/BOX/04-box-fiche-parc.html");
-    etatPage.templateFicheParc = fragmentFicheParc.querySelector("[data-lcdp-box-fiche-parc]");
-
-    const fragmentMapParc = await chargerFragmentObjet("/BOX/04-box-card-map-parc.html");
-    etatPage.templateMapParc = fragmentMapParc.querySelector("[data-lcdp-box-card-map-parc]");
-
     const fragmentShiftDetailParc = await chargerFragmentObjet("/BOX/04-box-shift-detail-parc.html");
     etatPage.templateShiftDetailParc = fragmentShiftDetailParc.querySelector("[data-lcdp-box-shift-detail-parc]");
 
@@ -561,15 +553,13 @@
     if (
       !etatPage.templateListeParcs ||
       !etatPage.templateCardParc ||
-      !etatPage.templateFicheParc ||
-      !etatPage.templateMapParc ||
       !etatPage.templateShiftDetailParc ||
       !etatPage.templateJourMois ||
       !etatPage.templateHeureJour
     ) {
       throw new Error(
-        "Templates liste, parc, fiche parc, carte parc, " +
-        "shift détail parc, jour ou heure introuvables."
+        "Templates liste, parc, shift détail parc, " +
+        "jour ou heure introuvables."
       );
     }
   }
@@ -1632,19 +1622,71 @@
     await remplacerContenuShiftDetailParc(detail.contenu, contenuPrepare);
   }
 
-  async function rendreVueShiftDetailParcDansConteneur(contenu, parc, vue) {
+  async function rendreVueShiftDetailParcDansConteneur(
+    contenu,
+    parc,
+    vue
+  ) {
     if (vue === "planning") {
-      await afficherPlanningMoisParcDansConteneur(contenu, parc);
+      await afficherPlanningMoisParcDansConteneur(
+        contenu,
+        parc
+      );
       return;
     }
 
     if (vue === "reservation") {
-      await afficherReservationMoisParcDansConteneur(contenu, parc, true);
+      await afficherReservationMoisParcDansConteneur(
+        contenu,
+        parc,
+        true
+      );
       return;
     }
 
-    await afficherFicheParcDansConteneur(contenu, parc);
+    const constructeur = await chargerConstructeurFicheParc();
+
+    await constructeur.rendreDansConteneur(
+      contenu,
+      parc,
+      {
+        chargerFragmentObjet,
+        construireUrlObjet,
+        construireUrlImageParcFichier,
+        construireUrlImageCardParc: construireUrlImageParc,
+        appliquerRoutes: appliquerRoutesSite,
+        templateCardParc: etatPage.templateCardParc,
+        masquerBoutonFermer: true,
+        onFermer: fermerShiftDetailParc,
+        onReserver: demarrerReservationParc,
+        onPlanning: (parcCible) =>
+          afficherVueShiftDetailParc(
+            parcCible,
+            "planning"
+          ),
+        onPartager: (parcCible) =>
+          ouvrirPartagePlanningParc(
+            parcCible,
+            "fiche"
+          ),
+        onOuvrirFicheParc: async (parcCible) => {
+          const parcComplet =
+            await chargerFicheParcComplete(parcCible);
+          await afficherVueShiftDetailParc(
+            parcComplet,
+            "fiche"
+          );
+        },
+        onOuvrirPlanningParc: (parcCible) =>
+          afficherVueShiftDetailParc(
+            parcCible,
+            "planning"
+          ),
+        onReserverParc: demarrerReservationParc
+      }
+    );
   }
+
 
   async function remplacerContenuShiftDetailParc(contenu, contenuPrepare) {
     if (!contenu || !contenuPrepare) return;
@@ -1725,926 +1767,6 @@
     });
   }
 
-  async function afficherFicheParcDansConteneur(slot, parc) {
-    if (!slot) return;
-
-    slot.innerHTML = "";
-
-    const fiche = etatPage.templateFicheParc
-      ? etatPage.templateFicheParc.cloneNode(true)
-      : (await chargerFragmentObjet("/BOX/04-box-fiche-parc.html")).querySelector("[data-lcdp-box-fiche-parc]");
-
-    if (!fiche) {
-      throw new Error("Template fiche parc introuvable.");
-    }
-
-    fiche.classList.add("lcdp-box-fiche-parc--shift-detail");
-
-    const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
-    const titre = fiche.querySelector("[data-lcdp-fiche-parc-title]");
-    const actionsSlot = fiche.querySelector("[data-lcdp-fiche-parc-actions]");
-    const presentation = fiche.querySelector("[data-lcdp-fiche-parc-presentation]");
-    const galerieSlot = fiche.querySelector("[data-lcdp-fiche-parc-galerie-slot]");
-    const mapSlot = fiche.querySelector("[data-lcdp-fiche-parc-map-slot]");
-    const contact = fiche.querySelector("[data-lcdp-fiche-parc-contact]");
-    const acces = fiche.querySelector("[data-lcdp-fiche-parc-acces]");
-    const boutonFermer = fiche.querySelector("[data-lcdp-fiche-parc-close]");
-
-    if (titre) {
-      titre.textContent = "Parc de " + nom;
-    }
-
-    if (actionsSlot) {
-      actionsSlot.innerHTML = "";
-      actionsSlot.appendChild(creerActionsFicheParc(parc));
-    }
-
-    if (presentation) {
-      remplirBlocTexteFiche(
-        presentation,
-        nettoyerTexteFiche(parc.prez || parc.presentation || parc.description || "") || "Présentation non renseignée."
-      );
-    }
-
-    if (galerieSlot) {
-      await afficherGalerieParcDansSlot(galerieSlot, parc);
-    }
-
-    if (mapSlot) {
-      await afficherCarteParcDansSlot(mapSlot, parc);
-    }
-
-    if (contact) {
-      remplirBlocTexteFiche(contact, construireTexteContactParc(parc));
-    }
-
-    if (acces) {
-      remplirBlocTexteFiche(
-        acces,
-        construireTexteAccesParc(parc)
-      );
-    }
-
-    if (boutonFermer) {
-      boutonFermer.addEventListener("click", fermerShiftDetailParc);
-    }
-
-    slot.appendChild(fiche);
-  }
-
-  function remplirBlocTexteFiche(conteneur, texte) {
-    if (!conteneur) return;
-
-    conteneur.innerHTML = "";
-
-    const lignes = String(texte || "")
-      .split("\n")
-      .map(nettoyerTexteFiche)
-      .filter(Boolean);
-
-    if (!lignes.length) {
-      const paragraphe = document.createElement("p");
-      paragraphe.textContent = "Non renseigné.";
-      conteneur.appendChild(paragraphe);
-      return;
-    }
-
-    lignes.forEach((ligne) => {
-      const paragraphe = document.createElement("p");
-      paragraphe.textContent = ligne;
-
-      if (ligne.startsWith("Actualisation :")) {
-        paragraphe.classList.add(
-          "lcdp-box-fiche-parc__actualisation"
-        );
-      }
-
-      conteneur.appendChild(paragraphe);
-    });
-  }
-
-  async function afficherGalerieParcDansSlot(slot, parc) {
-    if (!slot) return;
-
-    slot.innerHTML = "";
-
-    if (typeof window.LCDP_ajouterGalerie !== "function") {
-      throw new Error("Objet galerie V3 introuvable.");
-    }
-
-    const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
-    const cartes = [];
-
-    for (let index = 1; index <= 6; index += 1) {
-      const numero = String(index).padStart(2, "0");
-
-      cartes.push({
-        titre: "",
-        imageSrc: construireUrlImageParcFichier(parc, numero + ".jpg"),
-        imageAlt: "Photo " + numero + " du parc de " + nom,
-        imageLegende: "",
-        texte: ""
-      });
-    }
-
-    await window.LCDP_ajouterGalerie(slot, {
-      titre: "",
-      ariaLabel: "Galerie photo du parc",
-      cartes
-    });
-  }
-
-  async function afficherCarteParcDansSlot(slot, parc) {
-    if (!slot) return;
-
-    slot.innerHTML = "";
-
-    const [fragment, reponseGeojson] = await Promise.all([
-      chargerFragmentObjet("/BOX/04-carte-dynamique.html"),
-      fetch(construireUrlObjet("/BOX/04-carte-dynamique.geojson"), {
-        method: "GET",
-        credentials: "omit",
-        cache: "no-cache",
-        headers: {
-          "Accept": "application/geo+json, application/json"
-        }
-      })
-    ]);
-
-    if (!reponseGeojson.ok) {
-      throw new Error("GeoJSON de la carte introuvable.");
-    }
-
-    const geojson = await reponseGeojson.json();
-    const carte = fragment.querySelector("[data-lcdp-carte-dynamique]");
-
-    if (!carte) {
-      throw new Error("Structure de la carte dynamique incomplète.");
-    }
-
-    carte.classList.add("lcdp-carte-dynamique--fiche-parc");
-    slot.appendChild(carte);
-
-    const entete = carte.querySelector(".lcdp-carte-dynamique__header");
-    const filtres = carte.querySelector("[data-lcdp-carte-filters]");
-    const statut = carte.querySelector("[data-lcdp-carte-status]");
-    const svg = carte.querySelector("[data-lcdp-carte-svg]");
-    const coucheDepartements = carte.querySelector("[data-lcdp-carte-departements-layer]");
-    const coucheSelection = carte.querySelector("[data-lcdp-carte-selection-layer]");
-    const coucheLocalites = carte.querySelector("[data-lcdp-carte-localites-layer]");
-    const coucheParcs = carte.querySelector("[data-lcdp-carte-parcs-layer]");
-    const boutonZoomPlus = carte.querySelector("[data-lcdp-carte-zoom-plus]");
-    const boutonZoomMoins = carte.querySelector("[data-lcdp-carte-zoom-moins]");
-    const cardSlot = carte.querySelector("[data-lcdp-carte-card-slot]");
-
-    if (
-      !svg ||
-      !coucheDepartements ||
-      !coucheSelection ||
-      !coucheLocalites ||
-      !coucheParcs ||
-      !boutonZoomPlus ||
-      !boutonZoomMoins ||
-      !cardSlot
-    ) {
-      throw new Error("Structure SVG de la carte dynamique incomplète.");
-    }
-
-    if (entete) entete.hidden = true;
-    if (filtres) filtres.hidden = true;
-    if (statut) statut.hidden = true;
-    cardSlot.hidden = true;
-
-    svg.setAttribute("focusable", "false");
-    svg.setAttribute("tabindex", "-1");
-    svg.setAttribute("preserveAspectRatio", "xMidYMid slice");
-
-    const codeDepartement = nettoyerDepartement(parc.dptmt || parc.departement);
-    const features = Array.isArray(geojson?.features) ? geojson.features : [];
-    const traces = [];
-
-    features.forEach((feature) => {
-      const code = nettoyerDepartement(feature?.properties?.code);
-      const trace = construireTraceGeometrieFicheParc(feature?.geometry);
-
-      if (code && trace) {
-        traces.push({ code, trace });
-      }
-    });
-
-    if (!traces.length) {
-      throw new Error("Données cartographiques incomplètes.");
-    }
-
-    coucheDepartements.innerHTML = "";
-    coucheSelection.innerHTML = "";
-    coucheLocalites.innerHTML = "";
-    coucheParcs.innerHTML = "";
-
-    traces.forEach(({ code, trace }) => {
-      const path = creerElementSvgFicheParc("path");
-      path.setAttribute("d", trace.d);
-      path.setAttribute("class", "lcdp-carte-dynamique__departement");
-      path.dataset.code = code;
-      coucheDepartements.appendChild(path);
-
-      if (code === codeDepartement) {
-        const selection = creerElementSvgFicheParc("path");
-        selection.setAttribute("d", trace.d);
-        selection.setAttribute(
-          "class",
-          "lcdp-carte-dynamique__departement-selection"
-        );
-        coucheSelection.appendChild(selection);
-      }
-    });
-
-    const traceSelectionnee = traces.find((item) => item.code === codeDepartement);
-    const bboxFrance = fusionnerBboxFicheParc(traces.map((item) => item.trace.bbox));
-    const bboxCible = traceSelectionnee?.trace?.bbox || bboxFrance;
-    const viewBoxInitiale = bboxVersViewBoxFicheParc(
-      bboxCible,
-      traceSelectionnee ? 0.04 : 0.045
-    );
-
-    if (!viewBoxInitiale) {
-      throw new Error("Emprise cartographique inexploitable.");
-    }
-
-    let viewBoxCourante = [...viewBoxInitiale];
-    const viewBoxLimite = bboxVersViewBoxFicheParc(bboxFrance, 0.045) || [...viewBoxInitiale];
-
-    function appliquerViewBox() {
-      svg.setAttribute("viewBox", viewBoxCourante.join(" "));
-      actualiserTailleElementsCarte();
-    }
-
-    function actualiserTailleElementsCarte() {
-      const largeurMesuree = svg.getBoundingClientRect().width || svg.clientWidth || 800;
-      const largeurEcran = Math.max(320, largeurMesuree);
-      const uniteEcran = viewBoxCourante[2] / largeurEcran;
-      const rayonParc = Math.max(0.04, uniteEcran * 6);
-      const rayonLocalite = Math.max(0.035, uniteEcran * 4.2);
-      const carteMobile = largeurMesuree <= 520;
-      const tailleLibelle = Math.max(0.12, uniteEcran * (carteMobile ? 12.5 : 11));
-      const decalageLibelle = Math.max(0.08, uniteEcran * (carteMobile ? 10 : 7));
-
-      coucheParcs
-        .querySelectorAll(".lcdp-carte-dynamique__marker")
-        .forEach((marker) => marker.setAttribute("r", String(rayonParc)));
-
-      coucheLocalites
-        .querySelectorAll(".lcdp-carte-dynamique__localite-marker")
-        .forEach((marker) => marker.setAttribute("r", String(rayonLocalite)));
-
-      coucheLocalites
-        .querySelectorAll(".lcdp-carte-dynamique__localite-label")
-        .forEach((libelle) => {
-          const x = Number(libelle.dataset.pointX);
-          const y = Number(libelle.dataset.pointY);
-
-          libelle.setAttribute("font-size", String(tailleLibelle));
-
-          if (carteMobile) {
-            libelle.setAttribute("x", String(x));
-            libelle.setAttribute("y", String(y - decalageLibelle));
-            libelle.setAttribute("text-anchor", "middle");
-          } else {
-            libelle.setAttribute("x", String(x + decalageLibelle));
-            libelle.setAttribute("y", String(y));
-            libelle.setAttribute("text-anchor", "start");
-          }
-        });
-    }
-
-    function zoomer(facteur) {
-      const [x, y, largeur, hauteur] = viewBoxCourante;
-      const centreX = x + largeur / 2;
-      const centreY = y + hauteur / 2;
-      const largeurMin = Math.max(0.25, viewBoxInitiale[2] / 12);
-      const hauteurMin = Math.max(0.25, viewBoxInitiale[3] / 12);
-      const largeurFinale = Math.min(
-        viewBoxLimite[2],
-        Math.max(largeurMin, largeur * facteur)
-      );
-      const hauteurFinale = Math.min(
-        viewBoxLimite[3],
-        Math.max(hauteurMin, hauteur * facteur)
-      );
-
-      viewBoxCourante = [
-        centreX - largeurFinale / 2,
-        centreY - hauteurFinale / 2,
-        largeurFinale,
-        hauteurFinale
-      ];
-      appliquerViewBox();
-    }
-
-    boutonZoomPlus.addEventListener("click", () => zoomer(0.82));
-    boutonZoomMoins.addEventListener("click", () => zoomer(1.22));
-
-    let glissement = null;
-    let pincementTactile = null;
-
-    function distanceEntrePointeurs(a, b) {
-      return Math.hypot(b.x - a.x, b.y - a.y);
-    }
-
-    function centreEntrePointeurs(a, b) {
-      return {
-        x: (a.x + b.x) / 2,
-        y: (a.y + b.y) / 2
-      };
-    }
-
-    function bornerDimensionsViewBox(largeur, hauteur) {
-      const largeurMin = Math.max(0.25, viewBoxInitiale[2] / 12);
-      const hauteurMin = Math.max(0.25, viewBoxInitiale[3] / 12);
-
-      return {
-        largeur: Math.min(viewBoxLimite[2], Math.max(largeurMin, largeur)),
-        hauteur: Math.min(viewBoxLimite[3], Math.max(hauteurMin, hauteur))
-      };
-    }
-
-    function convertirTouchEnPoint(touch) {
-      return {
-        x: touch.clientX,
-        y: touch.clientY
-      };
-    }
-
-    function demarrerPincementTactile(touches) {
-      if (!touches || touches.length < 2) {
-        pincementTactile = null;
-        return;
-      }
-
-      const premier = convertirTouchEnPoint(touches[0]);
-      const second = convertirTouchEnPoint(touches[1]);
-      const distance = distanceEntrePointeurs(premier, second);
-
-      if (!(distance > 0)) {
-        pincementTactile = null;
-        return;
-      }
-
-      const centre = centreEntrePointeurs(premier, second);
-      const rect = svg.getBoundingClientRect();
-      const largeurEcran = Math.max(1, rect.width);
-      const hauteurEcran = Math.max(1, rect.height);
-
-      pincementTactile = {
-        distance,
-        viewBox: [...viewBoxCourante],
-        ancreX:
-          viewBoxCourante[0] +
-          ((centre.x - rect.left) / largeurEcran) * viewBoxCourante[2],
-        ancreY:
-          viewBoxCourante[1] +
-          ((centre.y - rect.top) / hauteurEcran) * viewBoxCourante[3]
-      };
-    }
-
-    svg.addEventListener("pointerdown", (event) => {
-      if (event.pointerType === "touch") {
-        return;
-      }
-
-      const cible = event.target instanceof Element ? event.target : null;
-
-      if (cible?.closest(".lcdp-carte-dynamique__marker")) {
-        return;
-      }
-
-      svg.setPointerCapture(event.pointerId);
-      glissement = {
-        x: event.clientX,
-        y: event.clientY,
-        viewBox: [...viewBoxCourante]
-      };
-      svg.classList.add("is-dragging");
-    });
-
-    svg.addEventListener("pointermove", (event) => {
-      if (event.pointerType === "touch" || !glissement) {
-        return;
-      }
-
-      const largeurEcran = Math.max(1, svg.getBoundingClientRect().width);
-      const hauteurEcran = Math.max(1, svg.getBoundingClientRect().height);
-      const dx = (event.clientX - glissement.x) * glissement.viewBox[2] / largeurEcran;
-      const dy = (event.clientY - glissement.y) * glissement.viewBox[3] / hauteurEcran;
-
-      viewBoxCourante = [
-        glissement.viewBox[0] - dx,
-        glissement.viewBox[1] - dy,
-        glissement.viewBox[2],
-        glissement.viewBox[3]
-      ];
-      appliquerViewBox();
-    });
-
-    function terminerInteractionPointeur(event) {
-      if (event?.pointerType === "touch") {
-        return;
-      }
-
-      if (
-        glissement &&
-        event?.pointerId !== undefined &&
-        svg.hasPointerCapture(event.pointerId)
-      ) {
-        svg.releasePointerCapture(event.pointerId);
-      }
-
-      glissement = null;
-      svg.classList.remove("is-dragging");
-    }
-
-    svg.addEventListener("pointerup", terminerInteractionPointeur);
-    svg.addEventListener("pointercancel", terminerInteractionPointeur);
-
-    svg.addEventListener("touchstart", (event) => {
-      if (event.touches.length < 2) {
-        pincementTactile = null;
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-      demarrerPincementTactile(event.touches);
-    }, { passive: false });
-
-    svg.addEventListener("touchmove", (event) => {
-      if (event.touches.length < 2) {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      if (!pincementTactile) {
-        demarrerPincementTactile(event.touches);
-      }
-
-      if (!pincementTactile) {
-        return;
-      }
-
-      const premier = convertirTouchEnPoint(event.touches[0]);
-      const second = convertirTouchEnPoint(event.touches[1]);
-      const distance = distanceEntrePointeurs(premier, second);
-      const centre = centreEntrePointeurs(premier, second);
-
-      if (!(distance > 0)) {
-        return;
-      }
-
-      const facteur = pincementTactile.distance / distance;
-      const dimensions = bornerDimensionsViewBox(
-        pincementTactile.viewBox[2] * facteur,
-        pincementTactile.viewBox[3] * facteur
-      );
-
-      const rect = svg.getBoundingClientRect();
-      const largeurEcran = Math.max(1, rect.width);
-      const hauteurEcran = Math.max(1, rect.height);
-
-      viewBoxCourante = [
-        pincementTactile.ancreX -
-          ((centre.x - rect.left) / largeurEcran) * dimensions.largeur,
-        pincementTactile.ancreY -
-          ((centre.y - rect.top) / hauteurEcran) * dimensions.hauteur,
-        dimensions.largeur,
-        dimensions.hauteur
-      ];
-
-      appliquerViewBox();
-    }, { passive: false });
-
-    svg.addEventListener("touchend", (event) => {
-      if (event.touches.length >= 2) {
-        demarrerPincementTactile(event.touches);
-      } else {
-        pincementTactile = null;
-      }
-    }, { passive: true });
-
-    svg.addEventListener("touchcancel", () => {
-      pincementTactile = null;
-    }, { passive: true });
-
-    const bloquerZoomNavigateurDansCarte = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-    };
-
-    svg.addEventListener("gesturestart", bloquerZoomNavigateurDansCarte, {
-      passive: false
-    });
-    svg.addEventListener("gesturechange", bloquerZoomNavigateurDansCarte, {
-      passive: false
-    });
-    svg.addEventListener("gestureend", bloquerZoomNavigateurDansCarte, {
-      passive: false
-    });
-
-    window.addEventListener("resize", actualiserTailleElementsCarte);
-
-    (Array.isArray(parc.localitesCarte) ? parc.localitesCarte : [])
-      .forEach((localite) => {
-        const point = projeterCoordonneeFicheParc(
-          localite.longitude,
-          localite.latitude
-        );
-
-        if (!point) return;
-
-        const groupe = creerElementSvgFicheParc("g");
-        groupe.setAttribute("aria-hidden", "true");
-
-        const marker = creerElementSvgFicheParc("circle");
-        marker.setAttribute("cx", String(point.x));
-        marker.setAttribute("cy", String(point.y));
-        marker.setAttribute("r", "0.1");
-        marker.setAttribute(
-          "class",
-          "lcdp-carte-dynamique__localite-marker"
-        );
-
-        const libelle = creerElementSvgFicheParc("text");
-        libelle.setAttribute("x", String(point.x));
-        libelle.setAttribute("y", String(point.y));
-        libelle.setAttribute("dominant-baseline", "middle");
-        libelle.setAttribute(
-          "class",
-          "lcdp-carte-dynamique__localite-label"
-        );
-        libelle.dataset.pointX = String(point.x);
-        libelle.dataset.pointY = String(point.y);
-        libelle.textContent = String(localite.nom || "")
-          .trim()
-          .toLocaleUpperCase("fr");
-
-        groupe.appendChild(marker);
-        groupe.appendChild(libelle);
-        coucheLocalites.appendChild(groupe);
-      });
-
-    function fermerCardParc() {
-      cardSlot.innerHTML = "";
-      cardSlot.hidden = true;
-      cardSlot.classList.remove("is-open");
-      cardSlot.style.removeProperty("display");
-    }
-
-    async function ouvrirCardParc(parcCarte) {
-      const card = etatPage.templateCardParc.cloneNode(true);
-      const image = card.querySelector("[data-lcdp-card-parc-image]");
-      const media = card.querySelector(".lcdp-box-card-parc__media");
-      const titre = card.querySelector("[data-lcdp-card-parc-title]");
-      const meta = card.querySelector("[data-lcdp-card-parc-meta]");
-      const description = card.querySelector("[data-lcdp-card-parc-description]");
-      const badgePrepa = card.querySelector("[data-lcdp-card-parc-badge-prepa]");
-      const boutonFiche = card.querySelector("[data-action='ouvrir-fiche-parc']");
-      const boutonPlanning = card.querySelector("[data-action='voir-planning-parc']");
-
-      if (titre) {
-        titre.textContent = nettoyerTexteFiche(parcCarte?.nom) || "Parc";
-      }
-
-      if (meta) {
-        const departement = nettoyerDepartement(
-          parcCarte?.dptmt || parcCarte?.departement
-        );
-        meta.textContent = departement ? "Département " + departement : "";
-      }
-
-      if (description) {
-        description.hidden = true;
-        description.textContent = "";
-      }
-
-      if (badgePrepa) {
-        badgePrepa.hidden =
-          nettoyerTexteFiche(parcCarte?.statut).toLowerCase() !== "prepa";
-      }
-
-      if (image) {
-        const src = construireUrlImageParc(parcCarte);
-
-        image.src = src;
-        image.alt = "Image du parc " + (nettoyerTexteFiche(parcCarte?.nom) || "");
-        image.addEventListener(
-          "error",
-          () => {
-            if (media) media.hidden = true;
-          },
-          { once: true }
-        );
-      }
-
-      if (boutonFiche) {
-        boutonFiche.textContent = "Présentation";
-        boutonFiche.addEventListener("click", async (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          fermerCardParc();
-          const parcComplet = await chargerFicheParcComplete(parcCarte);
-          await afficherVueShiftDetailParc(parcComplet, "fiche");
-        });
-      }
-
-      if (boutonPlanning) {
-        boutonPlanning.textContent = "Planning";
-        boutonPlanning.addEventListener("click", async (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          fermerCardParc();
-          await afficherVueShiftDetailParc(parcCarte, "planning");
-        });
-      }
-
-      const boutonFermerCard = document.createElement("button");
-      boutonFermerCard.type = "button";
-      boutonFermerCard.className = "lcdp-carte-dynamique__card-close";
-      boutonFermerCard.textContent = "×";
-      boutonFermerCard.setAttribute("aria-label", "Fermer la Card Parc");
-      boutonFermerCard.addEventListener("click", fermerCardParc);
-
-      cardSlot.replaceChildren(boutonFermerCard, card);
-      cardSlot.hidden = false;
-      cardSlot.removeAttribute("hidden");
-      cardSlot.classList.add("is-open");
-      cardSlot.style.display = "block";
-    }
-
-    const idParcActif = nettoyerTexteFiche(parc.idparc || parc.id);
-    const parcsDepartement = Array.isArray(parc.parcsDepartement) && parc.parcsDepartement.length
-      ? parc.parcsDepartement
-      : [parc];
-    const parcsCarteParId = new Map();
-
-    parcsDepartement.forEach((parcCarte) => {
-      const idparc = nettoyerTexteFiche(parcCarte?.idparc || parcCarte?.id);
-
-      if (idparc) {
-        parcsCarteParId.set(idparc, parcCarte);
-      }
-    });
-
-    function ajouterMarqueurParc(parcCarte, estParcActif) {
-      const longitude = parcCarte.lngparc ?? parcCarte.longitude ?? parcCarte.lngloc;
-      const latitude = parcCarte.latparc ?? parcCarte.latitude ?? parcCarte.latloc;
-      const point = projeterCoordonneeFicheParc(longitude, latitude);
-
-      if (!point) return;
-
-      const idparc = nettoyerTexteFiche(parcCarte.idparc || parcCarte.id);
-      const groupe = creerElementSvgFicheParc("g");
-      groupe.dataset.idparc = idparc;
-
-      const marker = creerElementSvgFicheParc("circle");
-      marker.setAttribute("cx", String(point.x));
-      marker.setAttribute("cy", String(point.y));
-      marker.setAttribute("r", "0.1");
-      marker.setAttribute("class", "lcdp-carte-dynamique__marker");
-      marker.style.pointerEvents = "all";
-      marker.style.cursor = "pointer";
-      marker.dataset.idparc = idparc;
-      marker.dataset.statut = nettoyerTexteFiche(parcCarte.statut).toLowerCase();
-      marker.classList.toggle("is-validcarte", parcCarte.validcarte === true);
-      marker.classList.toggle(
-        "lcdp-carte-dynamique__marker--parc-actif",
-        estParcActif
-      );
-      marker.setAttribute("focusable", "false");
-      marker.setAttribute("tabindex", "-1");
-      marker.setAttribute("aria-hidden", "true");
-
-      groupe.appendChild(marker);
-      coucheParcs.appendChild(groupe);
-    }
-
-    const parcsSecondaires = [];
-    let parcCourant = null;
-
-    parcsDepartement.forEach((parcCarte) => {
-      const idparc = nettoyerTexteFiche(parcCarte.idparc || parcCarte.id);
-
-      if (idparc && idparc === idParcActif) {
-        parcCourant = parcCarte;
-        return;
-      }
-
-      parcsSecondaires.push(parcCarte);
-    });
-
-    parcsSecondaires.forEach((parcCarte) => {
-      ajouterMarqueurParc(parcCarte, false);
-    });
-
-    ajouterMarqueurParc(parcCourant || parc, true);
-
-    svg.addEventListener("click", (event) => {
-      const cible = event.target instanceof Element ? event.target : null;
-      const marker = cible?.closest(".lcdp-carte-dynamique__marker");
-
-      if (!marker) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      const parcCarte = parcsCarteParId.get(
-        nettoyerTexteFiche(marker.dataset.idparc)
-      );
-
-      if (parcCarte) {
-        ouvrirCardParc(parcCarte).catch(console.error);
-      }
-    });
-
-    svg.setAttribute(
-      "aria-label",
-      "Carte du département " + (codeDepartement || "du parc")
-    );
-
-    appliquerViewBox();
-  }
-
-  function projeterCoordonneeFicheParc(longitude, latitude) {
-    const lon = Number(longitude);
-    const lat = Number(latitude);
-
-    if (!Number.isFinite(lon) || !Number.isFinite(lat)) {
-      return null;
-    }
-
-    const latitudeBornee = Math.max(-85.05112878, Math.min(85.05112878, lat));
-    const latitudeRadians = latitudeBornee * Math.PI / 180;
-    const sinus = Math.sin(latitudeRadians);
-
-    return {
-      x: ((lon + 180) / 360) * 1000,
-      y: (0.5 - Math.log((1 + sinus) / (1 - sinus)) / (4 * Math.PI)) * 1000
-    };
-  }
-
-  function construireTraceGeometrieFicheParc(geometry) {
-    const type = String(geometry?.type || "");
-    const coordinates = geometry?.coordinates;
-    const parties = [];
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-
-    function ajouterAnneau(anneau) {
-      if (!Array.isArray(anneau) || anneau.length < 3) return;
-
-      const points = anneau
-        .map((coord) => projeterCoordonneeFicheParc(coord?.[0], coord?.[1]))
-        .filter(Boolean);
-
-      if (points.length < 3) return;
-
-      points.forEach((point) => {
-        minX = Math.min(minX, point.x);
-        minY = Math.min(minY, point.y);
-        maxX = Math.max(maxX, point.x);
-        maxY = Math.max(maxY, point.y);
-      });
-
-      parties.push(
-        "M " + points
-          .map((point) => point.x.toFixed(4) + " " + point.y.toFixed(4))
-          .join(" L ") +
-        " Z"
-      );
-    }
-
-    if (type === "Polygon" && Array.isArray(coordinates)) {
-      coordinates.forEach(ajouterAnneau);
-    } else if (type === "MultiPolygon" && Array.isArray(coordinates)) {
-      coordinates.forEach((polygone) => {
-        if (Array.isArray(polygone)) polygone.forEach(ajouterAnneau);
-      });
-    }
-
-    if (!parties.length || ![minX, minY, maxX, maxY].every(Number.isFinite)) {
-      return null;
-    }
-
-    return {
-      d: parties.join(" "),
-      bbox: [minX, minY, maxX, maxY]
-    };
-  }
-
-  function fusionnerBboxFicheParc(boxes) {
-    const valides = boxes.filter(
-      (bbox) => Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)
-    );
-
-    if (!valides.length) return null;
-
-    return [
-      Math.min(...valides.map((bbox) => bbox[0])),
-      Math.min(...valides.map((bbox) => bbox[1])),
-      Math.max(...valides.map((bbox) => bbox[2])),
-      Math.max(...valides.map((bbox) => bbox[3]))
-    ];
-  }
-
-  function bboxVersViewBoxFicheParc(bbox, ratioMarge = 0.12) {
-    if (!bbox) return null;
-
-    const largeur = Math.max(0.5, bbox[2] - bbox[0]);
-    const hauteur = Math.max(0.5, bbox[3] - bbox[1]);
-    const marge = Math.max(0.35, Math.max(largeur, hauteur) * ratioMarge);
-
-    return [
-      bbox[0] - marge,
-      bbox[1] - marge,
-      largeur + marge * 2,
-      hauteur + marge * 2
-    ];
-  }
-
-  function creerElementSvgFicheParc(nom) {
-    return document.createElementNS("http://www.w3.org/2000/svg", nom);
-  }
-
-  function construireTexteAccesParc(parc) {
-    const horaire = String(parc?.horaire || "").trim() ||
-      "Horaires d’accès non renseignés.";
-    const dateActualisation = formaterDateMajHoraire(
-      parc?.datemajhoraire
-    );
-    const mentionActualisation = dateActualisation
-      ? "Actualisation : " + dateActualisation + "."
-      : "Actualisation : date non disponible.";
-
-    return horaire + "\n" + mentionActualisation;
-  }
-
-  function formaterDateMajHoraire(value) {
-    const date = new Date(value || "");
-
-    if (Number.isNaN(date.getTime())) {
-      return "";
-    }
-
-    const morceaux = new Intl.DateTimeFormat(
-      "fr-FR",
-      {
-        timeZone: "Europe/Paris",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23"
-      }
-    ).formatToParts(date);
-    const lire = (type) =>
-      morceaux.find((item) => item.type === type)?.value || "";
-
-    return (
-      lire("day") +
-      " " +
-      lire("month") +
-      " " +
-      lire("year") +
-      " à " +
-      lire("hour") +
-      " h " +
-      lire("minute")
-    );
-  }
-
-  function construireTexteContactParc(parc) {
-    const responsable = parc?.resparc || null;
-    const email = nettoyerTexteFiche(responsable?.emailresp);
-    const telephone = nettoyerTexteFiche(responsable?.telresp);
-
-    if (email && telephone) {
-      return email + " | Standard téléphonique : " + telephone;
-    }
-
-    if (email) {
-      return email;
-    }
-
-    if (telephone) {
-      return "Standard téléphonique : " + telephone;
-    }
-
-    return "Contact non renseigné.";
-  }
-
   function construireUrlImageParcFichier(parc, fichier) {
     const departement = nettoyerDepartement(parc?.dptmt || parc?.departement || "");
     const dossierParc = normaliserNomParcPourChemin(parc?.nom || parc?.nomparc || "");
@@ -2662,11 +1784,6 @@
     );
   }
 
-  function nettoyerTexteFiche(valeur) {
-    return String(valeur || "")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
 
   function trouverParcParId(idparc) {
     const id = String(idparc || "");
@@ -2978,88 +2095,6 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
     bouton.textContent = label;
     bouton.addEventListener("click", action);
     return bouton;
-  }
-
-  function creerActionsFicheParc(parc) {
-    const actions = document.createElement("div");
-    actions.className = "lcdp-box-fiche-parc__actions-list";
-
-    const boutonReserver = document.createElement("button");
-    boutonReserver.type = "button";
-    boutonReserver.className = "lcdp-button lcdp-box-calendrier-mois__action-reserver lcdp-box-fiche-parc__action-reserver";
-    boutonReserver.textContent = "RÉSERVER";
-    boutonReserver.addEventListener("click", () => {
-      demarrerReservationParc(parc).catch(console.error);
-    });
-
-    const boutonPlanning = document.createElement("button");
-    boutonPlanning.type = "button";
-    boutonPlanning.className = "lcdp-button lcdp-button-primary lcdp-box-fiche-parc__action-planning";
-    boutonPlanning.textContent = "Planning Parc";
-    boutonPlanning.addEventListener("click", () => {
-      afficherVueShiftDetailParc(parc, "planning").catch(console.error);
-    });
-
-    const actionPartager = creerActionPartagerFicheParc();
-    actionPartager.addEventListener("click", () => {
-      ouvrirPartagePlanningParc(parc, "fiche").catch(console.error);
-    });
-
-    actions.appendChild(boutonReserver);
-    actions.appendChild(boutonPlanning);
-    actions.appendChild(actionPartager);
-
-    return actions;
-  }
-
-  function creerActionPartagerFicheParc() {
-    const action = document.createElement("span");
-    action.className = "lcdp-box-fiche-parc__partage";
-    action.setAttribute("role", "button");
-    action.setAttribute("tabindex", "0");
-    action.setAttribute("aria-label", "Partager la page par e-mail");
-
-    const bouton = document.createElement("span");
-    bouton.className = "lcdp-box-fiche-parc__partage-icone";
-    bouton.setAttribute("aria-hidden", "true");
-
-    const icone = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    icone.setAttribute("viewBox", "0 0 24 24");
-    icone.setAttribute("width", "20");
-    icone.setAttribute("height", "20");
-    icone.setAttribute("aria-hidden", "true");
-    icone.setAttribute("focusable", "false");
-    icone.setAttribute("fill", "none");
-    icone.setAttribute("stroke", "currentColor");
-    icone.setAttribute("stroke-width", "2");
-    icone.setAttribute("stroke-linecap", "round");
-    icone.setAttribute("stroke-linejoin", "round");
-
-    const trace = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    trace.setAttribute("d", "M22 2 11 13");
-
-    const trace2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    trace2.setAttribute("d", "M22 2 15 22 11 13 2 9 22 2Z");
-
-    icone.appendChild(trace);
-    icone.appendChild(trace2);
-    bouton.appendChild(icone);
-
-    const libelle = document.createElement("span");
-    libelle.className = "lcdp-box-fiche-parc__partage-libelle";
-    libelle.textContent = "Partager la page";
-
-    action.appendChild(bouton);
-    action.appendChild(libelle);
-
-    action.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        action.click();
-      }
-    });
-
-    return action;
   }
 
   function creerActionsPlanningParc(parc) {
@@ -4651,6 +3686,70 @@ async function afficherPlanningMoisLecture(etatPlanning, calendrierRacine) {
       const chemin = element.dataset.siteSrc || "";
       const cheminObjet = chemin.replace(/^\/?OBJET\/?/, "/");
       element.setAttribute("src", construireUrlObjet(cheminObjet));
+    });
+  }
+
+  async function chargerConstructeurFicheParc() {
+    if (
+      window.LCDP_FicheParc &&
+      typeof window.LCDP_FicheParc.rendreDansConteneur ===
+        "function"
+    ) {
+      return window.LCDP_FicheParc;
+    }
+
+    await chargerScriptPublicUneFois(
+      "/ESPACE-PUBLIC/fiche-parc.js"
+    );
+
+    if (
+      !window.LCDP_FicheParc ||
+      typeof window.LCDP_FicheParc.rendreDansConteneur !==
+        "function"
+    ) {
+      throw new Error(
+        "Constructeur commun de la fiche parc introuvable."
+      );
+    }
+
+    return window.LCDP_FicheParc;
+  }
+
+  function chargerScriptPublicUneFois(chemin) {
+    const src = construireUrlPublic(chemin);
+    const selecteur =
+      'script[data-lcdp-script-public="' + chemin + '"]';
+    const scriptExistant = document.querySelector(selecteur);
+
+    if (scriptExistant) {
+      if (window.LCDP_FicheParc) {
+        return Promise.resolve();
+      }
+
+      return new Promise((resolve, reject) => {
+        scriptExistant.addEventListener("load", resolve, {
+          once: true
+        });
+        scriptExistant.addEventListener(
+          "error",
+          () => reject(
+            new Error("Script public introuvable : " + chemin)
+          ),
+          { once: true }
+        );
+      });
+    }
+
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.defer = true;
+      script.dataset.lcdpScriptPublic = chemin;
+      script.onload = resolve;
+      script.onerror = () => reject(
+        new Error("Script public introuvable : " + chemin)
+      );
+      document.body.appendChild(script);
     });
   }
 
