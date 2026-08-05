@@ -1293,15 +1293,15 @@
           libelle: "Planning",
           ariaLabel: "Afficher le planning du parc " + nom,
           icone: "planning",
-          variante: "orange-plein",
+          variante: "orange-contour",
           idparc
         }),
         creerBoutonActionCardParc({
           action: "nouvelle-date-parc",
-          libelle: "Réserver",
+          libelle: "RÉSERVER",
           ariaLabel: "Réserver dans le parc " + nom,
           icone: "reserver",
-          variante: "orange-contour",
+          variante: "orange-plein",
           idparc
         })
       );
