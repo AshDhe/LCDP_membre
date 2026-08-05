@@ -3468,26 +3468,37 @@
   function rendreDescriptionCardParc(texte, description) {
     if (!texte) return;
 
-    texte.replaceChildren();
+    let contenu = texte.querySelector(
+      "[data-lcdp-card-parc-description-texte]"
+    );
+    let icone = texte.querySelector(
+      "[data-lcdp-card-parc-description-icone]"
+    );
 
-    if (!description) return;
+    if (!contenu) {
+      contenu = document.createElement("span");
+      contenu.dataset.lcdpCardParcDescriptionTexte = "";
+      texte.prepend(contenu);
+    }
 
-    const contenu = document.createElement("span");
-    contenu.className = "lcdp-box-card-parc__description-texte";
-    contenu.textContent = description;
+    if (!icone) {
+      icone = document.createElement("img");
+      icone.className = "lcdp-box-card-parc__description-icone";
+      icone.dataset.lcdpCardParcDescriptionIcone = "";
+      icone.alt = "";
+      icone.width = 15;
+      icone.height = 15;
+      icone.decoding = "async";
+      icone.draggable = false;
+      icone.setAttribute("aria-hidden", "true");
+      texte.appendChild(icone);
+    }
 
-    const icone = document.createElement("img");
-    icone.className = "lcdp-box-card-parc__description-icone";
-    icone.src = construireUrlObjet("/IMAG/PICTO/picto-presentation.svg");
-    icone.alt = "";
-    icone.width = 14;
-    icone.height = 14;
-    icone.decoding = "async";
-    icone.draggable = false;
-    icone.setAttribute("aria-hidden", "true");
-
-    texte.appendChild(contenu);
-    texte.appendChild(icone);
+    contenu.textContent = description || "";
+    icone.src = construireUrlObjet(
+      "/IMAG/PICTO/picto-presentation.svg"
+    );
+    icone.hidden = !description;
   }
 
   function nettoyerTexteDescription(valeur) {
