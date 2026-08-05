@@ -631,8 +631,6 @@
     if (!boutonDepartement || !boutonIa) return;
     if (document.getElementById("lcdp-actions-footer-reserver")) return;
 
-    injecterStylesActionsPersistantesReserver();
-
     const slotActionsFooter = obtenirOuCreerSlotActionsFooterReserver();
 
     if (!slotActionsFooter) return;
@@ -752,13 +750,22 @@
   }
 
   function creerContenuActionsPersistantesReserver(boutonDepartement, boutonIa) {
-    const contenu = document.createElement("div");
-    contenu.className = "lcdp-actions-persistantes-reserver__inner";
+    const commandeBar = document.createElement("div");
+    commandeBar.className =
+      "lcdp-box-commande-bar " +
+      "lcdp-box-commande-bar--encadree " +
+      "lcdp-box-commande-bar--persistante";
+    commandeBar.dataset.lcdpBoxCommandeBar = "";
+
+    const actions = document.createElement("div");
+    actions.className = "lcdp-box-commande-bar__actions";
+    actions.dataset.lcdpCommandeBarActions = "";
 
     const boutonStickyDepartement = document.createElement("button");
     boutonStickyDepartement.type = "button";
-    boutonStickyDepartement.className = "lcdp-button lcdp-button-primary lcdp-actions-persistantes-reserver__button";
-    boutonStickyDepartement.textContent = "Département";
+    boutonStickyDepartement.className = "lcdp-button lcdp-button-primary";
+    boutonStickyDepartement.textContent =
+      String(boutonDepartement.textContent || "Changer de département").trim();
     boutonStickyDepartement.setAttribute("aria-label", "Changer de département");
     boutonStickyDepartement.title = "Changer de département";
     boutonStickyDepartement.addEventListener("click", (event) => {
@@ -768,8 +775,9 @@
 
     const boutonStickyIa = document.createElement("button");
     boutonStickyIa.type = "button";
-    boutonStickyIa.className = "lcdp-button lcdp-button-orange lcdp-actions-persistantes-reserver__button";
-    boutonStickyIa.textContent = "Recherche IA";
+    boutonStickyIa.className = "lcdp-button lcdp-button-orange";
+    boutonStickyIa.textContent =
+      String(boutonIa.textContent || "Rechercher avec l’IA").trim();
     boutonStickyIa.setAttribute("aria-label", "Rechercher avec l’IA");
     boutonStickyIa.title = "Rechercher avec l’IA";
     boutonStickyIa.addEventListener("click", (event) => {
@@ -777,10 +785,11 @@
       boutonIa.click();
     });
 
-    contenu.appendChild(boutonStickyDepartement);
-    contenu.appendChild(boutonStickyIa);
+    actions.appendChild(boutonStickyDepartement);
+    actions.appendChild(boutonStickyIa);
+    commandeBar.appendChild(actions);
 
-    return contenu;
+    return commandeBar;
   }
 
   function trouverBlocActionsInitialesReserver(boutonDepartement, boutonIa) {
@@ -809,78 +818,6 @@
     return boutonDepartement;
   }
 
-  function injecterStylesActionsPersistantesReserver() {
-    if (document.querySelector('style[data-lcdp-actions-persistantes-reserver="true"]')) return;
-
-    const style = document.createElement("style");
-    style.dataset.lcdpActionsPersistantesReserver = "true";
-    style.textContent = `
-      .lcdp-actions-footer-reserver[hidden] {
-        display: none !important;
-      }
-
-      .lcdp-actions-footer-reserver {
-        width: 100%;
-        box-sizing: border-box;
-      }
-
-      .lcdp-actions-footer-reserver .lcdp-actions-persistantes-reserver__inner {
-        width: min(620px, calc(100vw - 32px));
-        margin: 0 auto;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: var(--lcdp-space-2);
-        padding: 8px;
-        border: 1px solid var(--lcdp-color-border);
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.98);
-        box-shadow: 0 10px 30px rgba(31, 42, 36, 0.14);
-        box-sizing: border-box;
-      }
-
-      .lcdp-actions-persistantes-reserver__button.lcdp-button {
-        flex: 1 1 0;
-        min-width: 0;
-        min-height: 40px;
-        margin: 0;
-        padding: 0.55rem 0.75rem;
-        border-radius: 999px;
-        font-size: 0.9rem;
-        line-height: 1.1;
-        white-space: nowrap;
-      }
-
-      .lcdp-actions-persistantes-reserver__button.lcdp-button-orange {
-        background: var(--lcdp-color-orange);
-        border-color: var(--lcdp-color-orange);
-        color: var(--lcdp-color-text);
-      }
-
-      .lcdp-actions-persistantes-reserver__button.lcdp-button-orange:hover {
-        background: var(--lcdp-color-orange-hover);
-        border-color: var(--lcdp-color-orange-hover);
-        color: var(--lcdp-color-text);
-      }
-
-      @media (max-width: 767px) {
-        .lcdp-actions-footer-reserver .lcdp-actions-persistantes-reserver__inner {
-          width: min(calc(100vw - 20px), 520px);
-        }
-      }
-
-      @media (min-width: 768px) {
-        .lcdp-actions-persistantes-reserver__button.lcdp-button {
-          max-width: 260px;
-          min-height: 42px;
-          padding: 0.6rem 1rem;
-          font-size: 0.95rem;
-        }
-      }
-    `;
-
-    document.head.appendChild(style);
-  }
 
   function initialiserActionsListeParcs() {
     const zoneActions = etatPage.templateListeParcs?.querySelector(
