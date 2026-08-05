@@ -6,6 +6,7 @@
   const DOSSIER_IMAGES_PARC_OBJET = "/IMAG/PARC";
   const NOM_IMAGE_CARD_PARC = "card1.webp";
   const CHEMIN_PICTOWAIT = "/BOX/pictowait.gif";
+  const MEDIA_DESCRIPTION_CARD_PARC_TABLETTE_DESKTOP = window.matchMedia("(min-width: 768px)");
 
   const CLES_PLAGES_AFFICHAGE = [
     "plage1",
@@ -98,6 +99,7 @@
     pageInitialisee = true;
 
     document.body.classList.add("lcdp-page-reserver");
+    initialiserDescriptionResponsiveCardParc();
 
     const titrePage = document.querySelector(".lcdp-title-page-center");
 
@@ -1230,7 +1232,13 @@
     const idparc = String(parc.idparc || parc.id || "");
     const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
     const departement = String(parc.dptmt || parc.departement || "").trim();
-    const description = nettoyerTexteCourt(parc.prez || parc.presentation || "", 145);
+    const descriptionComplete = nettoyerTexteDescription(
+      parc.prez || parc.presentation || ""
+    );
+    const description = nettoyerTexteCourt(
+      descriptionComplete,
+      longueurDescriptionCardParc()
+    );
 
     const image = card.querySelector("[data-lcdp-card-parc-image]");
     const badgePrepa = card.querySelector("[data-lcdp-card-parc-badge-prepa]");
@@ -1266,8 +1274,16 @@
     }
 
     if (texte) {
+      texte.dataset.action = "ouvrir-fiche-parc";
+      texte.dataset.idparc = idparc;
+      texte.dataset.lcdpDescriptionComplete = descriptionComplete;
+      texte.setAttribute(
+        "aria-label",
+        "Ouvrir la présentation du parc " + nom
+      );
+      texte.title = "Ouvrir la présentation du parc " + nom;
       texte.textContent = description;
-      texte.hidden = !description;
+      texte.hidden = !descriptionComplete;
     }
 
     if (actions) {
@@ -3411,10 +3427,53 @@
     return departement;
   }
 
-  function nettoyerTexteCourt(valeur, longueurMax) {
-    const texte = String(valeur || "")
+  function initialiserDescriptionResponsiveCardParc() {
+    const actualiser = () => actualiserDescriptionsCardParc();
+
+    if (
+      typeof MEDIA_DESCRIPTION_CARD_PARC_TABLETTE_DESKTOP.addEventListener ===
+      "function"
+    ) {
+      MEDIA_DESCRIPTION_CARD_PARC_TABLETTE_DESKTOP.addEventListener(
+        "change",
+        actualiser
+      );
+      return;
+    }
+
+    MEDIA_DESCRIPTION_CARD_PARC_TABLETTE_DESKTOP.addListener(actualiser);
+  }
+
+  function longueurDescriptionCardParc() {
+    return MEDIA_DESCRIPTION_CARD_PARC_TABLETTE_DESKTOP.matches ? 140 : 100;
+  }
+
+  function actualiserDescriptionsCardParc() {
+    const longueurMax = longueurDescriptionCardParc();
+
+    document
+      .querySelectorAll("[data-lcdp-card-parc-description]")
+      .forEach((texte) => {
+        const descriptionComplete = String(
+          texte.dataset.lcdpDescriptionComplete || ""
+        );
+
+        texte.textContent = nettoyerTexteCourt(
+          descriptionComplete,
+          longueurMax
+        );
+        texte.hidden = !descriptionComplete;
+      });
+  }
+
+  function nettoyerTexteDescription(valeur) {
+    return String(valeur || "")
       .replace(/\s+/g, " ")
       .trim();
+  }
+
+  function nettoyerTexteCourt(valeur, longueurMax) {
+    const texte = nettoyerTexteDescription(valeur);
 
     if (!texte) return "";
 
