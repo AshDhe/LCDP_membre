@@ -1237,10 +1237,10 @@
     const titre = card.querySelector("[data-lcdp-card-parc-title]");
     const meta = card.querySelector("[data-lcdp-card-parc-meta]");
     const texte = card.querySelector("[data-lcdp-card-parc-description]");
-    const boutonFiche = card.querySelector("[data-action='ouvrir-fiche-parc']");
-    const boutonPlanning = card.querySelector("[data-action='voir-planning-parc']");
+    const actions = card.querySelector(".lcdp-box-card-parc__actions");
 
     card.dataset.idparc = idparc;
+    card.classList.add("lcdp-box-card-parc--reserver");
 
     if (image) {
       image.src = construireUrlImageParc(parc);
@@ -1267,21 +1267,82 @@
       texte.hidden = !description;
     }
 
-    if (boutonFiche) {
-      boutonFiche.dataset.idparc = idparc;
-      boutonFiche.textContent = "Présentation";
-    }
-
-    if (boutonPlanning) {
-      boutonPlanning.dataset.idparc = idparc;
-      boutonPlanning.textContent = "Planning";
+    if (actions) {
+      actions.classList.add(
+        "lcdp-box-card-parc__actions--reserver"
+      );
+      actions.replaceChildren(
+        creerBoutonActionCardParc({
+          action: "ouvrir-fiche-parc",
+          libelle: "Le parc",
+          ariaLabel: "Ouvrir la présentation du parc " + nom,
+          icone: "presentation",
+          variante: "vert-plein",
+          idparc
+        }),
+        creerBoutonActionCardParc({
+          action: "partager-parc",
+          libelle: "Partager",
+          ariaLabel: "Partager le parc " + nom,
+          icone: "partager",
+          variante: "vert-contour",
+          idparc
+        }),
+        creerBoutonActionCardParc({
+          action: "voir-planning-parc",
+          libelle: "Planning",
+          ariaLabel: "Afficher le planning du parc " + nom,
+          icone: "planning",
+          variante: "orange-plein",
+          idparc
+        }),
+        creerBoutonActionCardParc({
+          action: "nouvelle-date-parc",
+          libelle: "Réserver",
+          ariaLabel: "Réserver dans le parc " + nom,
+          icone: "reserver",
+          variante: "orange-contour",
+          idparc
+        })
+      );
     }
 
     return card;
   }
 
+  function creerBoutonActionCardParc(configuration) {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className =
+      "lcdp-button " +
+      "lcdp-box-card-parc__action " +
+      "lcdp-box-card-parc__action--" +
+      configuration.variante;
+    bouton.dataset.action = configuration.action;
+    bouton.dataset.idparc = configuration.idparc;
+    bouton.setAttribute("aria-label", configuration.ariaLabel);
+    bouton.title = configuration.ariaLabel;
+
+    const icone = document.createElement("span");
+    icone.className =
+      "lcdp-box-card-parc__action-icone " +
+      "lcdp-box-card-parc__action-icone--" +
+      configuration.icone;
+    icone.setAttribute("aria-hidden", "true");
+
+    const libelle = document.createElement("span");
+    libelle.className = "lcdp-box-card-parc__action-libelle";
+    libelle.textContent = configuration.libelle;
+
+    bouton.appendChild(icone);
+    bouton.appendChild(libelle);
+
+    return bouton;
+  }
+
   async function gererClicDocument(event) {
     const boutonFiche = event.target.closest("[data-action='ouvrir-fiche-parc']");
+    const boutonPartager = event.target.closest("[data-action='partager-parc']");
     const boutonPlanning = event.target.closest("[data-action='voir-planning-parc']");
     const boutonReserver = event.target.closest("[data-action='nouvelle-date-parc']");
     const jourCalendrier = event.target.closest("[data-lcdp-card-jour-mois]");
@@ -1298,6 +1359,20 @@
       }
 
       await ouvrirFicheParc(parc);
+      return;
+    }
+
+    if (boutonPartager) {
+      event.preventDefault();
+
+      const parc = trouverParcParId(boutonPartager.dataset.idparc);
+
+      if (!parc) {
+        await afficherAlerte("Parc introuvable.");
+        return;
+      }
+
+      await ouvrirPartagePlanningParc(parc, "fiche");
       return;
     }
 
