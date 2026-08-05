@@ -378,21 +378,7 @@
     }
 
     if (!etat || (etat.abonne !== true && !membreAbonne())) {
-      const statuda = normaliserStatudaReservation(etat?.statuda);
-
-      if (statuda === "encours") {
-        return "Vous devez être membre abonné pour réserver. Votre DA est en cours.";
-      }
-
-      if (statuda === "non") {
-        return "Vous devez être membre abonné pour réserver. Vous pouvez transmettre votre DA à partir du " + formaterDateDaReservation(etat?.datenext) + ".";
-      }
-
-      if (!statuda) {
-        return `Vous devez être membre abonné pour réserver. Cliquez sur le lien Abonnement du "burger" menu de votre espace membre pour devenir membre abonné. Sous réserve de la validation préalable de votre première demande d'abonnement (DA) par le Club.`;
-      }
-
-      return "Vous devez être membre abonné pour réserver une date.";
+      return "Vous devez être membre abonné pour planifier votre activité.";
     }
 
     return "";
@@ -1555,18 +1541,20 @@
       const boutonFermer = racine.querySelector("[data-lcdp-shift-detail-parc-close]");
 
       if (boutonFermer) {
-        boutonFermer.addEventListener("click", fermerShiftDetailParc);
+        boutonFermer.addEventListener("click", () => {
+          fermerOuRevenirPlanningShiftDetailParc().catch(console.error);
+        });
       }
 
       racine.addEventListener("click", (event) => {
         if (event.target === racine) {
-          fermerShiftDetailParc();
+          fermerOuRevenirPlanningShiftDetailParc().catch(console.error);
         }
       });
 
       const gererEscape = (event) => {
         if (event.key === "Escape" && document.body.contains(racine)) {
-          fermerShiftDetailParc();
+          fermerOuRevenirPlanningShiftDetailParc().catch(console.error);
         }
       };
 
@@ -1591,6 +1579,23 @@
       contenu: racine.querySelector("[data-lcdp-shift-detail-parc-content]"),
       alerteSlot: racine.querySelector("[data-lcdp-shift-detail-parc-alerte-slot]")
     };
+  }
+
+  async function fermerOuRevenirPlanningShiftDetailParc() {
+    const detail = obtenirShiftDetailParcActif();
+    const parc = etatPage.shiftDetailParc?.parc || null;
+    const detailJourPlanningOuvert = Boolean(
+      detail?.contenu?.querySelector(
+        ".lcdp-box-calendrier-jour--planning-lecture"
+      )
+    );
+
+    if (detailJourPlanningOuvert && parc) {
+      await afficherVueShiftDetailParc(parc, "planning");
+      return;
+    }
+
+    fermerShiftDetailParc();
   }
 
   function fermerShiftDetailParc() {
@@ -1703,6 +1708,7 @@
           onErreur: afficherAlerteDetailParcOuPage
         }
       );
+      ajouterInstructionDetailPlanning(contenu);
       return;
     }
 
@@ -1745,6 +1751,30 @@
         onReserverParc: demarrerReservationParc
       }
     );
+  }
+
+
+  function ajouterInstructionDetailPlanning(contenu) {
+    if (!contenu) return;
+
+    const legende = contenu.querySelector("[data-lcdp-box-legende]");
+
+    if (!legende) return;
+
+    const instructionExistante = contenu.querySelector(
+      "[data-lcdp-planning-instruction-detail]"
+    );
+
+    if (instructionExistante) {
+      instructionExistante.remove();
+    }
+
+    const instruction = document.createElement("p");
+    instruction.dataset.lcdpPlanningInstructionDetail = "";
+    instruction.textContent =
+      "Cliquez sur la journée pour voir le détail";
+
+    legende.insertAdjacentElement("afterend", instruction);
   }
 
 
@@ -1796,7 +1826,7 @@
 
     const boutonOk = document.createElement("button");
     boutonOk.type = "button";
-    boutonOk.className = "lcdp-button lcdp-button-primary lcdp-box-shift-detail-parc__alerte-ok";
+    boutonOk.className = "lcdp-button lcdp-button-orange lcdp-box-shift-detail-parc__alerte-ok";
     boutonOk.textContent = "OK";
 
     box.appendChild(boutonFermer);
@@ -2904,6 +2934,8 @@
     }
 
     texte.textContent = message || "";
+    boutonOk.classList.remove("lcdp-button-primary");
+    boutonOk.classList.add("lcdp-button-orange");
 
     return new Promise((resolve) => {
       let resolu = false;
@@ -2958,6 +2990,8 @@
     }
 
     texte.textContent = message || "";
+    boutonOk.classList.remove("lcdp-button-primary");
+    boutonOk.classList.add("lcdp-button-orange");
 
     return new Promise((resolve) => {
       let resolu = false;
