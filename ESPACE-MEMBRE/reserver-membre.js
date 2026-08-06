@@ -75,7 +75,6 @@
   let etatMembre = { abonne: false, abonnementSuspendu: false, abonnementAnnuleNonPaye: false, paiementSuspension: null, statudaConnue: false, statuda: null, datenext: null };
   let promessePrechargementConstructeurFicheParc = null;
 
-  const urlsFichesParcPrechargees = new Set();
   const cachePlanningParcLecture = new Map();
   const DUREE_CACHE_PLANNING_LECTURE_MS = 30000;
 
@@ -1372,7 +1371,7 @@
         }
 
         if (configuration.action === "ouvrir-fiche-parc") {
-          prechargerPageFicheParcPublique(parc);
+          prechargerConstructeurFicheParc();
           return;
         }
 
@@ -1607,16 +1606,6 @@
     etatPage.shiftDetailParc = null;
     etatPage.planningParcLectureActif = null;
 
-    const iframeFichePublique = slot?.querySelector(
-      "[data-lcdp-fiche-parc-publique]"
-    );
-
-    if (iframeFichePublique?._lcdpFicheParcResizeObserver) {
-      iframeFichePublique
-        ._lcdpFicheParcResizeObserver
-        .disconnect();
-    }
-
     if (slot) {
       slot.innerHTML = "";
     }
@@ -1678,7 +1667,7 @@
     vue
   ) {
     if (vue === "fiche") {
-      await rendrePageFicheParcPubliqueDansConteneur(
+      await rendreFicheParcPubliqueDansConteneur(
         contenu,
         parc
       );
@@ -1727,48 +1716,6 @@
   }
 
 
-  function construireUrlPageFicheParcPublique(parc) {
-    const idparc = String(
-      parc?.idparc ||
-      parc?.id ||
-      ""
-    ).trim();
-
-    if (!idparc) {
-      return "";
-    }
-
-    const url = new URL(
-      construireUrlPublic(
-        "/ESPACE-PUBLIC/fiche-parc.html"
-      ),
-      window.location.href
-    );
-
-    url.searchParams.set("idparc", idparc);
-
-    const nom = String(
-      parc?.nom ||
-      parc?.nomparc ||
-      ""
-    ).trim();
-    const departement = String(
-      parc?.dptmt ||
-      parc?.departement ||
-      ""
-    ).trim();
-
-    if (nom) {
-      url.searchParams.set("nom", nom);
-    }
-
-    if (departement) {
-      url.searchParams.set("dptmt", departement);
-    }
-
-    return url.toString();
-  }
-
   function prechargerConstructeurFicheParc() {
     if (!promessePrechargementConstructeurFicheParc) {
       promessePrechargementConstructeurFicheParc =
@@ -1783,23 +1730,6 @@
     }
 
     return promessePrechargementConstructeurFicheParc;
-  }
-
-  function prechargerPageFicheParcPublique(parc) {
-    const href = construireUrlPageFicheParcPublique(parc);
-
-    if (!href || urlsFichesParcPrechargees.has(href)) {
-      return;
-    }
-
-    urlsFichesParcPrechargees.add(href);
-
-    const lien = document.createElement("link");
-    lien.rel = "prefetch";
-    lien.as = "document";
-    lien.href = href;
-    lien.dataset.lcdpPrefetchFicheParc = "";
-    document.head.appendChild(lien);
   }
 
   function prechargerPlanningParcLecture(parc) {
@@ -1826,12 +1756,6 @@
   function planifierPrechargementDetailsParcs() {
     const executer = () => {
       prechargerConstructeurFicheParc();
-
-      etatPage.parcs
-        .slice(0, 3)
-        .forEach((parc) => {
-          prechargerPageFicheParcPublique(parc);
-        });
     };
 
     if ("requestIdleCallback" in window) {
@@ -1845,170 +1769,74 @@
   }
 
 
-  async function rendrePageFicheParcPubliqueDansConteneur(
+  async function rendreFicheParcPubliqueDansConteneur(
     contenu,
-    parc
+    parcSource
   ) {
-    const urlFicheParc = construireUrlPageFicheParcPublique(
-      parc
-    );
-
-    if (!urlFicheParc) {
-      throw new Error("Identifiant du parc manquant.");
-    }
-
-    const nom = String(
-      parc?.nom ||
-      parc?.nomparc ||
+    const idparc = String(
+      parcSource?.idparc ||
+      parcSource?.id ||
       ""
     ).trim();
 
-    const iframe = document.createElement("iframe");
-    iframe.dataset.lcdpFicheParcPublique = "";
-    iframe.src = urlFicheParc;
-    iframe.title = nom
-      ? "Fiche du parc " + nom
-      : "Fiche du parc";
-    iframe.width = "100%";
-    iframe.height = String(
-      Math.max(
-        720,
-        (window.innerHeight || 800) - 96
+    if (!idparc) {
+      throw new Error("Identifiant du parc manquant.");
+    }
+
+    const constructeur =
+      await chargerConstructeurFicheParc();
+    const fichePublique =
+      await constructeur.chargerFicheParc(idparc);
+    const parc = {
+      ...parcSource,
+      ...(fichePublique.parc || {}),
+      resparc: fichePublique.resparc || null,
+      parcsDepartement: Array.isArray(
+        fichePublique.parcsDepartement
       )
-    );
-    iframe.loading = "eager";
-    iframe.setAttribute("frameborder", "0");
-    iframe.setAttribute("scrolling", "no");
+        ? fichePublique.parcsDepartement
+        : [],
+      localitesCarte: Array.isArray(
+        fichePublique.localites
+      )
+        ? fichePublique.localites
+        : [],
+      acces: fichePublique.acces || null
+    };
 
-    contenu.replaceChildren(iframe);
+    etatPage.shiftDetailParc = {
+      parc,
+      vue: "fiche"
+    };
 
-    function parcDepuisPagePublique() {
-      try {
-        const urlCourante = new URL(
-          iframe.contentWindow.location.href
-        );
-        const identifiant = String(
-          urlCourante.searchParams.get("idparc") ||
-          ""
-        ).trim();
-
-        if (!identifiant) {
-          return parc;
-        }
-
-        return trouverParcParId(identifiant) || {
-          ...parc,
-          idparc: identifiant
-        };
-      } catch {
-        return parc;
+    await constructeur.rendreDansConteneur(
+      contenu,
+      parc,
+      {
+        masquerBoutonFermer: true,
+        onReserver: demarrerReservationParc,
+        onPlanning: (parcCible) =>
+          afficherVueShiftDetailParc(
+            parcCible,
+            "planning"
+          ),
+        onPartager: (parcCible) =>
+          ouvrirPartagePlanningParc(
+            parcCible,
+            "fiche"
+          ),
+        onOuvrirFicheParc: (parcCible) =>
+          afficherVueShiftDetailParc(
+            parcCible,
+            "fiche"
+          ),
+        onOuvrirPlanningParc: (parcCible) =>
+          afficherVueShiftDetailParc(
+            parcCible,
+            "planning"
+          ),
+        onReserverParc: demarrerReservationParc
       }
-    }
-
-    function preparerPagePublique() {
-      try {
-        const documentFiche = iframe.contentDocument;
-
-        if (!documentFiche) {
-          return;
-        }
-
-        documentFiche
-          .getElementById("lcdp-bandeau-slot")
-          ?.remove();
-        documentFiche
-          .getElementById("lcdp-footer-slot")
-          ?.remove();
-        documentFiche
-          .getElementById("lcdp-fiche-parc-status")
-          ?.remove();
-
-        const ajusterHauteur = () => {
-          const hauteurDocument = Math.max(
-            documentFiche.documentElement
-              ?.scrollHeight || 0,
-            documentFiche.body
-              ?.scrollHeight || 0,
-            720
-          );
-
-          iframe.height = String(hauteurDocument);
-        };
-
-        if (iframe._lcdpFicheParcResizeObserver) {
-          iframe._lcdpFicheParcResizeObserver.disconnect();
-        }
-
-        if ("ResizeObserver" in window) {
-          const observateur = new ResizeObserver(
-            ajusterHauteur
-          );
-
-          if (documentFiche.documentElement) {
-            observateur.observe(
-              documentFiche.documentElement
-            );
-          }
-
-          if (documentFiche.body) {
-            observateur.observe(documentFiche.body);
-          }
-
-          iframe._lcdpFicheParcResizeObserver =
-            observateur;
-        }
-
-        documentFiche.addEventListener(
-          "click",
-          (event) => {
-            const cible =
-              event.target &&
-              typeof event.target.closest === "function"
-                ? event.target
-                : null;
-            const boutonPlanifier = cible?.closest(
-              "[data-lcdp-fiche-parc-action-planifier]"
-            );
-
-            if (!boutonPlanifier) {
-              return;
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-
-            demarrerReservationParc(
-              parcDepuisPagePublique()
-            ).catch(console.error);
-          },
-          true
-        );
-
-        window.requestAnimationFrame(() => {
-          ajusterHauteur();
-          window.setTimeout(ajusterHauteur, 250);
-        });
-      } catch (error) {
-        console.error(
-          "Erreur préparation Fiche Parc publique :",
-          error
-        );
-      }
-    }
-
-    iframe.addEventListener(
-      "load",
-      preparerPagePublique
-    );
-    iframe.addEventListener(
-      "error",
-      () => {
-        console.error(
-          "Impossible de charger la Fiche Parc publique."
-        );
-      },
-      { once: true }
     );
   }
 
