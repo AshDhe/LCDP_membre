@@ -886,6 +886,30 @@
     await chargerParcsDepartement(departement);
   }
 
+  function creerPictowait(message) {
+    const attente = document.createElement("div");
+    attente.className = "lcdp-pictowait";
+    attente.dataset.lcdpPictowait = "";
+    attente.setAttribute("role", "status");
+    attente.setAttribute("aria-live", "polite");
+    attente.setAttribute(
+      "aria-label",
+      message || "Chargement en cours"
+    );
+
+    const image = document.createElement("img");
+    image.className = "lcdp-pictowait__image";
+    image.src = construireUrlObjet(CHEMIN_PICTOWAIT);
+    image.alt = "";
+    image.width = 56;
+    image.height = 56;
+    image.decoding = "async";
+    image.setAttribute("aria-hidden", "true");
+
+    attente.appendChild(image);
+    return attente;
+  }
+
   function afficherPictowaitListeParcs(
     message,
     conserverListe
@@ -904,33 +928,18 @@
       attenteExistante.remove();
     }
 
-    const attente = document.createElement("div");
-    attente.className = "lcdp-pictowait";
-    attente.dataset.lcdpPictowait = "";
-    attente.setAttribute("role", "status");
-    attente.setAttribute("aria-live", "polite");
+    const attente = creerPictowait(message);
 
     if (conserverListe === true) {
-      attente.classList.add("lcdp-pictowait--avec-liste");
+      attente.classList.add(
+        "lcdp-pictowait--avec-liste"
+      );
     }
 
-    const image = document.createElement("img");
-    image.className = "lcdp-pictowait__image";
-    image.src = construireUrlObjet(CHEMIN_PICTOWAIT);
-    image.alt = "";
-    image.width = 56;
-    image.height = 56;
-    image.decoding = "async";
-    image.setAttribute("aria-hidden", "true");
-
-    attente.setAttribute(
-      "aria-label",
-      message || "Chargement en cours"
-    );
-
-    attente.appendChild(image);
-
-    if (conserverListe === true && slot.children.length > 0) {
+    if (
+      conserverListe === true &&
+      slot.children.length > 0
+    ) {
       slot.prepend(attente);
     } else {
       slot.replaceChildren(attente);
@@ -939,6 +948,32 @@
     slot.hidden = false;
     slot.setAttribute("aria-hidden", "false");
   }
+
+  function afficherPictowaitShiftDetailParc(
+    detail,
+    message
+  ) {
+    if (!detail?.racine || !detail?.contenu) {
+      return;
+    }
+
+    detail.contenu.replaceChildren(
+      creerPictowait(
+        message || "Chargement de la Fiche Parc…"
+      )
+    );
+    detail.racine.hidden = false;
+    detail.racine.classList.remove(
+      "lcdp-box-shift-detail-parc--preparation"
+    );
+
+    window.requestAnimationFrame(() => {
+      detail.racine.classList.add(
+        "lcdp-box-shift-detail-parc--visible"
+      );
+    });
+  }
+
 
   function masquerPictowaitListeParcs() {
     const attente = document.querySelector(
@@ -1483,16 +1518,29 @@
     }
   }
 
-  async function demarrerReservationParc(parc) {
-    const messageBlocage = messageBlocageNouvelleDate(etatMembre);
+  async function autoriserReservationParc(parc) {
+    const messageBlocage =
+      messageBlocageNouvelleDate(etatMembre);
 
     if (messageBlocage) {
-      await afficherAlerteDetailParcOuPage(messageBlocage);
-      return;
+      await afficherAlerteDetailParcOuPage(
+        messageBlocage
+      );
+      return false;
     }
 
     if (!parc) {
-      await afficherAlerteDetailParcOuPage("Parc introuvable.");
+      await afficherAlerteDetailParcOuPage(
+        "Parc introuvable."
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  async function demarrerReservationParc(parc) {
+    if (!(await autoriserReservationParc(parc))) {
       return;
     }
 
@@ -1503,7 +1551,10 @@
     await ouvrirShiftDetailParc(parc, "fiche");
   }
 
-  async function ouvrirShiftDetailParc(parc, vueDemandee) {
+  async function ouvrirShiftDetailParc(
+    parc,
+    vueDemandee
+  ) {
     if (!parc) {
       await afficherAlerte("Parc introuvable.");
       return;
@@ -1512,15 +1563,145 @@
     const detail = await obtenirOuCreerShiftDetailParc();
 
     if (!detail || !detail.contenu) {
-      throw new Error("Structure shift détail parc incomplète.");
+      throw new Error(
+        "Structure shift détail parc incomplète."
+      );
     }
+
+    afficherPictowaitShiftDetailParc(
+      detail,
+      vueDemandee === "planning"
+        ? "Chargement du planning du parc…"
+        : "Chargement de la Fiche Parc…"
+    );
+
+    const constructeur =
+      await chargerConstructeurFicheParc();
+    const ancienControleur =
+      etatPage.shiftDetailParc?.controleur;
+
+    if (
+      ancienControleur &&
+      typeof ancienControleur.detruire === "function"
+    ) {
+      ancienControleur.detruire();
+    }
+
+    let controleur = null;
+    let ouvertureAnnulee = false;
+    const controleurProvisoire = {
+      detruire: () => {
+        ouvertureAnnulee = true;
+
+        if (
+          controleur &&
+          typeof controleur.detruire === "function"
+        ) {
+          controleur.detruire();
+        }
+      }
+    };
 
     etatPage.shiftDetailParc = {
       parc,
-      vue: vueDemandee || "fiche"
+      vue: vueDemandee || "fiche",
+      controleur: controleurProvisoire
     };
 
-    await afficherVueShiftDetailParc(parc, vueDemandee || "fiche");
+    try {
+      controleur = await constructeur.monterDansConteneur(
+        detail.contenu,
+        parc,
+        {
+          vueInitiale: vueDemandee || "fiche",
+          chargerFragmentObjet,
+          construireUrlObjet,
+          construireUrlImageParcFichier,
+          construireUrlImageCardParc:
+            construireUrlImageParc,
+          appliquerRoutes: appliquerRoutesSite,
+          templateCardParc: etatPage.templateCardParc,
+          templateJourMois: etatPage.templateJourMois,
+          templateHeureJour: etatPage.templateHeureJour,
+          chargerPlanningMois:
+            chargerPlanningParcMoisLecture,
+          chargerPlanningJour:
+            chargerPlanningParcJourLecture,
+          verifierReservation:
+            autoriserReservationParc,
+          rendreReservation: (
+            slotReservation,
+            parcCible
+          ) =>
+            afficherReservationMoisParcDansConteneur(
+              slotReservation,
+              parcCible,
+              true
+            ),
+          onPartager: (
+            parcCible,
+            typePartage
+          ) =>
+            ouvrirPartagePlanningParc(
+              parcCible,
+              typePartage
+            ),
+          onErreur:
+            afficherAlerteDetailParcOuPage,
+          onVueChange: (
+            vue,
+            parcCible
+          ) => {
+            if (ouvertureAnnulee) {
+              return;
+            }
+
+            etatPage.shiftDetailParc = {
+              parc: parcCible,
+              vue,
+              controleur:
+                controleur ||
+                controleurProvisoire
+            };
+            detail.racine.dataset.lcdpShiftVue =
+              vue;
+
+            if (detail.alerteSlot) {
+              detail.alerteSlot.innerHTML = "";
+            }
+          }
+        }
+      );
+    } catch (erreur) {
+      fermerShiftDetailParc();
+      throw erreur;
+    }
+
+    if (
+      ouvertureAnnulee ||
+      !document.body.contains(detail.racine)
+    ) {
+      controleur.detruire();
+      return;
+    }
+
+    etatPage.shiftDetailParc = {
+      parc: controleur.getParc(),
+      vue: controleur.getVue(),
+      controleur
+    };
+    detail.racine.dataset.lcdpShiftVue =
+      controleur.getVue();
+    detail.racine.hidden = false;
+    detail.racine.classList.remove(
+      "lcdp-box-shift-detail-parc--preparation"
+    );
+
+    window.requestAnimationFrame(() => {
+      detail.racine.classList.add(
+        "lcdp-box-shift-detail-parc--visible"
+      );
+    });
   }
 
   async function obtenirOuCreerShiftDetailParc() {
@@ -1594,11 +1775,32 @@
   }
 
   function fermerShiftDetailParc() {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-    const racine = slot ? slot.querySelector("[data-lcdp-box-shift-detail-parc]") : null;
+    const slot = document.getElementById(
+      "lcdp-lightbox-slot"
+    );
+    const racine = slot
+      ? slot.querySelector(
+          "[data-lcdp-box-shift-detail-parc]"
+        )
+      : null;
+    const controleur =
+      etatPage.shiftDetailParc?.controleur;
 
-    if (racine && racine._lcdpShiftDetailParcEscape) {
-      document.removeEventListener("keydown", racine._lcdpShiftDetailParcEscape);
+    if (
+      controleur &&
+      typeof controleur.detruire === "function"
+    ) {
+      controleur.detruire();
+    }
+
+    if (
+      racine &&
+      racine._lcdpShiftDetailParcEscape
+    ) {
+      document.removeEventListener(
+        "keydown",
+        racine._lcdpShiftDetailParcEscape
+      );
     }
 
     etatPage.shiftDetailParc = null;
@@ -1613,111 +1815,6 @@
     if (slot) {
       slot.innerHTML = "";
     }
-  }
-
-  async function afficherVueShiftDetailParc(parc, vueDemandee) {
-    const detail = await obtenirOuCreerShiftDetailParc();
-
-    if (!detail || !detail.contenu) {
-      throw new Error("Zone contenu shift détail parc introuvable.");
-    }
-
-    const vue = vueDemandee || "fiche";
-    const premiereOuverture =
-      detail.racine.hidden === true ||
-      detail.racine.classList.contains("lcdp-box-shift-detail-parc--preparation");
-
-    const contenuPrepare = document.createElement("div");
-    contenuPrepare.className = "lcdp-box-shift-detail-parc__content-preparation";
-
-    try {
-      await rendreVueShiftDetailParcDansConteneur(contenuPrepare, parc, vue);
-    } catch (error) {
-      if (premiereOuverture) {
-        fermerShiftDetailParc();
-      }
-
-      throw error;
-    }
-
-    if (detail.alerteSlot) {
-      detail.alerteSlot.innerHTML = "";
-    }
-
-    etatPage.shiftDetailParc = { parc, vue };
-    detail.racine.dataset.lcdpShiftVue = vue;
-
-    if (premiereOuverture) {
-      detail.contenu.replaceChildren(contenuPrepare);
-      detail.racine.hidden = false;
-      detail.racine.classList.remove(
-        "lcdp-box-shift-detail-parc--preparation"
-      );
-
-      window.requestAnimationFrame(() => {
-        detail.racine.classList.add(
-          "lcdp-box-shift-detail-parc--visible"
-        );
-      });
-
-      return;
-    }
-
-    await remplacerContenuShiftDetailParc(detail.contenu, contenuPrepare);
-  }
-
-  async function rendreVueShiftDetailParcDansConteneur(
-    contenu,
-    parc,
-    vue
-  ) {
-    if (vue === "fiche") {
-      await rendreFicheParcPubliqueDansConteneur(
-        contenu,
-        parc
-      );
-      return;
-    }
-
-    if (vue === "reservation") {
-      await afficherReservationMoisParcDansConteneur(
-        contenu,
-        parc,
-        true
-      );
-      return;
-    }
-
-    const constructeur = await chargerConstructeurFicheParc();
-
-    if (vue === "planning") {
-      await constructeur.rendrePlanningDansConteneur(
-        contenu,
-        parc,
-        {
-          chargerFragmentObjet,
-          construireUrlObjet,
-          templateJourMois: etatPage.templateJourMois,
-          templateHeureJour: etatPage.templateHeureJour,
-          chargerPlanningMois: chargerPlanningParcMoisLecture,
-          chargerPlanningJour: chargerPlanningParcJourLecture,
-          onReserver: demarrerReservationParc,
-          onPartager: (parcCible) =>
-            ouvrirPartagePlanningParc(
-              parcCible,
-              "planning"
-            ),
-          onRetourPresentation: (parcCible) =>
-            afficherVueShiftDetailParc(
-              parcCible,
-              "fiche"
-            ),
-          onErreur: afficherAlerteDetailParcOuPage
-        }
-      );
-      return;
-    }
-
   }
 
 
@@ -1774,94 +1871,6 @@
   }
 
 
-  async function rendreFicheParcPubliqueDansConteneur(
-    contenu,
-    parcSource
-  ) {
-    const idparc = String(
-      parcSource?.idparc ||
-      parcSource?.id ||
-      ""
-    ).trim();
-
-    if (!idparc) {
-      throw new Error("Identifiant du parc manquant.");
-    }
-
-    const constructeur =
-      await chargerConstructeurFicheParc();
-    const fichePublique =
-      await constructeur.chargerFicheParc(idparc);
-    const parc = {
-      ...parcSource,
-      ...(fichePublique.parc || {}),
-      resparc: fichePublique.resparc || null,
-      parcsDepartement: Array.isArray(
-        fichePublique.parcsDepartement
-      )
-        ? fichePublique.parcsDepartement
-        : [],
-      localitesCarte: Array.isArray(
-        fichePublique.localites
-      )
-        ? fichePublique.localites
-        : [],
-      acces: fichePublique.acces || null
-    };
-
-    etatPage.shiftDetailParc = {
-      parc,
-      vue: "fiche"
-    };
-
-    await constructeur.rendreDansConteneur(
-      contenu,
-      parc,
-      {
-        chargerFragmentObjet,
-        construireUrlObjet,
-        construireUrlImageParcFichier,
-        construireUrlImageCardParc:
-          construireUrlImageParc,
-        appliquerRoutes: appliquerRoutesSite,
-        templateCardParc: etatPage.templateCardParc,
-        masquerBoutonFermer: true,
-        onReserver: demarrerReservationParc,
-        onPlanning: (parcCible) =>
-          afficherVueShiftDetailParc(
-            parcCible,
-            "planning"
-          ),
-        onPartager: (parcCible) =>
-          ouvrirPartagePlanningParc(
-            parcCible,
-            "fiche"
-          ),
-        onOuvrirFicheParc: (parcCible) =>
-          afficherVueShiftDetailParc(
-            parcCible,
-            "fiche"
-          ),
-        onOuvrirPlanningParc: (parcCible) =>
-          afficherVueShiftDetailParc(
-            parcCible,
-            "planning"
-          ),
-        onReserverParc: demarrerReservationParc
-      }
-    );
-  }
-
-
-  async function remplacerContenuShiftDetailParc(contenu, contenuPrepare) {
-    if (!contenu || !contenuPrepare) return;
-
-    contenu.classList.remove(
-      "lcdp-box-shift-detail-parc__content--transition"
-    );
-    contenu.style.removeProperty("min-height");
-    contenu.replaceChildren(contenuPrepare);
-  }
 
   async function afficherAlerteDetailParcOuPage(message) {
     const detail = obtenirShiftDetailParcActif();
@@ -2219,17 +2228,28 @@
   }
 
 
-  function attendre(delaiMs) {
-    return new Promise((resolve) => {
-      window.setTimeout(resolve, delaiMs);
-    });
-  }
-
   async function ouvrirCalendrierMoisParc(parc) {
     const detail = obtenirShiftDetailParcActif();
+    const controleur =
+      etatPage.shiftDetailParc?.controleur;
+
+    if (
+      detail &&
+      detail.contenu &&
+      controleur &&
+      typeof controleur.afficherReservation ===
+        "function"
+    ) {
+      await controleur.afficherReservation(parc);
+      return;
+    }
 
     if (detail && detail.contenu) {
-      await afficherVueShiftDetailParc(parc, "reservation");
+      await afficherReservationMoisParcDansConteneur(
+        detail.contenu,
+        parc,
+        true
+      );
       return;
     }
 
@@ -3289,6 +3309,8 @@
       window.LCDP_FicheParc &&
       typeof window.LCDP_FicheParc.chargerFicheParc ===
         "function" &&
+      typeof window.LCDP_FicheParc.monterDansConteneur ===
+        "function" &&
       typeof window.LCDP_FicheParc.rendreDansConteneur ===
         "function" &&
       typeof window.LCDP_FicheParc.rendrePlanningDansConteneur ===
@@ -3304,6 +3326,8 @@
     if (
       !window.LCDP_FicheParc ||
       typeof window.LCDP_FicheParc.chargerFicheParc !==
+        "function" ||
+      typeof window.LCDP_FicheParc.monterDansConteneur !==
         "function" ||
       typeof window.LCDP_FicheParc.rendreDansConteneur !==
         "function" ||
