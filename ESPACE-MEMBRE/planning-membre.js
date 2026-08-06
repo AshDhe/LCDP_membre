@@ -45,7 +45,7 @@
     slotCommandeListe: null,
     slotCommandeAgenda: null,
     commandeBar: null,
-    modeAffichage: "agenda",
+    modeAffichage: "liste",
     membre: {
       abonne: false,
       abonnementSuspendu: false,
@@ -54,7 +54,31 @@
     }
   };
 
-  const PLAGES = ["plage1", "plage2", "plage3"];
+  const PLAGES = [
+    "plage1",
+    "plage2",
+    "plage3",
+    "plage4",
+    "plage5"
+  ];
+
+  const LEGENDE_AGENDA_MEMBRE = [
+    {
+      libelle: "Réservation",
+      classeCouleur:
+        "lcdp-box-card-jour-in-calendrier-mois__slot--vert"
+    },
+    {
+      libelle: "Invitation",
+      classeCouleur:
+        "lcdp-box-card-jour-in-calendrier-mois__slot--orange-fonce"
+    },
+    {
+      libelle: "Invite",
+      classeCouleur:
+        "lcdp-box-card-jour-in-calendrier-mois__slot--reservation-invitation"
+    }
+  ];
 
   /* Limite provisoire : navigation jusqu'à décembre N+1. */
 
@@ -447,8 +471,7 @@
 
     const meta = calendrier.querySelector("[data-lcdp-calendrier-mois-meta]");
     if (meta) {
-      meta.textContent = "";
-      meta.hidden = true;
+      await installerLegendeAgendaMembre(meta);
     }
 
     const boutonPrecedent = calendrier.querySelector("[data-lcdp-calendrier-mois-prev]");
@@ -499,6 +522,62 @@
     afficherChargementCalendrier("Chargement de votre planning...");
   }
 
+  async function installerLegendeAgendaMembre(meta) {
+    if (!meta) return;
+
+    await chargerCssObjetUneFois(
+      "/BOX/04-box-legende.css"
+    );
+
+    const fragment = await chargerFragmentObjet(
+      "/BOX/04-box-legende.html"
+    );
+    const legende = fragment.querySelector(
+      "[data-lcdp-box-legende]"
+    );
+    const contenu = fragment.querySelector(
+      "[data-lcdp-legende-contenu]"
+    );
+
+    if (!legende || !contenu) {
+      throw new Error(
+        "Structure Box Légende incomplète."
+      );
+    }
+
+    legende.setAttribute(
+      "aria-label",
+      "Légende de Mon agenda"
+    );
+    contenu.innerHTML = "";
+
+    const ligne = document.createElement("div");
+    ligne.className = "lcdp-box-legende__ligne";
+
+    LEGENDE_AGENDA_MEMBRE.forEach((configuration) => {
+      const item = document.createElement("span");
+      item.className = "lcdp-box-legende__item";
+
+      const libelle = document.createElement("span");
+      libelle.className = "lcdp-box-legende__libelle";
+      libelle.textContent = configuration.libelle;
+
+      const carre = document.createElement("span");
+      carre.className =
+        "lcdp-box-legende__carre " +
+        configuration.classeCouleur;
+      carre.setAttribute("aria-hidden", "true");
+
+      item.appendChild(libelle);
+      item.appendChild(carre);
+      ligne.appendChild(item);
+    });
+
+    contenu.appendChild(ligne);
+    meta.replaceChildren(legende);
+    meta.hidden = false;
+  }
+
   function ajouterActionsPlanningMembre(actionsWrapper) {
     if (!actionsWrapper) return;
 
@@ -517,8 +596,15 @@
     boutonAffichage.className =
       "lcdp-button lcdp-button-secondary lcdp-button-mini lcdp-planning-membre-affichage-button";
     boutonAffichage.dataset.lcdpPlanningAffichage = "true";
-    boutonAffichage.textContent = "Afficher en liste";
-    boutonAffichage.setAttribute("aria-pressed", "false");
+    const estListe =
+      etat.modeAffichage === "liste";
+    boutonAffichage.textContent = estListe
+      ? "Afficher en planning"
+      : "Afficher en liste";
+    boutonAffichage.setAttribute(
+      "aria-pressed",
+      estListe ? "true" : "false"
+    );
     boutonAffichage.addEventListener("click", basculerAffichagePlanningMembre);
 
     actionsWrapper.appendChild(lienReserver);
@@ -623,7 +709,9 @@
     if (!bouton) return;
 
     const estListe = etat.modeAffichage === "liste";
-    bouton.textContent = estListe ? "Afficher en agenda" : "Afficher en liste";
+    bouton.textContent = estListe
+      ? "Afficher en planning"
+      : "Afficher en liste";
     bouton.setAttribute("aria-pressed", estListe ? "true" : "false");
   }
 
@@ -883,16 +971,41 @@
       jourReservable = true;
       jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--reservation-membre");
 
-      const estReservationInvitationPlanning = reservationHorsAbonnementMembre(reservation);
+      const estInvite =
+        reservationHorsAbonnementMembre(
+          reservation
+        );
+      const estInvitation =
+        !estInvite &&
+        reservationAvecInvitesActifsAgenda(
+          reservation
+        );
 
-      if (estReservationInvitationPlanning) {
-        jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--reservation-invitation");
-        slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--reservation-invitation");
+      if (estInvite) {
+        jour.classList.add(
+          "lcdp-box-card-jour-in-calendrier-mois--reservation-invitation"
+        );
+        slot.classList.add(
+          "lcdp-box-card-jour-in-calendrier-mois__slot--reservation-invitation"
+        );
+      } else if (estInvitation) {
+        jour.classList.add(
+          "lcdp-box-card-jour-in-calendrier-mois--reservation-avec-invites"
+        );
+        slot.classList.add(
+          "lcdp-box-card-jour-in-calendrier-mois__slot--orange-fonce"
+        );
       } else if (estPasse) {
-        jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--reservation-membre-passee");
-        slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--vert-passe");
+        jour.classList.add(
+          "lcdp-box-card-jour-in-calendrier-mois--reservation-membre-passee"
+        );
+        slot.classList.add(
+          "lcdp-box-card-jour-in-calendrier-mois__slot--vert-passe"
+        );
       } else {
-        slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--vert");
+        slot.classList.add(
+          "lcdp-box-card-jour-in-calendrier-mois__slot--vert"
+        );
       }
 
       const nomParcSlot = nomParcCourtReservation(reservation);
@@ -908,15 +1021,29 @@
 
       slot.dataset.idflux = String(reservation.idflux || "");
       slot.dataset.plage = plage;
+      const typeAgenda =
+        typeReservationAgenda(reservation);
+
       slot.setAttribute(
         "aria-label",
-        "Réservation " +
-          (nomParcComplet ? nomParcComplet + " - " : "") +
+        typeAgenda +
+          " " +
+          (nomParcComplet
+            ? nomParcComplet + " - "
+            : "") +
           libellePlage(plage) +
           " du " +
-          formaterDateCourte(reservation.datebookd)
+          formaterDateCourte(
+            reservation.datebookd
+          )
       );
-      slot.title = "Réservation " + (nomParcComplet ? nomParcComplet + " - " : "") + libellePlage(plage);
+      slot.title =
+        typeAgenda +
+        " " +
+        (nomParcComplet
+          ? nomParcComplet + " - "
+          : "") +
+        libellePlage(plage);
     });
 
     jour.disabled = !jourReservable;
@@ -1126,7 +1253,10 @@
 
     if (boutonAnnuler) {
       boutonAnnuler.dataset.id = idFlux;
-      boutonAnnuler.textContent = "Annuler la réservation";
+      boutonAnnuler.textContent =
+        estReservationHorsAbonnement
+          ? "Annuler l’invite"
+          : "Annuler la réservation";
       boutonAnnuler.hidden = false;
       boutonAnnuler.classList.toggle("lcdp-box-card-reservation-membre__micro-action--delai-depasse", delaiActionDepasse);
       boutonAnnuler.setAttribute("aria-disabled", delaiActionDepasse ? "true" : "false");
@@ -1594,6 +1724,66 @@
     const identite = [prenom, initialeNom].filter(Boolean).join(" ");
 
     return "Invitation par : " + (identite || "Parrain non renseigné");
+  }
+
+  function reservationAvecInvitesActifsAgenda(
+    reservation
+  ) {
+    if (
+      !reservation ||
+      reservationHorsAbonnementMembre(
+        reservation
+      )
+    ) {
+      return false;
+    }
+
+    const idflux = String(
+      reservation.idflux || ""
+    ).trim();
+
+    if (
+      idflux &&
+      etat.reservationsAvecInvites.has(idflux)
+    ) {
+      return true;
+    }
+
+    const stats =
+      reservation.invitationStats ||
+      reservation.invitationsStats ||
+      null;
+    const actifs = Number(
+      stats?.in ||
+      stats?.actifs ||
+      stats?.invites ||
+      0
+    );
+
+    return (
+      Number.isFinite(actifs) &&
+      actifs > 0
+    );
+  }
+
+  function typeReservationAgenda(reservation) {
+    if (
+      reservationHorsAbonnementMembre(
+        reservation
+      )
+    ) {
+      return "Invite";
+    }
+
+    if (
+      reservationAvecInvitesActifsAgenda(
+        reservation
+      )
+    ) {
+      return "Invitation";
+    }
+
+    return "Réservation";
   }
 
   function reservationAvecInvitesPlanning(reservation) {
@@ -2519,9 +2709,15 @@
       return;
     }
 
+    const estInvite =
+      reservationHorsAbonnementMembre(
+        reservation
+      );
     const optionsDialogue = {
       titre: "Confirmer l’annulation",
-      texte: "Voulez-vous vraiment annuler cette date ?",
+      texte: estInvite
+        ? "Voulez-vous vraiment annuler cette invite ?"
+        : "Voulez-vous vraiment annuler cette réservation ?",
       boutons: [
         {
           label: "Non",
@@ -2548,7 +2744,11 @@
 
     try {
       await annulerReservation(idflux);
-      await afficherAlerte("Votre annulation est enregistrée.");
+      await afficherAlerte(
+        estInvite
+          ? "Votre invite est annulée."
+          : "Votre réservation est annulée."
+      );
       const slot = document.getElementById("lcdp-lightbox-slot");
       if (slot) slot.innerHTML = "";
       await chargerReservations();
@@ -2838,33 +3038,99 @@
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[\s_-]+/g, "");
 
-    if (brut.includes("plage1") || brut === "1" || brut.includes("matin")) return "plage1";
-    if (brut.includes("plage2") || brut === "2" || brut.includes("midi") || brut.includes("apres")) return "plage2";
-    if (brut.includes("plage3") || brut === "3" || brut.includes("soir") || brut.includes("fin")) return "plage3";
+    if (
+      brut.includes("plage1") ||
+      brut === "1"
+    ) {
+      return "plage1";
+    }
 
-    const date = new Date(reservation?.datebookd || "");
+    if (
+      brut.includes("plage2") ||
+      brut === "2"
+    ) {
+      return "plage2";
+    }
 
-    if (!Number.isNaN(date.getTime())) {
-      const heure = Number(new Intl.DateTimeFormat("fr-FR", {
-        timeZone: "Europe/Paris",
-        hour: "2-digit",
-        hour12: false,
-        hourCycle: "h23"
-      }).format(date));
-
-      if (heure < 12) return "plage1";
-      if (heure < 18) return "plage2";
+    if (
+      brut.includes("plage3") ||
+      brut === "3"
+    ) {
       return "plage3";
     }
 
-    return "plage1";
+    if (
+      brut.includes("plage4") ||
+      brut === "4"
+    ) {
+      return "plage4";
+    }
+
+    if (
+      brut.includes("plage5") ||
+      brut === "5"
+    ) {
+      return "plage5";
+    }
+
+    const date = new Date(
+      reservation?.datebookd || ""
+    );
+
+    if (!Number.isNaN(date.getTime())) {
+      const heure = Number(
+        new Intl.DateTimeFormat("fr-FR", {
+          timeZone: "Europe/Paris",
+          hour: "2-digit",
+          hour12: false,
+          hourCycle: "h23"
+        }).format(date)
+      );
+
+      if (heure >= 6 && heure < 10) {
+        return "plage1";
+      }
+
+      if (heure >= 10 && heure < 13) {
+        return "plage2";
+      }
+
+      if (heure >= 13 && heure < 17) {
+        return "plage3";
+      }
+
+      if (heure >= 17 && heure < 21) {
+        return "plage4";
+      }
+
+      return "plage5";
+    }
+
+    return "";
   }
 
   function libellePlage(plage) {
-    if (plage === "plage1") return "plage 1";
-    if (plage === "plage2") return "plage 2";
-    if (plage === "plage3") return "plage 3";
-    return "plage";
+    if (plage === "plage1") {
+      return "6 h–10 h";
+    }
+
+    if (plage === "plage2") {
+      return "10 h–13 h";
+    }
+
+    if (plage === "plage3") {
+      return "13 h–17 h";
+    }
+
+    if (plage === "plage4") {
+      return "17 h–21 h";
+    }
+
+    if (plage === "plage5") {
+      return "21 h–2 h";
+    }
+
+    return "plage horaire";
   }
 
   function nomParcReservation(reservation) {
