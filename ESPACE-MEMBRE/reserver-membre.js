@@ -86,6 +86,8 @@
   const etatIaShift = {
     ouverte: false,
     ouvertureEnCours: false,
+    ouvertureNumero: 0,
+    confirmationOuvertureEnCours: false,
     fermetureEnCours: false,
     fermerApresAudio: false,
     mediaStream: null,
@@ -639,9 +641,49 @@
 
     if (boutonIa) {
       boutonIa.addEventListener("click", () => {
-        ouvrirRechercheIaShift().catch(console.error);
+        demanderOuvertureRechercheIaShift().catch(console.error);
       });
     }
+  }
+
+  async function demanderOuvertureRechercheIaShift() {
+    if (
+      etatIaShift.ouverte ||
+      etatIaShift.ouvertureEnCours ||
+      etatIaShift.confirmationOuvertureEnCours
+    ) {
+      return;
+    }
+
+    etatIaShift.confirmationOuvertureEnCours = true;
+
+    let confirmation = null;
+
+    try {
+      confirmation = await ouvrirDialogueBoutonsSuperpose({
+        titre: "Confirmer l’ouverture du micro",
+        texte:
+          "La recherche avec l’IA utilise votre microphone pendant la conversation.",
+        boutons: [
+          {
+            label: "Annuler",
+            valeur: "annuler",
+            style: "lcdp-button-secondary"
+          },
+          {
+            label: "Confirmer",
+            valeur: "confirmer",
+            style: "lcdp-button-orange"
+          }
+        ]
+      });
+    } finally {
+      etatIaShift.confirmationOuvertureEnCours = false;
+    }
+
+    if (confirmation !== "confirmer") return;
+
+    await ouvrirRechercheIaShift();
   }
 
   async function ouvrirRechercheIaShift() {
@@ -654,18 +696,37 @@
       return;
     }
 
+    const ouvertureNumero = etatIaShift.ouvertureNumero + 1;
+
+    etatIaShift.ouvertureNumero = ouvertureNumero;
     etatIaShift.ouvertureEnCours = true;
+    actualiserBlocageBoutonsRechercheIaShift(true);
 
     try {
       await construireInterfaceIaShift();
+
+      if (etatIaShift.ouvertureNumero !== ouvertureNumero) return;
+
       actualiserStatutIaShift("Connexion à l’assistant…");
 
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: true
       });
+
+      if (etatIaShift.ouvertureNumero !== ouvertureNumero) {
+        mediaStream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      etatIaShift.mediaStream = mediaStream;
+
       const peerConnection = new RTCPeerConnection();
       const audio = document.createElement("audio");
       const dataChannel = peerConnection.createDataChannel("oai-events");
+
+      etatIaShift.peerConnection = peerConnection;
+      etatIaShift.dataChannel = dataChannel;
+      etatIaShift.audio = audio;
 
       audio.autoplay = true;
       audio.setAttribute("playsinline", "");
@@ -722,11 +783,6 @@
         }
       });
 
-      etatIaShift.mediaStream = mediaStream;
-      etatIaShift.peerConnection = peerConnection;
-      etatIaShift.dataChannel = dataChannel;
-      etatIaShift.audio = audio;
-
       const offre = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offre);
 
@@ -744,6 +800,8 @@
         }
       );
       const reponseTexte = await reponse.text();
+
+      if (etatIaShift.ouvertureNumero !== ouvertureNumero) return;
 
       if (reponse.status === 401) {
         fermerRechercheIaShift();
@@ -769,6 +827,8 @@
         sdp: reponseTexte
       });
     } catch (error) {
+      if (etatIaShift.ouvertureNumero !== ouvertureNumero) return;
+
       fermerRechercheIaShift();
 
       if (
@@ -786,7 +846,9 @@
         "Impossible d’ouvrir la recherche avec l’IA."
       );
     } finally {
-      etatIaShift.ouvertureEnCours = false;
+      if (etatIaShift.ouvertureNumero === ouvertureNumero) {
+        etatIaShift.ouvertureEnCours = false;
+      }
     }
   }
 
@@ -1180,10 +1242,27 @@
     return true;
   }
 
+  function actualiserBlocageBoutonsRechercheIaShift(bloquer) {
+    const bloque = bloquer === true;
+
+    document
+      .querySelectorAll(
+        "#bouton-demander-ia, [data-lcdp-action-iashift]"
+      )
+      .forEach((bouton) => {
+        bouton.disabled = bloque;
+        bouton.setAttribute(
+          "aria-disabled",
+          bloque ? "true" : "false"
+        );
+      });
+  }
+
   function fermerRechercheIaShift() {
     if (etatIaShift.fermetureEnCours) return;
 
     etatIaShift.fermetureEnCours = true;
+    etatIaShift.ouvertureNumero += 1;
 
     if (etatIaShift.timerFermeture) {
       window.clearTimeout(etatIaShift.timerFermeture);
@@ -1218,6 +1297,7 @@
 
     etatIaShift.ouverte = false;
     etatIaShift.ouvertureEnCours = false;
+    etatIaShift.confirmationOuvertureEnCours = false;
     etatIaShift.fermetureEnCours = false;
     etatIaShift.fermerApresAudio = false;
     etatIaShift.mediaStream = null;
@@ -1232,6 +1312,7 @@
     etatIaShift.boutonMicro = null;
     etatIaShift.timerFermeture = null;
     etatIaShift.appelsTraites = new Set();
+    actualiserBlocageBoutonsRechercheIaShift(false);
   }
 
 
@@ -1390,6 +1471,7 @@
     boutonStickyIa.textContent =
       String(boutonIa.textContent || "Rechercher avec l’IA").trim();
     boutonStickyIa.setAttribute("aria-label", "Rechercher avec l’IA");
+    boutonStickyIa.dataset.lcdpActionIashift = "true";
     boutonStickyIa.title = "Rechercher avec l’IA";
     boutonStickyIa.addEventListener("click", (event) => {
       event.preventDefault();
