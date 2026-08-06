@@ -1708,7 +1708,6 @@
           onErreur: afficherAlerteDetailParcOuPage
         }
       );
-      ajouterInstructionDetailPlanning(contenu);
       return;
     }
 
@@ -1751,30 +1750,6 @@
         onReserverParc: demarrerReservationParc
       }
     );
-  }
-
-
-  function ajouterInstructionDetailPlanning(contenu) {
-    if (!contenu) return;
-
-    const legende = contenu.querySelector("[data-lcdp-box-legende]");
-
-    if (!legende) return;
-
-    const instructionExistante = contenu.querySelector(
-      "[data-lcdp-planning-instruction-detail]"
-    );
-
-    if (instructionExistante) {
-      instructionExistante.remove();
-    }
-
-    const instruction = document.createElement("strong");
-    instruction.dataset.lcdpPlanningInstructionDetail = "";
-    instruction.textContent =
-      "Cliquez sur la journée pour voir le détail";
-
-    legende.appendChild(instruction);
   }
 
 
