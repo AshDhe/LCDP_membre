@@ -23,8 +23,6 @@
   );
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
-  const PAGE_RESERVER_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html");
-
   let pageInitialisee = false;
   let promesseActualisationEtatMembre = null;
 
@@ -46,6 +44,7 @@
     slotCommandeAgenda: null,
     commandeBar: null,
     modeAffichage: "liste",
+    periodeAffichage: "avenir",
     membre: {
       abonne: false,
       abonnementSuspendu: false,
@@ -125,10 +124,6 @@
         color: #ffffff !important;
       }
 
-
-      .lcdp-box-card-reservation-membre--passe [data-lcdp-card-reservation-annuler] {
-        display: inline-flex !important;
-      }
 
       .lcdp-box-workflow-reservation--planning-reservation .lcdp-box-calendrier-mois__close,
       .lcdp-box-workflow-reservation--planning-reservation [data-lcdp-calendrier-mois-close],
@@ -478,21 +473,49 @@
     const boutonSuivant = calendrier.querySelector("[data-lcdp-calendrier-mois-next]");
 
     if (boutonPrecedent) {
-      boutonPrecedent.addEventListener("click", () => {
-        etat.moisCourant = ajouterMois(etat.moisCourant, -1);
-        afficherCalendrierMois();
-      });
+      boutonPrecedent.addEventListener(
+        "click",
+        () => {
+          const moisPrecedent = ajouterMois(
+            etat.moisCourant,
+            -1
+          );
+
+          if (
+            !moisDansLimitesPeriodePlanning(
+              moisPrecedent
+            )
+          ) {
+            return;
+          }
+
+          etat.moisCourant = moisPrecedent;
+          afficherCalendrierMois();
+        }
+      );
     }
 
     if (boutonSuivant) {
-      boutonSuivant.addEventListener("click", () => {
-        const prochainMois = ajouterMois(etat.moisCourant, 1);
+      boutonSuivant.addEventListener(
+        "click",
+        () => {
+          const prochainMois = ajouterMois(
+            etat.moisCourant,
+            1
+          );
 
-        if (!moisDansLimiteMaximumPlanning(prochainMois)) return;
+          if (
+            !moisDansLimitesPeriodePlanning(
+              prochainMois
+            )
+          ) {
+            return;
+          }
 
-        etat.moisCourant = prochainMois;
-        afficherCalendrierMois();
-      });
+          etat.moisCourant = prochainMois;
+          afficherCalendrierMois();
+        }
+      );
     }
 
     const fragmentJour = await chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html");
@@ -583,21 +606,45 @@
 
     actionsWrapper.innerHTML = "";
 
-    const lienReserver = document.createElement("a");
-    lienReserver.className =
-      "lcdp-button lcdp-button-mini lcdp-button-mini-orange lcdp-planning-membre-reserver-button";
-    lienReserver.dataset.lcdpPlanningReserver = "true";
-    lienReserver.href = PAGE_RESERVER_MEMBRE;
-    lienReserver.textContent = "RÉSERVER";
-    lienReserver.setAttribute("aria-label", "Réserver une nouvelle date");
+    const groupePeriodes =
+      document.createElement("div");
+    groupePeriodes.className =
+      "lcdp-planning-membre-periode-tabs";
+    groupePeriodes.setAttribute(
+      "role",
+      "group"
+    );
+    groupePeriodes.setAttribute(
+      "aria-label",
+      "Période de Mon agenda"
+    );
 
-    const boutonAffichage = document.createElement("button");
+    groupePeriodes.appendChild(
+      creerBoutonPeriodePlanningMembre(
+        "avenir",
+        "À venir"
+      )
+    );
+    groupePeriodes.appendChild(
+      creerBoutonPeriodePlanningMembre(
+        "passe",
+        "Passés"
+      )
+    );
+
+    const boutonAffichage =
+      document.createElement("button");
     boutonAffichage.type = "button";
     boutonAffichage.className =
-      "lcdp-button lcdp-button-secondary lcdp-button-mini lcdp-planning-membre-affichage-button";
-    boutonAffichage.dataset.lcdpPlanningAffichage = "true";
+      "lcdp-button lcdp-button-secondary " +
+      "lcdp-button-mini " +
+      "lcdp-planning-membre-affichage-button";
+    boutonAffichage.dataset.lcdpPlanningAffichage =
+      "true";
+
     const estListe =
       etat.modeAffichage === "liste";
+
     boutonAffichage.textContent = estListe
       ? "Afficher en planning"
       : "Afficher en liste";
@@ -605,10 +652,100 @@
       "aria-pressed",
       estListe ? "true" : "false"
     );
-    boutonAffichage.addEventListener("click", basculerAffichagePlanningMembre);
+    boutonAffichage.addEventListener(
+      "click",
+      basculerAffichagePlanningMembre
+    );
 
-    actionsWrapper.appendChild(lienReserver);
-    actionsWrapper.appendChild(boutonAffichage);
+    actionsWrapper.appendChild(
+      groupePeriodes
+    );
+    actionsWrapper.appendChild(
+      boutonAffichage
+    );
+
+    actualiserBoutonsPeriodePlanningMembre();
+  }
+
+  function creerBoutonPeriodePlanningMembre(
+    periode,
+    libelle
+  ) {
+    const bouton =
+      document.createElement("button");
+
+    bouton.type = "button";
+    bouton.className =
+      "lcdp-button lcdp-button-secondary " +
+      "lcdp-button-mini " +
+      "lcdp-planning-membre-periode-button";
+    bouton.dataset.lcdpPlanningPeriode =
+      periode;
+    bouton.textContent = libelle;
+    bouton.addEventListener(
+      "click",
+      () => changerPeriodePlanningMembre(
+        periode
+      )
+    );
+
+    return bouton;
+  }
+
+  function changerPeriodePlanningMembre(
+    periode
+  ) {
+    const prochainePeriode =
+      periode === "passe"
+        ? "passe"
+        : "avenir";
+
+    if (
+      etat.periodeAffichage ===
+      prochainePeriode
+    ) {
+      return;
+    }
+
+    etat.periodeAffichage =
+      prochainePeriode;
+
+    ajusterMoisCourantSelonPeriode();
+    actualiserBoutonsPeriodePlanningMembre();
+
+    if (etat.modeAffichage === "liste") {
+      afficherPlanningMembreEnListe();
+      return;
+    }
+
+    afficherCalendrierMois();
+  }
+
+  function actualiserBoutonsPeriodePlanningMembre() {
+    if (!etat.commandeBar) return;
+
+    etat.commandeBar
+      .querySelectorAll(
+        "[data-lcdp-planning-periode]"
+      )
+      .forEach((bouton) => {
+        const actif =
+          bouton.dataset.lcdpPlanningPeriode ===
+          etat.periodeAffichage;
+
+        bouton.classList.toggle(
+          "lcdp-button-primary",
+          actif
+        );
+        bouton.classList.toggle(
+          "lcdp-button-secondary",
+          !actif
+        );
+        bouton.setAttribute(
+          "aria-pressed",
+          actif ? "true" : "false"
+        );
+      });
   }
 
   function basculerAffichagePlanningMembre() {
@@ -626,21 +763,36 @@
 
     if (!slotPlanning || !calendrier) return;
 
-    slotPlanning.classList.add("lcdp-box-liste-card__list--transition");
+    ajusterMoisCourantSelonPeriode();
+    afficherCalendrierMois();
+
+    slotPlanning.classList.add(
+      "lcdp-box-liste-card__list--transition"
+    );
 
     window.requestAnimationFrame(() => {
-      slotPlanning.replaceChildren(calendrier);
+      slotPlanning.replaceChildren(
+        calendrier
+      );
 
-      if (etat.slotCommandeAgenda && etat.commandeBar) {
-        etat.slotCommandeAgenda.appendChild(etat.commandeBar);
+      if (
+        etat.slotCommandeAgenda &&
+        etat.commandeBar
+      ) {
+        etat.slotCommandeAgenda.appendChild(
+          etat.commandeBar
+        );
       }
 
       etat.modeAffichage = "agenda";
       actualiserModeWrapperPlanning();
       actualiserBoutonAffichagePlanningMembre();
+      actualiserBoutonsPeriodePlanningMembre();
 
       window.requestAnimationFrame(() => {
-        slotPlanning.classList.remove("lcdp-box-liste-card__list--transition");
+        slotPlanning.classList.remove(
+          "lcdp-box-liste-card__list--transition"
+        );
       });
     });
   }
@@ -648,42 +800,137 @@
   function afficherPlanningMembreEnListe() {
     const slotPlanning = etat.slotPlanning;
 
-    if (!slotPlanning || !etat.templateReservation) return;
-
-    const fragment = document.createDocumentFragment();
-    const reservations = [...etat.reservations].sort((a, b) =>
-      String(a?.datebookd || "").localeCompare(String(b?.datebookd || ""))
-    );
-
-    if (!reservations.length) {
-      const message = document.createElement("p");
-      message.className = "lcdp-box-liste-card__message";
-      message.textContent = "Vous n’avez pas de réservation à l’agenda actuellement.";
-      fragment.appendChild(message);
-    } else {
-      reservations.forEach((reservation) => {
-        const card = creerCardReservation(reservation);
-        card.classList.add("lcdp-box-card-reservation-membre--liste");
-        fragment.appendChild(card);
-      });
+    if (
+      !slotPlanning ||
+      !etat.templateReservation
+    ) {
+      return;
     }
 
-    slotPlanning.classList.add("lcdp-box-liste-card__list--transition");
+    const fragment =
+      document.createDocumentFragment();
+    const reservations =
+      filtrerEtTrierReservationsAgenda(
+        etat.reservations
+      );
+
+    if (!reservations.length) {
+      const message =
+        document.createElement("p");
+      message.className =
+        "lcdp-box-liste-card__message";
+      message.textContent =
+        etat.periodeAffichage === "avenir"
+          ? "Vous n’avez aucune date à venir."
+          : "Vous n’avez aucune date passée ou annulée.";
+      fragment.appendChild(message);
+    } else {
+      reservations.forEach(
+        (reservation, index) => {
+          const card = creerCardReservation(
+            reservation,
+            {
+              contexte: "liste",
+              prochaine:
+                etat.periodeAffichage ===
+                  "avenir" &&
+                index === 0
+            }
+          );
+
+          card.classList.add(
+            "lcdp-box-card-reservation-membre--liste"
+          );
+          fragment.appendChild(card);
+        }
+      );
+    }
+
+    slotPlanning.classList.add(
+      "lcdp-box-liste-card__list--transition"
+    );
 
     window.requestAnimationFrame(() => {
-      if (etat.slotCommandeListe && etat.commandeBar) {
-        etat.slotCommandeListe.appendChild(etat.commandeBar);
+      if (
+        etat.slotCommandeListe &&
+        etat.commandeBar
+      ) {
+        etat.slotCommandeListe.appendChild(
+          etat.commandeBar
+        );
       }
 
-      slotPlanning.replaceChildren(fragment);
+      slotPlanning.replaceChildren(
+        fragment
+      );
       etat.modeAffichage = "liste";
       actualiserModeWrapperPlanning();
       actualiserBoutonAffichagePlanningMembre();
+      actualiserBoutonsPeriodePlanningMembre();
 
       window.requestAnimationFrame(() => {
-        slotPlanning.classList.remove("lcdp-box-liste-card__list--transition");
+        slotPlanning.classList.remove(
+          "lcdp-box-liste-card__list--transition"
+        );
       });
     });
+  }
+
+  function filtrerEtTrierReservationsAgenda(
+    source,
+    periode = etat.periodeAffichage
+  ) {
+    const reservations =
+      (Array.isArray(source) ? source : [])
+        .filter((reservation) =>
+          reservationDansPeriodeAgenda(
+            reservation,
+            periode
+          )
+        );
+
+    reservations.sort((a, b) => {
+      const dateA = new Date(
+        a?.datebookd || ""
+      ).getTime();
+      const dateB = new Date(
+        b?.datebookd || ""
+      ).getTime();
+
+      return periode === "avenir"
+        ? dateA - dateB
+        : dateB - dateA;
+    });
+
+    return reservations;
+  }
+
+  function reservationDansPeriodeAgenda(
+    reservation,
+    periode = etat.periodeAffichage
+  ) {
+    const annulee =
+      reservationAnnuleePlanning(
+        reservation
+      );
+    const passee =
+      reservationPasseePlanning(
+        reservation
+      );
+
+    return periode === "avenir"
+      ? !annulee && !passee
+      : annulee || passee;
+  }
+
+  function reservationAnnuleePlanning(
+    reservation
+  ) {
+    return (
+      normaliserTexteTechnique(
+        reservation?.statut || ""
+      ) === "cancd"
+    );
   }
 
   function actualiserModeWrapperPlanning() {
@@ -748,7 +995,7 @@
       etat.abonnements = normaliserAbonnementsMembre(data.abonnements || data.abos || []);
       await chargerStatutsInvitationsPlanning();
       etat.reservationsParDate = indexerReservationsParDate(etat.reservations);
-      ajusterMoisCourantSelonReservations();
+      ajusterMoisCourantSelonPeriode();
       afficherCalendrierMois();
 
       if (etat.modeAffichage === "liste") {
@@ -809,16 +1056,28 @@
     }
   }
 
-  function ajusterMoisCourantSelonReservations() {
-    const aujourdHui = dateAujourdhuiParis();
-    const reservationsAvenir = etat.reservations
-      .filter((reservation) => extraireDateFranceReservation(reservation.datebookd) >= aujourdHui)
-      .sort((a, b) => String(a.datebookd || "").localeCompare(String(b.datebookd || "")));
+  function ajusterMoisCourantSelonPeriode() {
+    const aujourdHui =
+      dateAujourdhuiParis();
+    const reservations =
+      filtrerEtTrierReservationsAgenda(
+        etat.reservations
+      );
+    const reservationReference =
+      reservations[0] || null;
+    const dateReference =
+      reservationReference
+        ? extraireDateFranceReservation(
+            reservationReference.datebookd
+          )
+        : aujourdHui;
 
-    const reservationReference = reservationsAvenir[0] || etat.reservations[0] || null;
-    const dateReference = reservationReference ? extraireDateFranceReservation(reservationReference.datebookd) : aujourdHui;
-
-    etat.moisCourant = limiterMoisMaximumPlanning(debutMois(dateReference || aujourdHui));
+    etat.moisCourant =
+      limiterMoisSelonPeriodePlanning(
+        debutMois(
+          dateReference || aujourdHui
+        )
+      );
   }
 
   function indexerReservationsParDate(reservations) {
@@ -851,7 +1110,11 @@
     const calendrier = etat.calendrierMois;
     if (!calendrier || !etat.templateJour) return;
 
-    const courant = limiterMoisMaximumPlanning(etat.moisCourant || debutMois(dateAujourdhuiParis()));
+    const courant =
+      limiterMoisSelonPeriodePlanning(
+        etat.moisCourant ||
+        debutMois(dateAujourdhuiParis())
+      );
     etat.moisCourant = courant;
     const titreMois = calendrier.querySelector("[data-lcdp-calendrier-mois-current]");
     const grille = calendrier.querySelector("[data-lcdp-calendrier-mois-grid]");
@@ -963,13 +1226,47 @@
       slot.removeAttribute("data-idflux");
       slot.removeAttribute("data-plage");
 
-      const reservationsPlage = reservationsJour.get(plage) || [];
-      const reservation = reservationsPlage[0] || null;
+      const reservationsPlage =
+        (reservationsJour.get(plage) || [])
+          .filter((reservation) =>
+            reservationDansPeriodeAgenda(
+              reservation
+            )
+          )
+          .sort((a, b) => {
+            const dateA = new Date(
+              a?.datebookd || ""
+            ).getTime();
+            const dateB = new Date(
+              b?.datebookd || ""
+            ).getTime();
+
+            return etat.periodeAffichage ===
+              "avenir"
+              ? dateA - dateB
+              : dateB - dateA;
+          });
+      const reservation =
+        reservationsPlage[0] || null;
 
       if (!reservation) return;
 
       jourReservable = true;
-      jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--reservation-membre");
+      jour.classList.add(
+        "lcdp-box-card-jour-in-calendrier-mois--reservation-membre"
+      );
+
+      const estAnnulee =
+        reservationAnnuleePlanning(
+          reservation
+        );
+
+      if (estAnnulee) {
+        jour.classList.add(
+          "lcdp-box-card-jour-in-calendrier-mois--past",
+          "lcdp-box-card-jour-in-calendrier-mois--reservation-annulee"
+        );
+      }
 
       const estInvite =
         reservationHorsAbonnementMembre(
@@ -1019,14 +1316,24 @@
         slot.appendChild(libelleParc);
       }
 
-      slot.dataset.idflux = String(reservation.idflux || "");
+      slot.dataset.idflux =
+        String(reservation.idflux || "");
       slot.dataset.plage = plage;
+      slot.addEventListener(
+        "click",
+        gererClicSlotCalendrier
+      );
+
       const typeAgenda =
         typeReservationAgenda(reservation);
+      const libelleStatut =
+        estAnnulee
+          ? typeAgenda + " annulée"
+          : typeAgenda;
 
       slot.setAttribute(
         "aria-label",
-        typeAgenda +
+        libelleStatut +
           " " +
           (nomParcComplet
             ? nomParcComplet + " - "
@@ -1038,7 +1345,7 @@
           )
       );
       slot.title =
-        typeAgenda +
+        libelleStatut +
         " " +
         (nomParcComplet
           ? nomParcComplet + " - "
@@ -1048,26 +1355,34 @@
 
     jour.disabled = !jourReservable;
 
-    if (jourReservable) {
-      jour.addEventListener("click", gererClicJourCalendrier);
-    }
-
     return jour;
   }
 
-  function gererClicJourCalendrier(event) {
-    const slot = event.target.closest("[data-lcdp-card-jour-mois-slot]");
+  function gererClicSlotCalendrier(event) {
+    event.preventDefault();
+    event.stopPropagation();
 
-    if (!slot || !slot.dataset.idflux) return;
+    const slot = event.currentTarget;
 
-    const reservation = etat.reservations.find((item) => String(item.idflux || "") === String(slot.dataset.idflux || ""));
-
-    if (!reservation) {
-      afficherAlerte("Réservation introuvable.").catch(console.error);
+    if (!slot || !slot.dataset.idflux) {
       return;
     }
 
-    ouvrirReservationPlanning(reservation).catch(console.error);
+    const reservation =
+      trouverReservationPlanningParId(
+        slot.dataset.idflux
+      );
+
+    if (!reservation) {
+      afficherAlerte(
+        "Réservation introuvable."
+      ).catch(console.error);
+      return;
+    }
+
+    ouvrirReservationPlanning(
+      reservation
+    ).catch(console.error);
   }
 
   async function ouvrirReservationPlanning(reservation) {
@@ -1102,7 +1417,12 @@
     vueReservation.className = "lcdp-planning-reservation-vue lcdp-planning-reservation-vue--active";
     vueReservation.dataset.lcdpPlanningVue = "reservation";
 
-    const card = creerCardReservation(reservation);
+    const card = creerCardReservation(
+      reservation,
+      {
+        contexte: "detail"
+      }
+    );
     vueReservation.appendChild(card);
     vues.appendChild(vueReservation);
 
@@ -1134,8 +1454,12 @@
     document.addEventListener("keydown", gererEchapReservation);
   }
 
-  function creerCardReservation(reservation) {
-    const card = etat.templateReservation.cloneNode(true);
+  function creerCardReservation(
+    reservation,
+    options = {}
+  ) {
+    const card =
+      etat.templateReservation.cloneNode(true);
 
     const estPasse = reservationPasseePlanning(reservation);
     const delaiActionDepasse = reservationDelaiActionDepasse(reservation);
@@ -1159,13 +1483,62 @@
     const parcElement = card.querySelector("[data-lcdp-card-reservation-parc]");
     const departementElement = card.querySelector("[data-lcdp-card-reservation-departement]");
     const boutonAdresse = card.querySelector("[data-action='adresse']");
-    const boutonInvitation = card.querySelector("[data-action='invitation']");
-    const boutonAnnuler = card.querySelector("[data-action='annuler']");
+    const boutonInvitation =
+      card.querySelector(
+        "[data-action='invitation']"
+      );
+    const boutonAnnuler =
+      card.querySelector(
+        "[data-action='annuler']"
+      );
+    const boutonFermer =
+      card.querySelector(
+        "[data-action='fermer']"
+      );
 
     card.dataset.idflux = idFlux;
 
-    if (estPasse) {
-      card.classList.add("lcdp-box-card-reservation-membre--passe");
+    const estAnnulee =
+      reservationAnnuleePlanning(
+        reservation
+      );
+
+    if (estPasse || estAnnulee) {
+      card.classList.add(
+        "lcdp-box-card-reservation-membre--passe"
+      );
+    }
+
+    if (estAnnulee) {
+      card.classList.add(
+        "lcdp-box-card-reservation-membre--annulee"
+      );
+    }
+
+    if (
+      options.prochaine === true &&
+      !estPasse &&
+      !estAnnulee
+    ) {
+      card.classList.add(
+        "lcdp-box-card-reservation-membre--prochaine"
+      );
+      card.dataset.lcdpProchaineReservation =
+        "true";
+    }
+
+    if (boutonFermer) {
+      const afficherFermer =
+        options.contexte === "detail";
+
+      boutonFermer.hidden =
+        !afficherFermer;
+      boutonFermer.setAttribute(
+        "aria-hidden",
+        afficherFermer
+          ? "false"
+          : "true"
+      );
     }
 
     const estReservationHorsAbonnement = reservationHorsAbonnementMembre(reservation);
@@ -1190,8 +1563,12 @@
     }
 
     if (invitation) {
-      invitation.textContent = "";
-      invitation.hidden = true;
+      invitation.textContent =
+        estAnnulee
+          ? "Annulée"
+          : "";
+      invitation.hidden =
+        !estAnnulee;
     }
 
     if (date) date.textContent = formaterDateCourte(reservation.datebookd);
@@ -1212,7 +1589,8 @@
 
     if (boutonInvitation) {
       boutonInvitation.dataset.id = idFlux;
-      boutonInvitation.hidden = false;
+      boutonInvitation.hidden =
+        estAnnulee;
       boutonInvitation.classList.remove(
         "lcdp-box-card-reservation-membre__micro-action--delai-depasse",
         "lcdp-box-card-reservation-membre__micro-action--invit-recu"
@@ -1253,6 +1631,8 @@
 
     if (boutonAnnuler) {
       boutonAnnuler.dataset.id = idFlux;
+      boutonAnnuler.hidden =
+        estAnnulee;
       boutonAnnuler.textContent =
         estReservationHorsAbonnement
           ? "Annuler l’invite"
@@ -2995,39 +3375,192 @@
       .replace(/\s+/g, "");
   }
 
-  function moisMaximumPlanning() {
-    const annee = Number(String(dateAujourdhuiParis()).slice(0, 4));
+  function moisMinimumPlanning() {
+    const aujourdHui =
+      debutMois(dateAujourdhuiParis());
 
-    if (!Number.isFinite(annee) || annee < 2000) {
-      return "2027-12-01";
+    if (
+      etat.periodeAffichage === "avenir"
+    ) {
+      return aujourdHui;
     }
 
-    return String(annee + 1) + "-12-01";
+    const reservationsPassees =
+      filtrerEtTrierReservationsAgenda(
+        etat.reservations,
+        "passe"
+      );
+    const dates = reservationsPassees
+      .map((reservation) =>
+        extraireDateFranceReservation(
+          reservation.datebookd
+        )
+      )
+      .filter(Boolean)
+      .sort();
+
+    if (!dates.length) {
+      return aujourdHui;
+    }
+
+    return ajouterMois(
+      debutMois(dates[0]),
+      -1
+    );
   }
 
-  function moisDansLimiteMaximumPlanning(moisIso) {
-    return String(debutMois(moisIso || dateAujourdhuiParis())) <= moisMaximumPlanning();
+  function moisMaximumPlanning() {
+    const aujourdHui =
+      debutMois(dateAujourdhuiParis());
+
+    if (
+      etat.periodeAffichage === "passe"
+    ) {
+      const reservationsPassees =
+        filtrerEtTrierReservationsAgenda(
+          etat.reservations,
+          "passe"
+        );
+      const dates = reservationsPassees
+        .map((reservation) =>
+          extraireDateFranceReservation(
+            reservation.datebookd
+          )
+        )
+        .filter(Boolean)
+        .sort();
+
+      if (!dates.length) {
+        return aujourdHui;
+      }
+
+      const dernierMois =
+        debutMois(
+          dates[dates.length - 1]
+        );
+
+      return dernierMois > aujourdHui
+        ? dernierMois
+        : aujourdHui;
+    }
+
+    const reservationsAvenir =
+      filtrerEtTrierReservationsAgenda(
+        etat.reservations,
+        "avenir"
+      );
+    const dates = reservationsAvenir
+      .map((reservation) =>
+        extraireDateFranceReservation(
+          reservation.datebookd
+        )
+      )
+      .filter(Boolean)
+      .sort();
+
+    if (!dates.length) {
+      return aujourdHui;
+    }
+
+    return ajouterMois(
+      debutMois(
+        dates[dates.length - 1]
+      ),
+      1
+    );
   }
 
-  function limiterMoisMaximumPlanning(moisIso) {
-    const mois = debutMois(moisIso || dateAujourdhuiParis());
-    const maximum = moisMaximumPlanning();
+  function moisDansLimitesPeriodePlanning(
+    moisIso
+  ) {
+    const mois = debutMois(
+      moisIso ||
+      dateAujourdhuiParis()
+    );
 
-    return mois > maximum ? maximum : mois;
+    return (
+      mois >= moisMinimumPlanning() &&
+      mois <= moisMaximumPlanning()
+    );
+  }
+
+  function limiterMoisSelonPeriodePlanning(
+    moisIso
+  ) {
+    const mois = debutMois(
+      moisIso ||
+      dateAujourdhuiParis()
+    );
+    const minimum =
+      moisMinimumPlanning();
+    const maximum =
+      moisMaximumPlanning();
+
+    if (mois < minimum) return minimum;
+    if (mois > maximum) return maximum;
+
+    return mois;
   }
 
   function actualiserNavigationMoisPlanning() {
-    const calendrier = etat.calendrierMois;
+    const calendrier =
+      etat.calendrierMois;
+
     if (!calendrier) return;
 
-    const boutonSuivant = calendrier.querySelector("[data-lcdp-calendrier-mois-next]");
-    if (!boutonSuivant) return;
+    const boutonPrecedent =
+      calendrier.querySelector(
+        "[data-lcdp-calendrier-mois-prev]"
+      );
+    const boutonSuivant =
+      calendrier.querySelector(
+        "[data-lcdp-calendrier-mois-next]"
+      );
+    const moisActuel =
+      etat.moisCourant ||
+      dateAujourdhuiParis();
 
-    const prochainMois = ajouterMois(etat.moisCourant || dateAujourdhuiParis(), 1);
-    const autorise = moisDansLimiteMaximumPlanning(prochainMois);
+    if (boutonPrecedent) {
+      const moisPrecedent =
+        ajouterMois(
+          moisActuel,
+          -1
+        );
+      const autorise =
+        moisDansLimitesPeriodePlanning(
+          moisPrecedent
+        );
 
-    boutonSuivant.disabled = !autorise;
-    boutonSuivant.setAttribute("aria-disabled", autorise ? "false" : "true");
+      boutonPrecedent.disabled =
+        !autorise;
+      boutonPrecedent.setAttribute(
+        "aria-disabled",
+        autorise
+          ? "false"
+          : "true"
+      );
+    }
+
+    if (boutonSuivant) {
+      const prochainMois =
+        ajouterMois(
+          moisActuel,
+          1
+        );
+      const autorise =
+        moisDansLimitesPeriodePlanning(
+          prochainMois
+        );
+
+      boutonSuivant.disabled =
+        !autorise;
+      boutonSuivant.setAttribute(
+        "aria-disabled",
+        autorise
+          ? "false"
+          : "true"
+      );
+    }
   }
 
   function normaliserPlageReservation(reservation) {
