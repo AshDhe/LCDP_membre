@@ -104,7 +104,7 @@
     const titrePage = document.querySelector(".lcdp-title-page-center");
 
     if (titrePage) {
-      titrePage.textContent = "Planifier";
+      titrePage.textContent = "PLANIFIER";
     }
 
     afficherPictowaitListeParcs(
