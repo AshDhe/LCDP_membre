@@ -1419,7 +1419,18 @@
         return;
       }
 
-      await ouvrirFicheParc(parc);
+      try {
+        await ouvrirFicheParc(parc);
+      } catch (error) {
+        console.error(
+          "Erreur ouverture Fiche Parc publique :",
+          error
+        );
+        await afficherAlerte(
+          error?.message ||
+          "Impossible d’ouvrir la fiche du parc."
+        );
+      }
       return;
     }
 
@@ -1538,20 +1549,24 @@
       const boutonFermer = racine.querySelector("[data-lcdp-shift-detail-parc-close]");
 
       if (boutonFermer) {
-        boutonFermer.addEventListener("click", () => {
-          fermerOuRevenirFicheParcPublique().catch(console.error);
-        });
+        boutonFermer.addEventListener(
+          "click",
+          fermerShiftDetailParc
+        );
       }
 
       racine.addEventListener("click", (event) => {
         if (event.target === racine) {
-          fermerOuRevenirFicheParcPublique().catch(console.error);
+          fermerShiftDetailParc();
         }
       });
 
       const gererEscape = (event) => {
-        if (event.key === "Escape" && document.body.contains(racine)) {
-          fermerOuRevenirFicheParcPublique().catch(console.error);
+        if (
+          event.key === "Escape" &&
+          document.body.contains(racine)
+        ) {
+          fermerShiftDetailParc();
         }
       };
 
@@ -1578,23 +1593,6 @@
     };
   }
 
-  async function fermerOuRevenirFicheParcPublique() {
-    const parc = etatPage.shiftDetailParc?.parc || null;
-    const vue = String(
-      etatPage.shiftDetailParc?.vue || ""
-    );
-
-    if (vue === "planning" && parc) {
-      await afficherVueShiftDetailParc(
-        parc,
-        "fiche"
-      );
-      return;
-    }
-
-    fermerShiftDetailParc();
-  }
-
   function fermerShiftDetailParc() {
     const slot = document.getElementById("lcdp-lightbox-slot");
     const racine = slot ? slot.querySelector("[data-lcdp-box-shift-detail-parc]") : null;
@@ -1605,6 +1603,12 @@
 
     etatPage.shiftDetailParc = null;
     etatPage.planningParcLectureActif = null;
+
+    if (racine) {
+      racine.classList.remove(
+        "lcdp-box-shift-detail-parc--visible"
+      );
+    }
 
     if (slot) {
       slot.innerHTML = "";
@@ -1646,13 +1650,14 @@
     if (premiereOuverture) {
       detail.contenu.replaceChildren(contenuPrepare);
       detail.racine.hidden = false;
-      detail.racine.classList.remove("lcdp-box-shift-detail-parc--preparation");
-      detail.racine.classList.add("lcdp-box-shift-detail-parc--apparition");
+      detail.racine.classList.remove(
+        "lcdp-box-shift-detail-parc--preparation"
+      );
 
       window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          detail.racine.classList.remove("lcdp-box-shift-detail-parc--apparition");
-        });
+        detail.racine.classList.add(
+          "lcdp-box-shift-detail-parc--visible"
+        );
       });
 
       return;
@@ -1813,6 +1818,13 @@
       contenu,
       parc,
       {
+        chargerFragmentObjet,
+        construireUrlObjet,
+        construireUrlImageParcFichier,
+        construireUrlImageCardParc:
+          construireUrlImageParc,
+        appliquerRoutes: appliquerRoutesSite,
+        templateCardParc: etatPage.templateCardParc,
         masquerBoutonFermer: true,
         onReserver: demarrerReservationParc,
         onPlanning: (parcCible) =>
@@ -1860,6 +1872,45 @@
     }
 
     await afficherAlerte(message);
+  }
+
+  function construireUrlImageParcFichier(
+    parc,
+    fichier
+  ) {
+    const departement = nettoyerDepartement(
+      parc?.dptmt ||
+      parc?.departement ||
+      ""
+    );
+    const dossierParc = normaliserNomParcPourChemin(
+      parc?.nom ||
+      parc?.nomparc ||
+      ""
+    );
+    const nomFichier = String(fichier || "")
+      .replace(/^\/+/, "");
+
+    if (
+      !departement ||
+      !dossierParc ||
+      !nomFichier
+    ) {
+      return construireUrlObjet(
+        DOSSIER_IMAGES_PARC_OBJET +
+        "/parc-defaut.webp"
+      );
+    }
+
+    return construireUrlObjet(
+      DOSSIER_IMAGES_PARC_OBJET +
+      "/" +
+      encodeURIComponent(departement) +
+      "/" +
+      encodeURIComponent(dossierParc) +
+      "/" +
+      encodeURIComponent(nomFichier)
+    );
   }
 
   function trouverParcParId(idparc) {
@@ -3236,6 +3287,8 @@
   async function chargerConstructeurFicheParc() {
     if (
       window.LCDP_FicheParc &&
+      typeof window.LCDP_FicheParc.chargerFicheParc ===
+        "function" &&
       typeof window.LCDP_FicheParc.rendreDansConteneur ===
         "function" &&
       typeof window.LCDP_FicheParc.rendrePlanningDansConteneur ===
@@ -3250,6 +3303,8 @@
 
     if (
       !window.LCDP_FicheParc ||
+      typeof window.LCDP_FicheParc.chargerFicheParc !==
+        "function" ||
       typeof window.LCDP_FicheParc.rendreDansConteneur !==
         "function" ||
       typeof window.LCDP_FicheParc.rendrePlanningDansConteneur !==
