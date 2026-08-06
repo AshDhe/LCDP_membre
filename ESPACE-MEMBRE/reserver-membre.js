@@ -73,6 +73,11 @@
 
   let pageInitialisee = false;
   let etatMembre = { abonne: false, abonnementSuspendu: false, abonnementAnnuleNonPaye: false, paiementSuspension: null, statudaConnue: false, statuda: null, datenext: null };
+  let promessePrechargementConstructeurFicheParc = null;
+
+  const urlsFichesParcPrechargees = new Set();
+  const cachePlanningParcLecture = new Map();
+  const DUREE_CACHE_PLANNING_LECTURE_MS = 30000;
 
   const etatPage = {
     departement: "",
@@ -126,6 +131,7 @@
       afficherEtatMembre(etatMembre);
       await actualiserBurgerMembre(etatMembre.abonne);
       await initialiserListeParcs();
+      prechargerConstructeurFicheParc();
       await initialiserCommandeBarReserver();
       initialiserBoutonDepartementPrincipal();
       initialiserActionsListeParcs();
@@ -1027,6 +1033,7 @@
     slot.setAttribute("aria-hidden", "false");
 
     afficherCommandeBarReserver();
+    planifierPrechargementDetailsParcs();
   }
 
   function listeParcsDejaVisible() {
@@ -1352,6 +1359,45 @@
 
     bouton.appendChild(icone);
     bouton.appendChild(libelle);
+
+    if (
+      configuration.action === "ouvrir-fiche-parc" ||
+      configuration.action === "voir-planning-parc"
+    ) {
+      const precharger = () => {
+        const parc = trouverParcParId(configuration.idparc);
+
+        if (!parc) {
+          return;
+        }
+
+        if (configuration.action === "ouvrir-fiche-parc") {
+          prechargerPageFicheParcPublique(parc);
+          return;
+        }
+
+        prechargerPlanningParcLecture(parc);
+      };
+
+      bouton.addEventListener(
+        "pointerenter",
+        precharger,
+        { once: true }
+      );
+      bouton.addEventListener(
+        "focus",
+        precharger,
+        { once: true }
+      );
+      bouton.addEventListener(
+        "touchstart",
+        precharger,
+        {
+          once: true,
+          passive: true
+        }
+      );
+    }
 
     return bouton;
   }
@@ -1681,10 +1727,7 @@
   }
 
 
-  async function rendrePageFicheParcPubliqueDansConteneur(
-    contenu,
-    parc
-  ) {
+  function construireUrlPageFicheParcPublique(parc) {
     const idparc = String(
       parc?.idparc ||
       parc?.id ||
@@ -1692,7 +1735,7 @@
     ).trim();
 
     if (!idparc) {
-      throw new Error("Identifiant du parc manquant.");
+      return "";
     }
 
     const url = new URL(
@@ -1723,9 +1766,106 @@
       url.searchParams.set("dptmt", departement);
     }
 
+    return url.toString();
+  }
+
+  function prechargerConstructeurFicheParc() {
+    if (!promessePrechargementConstructeurFicheParc) {
+      promessePrechargementConstructeurFicheParc =
+        chargerConstructeurFicheParc().catch((error) => {
+          promessePrechargementConstructeurFicheParc = null;
+          console.warn(
+            "Préchargement du constructeur Fiche Parc indisponible.",
+            error
+          );
+          return null;
+        });
+    }
+
+    return promessePrechargementConstructeurFicheParc;
+  }
+
+  function prechargerPageFicheParcPublique(parc) {
+    const href = construireUrlPageFicheParcPublique(parc);
+
+    if (!href || urlsFichesParcPrechargees.has(href)) {
+      return;
+    }
+
+    urlsFichesParcPrechargees.add(href);
+
+    const lien = document.createElement("link");
+    lien.rel = "prefetch";
+    lien.as = "document";
+    lien.href = href;
+    lien.dataset.lcdpPrefetchFicheParc = "";
+    document.head.appendChild(lien);
+  }
+
+  function prechargerPlanningParcLecture(parc) {
+    if (!parc) {
+      return;
+    }
+
+    const maintenant = new Date();
+
+    chargerPlanningParcMoisLecture({
+      parc,
+      annee: maintenant.getFullYear(),
+      mois: maintenant.getMonth() + 1
+    }).catch((error) => {
+      console.warn(
+        "Préchargement du planning du parc indisponible.",
+        error
+      );
+    });
+
+    prechargerConstructeurFicheParc();
+  }
+
+  function planifierPrechargementDetailsParcs() {
+    const executer = () => {
+      prechargerConstructeurFicheParc();
+
+      etatPage.parcs
+        .slice(0, 3)
+        .forEach((parc) => {
+          prechargerPageFicheParcPublique(parc);
+        });
+    };
+
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(executer, {
+        timeout: 1200
+      });
+      return;
+    }
+
+    window.setTimeout(executer, 200);
+  }
+
+
+  async function rendrePageFicheParcPubliqueDansConteneur(
+    contenu,
+    parc
+  ) {
+    const urlFicheParc = construireUrlPageFicheParcPublique(
+      parc
+    );
+
+    if (!urlFicheParc) {
+      throw new Error("Identifiant du parc manquant.");
+    }
+
+    const nom = String(
+      parc?.nom ||
+      parc?.nomparc ||
+      ""
+    ).trim();
+
     const iframe = document.createElement("iframe");
     iframe.dataset.lcdpFicheParcPublique = "";
-    iframe.src = url.toString();
+    iframe.src = urlFicheParc;
     iframe.title = nom
       ? "Fiche du parc " + nom
       : "Fiche du parc";
@@ -1742,157 +1882,134 @@
 
     contenu.replaceChildren(iframe);
 
-    return new Promise((resolve, reject) => {
-      let premiereChargeTerminee = false;
+    function parcDepuisPagePublique() {
+      try {
+        const urlCourante = new URL(
+          iframe.contentWindow.location.href
+        );
+        const identifiant = String(
+          urlCourante.searchParams.get("idparc") ||
+          ""
+        ).trim();
 
-      function terminerPremiereCharge() {
-        if (premiereChargeTerminee) {
+        if (!identifiant) {
+          return parc;
+        }
+
+        return trouverParcParId(identifiant) || {
+          ...parc,
+          idparc: identifiant
+        };
+      } catch {
+        return parc;
+      }
+    }
+
+    function preparerPagePublique() {
+      try {
+        const documentFiche = iframe.contentDocument;
+
+        if (!documentFiche) {
           return;
         }
 
-        premiereChargeTerminee = true;
-        resolve();
-      }
+        documentFiche
+          .getElementById("lcdp-bandeau-slot")
+          ?.remove();
+        documentFiche
+          .getElementById("lcdp-footer-slot")
+          ?.remove();
+        documentFiche
+          .getElementById("lcdp-fiche-parc-status")
+          ?.remove();
 
-      function parcDepuisPagePublique() {
-        try {
-          const urlCourante = new URL(
-            iframe.contentWindow.location.href
+        const ajusterHauteur = () => {
+          const hauteurDocument = Math.max(
+            documentFiche.documentElement
+              ?.scrollHeight || 0,
+            documentFiche.body
+              ?.scrollHeight || 0,
+            720
           );
-          const identifiant = String(
-            urlCourante.searchParams.get("idparc") ||
-            ""
-          ).trim();
 
-          if (!identifiant) {
-            return parc;
-          }
+          iframe.height = String(hauteurDocument);
+        };
 
-          return trouverParcParId(identifiant) || {
-            ...parc,
-            idparc: identifiant
-          };
-        } catch {
-          return parc;
+        if (iframe._lcdpFicheParcResizeObserver) {
+          iframe._lcdpFicheParcResizeObserver.disconnect();
         }
-      }
 
-      function preparerPagePublique() {
-        try {
-          const documentFiche = iframe.contentDocument;
+        if ("ResizeObserver" in window) {
+          const observateur = new ResizeObserver(
+            ajusterHauteur
+          );
 
-          if (!documentFiche) {
-            terminerPremiereCharge();
-            return;
-          }
-
-          documentFiche
-            .getElementById("lcdp-bandeau-slot")
-            ?.remove();
-          documentFiche
-            .getElementById("lcdp-footer-slot")
-            ?.remove();
-          documentFiche
-            .getElementById("lcdp-fiche-parc-status")
-            ?.remove();
-
-          const ajusterHauteur = () => {
-            const hauteurDocument = Math.max(
+          if (documentFiche.documentElement) {
+            observateur.observe(
               documentFiche.documentElement
-                ?.scrollHeight || 0,
-              documentFiche.body
-                ?.scrollHeight || 0,
-              720
             );
-
-            iframe.height = String(hauteurDocument);
-          };
-
-          if (iframe._lcdpFicheParcResizeObserver) {
-            iframe._lcdpFicheParcResizeObserver.disconnect();
           }
 
-          if ("ResizeObserver" in window) {
-            const observateur = new ResizeObserver(
-              ajusterHauteur
-            );
-
-            if (documentFiche.documentElement) {
-              observateur.observe(
-                documentFiche.documentElement
-              );
-            }
-
-            if (documentFiche.body) {
-              observateur.observe(documentFiche.body);
-            }
-
-            iframe._lcdpFicheParcResizeObserver =
-              observateur;
+          if (documentFiche.body) {
+            observateur.observe(documentFiche.body);
           }
 
-          documentFiche.addEventListener(
-            "click",
-            (event) => {
-              const cible =
-                event.target &&
-                typeof event.target.closest === "function"
-                  ? event.target
-                  : null;
-              const boutonPlanifier = cible?.closest(
-                "[data-lcdp-fiche-parc-action-planifier]"
-              );
-
-              if (!boutonPlanifier) {
-                return;
-              }
-
-              event.preventDefault();
-              event.stopPropagation();
-              event.stopImmediatePropagation();
-
-              demarrerReservationParc(
-                parcDepuisPagePublique()
-              ).catch(console.error);
-            },
-            true
-          );
-
-          window.requestAnimationFrame(() => {
-            ajusterHauteur();
-            window.setTimeout(ajusterHauteur, 250);
-          });
-
-          terminerPremiereCharge();
-        } catch (error) {
-          if (!premiereChargeTerminee) {
-            premiereChargeTerminee = true;
-            reject(error);
-          }
+          iframe._lcdpFicheParcResizeObserver =
+            observateur;
         }
+
+        documentFiche.addEventListener(
+          "click",
+          (event) => {
+            const cible =
+              event.target &&
+              typeof event.target.closest === "function"
+                ? event.target
+                : null;
+            const boutonPlanifier = cible?.closest(
+              "[data-lcdp-fiche-parc-action-planifier]"
+            );
+
+            if (!boutonPlanifier) {
+              return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+
+            demarrerReservationParc(
+              parcDepuisPagePublique()
+            ).catch(console.error);
+          },
+          true
+        );
+
+        window.requestAnimationFrame(() => {
+          ajusterHauteur();
+          window.setTimeout(ajusterHauteur, 250);
+        });
+      } catch (error) {
+        console.error(
+          "Erreur préparation Fiche Parc publique :",
+          error
+        );
       }
+    }
 
-      iframe.addEventListener(
-        "load",
-        preparerPagePublique
-      );
-      iframe.addEventListener(
-        "error",
-        () => {
-          if (premiereChargeTerminee) {
-            return;
-          }
-
-          premiereChargeTerminee = true;
-          reject(
-            new Error(
-              "Impossible de charger la Fiche Parc publique."
-            )
-          );
-        },
-        { once: true }
-      );
-    });
+    iframe.addEventListener(
+      "load",
+      preparerPagePublique
+    );
+    iframe.addEventListener(
+      "error",
+      () => {
+        console.error(
+          "Impossible de charger la Fiche Parc publique."
+        );
+      },
+      { once: true }
+    );
   }
 
 
@@ -1932,39 +2049,87 @@
       throw new Error("Le service planning parc n’est pas configuré.");
     }
 
-    const idparc = String(etatPlanning.parc.idparc || etatPlanning.parc.id || "").trim();
+    const idparc = String(
+      etatPlanning.parc.idparc ||
+      etatPlanning.parc.id ||
+      ""
+    ).trim();
 
     if (!idparc) {
       throw new Error("Parc manquant.");
     }
 
-    const url =
-      ENDPOINT_PLANNING_PARC +
-      "/planning-parc-mois?idparc=" + encodeURIComponent(idparc) +
-      "&annee=" + encodeURIComponent(etatPlanning.annee) +
-      "&mois=" + encodeURIComponent(etatPlanning.mois);
+    const cleCache = [
+      idparc,
+      etatPlanning.annee,
+      etatPlanning.mois
+    ].join(":");
+    const cacheExistant = cachePlanningParcLecture.get(
+      cleCache
+    );
 
-    const reponse = await fetch(url, {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-      headers: {
-        "Accept": "application/json"
+    if (
+      cacheExistant &&
+      cacheExistant.expireA > Date.now()
+    ) {
+      return cacheExistant.promesse;
+    }
+
+    const promesse = (async () => {
+      const url =
+        ENDPOINT_PLANNING_PARC +
+        "/planning-parc-mois?idparc=" +
+        encodeURIComponent(idparc) +
+        "&annee=" +
+        encodeURIComponent(etatPlanning.annee) +
+        "&mois=" +
+        encodeURIComponent(etatPlanning.mois);
+
+      const reponse = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+      const data = await reponse.json().catch(() => null);
+
+      if (reponse.status === 401) {
+        await afficherAlerteDetailParcOuPage(
+          "Cette page est réservée aux membres invités ou abonnés."
+        );
+        return [];
       }
+
+      if (!reponse.ok || !data || !reponseApiOk(data)) {
+        throw new Error(
+          messageErreurApi(
+            data,
+            "Impossible de charger le planning du parc."
+          )
+        );
+      }
+
+      return Array.isArray(data.planning)
+        ? data.planning
+        : [];
+    })();
+
+    cachePlanningParcLecture.set(cleCache, {
+      expireA:
+        Date.now() +
+        DUREE_CACHE_PLANNING_LECTURE_MS,
+      promesse
     });
 
-    const data = await reponse.json().catch(() => null);
-
-    if (reponse.status === 401) {
-      await afficherAlerteDetailParcOuPage("Cette page est réservée aux membres invités ou abonnés.");
-      return [];
+    try {
+      return await promesse;
+    } catch (error) {
+      cachePlanningParcLecture.delete(cleCache);
+      throw error;
     }
-
-    if (!reponse.ok || !data || !reponseApiOk(data)) {
-      throw new Error(messageErreurApi(data, "Impossible de charger le planning du parc."));
-    }
-
-    return Array.isArray(data.planning) ? data.planning : [];
   }
 
   async function ouvrirPartagePlanningParc(parc, typepartage = "planning") {
@@ -1974,10 +2139,14 @@
 
     try {
       const resultat = await envoyerPartagePlanningParc(parc, emails, typepartage);
-      await afficherAlerteSuperposee(resultat.message || "La page a été partagée.");
+      await afficherAlerteSuperposee(
+        resultat.message || "La page a été partagée.",
+        "vert-contour"
+      );
     } catch (error) {
       await afficherAlerteSuperposee(
-        normaliserMessageErreurPartage(error?.message)
+        normaliserMessageErreurPartage(error?.message),
+        "vert-contour"
       );
     }
   }
@@ -2960,7 +3129,10 @@
     });
   }
 
-  async function afficherAlerteSuperposee(message) {
+  async function afficherAlerteSuperposee(
+    message,
+    couleurBouton = "orange"
+  ) {
     const conteneur = document.createElement("div");
     document.body.appendChild(conteneur);
 
@@ -2978,8 +3150,16 @@
     }
 
     texte.textContent = message || "";
-    boutonOk.classList.remove("lcdp-button-primary");
-    boutonOk.classList.add("lcdp-button-orange");
+    boutonOk.classList.remove(
+      "lcdp-button-primary",
+      "lcdp-button-secondary",
+      "lcdp-button-orange"
+    );
+    boutonOk.classList.add(
+      couleurBouton === "vert-contour"
+        ? "lcdp-button-secondary"
+        : "lcdp-button-orange"
+    );
 
     return new Promise((resolve) => {
       let resolu = false;
