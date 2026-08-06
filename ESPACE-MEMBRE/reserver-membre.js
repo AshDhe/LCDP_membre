@@ -1443,56 +1443,8 @@
     await ouvrirCalendrierMoisParc(parc);
   }
 
-  async function chargerFicheParcComplete(parcSource) {
-    const idparc = String(parcSource?.idparc || parcSource?.id || "").trim();
-
-    if (!idparc) {
-      throw new Error("Identifiant du parc manquant.");
-    }
-
-    if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
-      throw new Error("Le service de fiche parc n’est pas configuré.");
-    }
-
-    const reponse = await fetch(
-      ENDPOINT_NOUVELLE_DATE_MEMBRE +
-      "/fiche-parc?idparc=" +
-      encodeURIComponent(idparc),
-      {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-          "Accept": "application/json"
-        }
-      }
-    );
-
-    const data = await reponse.json().catch(() => null);
-
-    if (reponse.status === 401) {
-      redirigerConnexionMembre("inactive");
-      throw new Error("Session membre inactive.");
-    }
-
-    if (!reponse.ok || !data || !reponseApiOk(data)) {
-      throw new Error(
-        messageErreurApi(data, "Impossible de charger la fiche du parc.")
-      );
-    }
-
-    return {
-      ...parcSource,
-      ...(data.parc || {}),
-      resparc: data.resparc || null,
-      parcsDepartement: Array.isArray(data.parcs) ? data.parcs : [],
-      localitesCarte: Array.isArray(data.localites) ? data.localites : []
-    };
-  }
-
   async function ouvrirFicheParc(parc) {
-    const parcComplet = await chargerFicheParcComplete(parc);
-    await ouvrirShiftDetailParc(parcComplet, "fiche");
+    await ouvrirShiftDetailParc(parc, "fiche");
   }
 
   async function ouvrirShiftDetailParc(parc, vueDemandee) {
@@ -1609,6 +1561,16 @@
     etatPage.shiftDetailParc = null;
     etatPage.planningParcLectureActif = null;
 
+    const iframeFichePublique = slot?.querySelector(
+      "[data-lcdp-fiche-parc-publique]"
+    );
+
+    if (iframeFichePublique?._lcdpFicheParcResizeObserver) {
+      iframeFichePublique
+        ._lcdpFicheParcResizeObserver
+        .disconnect();
+    }
+
     if (slot) {
       slot.innerHTML = "";
     }
@@ -1669,6 +1631,14 @@
     parc,
     vue
   ) {
+    if (vue === "fiche") {
+      await rendrePageFicheParcPubliqueDansConteneur(
+        contenu,
+        parc
+      );
+      return;
+    }
+
     if (vue === "reservation") {
       await afficherReservationMoisParcDansConteneur(
         contenu,
@@ -1697,59 +1667,232 @@
               parcCible,
               "planning"
             ),
-          onRetourPresentation: async (parcCible) => {
-            const parcComplet =
-              await chargerFicheParcComplete(parcCible);
-            await afficherVueShiftDetailParc(
-              parcComplet,
+          onRetourPresentation: (parcCible) =>
+            afficherVueShiftDetailParc(
+              parcCible,
               "fiche"
-            );
-          },
+            ),
           onErreur: afficherAlerteDetailParcOuPage
         }
       );
       return;
     }
 
-    await constructeur.rendreDansConteneur(
-      contenu,
-      parc,
-      {
-        chargerFragmentObjet,
-        construireUrlObjet,
-        construireUrlImageParcFichier,
-        construireUrlImageCardParc: construireUrlImageParc,
-        appliquerRoutes: appliquerRoutesSite,
-        templateCardParc: etatPage.templateCardParc,
-        masquerBoutonFermer: true,
-        onFermer: fermerShiftDetailParc,
-        onReserver: demarrerReservationParc,
-        onPlanning: (parcCible) =>
-          afficherVueShiftDetailParc(
-            parcCible,
-            "planning"
-          ),
-        onPartager: (parcCible) =>
-          ouvrirPartagePlanningParc(
-            parcCible,
-            "fiche"
-          ),
-        onOuvrirFicheParc: async (parcCible) => {
-          const parcComplet =
-            await chargerFicheParcComplete(parcCible);
-          await afficherVueShiftDetailParc(
-            parcComplet,
-            "fiche"
+  }
+
+
+  async function rendrePageFicheParcPubliqueDansConteneur(
+    contenu,
+    parc
+  ) {
+    const idparc = String(
+      parc?.idparc ||
+      parc?.id ||
+      ""
+    ).trim();
+
+    if (!idparc) {
+      throw new Error("Identifiant du parc manquant.");
+    }
+
+    const url = new URL(
+      construireUrlPublic(
+        "/ESPACE-PUBLIC/fiche-parc.html"
+      ),
+      window.location.href
+    );
+
+    url.searchParams.set("idparc", idparc);
+
+    const nom = String(
+      parc?.nom ||
+      parc?.nomparc ||
+      ""
+    ).trim();
+    const departement = String(
+      parc?.dptmt ||
+      parc?.departement ||
+      ""
+    ).trim();
+
+    if (nom) {
+      url.searchParams.set("nom", nom);
+    }
+
+    if (departement) {
+      url.searchParams.set("dptmt", departement);
+    }
+
+    const iframe = document.createElement("iframe");
+    iframe.dataset.lcdpFicheParcPublique = "";
+    iframe.src = url.toString();
+    iframe.title = nom
+      ? "Fiche du parc " + nom
+      : "Fiche du parc";
+    iframe.width = "100%";
+    iframe.height = String(
+      Math.max(
+        720,
+        (window.innerHeight || 800) - 96
+      )
+    );
+    iframe.loading = "eager";
+    iframe.setAttribute("frameborder", "0");
+    iframe.setAttribute("scrolling", "no");
+
+    contenu.replaceChildren(iframe);
+
+    return new Promise((resolve, reject) => {
+      let premiereChargeTerminee = false;
+
+      function terminerPremiereCharge() {
+        if (premiereChargeTerminee) {
+          return;
+        }
+
+        premiereChargeTerminee = true;
+        resolve();
+      }
+
+      function parcDepuisPagePublique() {
+        try {
+          const urlCourante = new URL(
+            iframe.contentWindow.location.href
+          );
+          const identifiant = String(
+            urlCourante.searchParams.get("idparc") ||
+            ""
+          ).trim();
+
+          if (!identifiant) {
+            return parc;
+          }
+
+          return trouverParcParId(identifiant) || {
+            ...parc,
+            idparc: identifiant
+          };
+        } catch {
+          return parc;
+        }
+      }
+
+      function preparerPagePublique() {
+        try {
+          const documentFiche = iframe.contentDocument;
+
+          if (!documentFiche) {
+            terminerPremiereCharge();
+            return;
+          }
+
+          documentFiche
+            .getElementById("lcdp-bandeau-slot")
+            ?.remove();
+          documentFiche
+            .getElementById("lcdp-footer-slot")
+            ?.remove();
+          documentFiche
+            .getElementById("lcdp-fiche-parc-status")
+            ?.remove();
+
+          const ajusterHauteur = () => {
+            const hauteurDocument = Math.max(
+              documentFiche.documentElement
+                ?.scrollHeight || 0,
+              documentFiche.body
+                ?.scrollHeight || 0,
+              720
+            );
+
+            iframe.height = String(hauteurDocument);
+          };
+
+          if (iframe._lcdpFicheParcResizeObserver) {
+            iframe._lcdpFicheParcResizeObserver.disconnect();
+          }
+
+          if ("ResizeObserver" in window) {
+            const observateur = new ResizeObserver(
+              ajusterHauteur
+            );
+
+            if (documentFiche.documentElement) {
+              observateur.observe(
+                documentFiche.documentElement
+              );
+            }
+
+            if (documentFiche.body) {
+              observateur.observe(documentFiche.body);
+            }
+
+            iframe._lcdpFicheParcResizeObserver =
+              observateur;
+          }
+
+          documentFiche.addEventListener(
+            "click",
+            (event) => {
+              const cible =
+                event.target &&
+                typeof event.target.closest === "function"
+                  ? event.target
+                  : null;
+              const boutonPlanifier = cible?.closest(
+                "[data-lcdp-fiche-parc-action-planifier]"
+              );
+
+              if (!boutonPlanifier) {
+                return;
+              }
+
+              event.preventDefault();
+              event.stopPropagation();
+              event.stopImmediatePropagation();
+
+              demarrerReservationParc(
+                parcDepuisPagePublique()
+              ).catch(console.error);
+            },
+            true
+          );
+
+          window.requestAnimationFrame(() => {
+            ajusterHauteur();
+            window.setTimeout(ajusterHauteur, 250);
+          });
+
+          terminerPremiereCharge();
+        } catch (error) {
+          if (!premiereChargeTerminee) {
+            premiereChargeTerminee = true;
+            reject(error);
+          }
+        }
+      }
+
+      iframe.addEventListener(
+        "load",
+        preparerPagePublique
+      );
+      iframe.addEventListener(
+        "error",
+        () => {
+          if (premiereChargeTerminee) {
+            return;
+          }
+
+          premiereChargeTerminee = true;
+          reject(
+            new Error(
+              "Impossible de charger la Fiche Parc publique."
+            )
           );
         },
-        onOuvrirPlanningParc: (parcCible) =>
-          afficherVueShiftDetailParc(
-            parcCible,
-            "planning"
-          ),
-        onReserverParc: demarrerReservationParc
-      }
-    );
+        { once: true }
+      );
+    });
   }
 
 
@@ -1773,24 +1916,6 @@
 
     await afficherAlerte(message);
   }
-
-  function construireUrlImageParcFichier(parc, fichier) {
-    const departement = nettoyerDepartement(parc?.dptmt || parc?.departement || "");
-    const dossierParc = normaliserNomParcPourChemin(parc?.nom || parc?.nomparc || "");
-    const nomFichier = String(fichier || "").replace(/^\/+/, "");
-
-    if (!departement || !dossierParc || !nomFichier) {
-      return construireUrlObjet(DOSSIER_IMAGES_PARC_OBJET + "/parc-defaut.webp");
-    }
-
-    return construireUrlObjet(
-      DOSSIER_IMAGES_PARC_OBJET +
-      "/" + encodeURIComponent(departement) +
-      "/" + encodeURIComponent(dossierParc) +
-      "/" + encodeURIComponent(nomFichier)
-    );
-  }
-
 
   function trouverParcParId(idparc) {
     const id = String(idparc || "");
