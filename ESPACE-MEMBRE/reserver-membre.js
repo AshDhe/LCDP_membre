@@ -1683,6 +1683,7 @@
         parc,
         {
           vueInitiale: vueDemandee || "fiche",
+          modeUsage: "reservation-membre",
           chargerFragmentObjet,
           construireUrlObjet,
           construireUrlImageParcFichier,
@@ -1692,6 +1693,8 @@
           templateCardParc: etatPage.templateCardParc,
           templateJourMois: etatPage.templateJourMois,
           templateHeureJour: etatPage.templateHeureJour,
+          chargerDroitsPlanning:
+            chargerDroitsPlanningParcMembre,
           chargerPlanningMois:
             chargerPlanningParcMoisLecture,
           chargerPlanningJour:
@@ -1994,6 +1997,63 @@
     await ouvrirShiftDetailParc(parc, "planning");
   }
 
+  async function chargerDroitsPlanningParcMembre(parc) {
+    if (!ENDPOINT_PLANNING_PARC) {
+      throw new Error(
+        "Le service planning parc n’est pas configuré."
+      );
+    }
+
+    const idparc = String(
+      parc?.idparc ||
+      parc?.id ||
+      ""
+    ).trim();
+
+    if (!idparc) {
+      throw new Error("Parc manquant.");
+    }
+
+    const url =
+      ENDPOINT_PLANNING_PARC +
+      "/droits-planning?idparc=" +
+      encodeURIComponent(idparc) +
+      "&contexte=membre";
+    const reponse = await fetch(url, {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+    const data =
+      await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      throw new Error(
+        "Votre session membre a expiré."
+      );
+    }
+
+    if (
+      !reponse.ok ||
+      !data ||
+      !reponseApiOk(data) ||
+      !data.droitsPlanning
+    ) {
+      throw new Error(
+        messageErreurApi(
+          data,
+          "Impossible de déterminer la période consultable."
+        )
+      );
+    }
+
+    return data.droitsPlanning;
+  }
+
   async function chargerPlanningParcMoisLecture(etatPlanning) {
     if (!ENDPOINT_PLANNING_PARC) {
       throw new Error("Le service planning parc n’est pas configuré.");
@@ -2010,6 +2070,7 @@
     }
 
     const cleCache = [
+      "membre",
       idparc,
       etatPlanning.annee,
       etatPlanning.mois
@@ -2033,7 +2094,8 @@
         "&annee=" +
         encodeURIComponent(etatPlanning.annee) +
         "&mois=" +
-        encodeURIComponent(etatPlanning.mois);
+        encodeURIComponent(etatPlanning.mois) +
+        "&contexte=membre";
 
       const reponse = await fetch(url, {
         method: "GET",
@@ -2621,7 +2683,8 @@
       "/planning-parc-jour?idparc=" +
       encodeURIComponent(idparc) +
       "&date=" +
-      encodeURIComponent(dateIso);
+      encodeURIComponent(dateIso) +
+      "&contexte=membre";
     const reponse = await fetch(url, {
       method: "GET",
       credentials: "include",
