@@ -1526,6 +1526,20 @@
       return false;
     }
 
+    if (abonnementAnnuleNonPaye(etatMembre)) {
+      await afficherAlerteDetailParcOuPage(
+        "Votre abonnement est annulé (non payé)."
+      );
+      return false;
+    }
+
+    if (etatMembre?.abonnementSuspendu === true) {
+      await afficherEcheancesPaiementSuspension(
+        etatMembre
+      );
+      return false;
+    }
+
     if (!ENDPOINT_FLUXM) {
       await afficherAlerteDetailParcOuPage(
         "Le service de réservation n’est pas configuré."
@@ -1563,6 +1577,17 @@
       }
 
       if (data.peutPlanifier !== true) {
+        if (
+          data.code ===
+            "ABONNEMENT_SUSPENDU_NON_PAYE" &&
+          etatMembre?.paiementSuspension
+        ) {
+          await afficherEcheancesPaiementSuspension(
+            etatMembre
+          );
+          return false;
+        }
+
         await afficherAlerteDetailParcOuPage(
           data.message ||
           "Vous devez être membre abonné pour planifier votre activité."
