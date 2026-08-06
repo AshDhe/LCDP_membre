@@ -1769,12 +1769,12 @@
       instructionExistante.remove();
     }
 
-    const instruction = document.createElement("p");
+    const instruction = document.createElement("strong");
     instruction.dataset.lcdpPlanningInstructionDetail = "";
     instruction.textContent =
       "Cliquez sur la journée pour voir le détail";
 
-    legende.insertAdjacentElement("afterend", instruction);
+    legende.appendChild(instruction);
   }
 
 
