@@ -19,7 +19,9 @@
   const CLES_PLAGES_RESERVATION_ACTUELLES = [
     "plage1",
     "plage2",
-    "plage3"
+    "plage3",
+    "plage4",
+    "plage5"
   ];
 
   const COULEURS_CSS_PLANNING = {
@@ -67,6 +69,12 @@
     "partage-pages-api"
   );
 
+  const ENDPOINT_RESERVER_MEMBRE_IASHIFT = construireEndpointApi(
+    "workerReserverMembreIashiftUrl",
+    "WORKER_RESERVER_MEMBRE_IASHIFT_URL",
+    "reserver-membre-iashift-api"
+  );
+
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_PLANNING_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/planning-membre.html");
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
@@ -74,6 +82,25 @@
   let pageInitialisee = false;
   let etatMembre = { abonne: false, abonnementSuspendu: false, abonnementAnnuleNonPaye: false, paiementSuspension: null, statudaConnue: false, statuda: null, datenext: null };
   let promessePrechargementConstructeurFicheParc = null;
+
+  const etatIaShift = {
+    ouverte: false,
+    ouvertureEnCours: false,
+    fermetureEnCours: false,
+    fermerApresAudio: false,
+    mediaStream: null,
+    peerConnection: null,
+    dataChannel: null,
+    audio: null,
+    slot: null,
+    lightbox: null,
+    message: null,
+    transcription: null,
+    propositions: null,
+    boutonMicro: null,
+    timerFermeture: null,
+    appelsTraites: new Set()
+  };
 
   const cachePlanningParcLecture = new Map();
   const DUREE_CACHE_PLANNING_LECTURE_MS = 30000;
@@ -612,10 +639,601 @@
 
     if (boutonIa) {
       boutonIa.addEventListener("click", () => {
-        afficherAlerte("La recherche avec l’IA sera traitée après la réservation classique.").catch(console.error);
+        ouvrirRechercheIaShift().catch(console.error);
       });
     }
   }
+
+  async function ouvrirRechercheIaShift() {
+    if (etatIaShift.ouverte || etatIaShift.ouvertureEnCours) return;
+
+    if (!ENDPOINT_RESERVER_MEMBRE_IASHIFT) {
+      await afficherAlerte(
+        "Le service de recherche avec l’IA n’est pas configuré."
+      );
+      return;
+    }
+
+    etatIaShift.ouvertureEnCours = true;
+
+    try {
+      await construireInterfaceIaShift();
+      actualiserStatutIaShift("Connexion à l’assistant…");
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        audio: true
+      });
+      const peerConnection = new RTCPeerConnection();
+      const audio = document.createElement("audio");
+      const dataChannel = peerConnection.createDataChannel("oai-events");
+
+      audio.autoplay = true;
+      audio.setAttribute("playsinline", "");
+      audio.hidden = true;
+      document.body.appendChild(audio);
+
+      peerConnection.addEventListener("track", (event) => {
+        const flux = event.streams && event.streams[0];
+
+        if (flux) audio.srcObject = flux;
+      });
+
+      peerConnection.addEventListener("connectionstatechange", () => {
+        if (
+          ["failed", "disconnected", "closed"].includes(
+            peerConnection.connectionState
+          ) &&
+          etatIaShift.ouverte
+        ) {
+          actualiserStatutIaShift(
+            "La connexion avec l’assistant a été interrompue."
+          );
+        }
+      });
+
+      mediaStream.getTracks().forEach((track) => {
+        peerConnection.addTrack(track, mediaStream);
+      });
+
+      dataChannel.addEventListener("open", () => {
+        etatIaShift.ouverte = true;
+        actualiserStatutIaShift("Je vous écoute…");
+        envoyerEvenementIaShift({
+          type: "response.create",
+          response: {
+            instructions:
+              "Commence maintenant la conversation en demandant quand le membre souhaite aller au parc."
+          }
+        });
+      });
+
+      dataChannel.addEventListener("message", (event) => {
+        gererEvenementRealtimeIaShift(event.data).catch((error) => {
+          console.error("Erreur événement IA Shift :", error);
+          actualiserStatutIaShift(
+            error?.message || "Une erreur est survenue avec l’assistant."
+          );
+        });
+      });
+
+      dataChannel.addEventListener("close", () => {
+        if (etatIaShift.ouverte && !etatIaShift.fermetureEnCours) {
+          actualiserStatutIaShift("Conversation terminée.");
+        }
+      });
+
+      etatIaShift.mediaStream = mediaStream;
+      etatIaShift.peerConnection = peerConnection;
+      etatIaShift.dataChannel = dataChannel;
+      etatIaShift.audio = audio;
+
+      const offre = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offre);
+
+      const reponse = await fetch(
+        ENDPOINT_RESERVER_MEMBRE_IASHIFT + "/ouvrir-session",
+        {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            "Accept": "application/sdp",
+            "Content-Type": "application/sdp"
+          },
+          body: offre.sdp
+        }
+      );
+      const reponseTexte = await reponse.text();
+
+      if (reponse.status === 401) {
+        fermerRechercheIaShift();
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+
+      if (!reponse.ok) {
+        let message = "L’assistant vocal est momentanément indisponible.";
+
+        try {
+          const data = JSON.parse(reponseTexte);
+          message = messageErreurApi(data, message);
+        } catch {
+          /* Réponse SDP ou texte non JSON. */
+        }
+
+        throw new Error(message);
+      }
+
+      await peerConnection.setRemoteDescription({
+        type: "answer",
+        sdp: reponseTexte
+      });
+    } catch (error) {
+      fermerRechercheIaShift();
+
+      if (
+        error?.name === "NotAllowedError" ||
+        error?.name === "PermissionDeniedError"
+      ) {
+        await afficherAlerte(
+          "L’accès au microphone est nécessaire pour utiliser la recherche avec l’IA."
+        );
+        return;
+      }
+
+      await afficherAlerte(
+        error?.message ||
+        "Impossible d’ouvrir la recherche avec l’IA."
+      );
+    } finally {
+      etatIaShift.ouvertureEnCours = false;
+    }
+  }
+
+  async function construireInterfaceIaShift() {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) {
+      throw new Error("Slot lightbox introuvable.");
+    }
+
+    slot.innerHTML = "";
+
+    const fragment = await chargerFragmentObjet(
+      "/BOX/04-box-calendrier-jour.html"
+    );
+    slot.appendChild(fragment);
+
+    const lightbox = slot.querySelector(
+      "[data-lcdp-box-calendrier-jour]"
+    );
+    const titre = slot.querySelector(
+      "[data-lcdp-calendrier-jour-title]"
+    );
+    const meta = slot.querySelector(
+      "[data-lcdp-calendrier-jour-meta]"
+    );
+    const message = slot.querySelector(
+      "[data-lcdp-calendrier-jour-message]"
+    );
+    const contenu = slot.querySelector(
+      "[data-lcdp-calendrier-jour-grid]"
+    );
+    const boutonFermer = slot.querySelector(
+      "[data-lcdp-calendrier-jour-close]"
+    );
+
+    if (
+      !lightbox ||
+      !titre ||
+      !meta ||
+      !message ||
+      !contenu ||
+      !boutonFermer
+    ) {
+      slot.innerHTML = "";
+      throw new Error("Structure de la lightbox IA incomplète.");
+    }
+
+    titre.textContent = "Rechercher avec l’IA";
+    meta.textContent = "Assistant vocal IA Shift";
+    message.hidden = false;
+    message.textContent = "Préparation du microphone…";
+    contenu.innerHTML = "";
+
+    const transcription = document.createElement("p");
+    transcription.className = "lcdp-text-strong-lead";
+    transcription.hidden = true;
+    transcription.setAttribute("aria-live", "polite");
+
+    const propositions = document.createElement("div");
+    propositions.className = "lcdp-stack-small";
+    propositions.setAttribute("aria-live", "polite");
+
+    const actions = document.createElement("div");
+    actions.className = "lcdp-box-commande-bar__actions";
+
+    const boutonMicro = document.createElement("button");
+    boutonMicro.type = "button";
+    boutonMicro.className = "lcdp-button lcdp-button-secondary";
+    boutonMicro.textContent = "Couper le micro";
+    boutonMicro.addEventListener("click", basculerMicroIaShift);
+
+    const boutonQuitter = document.createElement("button");
+    boutonQuitter.type = "button";
+    boutonQuitter.className = "lcdp-button lcdp-button-secondary";
+    boutonQuitter.textContent = "Fermer";
+    boutonQuitter.addEventListener("click", fermerRechercheIaShift);
+
+    actions.appendChild(boutonMicro);
+    actions.appendChild(boutonQuitter);
+    contenu.appendChild(transcription);
+    contenu.appendChild(propositions);
+    contenu.appendChild(actions);
+
+    boutonFermer.addEventListener("click", fermerRechercheIaShift);
+    lightbox.addEventListener("click", (event) => {
+      if (event.target === lightbox) fermerRechercheIaShift();
+    });
+
+    etatIaShift.slot = slot;
+    etatIaShift.lightbox = lightbox;
+    etatIaShift.message = message;
+    etatIaShift.transcription = transcription;
+    etatIaShift.propositions = propositions;
+    etatIaShift.boutonMicro = boutonMicro;
+    etatIaShift.ouverte = true;
+
+    document.addEventListener("keydown", gererEchapIaShift);
+  }
+
+  function gererEchapIaShift(event) {
+    if (event.key === "Escape") fermerRechercheIaShift();
+  }
+
+  function actualiserStatutIaShift(message) {
+    if (!etatIaShift.message) return;
+
+    etatIaShift.message.hidden = false;
+    etatIaShift.message.textContent = String(message || "");
+  }
+
+  function afficherTranscriptionIaShift(texte) {
+    if (!etatIaShift.transcription) return;
+
+    const valeur = String(texte || "").trim();
+    etatIaShift.transcription.hidden = !valeur;
+    etatIaShift.transcription.textContent = valeur;
+  }
+
+  function afficherPropositionsIaShift(propositions) {
+    if (!etatIaShift.propositions) return;
+
+    etatIaShift.propositions.innerHTML = "";
+
+    const liste = Array.isArray(propositions) ? propositions : [];
+
+    if (!liste.length) {
+      const message = document.createElement("p");
+      message.textContent =
+        "Aucun créneau ne correspond à cette demande.";
+      etatIaShift.propositions.appendChild(message);
+      return;
+    }
+
+    liste.forEach((proposition) => {
+      const bouton = document.createElement("button");
+      bouton.type = "button";
+      bouton.className = "lcdp-button lcdp-button-secondary";
+      bouton.textContent =
+        "Proposition " +
+        String(proposition.numero || "") +
+        " — " +
+        String(proposition.nomparc || "Parc") +
+        " — " +
+        String(proposition.date_affichage || "") +
+        " à " +
+        String(proposition.heure_affichage || "");
+      bouton.addEventListener("click", () => {
+        envoyerChoixVisuelIaShift(proposition);
+      });
+      etatIaShift.propositions.appendChild(bouton);
+    });
+  }
+
+  function envoyerChoixVisuelIaShift(proposition) {
+    if (!proposition || !etatIaShift.dataChannel) return;
+
+    envoyerEvenementIaShift({
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text:
+              "Je choisis la proposition " +
+              String(proposition.numero || "") +
+              "."
+          }
+        ]
+      }
+    });
+    envoyerEvenementIaShift({ type: "response.create" });
+  }
+
+  function basculerMicroIaShift() {
+    const pistes = etatIaShift.mediaStream
+      ? etatIaShift.mediaStream.getAudioTracks()
+      : [];
+
+    if (!pistes.length) return;
+
+    const activer = pistes.some((track) => track.enabled === false);
+
+    pistes.forEach((track) => {
+      track.enabled = activer;
+    });
+
+    if (etatIaShift.boutonMicro) {
+      etatIaShift.boutonMicro.textContent = activer
+        ? "Couper le micro"
+        : "Réactiver le micro";
+      etatIaShift.boutonMicro.setAttribute(
+        "aria-pressed",
+        activer ? "false" : "true"
+      );
+    }
+
+    actualiserStatutIaShift(
+      activer ? "Je vous écoute…" : "Microphone coupé."
+    );
+  }
+
+  async function gererEvenementRealtimeIaShift(messageBrut) {
+    let evenement;
+
+    try {
+      evenement = JSON.parse(String(messageBrut || ""));
+    } catch {
+      return;
+    }
+
+    if (evenement.type === "input_audio_buffer.speech_started") {
+      actualiserStatutIaShift("Je vous écoute…");
+      return;
+    }
+
+    if (evenement.type === "input_audio_buffer.speech_stopped") {
+      actualiserStatutIaShift("Je traite votre demande…");
+      return;
+    }
+
+    if (
+      evenement.type ===
+      "conversation.item.input_audio_transcription.completed"
+    ) {
+      afficherTranscriptionIaShift(evenement.transcript || "");
+      return;
+    }
+
+    if (evenement.type === "response.function_call_arguments.done") {
+      await executerOutilIaShift({
+        callId: evenement.call_id,
+        nom: evenement.name,
+        arguments: evenement.arguments
+      });
+      return;
+    }
+
+    if (
+      evenement.type === "response.output_item.done" &&
+      evenement.item?.type === "function_call"
+    ) {
+      await executerOutilIaShift({
+        callId: evenement.item.call_id,
+        nom: evenement.item.name,
+        arguments: evenement.item.arguments
+      });
+      return;
+    }
+
+    if (evenement.type === "output_audio_buffer.stopped") {
+      if (etatIaShift.fermerApresAudio) {
+        window.setTimeout(fermerRechercheIaShift, 500);
+      } else {
+        actualiserStatutIaShift("Je vous écoute…");
+      }
+      return;
+    }
+
+    if (evenement.type === "error") {
+      throw new Error(
+        evenement.error?.message ||
+        "L’assistant vocal a rencontré une erreur."
+      );
+    }
+  }
+
+  async function executerOutilIaShift(appel) {
+    const callId = String(appel?.callId || "").trim();
+    const nom = String(appel?.nom || "").trim();
+
+    if (!callId || !nom) return;
+    if (etatIaShift.appelsTraites.has(callId)) return;
+
+    etatIaShift.appelsTraites.add(callId);
+
+    let argumentsOutil = {};
+
+    try {
+      argumentsOutil = JSON.parse(String(appel.arguments || "{}"));
+    } catch {
+      argumentsOutil = {};
+    }
+
+    try {
+      if (nom === "rechercher_creneaux") {
+        actualiserStatutIaShift("Recherche des disponibilités…");
+
+        const resultat = await appelerWorkerIaShift(
+          "/rechercher-creneaux",
+          argumentsOutil
+        );
+
+        afficherPropositionsIaShift(resultat.propositions);
+        envoyerResultatOutilIaShift(callId, resultat);
+        actualiserStatutIaShift(
+          resultat.propositions?.length
+            ? "J’attends votre choix…"
+            : "Aucun créneau trouvé."
+        );
+        return;
+      }
+
+      if (nom === "confirmer_reservation") {
+        actualiserStatutIaShift("Enregistrement de la réservation…");
+
+        const resultat = await appelerWorkerIaShift(
+          "/confirmer-reservation",
+          argumentsOutil
+        );
+
+        envoyerResultatOutilIaShift(callId, resultat);
+        actualiserStatutIaShift("Réservation enregistrée.");
+        etatIaShift.fermerApresAudio = true;
+        etatIaShift.timerFermeture = window.setTimeout(
+          fermerRechercheIaShift,
+          15000
+        );
+        return;
+      }
+
+      envoyerResultatOutilIaShift(callId, {
+        success: false,
+        message: "Outil inconnu."
+      });
+    } catch (error) {
+      envoyerResultatOutilIaShift(callId, {
+        success: false,
+        code: String(error?.code || ""),
+        message: error?.message || "Impossible d’exécuter cette action."
+      });
+      actualiserStatutIaShift(
+        error?.message || "Impossible d’exécuter cette action."
+      );
+    }
+  }
+
+  function envoyerResultatOutilIaShift(callId, resultat) {
+    envoyerEvenementIaShift({
+      type: "conversation.item.create",
+      item: {
+        type: "function_call_output",
+        call_id: callId,
+        output: JSON.stringify(resultat || {})
+      }
+    });
+    envoyerEvenementIaShift({ type: "response.create" });
+  }
+
+  async function appelerWorkerIaShift(chemin, payload) {
+    const reponse = await fetch(
+      ENDPOINT_RESERVER_MEMBRE_IASHIFT + chemin,
+      {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload || {})
+      }
+    );
+    const data = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      fermerRechercheIaShift();
+      redirigerConnexionMembre("inactive");
+      throw new Error("Session membre inactive.");
+    }
+
+    if (!reponse.ok || !data || !reponseApiOk(data)) {
+      const error = new Error(
+        messageErreurApi(data, "Le service IA Shift est indisponible.")
+      );
+      error.code = String(data?.code || "");
+      throw error;
+    }
+
+    return data;
+  }
+
+  function envoyerEvenementIaShift(evenement) {
+    const canal = etatIaShift.dataChannel;
+
+    if (!canal || canal.readyState !== "open") return false;
+
+    canal.send(JSON.stringify(evenement));
+    return true;
+  }
+
+  function fermerRechercheIaShift() {
+    if (etatIaShift.fermetureEnCours) return;
+
+    etatIaShift.fermetureEnCours = true;
+
+    if (etatIaShift.timerFermeture) {
+      window.clearTimeout(etatIaShift.timerFermeture);
+    }
+
+    try {
+      if (etatIaShift.dataChannel) etatIaShift.dataChannel.close();
+    } catch {
+      /* Fermeture déjà effectuée. */
+    }
+
+    try {
+      if (etatIaShift.peerConnection) {
+        etatIaShift.peerConnection.close();
+      }
+    } catch {
+      /* Fermeture déjà effectuée. */
+    }
+
+    if (etatIaShift.mediaStream) {
+      etatIaShift.mediaStream.getTracks().forEach((track) => track.stop());
+    }
+
+    if (etatIaShift.audio) {
+      etatIaShift.audio.srcObject = null;
+      etatIaShift.audio.remove();
+    }
+
+    if (etatIaShift.slot) etatIaShift.slot.innerHTML = "";
+
+    document.removeEventListener("keydown", gererEchapIaShift);
+
+    etatIaShift.ouverte = false;
+    etatIaShift.ouvertureEnCours = false;
+    etatIaShift.fermetureEnCours = false;
+    etatIaShift.fermerApresAudio = false;
+    etatIaShift.mediaStream = null;
+    etatIaShift.peerConnection = null;
+    etatIaShift.dataChannel = null;
+    etatIaShift.audio = null;
+    etatIaShift.slot = null;
+    etatIaShift.lightbox = null;
+    etatIaShift.message = null;
+    etatIaShift.transcription = null;
+    etatIaShift.propositions = null;
+    etatIaShift.boutonMicro = null;
+    etatIaShift.timerFermeture = null;
+    etatIaShift.appelsTraites = new Set();
+  }
+
 
   function initialiserActionsPersistantesReserver() {
     const boutonDepartement = document.getElementById("bouton-changer-departement");
@@ -2842,17 +3460,27 @@
 
     ajouterPlageSiOuverte(plages, "plage1", planningJour.plages.plage1, {
       debut: "06:00",
-      fin: "13:00"
+      fin: "10:00"
     });
 
     ajouterPlageSiOuverte(plages, "plage2", planningJour.plages.plage2, {
-      debut: "13:00",
-      fin: "19:00"
+      debut: "10:00",
+      fin: "13:00"
     });
 
     ajouterPlageSiOuverte(plages, "plage3", planningJour.plages.plage3, {
-      debut: "19:00",
-      fin: "21:30"
+      debut: "13:00",
+      fin: "17:00"
+    });
+
+    ajouterPlageSiOuverte(plages, "plage4", planningJour.plages.plage4, {
+      debut: "17:00",
+      fin: "21:00"
+    });
+
+    ajouterPlageSiOuverte(plages, "plage5", planningJour.plages.plage5, {
+      debut: "21:00",
+      fin: "23:59"
     });
 
     return plages;
@@ -2874,7 +3502,7 @@
   function genererHeuresDisponibles() {
     const heures = [];
 
-    for (let totalMinutes = 6 * 60; totalMinutes <= 21 * 60; totalMinutes += 30) {
+    for (let totalMinutes = 6 * 60; totalMinutes <= 23 * 60 + 30; totalMinutes += 30) {
       const heure = Math.floor(totalMinutes / 60);
       const minutes = totalMinutes % 60;
 
@@ -3001,9 +3629,11 @@
   }
 
   function libellePlageReservation(plagebookd) {
-    if (plagebookd === "plage1") return "la matinée";
-    if (plagebookd === "plage2") return "l'après-midi";
-    if (plagebookd === "plage3") return "la soirée";
+    if (plagebookd === "plage1") return "la plage de 6 h à 10 h";
+    if (plagebookd === "plage2") return "la plage de 10 h à 13 h";
+    if (plagebookd === "plage3") return "la plage de 13 h à 17 h";
+    if (plagebookd === "plage4") return "la plage de 17 h à 21 h";
+    if (plagebookd === "plage5") return "la plage de 21 h à 2 h";
 
     return "cette plage";
   }
