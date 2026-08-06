@@ -1442,7 +1442,6 @@
     const boutonPlanning = event.target.closest("[data-action='voir-planning-parc']");
     const boutonReserver = event.target.closest("[data-action='nouvelle-date-parc']");
     const jourCalendrier = event.target.closest("[data-lcdp-card-jour-mois]");
-    const boutonHeure = event.target.closest("[data-action='choisir-heure-arrivee']");
 
     if (boutonFiche) {
       event.preventDefault();
@@ -1512,10 +1511,6 @@
       return;
     }
 
-    if (boutonHeure && !boutonHeure.disabled) {
-      event.preventDefault();
-      await traiterChoixHeure(boutonHeure);
-    }
   }
 
   async function autoriserReservationParc(parc) {
@@ -1703,6 +1698,11 @@
             autoriserReservationParc,
           onInformation:
             afficherAlerteDetailParcOuPage,
+          onReservationCreee: async () => {
+            cachePlanningParcLecture.clear();
+            await chargerReservationsMembrePourBlocages();
+            fermerShiftDetailParc();
+          },
           onPartager: (
             parcCible,
             typePartage
