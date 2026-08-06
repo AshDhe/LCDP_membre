@@ -1519,16 +1519,6 @@
   }
 
   async function autoriserReservationParc(parc) {
-    const messageBlocage =
-      messageBlocageNouvelleDate(etatMembre);
-
-    if (messageBlocage) {
-      await afficherAlerteDetailParcOuPage(
-        messageBlocage
-      );
-      return false;
-    }
-
     if (!parc) {
       await afficherAlerteDetailParcOuPage(
         "Parc introuvable."
@@ -1536,7 +1526,58 @@
       return false;
     }
 
-    return true;
+    if (!ENDPOINT_FLUXM) {
+      await afficherAlerteDetailParcOuPage(
+        "Le service de réservation n’est pas configuré."
+      );
+      return false;
+    }
+
+    try {
+      const reponse = await fetch(
+        ENDPOINT_FLUXM +
+        "/eligibilite-reservation",
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            "Accept": "application/json"
+          }
+        }
+      );
+      const data =
+        await reponse.json().catch(() => null);
+
+      if (
+        !reponse.ok ||
+        !data ||
+        !reponseApiOk(data)
+      ) {
+        throw new Error(
+          messageErreurApi(
+            data,
+            "Impossible de vérifier votre droit à planifier."
+          )
+        );
+      }
+
+      if (data.peutPlanifier !== true) {
+        await afficherAlerteDetailParcOuPage(
+          data.message ||
+          "Vous devez être membre abonné pour planifier votre activité."
+        );
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      await afficherAlerteDetailParcOuPage(
+        error?.message ||
+        "Impossible de vérifier votre droit à planifier."
+      );
+      return false;
+    }
   }
 
   async function demarrerReservationParc(parc) {
@@ -1544,7 +1585,10 @@
       return;
     }
 
-    await ouvrirCalendrierMoisParc(parc);
+    await ouvrirShiftDetailParc(
+      parc,
+      "planning"
+    );
   }
 
   async function ouvrirFicheParc(parc) {
@@ -1629,15 +1673,8 @@
             chargerPlanningParcJourLecture,
           verifierReservation:
             autoriserReservationParc,
-          rendreReservation: (
-            slotReservation,
-            parcCible
-          ) =>
-            afficherReservationMoisParcDansConteneur(
-              slotReservation,
-              parcCible,
-              true
-            ),
+          onInformation:
+            afficherAlerteDetailParcOuPage,
           onPartager: (
             parcCible,
             typePartage
