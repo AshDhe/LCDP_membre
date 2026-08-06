@@ -1791,68 +1791,12 @@
   async function afficherAlerteDetailParcOuPage(message) {
     const detail = obtenirShiftDetailParcActif();
 
-    if (detail && detail.alerteSlot) {
-      await afficherAlerteShiftDetailParc(message);
+    if (detail) {
+      await afficherAlerteSuperposee(message);
       return;
     }
 
     await afficherAlerte(message);
-  }
-
-  async function afficherAlerteShiftDetailParc(message) {
-    const detail = obtenirShiftDetailParcActif();
-
-    if (!detail || !detail.alerteSlot) {
-      await afficherAlerte(message);
-      return;
-    }
-
-    detail.alerteSlot.innerHTML = "";
-
-    const box = document.createElement("div");
-    box.className = "lcdp-box-shift-detail-parc__alerte-box";
-    box.setAttribute("role", "alertdialog");
-    box.setAttribute("aria-modal", "true");
-
-    const boutonFermer = document.createElement("button");
-    boutonFermer.type = "button";
-    boutonFermer.className = "lcdp-box-shift-detail-parc__alerte-close";
-    boutonFermer.setAttribute("aria-label", "Fermer");
-    boutonFermer.textContent = "×";
-
-    const texte = document.createElement("p");
-    texte.className = "lcdp-box-shift-detail-parc__alerte-message";
-    texte.textContent = message || "";
-
-    const boutonOk = document.createElement("button");
-    boutonOk.type = "button";
-    boutonOk.className = "lcdp-button lcdp-button-orange lcdp-box-shift-detail-parc__alerte-ok";
-    boutonOk.textContent = "OK";
-
-    box.appendChild(boutonFermer);
-    box.appendChild(texte);
-    box.appendChild(boutonOk);
-    detail.alerteSlot.appendChild(box);
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermerDepuisFond(event) {
-        if (event.target === detail.alerteSlot) fermer(false);
-      }
-
-      function fermer(valeur) {
-        if (resolu) return;
-        resolu = true;
-        detail.alerteSlot.removeEventListener("click", fermerDepuisFond);
-        detail.alerteSlot.innerHTML = "";
-        resolve(valeur);
-      }
-
-      boutonFermer.addEventListener("click", () => fermer(false));
-      boutonOk.addEventListener("click", () => fermer(true));
-      detail.alerteSlot.addEventListener("click", fermerDepuisFond);
-    });
   }
 
   function construireUrlImageParcFichier(parc, fichier) {
