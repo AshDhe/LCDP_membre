@@ -1539,19 +1539,19 @@
 
       if (boutonFermer) {
         boutonFermer.addEventListener("click", () => {
-          fermerOuRevenirPlanningShiftDetailParc().catch(console.error);
+          fermerOuRevenirFicheParcPublique().catch(console.error);
         });
       }
 
       racine.addEventListener("click", (event) => {
         if (event.target === racine) {
-          fermerOuRevenirPlanningShiftDetailParc().catch(console.error);
+          fermerOuRevenirFicheParcPublique().catch(console.error);
         }
       });
 
       const gererEscape = (event) => {
         if (event.key === "Escape" && document.body.contains(racine)) {
-          fermerOuRevenirPlanningShiftDetailParc().catch(console.error);
+          fermerOuRevenirFicheParcPublique().catch(console.error);
         }
       };
 
@@ -1578,17 +1578,17 @@
     };
   }
 
-  async function fermerOuRevenirPlanningShiftDetailParc() {
-    const detail = obtenirShiftDetailParcActif();
+  async function fermerOuRevenirFicheParcPublique() {
     const parc = etatPage.shiftDetailParc?.parc || null;
-    const detailJourPlanningOuvert = Boolean(
-      detail?.contenu?.querySelector(
-        ".lcdp-box-calendrier-jour--planning-lecture"
-      )
+    const vue = String(
+      etatPage.shiftDetailParc?.vue || ""
     );
 
-    if (detailJourPlanningOuvert && parc) {
-      await afficherVueShiftDetailParc(parc, "planning");
+    if (vue === "planning" && parc) {
+      await afficherVueShiftDetailParc(
+        parc,
+        "fiche"
+      );
       return;
     }
 
