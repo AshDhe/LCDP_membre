@@ -76,7 +76,6 @@
   );
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
-  const PAGE_PLANNING_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/planning-membre.html");
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
 
   let pageInitialisee = false;
@@ -2472,11 +2471,8 @@
             autoriserReservationParc,
           onInformation:
             afficherAlerteDetailParcOuPage,
-          onReservationCreee: async () => {
-            cachePlanningParcLecture.clear();
-            await chargerReservationsMembrePourBlocages();
-            fermerShiftDetailParc();
-          },
+          onChoixReservation:
+            traiterChoixReservationDepuisFicheParc,
           onPartager: (
             parcCible,
             typePartage
@@ -3794,60 +3790,163 @@
     return "cette plage";
   }
 
-  async function traiterChoixHeure(boutonHeure) {
-    const messageBlocage = messageBlocageNouvelleDate(etatMembre);
+
+  async function traiterChoixReservationDepuisFicheParc(
+    choix
+  ) {
+    const messageBlocage =
+      messageBlocageNouvelleDate(etatMembre);
 
     if (messageBlocage) {
-      await afficherAlerteSuperposee(messageBlocage);
-      return;
+      await afficherAlerteSuperposee(
+        messageBlocage
+      );
+      return false;
     }
 
-    const heure = String(boutonHeure.dataset.heure || "").trim();
-    const dateIso = String(boutonHeure.dataset.date || "").trim();
-    const idparc = String(boutonHeure.dataset.idparc || "").trim();
-    const plagebookd = String(boutonHeure.dataset.plagebookd || "").trim();
+    const parc = choix?.parc || null;
+    const heure = String(
+      choix?.heure || ""
+    ).trim();
+    const dateIso = String(
+      choix?.dateIso || ""
+    ).trim();
+    const idparc = String(
+      parc?.idparc ||
+      parc?.id ||
+      ""
+    ).trim();
+    const plagebookd = String(
+      choix?.plagebookd || ""
+    ).trim();
+    const datebookd = construireDateBookd(
+      dateIso,
+      heure
+    );
 
-    if (!heure || !dateIso || !idparc || !plagebookd) {
-      await afficherAlerteSuperposee("Heure, date ou parc manquant.");
-      return;
+    if (
+      !heure ||
+      !dateIso ||
+      !idparc ||
+      !plagebookd ||
+      !datebookd
+    ) {
+      await afficherAlerteSuperposee(
+        "Heure, date ou parc manquant."
+      );
+      return false;
     }
 
-    const confirmation = await ouvrirDialogueBoutonsSuperpose({
-      titre: "Confirmer l'heure d'arrivée",
-      texte: "Vous avez choisi le " + formaterDateFr(dateIso) + " à " + formaterHeureAffichee(heure) + ".",
-      boutons: [
-        {
-          label: "Annuler",
-          valeur: "annuler",
-          style: "lcdp-button-secondary"
-        },
-        {
-          label: "Confirmer",
-          valeur: "confirmer",
-          style: "lcdp-button-primary"
-        }
-      ]
-    });
+    if (
+      new Date(datebookd).getTime() <=
+      Date.now()
+    ) {
+      await afficherAlerteSuperposee(
+        "Cette heure est déjà passée."
+      );
+      return false;
+    }
 
-    if (confirmation !== "confirmer") return;
+    await chargerReservationsMembrePourBlocages();
 
-    boutonHeure.disabled = true;
+    const reservationsJour =
+      (Array.isArray(
+        etatPage.reservationsMembre
+      )
+        ? etatPage.reservationsMembre
+        : []
+      ).filter((reservation) => {
+        return (
+          reservation &&
+          reservation.statut !== "cancd" &&
+          extraireDateFranceReservation(
+            reservation.datebookd
+          ) === dateIso
+        );
+      });
+
+    if (reservationsJour.length >= 2) {
+      await afficherAlerteSuperposee(
+        "Vous avez déjà deux réservations actives sur cette journée."
+      );
+      return false;
+    }
+
+    const reservationMemePlage =
+      reservationsJour.find(
+        (reservation) =>
+          String(
+            reservation.plagebookd || ""
+          ) === plagebookd
+      );
+
+    if (reservationMemePlage) {
+      await afficherAlerteSuperposee(
+        "Vous avez déjà une réservation active sur cette plage horaire."
+      );
+      return false;
+    }
+
+    const confirmation =
+      await ouvrirDialogueBoutonsSuperpose({
+        titre: "Confirmer l'heure d'arrivée",
+        texte:
+          "Vous avez choisi le " +
+          formaterDateFr(dateIso) +
+          " à " +
+          formaterHeureAffichee(heure) +
+          ".",
+        boutons: [
+          {
+            label: "Annuler",
+            valeur: "annuler",
+            style: "lcdp-button-secondary"
+          },
+          {
+            label: "Confirmer",
+            valeur: "confirmer",
+            style: "lcdp-button-orange"
+          }
+        ]
+      });
+
+    if (confirmation !== "confirmer") {
+      return false;
+    }
+
+    if (
+      new Date(datebookd).getTime() <=
+      Date.now()
+    ) {
+      await afficherAlerteSuperposee(
+        "Cette heure est déjà passée."
+      );
+      return false;
+    }
 
     try {
       await enregistrerReservation({
         idparc,
-        datebookd: construireDateBookd(dateIso, heure),
+        datebookd,
         plagebookd
       });
 
-      const slot = document.getElementById("lcdp-lightbox-slot");
-      if (slot) slot.innerHTML = "";
+      cachePlanningParcLecture.clear();
+      await chargerReservationsMembrePourBlocages();
 
-      await afficherAlerte("Votre nouvelle date a bien été enregistrée.");
-      window.location.href = PAGE_PLANNING_MEMBRE;
+      await afficherAlerteSuperposee(
+        "Votre nouvelle date a bien été enregistrée.",
+        "orange"
+      );
+
+      fermerShiftDetailParc();
+      return true;
     } catch (error) {
-      boutonHeure.disabled = false;
-      await afficherAlerteSuperposee(error.message || "Impossible d'enregistrer la réservation.");
+      await afficherAlerteSuperposee(
+        error?.message ||
+        "Impossible d'enregistrer la réservation."
+      );
+      return false;
     }
   }
 
@@ -3871,7 +3970,7 @@
 
     if (reponse.status === 401) {
       redirigerConnexionMembre("inactive");
-      return null;
+      throw new Error("Session membre inactive.");
     }
 
     if (!reponse.ok || !data || !reponseApiOk(data)) {
