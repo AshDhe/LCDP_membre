@@ -15,7 +15,7 @@
     "workerLaCleDuParcUrl",
     "WORKER_LA_CLE_DU_PARC_URL",
     "W_LA_CLE_DU_PARC_URL",
-    "w-la-cle-du-parc-api"
+    "la-cle-du-parc-api"
   );
 
   const ENDPOINT_DECONNEXION_MEMBRE = construireEndpointApi(
@@ -605,8 +605,8 @@
       return "Vous n'avez pas de réservation en cours.";
     }
 
-    if (raison === "too_early") {
-      return "Votre clé sera accessible 30 minutes avant le début de votre réservation.";
+    if (raison === "key_inactive" || raison === "too_early" || raison === "too_late") {
+      return "Votre clé n'est pas active actuellement.";
     }
 
     if (raison === "subscription_unpaid") {
