@@ -6,8 +6,6 @@
   const DOSSIER_IMAGES_PARC_OBJET = "/IMAG/PARC";
   const NOM_IMAGE_CARD_PARC = "card1.webp";
   const CHEMIN_PICTOWAIT = "/BOX/pictowait.gif";
-  const CHEMIN_PICTO_COMMANDE_CHANGER_DONNEES = "/IMAG/PICTO/picto-changer-donnees.svg";
-  const CHEMIN_PICTO_COMMANDE_RECHERCHE_IA = "/IMAG/PICTO/picto-recherche-ia.svg";
   const MEDIA_DESCRIPTION_CARD_PARC_TABLETTE_DESKTOP = window.matchMedia("(min-width: 768px)");
 
   const CLES_PLAGES_AFFICHAGE = [
@@ -607,81 +605,12 @@
 
     commandeBar.classList.add("lcdp-box-commande-bar--encadree");
 
-    appliquerPictoBoutonCommandeBar(boutonDepartement, {
-      chemin: CHEMIN_PICTO_COMMANDE_CHANGER_DONNEES,
-      variante: "changer-donnees",
-      libelle:
-        String(
-          boutonDepartement.textContent ||
-          "Changer de département"
-        ).trim(),
-      ariaLabel: "Changer de département"
-    });
-    appliquerPictoBoutonCommandeBar(boutonIa, {
-      chemin: CHEMIN_PICTO_COMMANDE_RECHERCHE_IA,
-      variante: "recherche-ia",
-      libelle:
-        String(
-          boutonIa.textContent ||
-          "Rechercher avec l’IA"
-        ).trim(),
-      ariaLabel: "Rechercher avec l’IA"
-    });
-
     actions.appendChild(boutonDepartement);
     actions.appendChild(boutonIa);
 
     slot.replaceChildren(commandeBar);
     slot.hidden = true;
     slot.setAttribute("aria-hidden", "true");
-  }
-
-  function appliquerPictoBoutonCommandeBar(
-    bouton,
-    configuration = {}
-  ) {
-    if (!bouton) {
-      return;
-    }
-
-    const libelle = String(
-      configuration.libelle ||
-      bouton.textContent ||
-      ""
-    ).trim();
-    const chemin = String(configuration.chemin || "").trim();
-
-    bouton.classList.add("lcdp-box-commande-bar__button");
-
-    if (configuration.ariaLabel) {
-      bouton.setAttribute("aria-label", configuration.ariaLabel);
-      bouton.title = configuration.ariaLabel;
-    }
-
-    bouton.replaceChildren();
-
-    if (chemin) {
-      const icone = document.createElement("img");
-      icone.className =
-        "lcdp-box-commande-bar__icone" +
-        (configuration.variante
-          ? " lcdp-box-commande-bar__icone--" +
-            configuration.variante
-          : "");
-      icone.src = construireUrlObjet(chemin);
-      icone.alt = "";
-      icone.width = 20;
-      icone.height = 20;
-      icone.decoding = "async";
-      icone.draggable = false;
-      icone.setAttribute("aria-hidden", "true");
-      bouton.appendChild(icone);
-    }
-
-    const texte = document.createElement("span");
-    texte.className = "lcdp-box-commande-bar__libelle";
-    texte.textContent = libelle;
-    bouton.appendChild(texte);
   }
 
   function afficherCommandeBarReserver() {
@@ -1535,16 +1464,6 @@
       event.preventDefault();
       boutonDepartement.click();
     });
-    appliquerPictoBoutonCommandeBar(boutonStickyDepartement, {
-      chemin: CHEMIN_PICTO_COMMANDE_CHANGER_DONNEES,
-      variante: "changer-donnees",
-      libelle:
-        String(
-          boutonDepartement.textContent ||
-          "Changer de département"
-        ).trim(),
-      ariaLabel: "Changer de département"
-    });
 
     const boutonStickyIa = document.createElement("button");
     boutonStickyIa.type = "button";
@@ -1557,16 +1476,6 @@
     boutonStickyIa.addEventListener("click", (event) => {
       event.preventDefault();
       boutonIa.click();
-    });
-    appliquerPictoBoutonCommandeBar(boutonStickyIa, {
-      chemin: CHEMIN_PICTO_COMMANDE_RECHERCHE_IA,
-      variante: "recherche-ia",
-      libelle:
-        String(
-          boutonIa.textContent ||
-          "Rechercher avec l’IA"
-        ).trim(),
-      ariaLabel: "Rechercher avec l’IA"
     });
 
     actions.appendChild(boutonStickyDepartement);
