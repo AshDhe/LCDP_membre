@@ -94,6 +94,7 @@
     peerConnection: null,
     dataChannel: null,
     audio: null,
+    sessionInitialisee: false,
     slot: null,
     lightbox: null,
     message: null,
@@ -595,6 +596,17 @@
       throw new Error("Structure Command Bar réserver incomplète.");
     }
 
+    ajouterPictoCommandeBar(
+      boutonDepartement,
+      "/IMAG/PICTO/picto-changer-donnees.svg",
+      "Changer de département"
+    );
+    ajouterPictoCommandeBar(
+      boutonIa,
+      "/IMAG/PICTO/picto-recherche-ia.svg",
+      "Rechercher avec l'IA"
+    );
+
     const fragment = await chargerFragmentObjet("/BOX/04-box-commande-bar.html");
     const commandeBar = fragment.querySelector("[data-lcdp-box-commande-bar]");
     const actions = fragment.querySelector("[data-lcdp-commande-bar-actions]");
@@ -611,6 +623,36 @@
     slot.replaceChildren(commandeBar);
     slot.hidden = true;
     slot.setAttribute("aria-hidden", "true");
+  }
+
+  function ajouterPictoCommandeBar(bouton, cheminPicto, libelle) {
+    if (!bouton) return;
+
+    const texte = String(libelle || bouton.textContent || "").trim();
+    const iconeExistante = bouton.querySelector(".lcdp-box-commande-bar__icone");
+    const libelleExistant = bouton.querySelector(".lcdp-box-commande-bar__libelle");
+
+    if (iconeExistante && libelleExistant) {
+      iconeExistante.src = construireUrlObjet(cheminPicto);
+      libelleExistant.textContent = texte;
+      return;
+    }
+
+    const icone = document.createElement("img");
+    icone.className = "lcdp-box-commande-bar__icone";
+    icone.src = construireUrlObjet(cheminPicto);
+    icone.alt = "";
+    icone.width = 20;
+    icone.height = 20;
+    icone.decoding = "async";
+    icone.draggable = false;
+    icone.setAttribute("aria-hidden", "true");
+
+    const span = document.createElement("span");
+    span.className = "lcdp-box-commande-bar__libelle";
+    span.textContent = texte;
+
+    bouton.replaceChildren(icone, span);
   }
 
   function afficherCommandeBarReserver() {
@@ -757,15 +799,7 @@
       });
 
       dataChannel.addEventListener("open", () => {
-        etatIaShift.ouverte = true;
-        actualiserStatutIaShift("Je vous écoute…");
-        envoyerEvenementIaShift({
-          type: "response.create",
-          response: {
-            instructions:
-              "Commence maintenant la conversation en demandant quand le membre souhaite aller au parc."
-          }
-        });
+        actualiserStatutIaShift("Initialisation de l’assistant…");
       });
 
       dataChannel.addEventListener("message", (event) => {
@@ -1062,6 +1096,22 @@
       return;
     }
 
+    if (evenement.type === "session.created") {
+      if (!etatIaShift.sessionInitialisee) {
+        etatIaShift.sessionInitialisee = true;
+        etatIaShift.ouverte = true;
+        actualiserStatutIaShift("Je vous écoute…");
+        envoyerEvenementIaShift({
+          type: "response.create",
+          response: {
+            instructions:
+              "Commence maintenant la conversation en demandant quand le membre souhaite aller au parc."
+          }
+        });
+      }
+      return;
+    }
+
     if (evenement.type === "input_audio_buffer.speech_started") {
       actualiserStatutIaShift("Je vous écoute…");
       return;
@@ -1098,6 +1148,23 @@
         nom: evenement.item.name,
         arguments: evenement.item.arguments
       });
+      return;
+    }
+
+    if (evenement.type === "response.done") {
+      const sorties = Array.isArray(evenement.response?.output)
+        ? evenement.response.output
+        : [];
+
+      for (const sortie of sorties) {
+        if (sortie?.type !== "function_call") continue;
+
+        await executerOutilIaShift({
+          callId: sortie.call_id,
+          nom: sortie.name,
+          arguments: sortie.arguments
+        });
+      }
       return;
     }
 
@@ -1304,6 +1371,7 @@
     etatIaShift.peerConnection = null;
     etatIaShift.dataChannel = null;
     etatIaShift.audio = null;
+    etatIaShift.sessionInitialisee = false;
     etatIaShift.slot = null;
     etatIaShift.lightbox = null;
     etatIaShift.message = null;
@@ -1456,8 +1524,11 @@
     const boutonStickyDepartement = document.createElement("button");
     boutonStickyDepartement.type = "button";
     boutonStickyDepartement.className = "lcdp-button lcdp-button-primary";
-    boutonStickyDepartement.textContent =
-      String(boutonDepartement.textContent || "Changer de département").trim();
+    ajouterPictoCommandeBar(
+      boutonStickyDepartement,
+      "/IMAG/PICTO/picto-changer-donnees.svg",
+      "Changer de département"
+    );
     boutonStickyDepartement.setAttribute("aria-label", "Changer de département");
     boutonStickyDepartement.title = "Changer de département";
     boutonStickyDepartement.addEventListener("click", (event) => {
@@ -1468,8 +1539,11 @@
     const boutonStickyIa = document.createElement("button");
     boutonStickyIa.type = "button";
     boutonStickyIa.className = "lcdp-button lcdp-button-orange";
-    boutonStickyIa.textContent =
-      String(boutonIa.textContent || "Rechercher avec l’IA").trim();
+    ajouterPictoCommandeBar(
+      boutonStickyIa,
+      "/IMAG/PICTO/picto-recherche-ia.svg",
+      "Rechercher avec l'IA"
+    );
     boutonStickyIa.setAttribute("aria-label", "Rechercher avec l’IA");
     boutonStickyIa.dataset.lcdpActionIashift = "true";
     boutonStickyIa.title = "Rechercher avec l’IA";
