@@ -1,61 +1,50 @@
 .lcdp-page-cle-du-parc {
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--lcdp-color-surface, #ffffff);
 }
 
-.lcdp-cle-page,
-.lcdp-cle-main,
+.lcdp-page-cle-du-parc .lcdp-site-main {
+  width: 100%;
+}
+
 .lcdp-cle-ecran {
   width: 100%;
-  min-height: 100vh;
-}
-
-.lcdp-cle-main {
-  display: flex;
-}
-
-.lcdp-cle-ecran {
-  padding: 34px var(--lcdp-page-padding-mobile) 42px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
 }
 
 .lcdp-cle-ecran[hidden] {
   display: none;
 }
 
-.lcdp-cle-ecran--saisie {
-  justify-content: flex-start;
-  gap: 42px;
-  background: #ffffff;
+.lcdp-cle-box {
+  width: min(100%, 520px);
+  margin: 0 auto;
 }
 
 .lcdp-cle-codes {
-  width: min(100%, 420px);
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--lcdp-space-3, 16px);
 }
 
 .lcdp-cle-code-field {
   width: 100%;
-  min-height: 88px;
-  padding: 15px 18px;
-  border: 2px solid var(--lcdp-color-border-strong);
+  min-height: 72px;
+  padding: 14px 16px;
+  border: 1px solid var(--lcdp-color-border-strong);
   border-radius: var(--lcdp-radius-medium);
   background: var(--lcdp-color-surface);
   color: var(--lcdp-color-text);
-  box-shadow: 0 10px 24px rgba(31, 42, 36, 0.08);
   text-align: left;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   cursor: pointer;
 }
 
-.lcdp-cle-code-field:hover {
+.lcdp-cle-code-field:hover,
+.lcdp-cle-code-field:focus-visible {
   border-color: var(--lcdp-color-logo-green);
   background: var(--lcdp-color-surface-soft);
 }
@@ -68,54 +57,37 @@
 }
 
 .lcdp-cle-code-field__value {
-  font-size: clamp(1.35rem, 7vw, 1.8rem);
-  line-height: 1.15;
-  font-weight: 750;
-  letter-spacing: 0.08em;
+  font-size: 1.18rem;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .lcdp-cle-code-field__value.is-filled {
   color: var(--lcdp-color-blue);
 }
 
-.lcdp-cle-ok {
-  width: 104px;
-  height: 104px;
-  margin-top: 2px;
-}
-
-.lcdp-cle-ok__logo {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.lcdp-cle-ecran--active {
-  justify-content: space-between;
-  gap: 38px;
+.lcdp-cle-ecran--active .lcdp-box-formulaire-page__inner {
   background: #dff3df;
 }
 
 .lcdp-cle-active-actions {
-  width: min(100%, 420px);
-  margin: auto 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 22px;
+  gap: var(--lcdp-space-3, 16px);
 }
 
 .lcdp-cle-action {
   width: 100%;
-  max-width: none;
-  min-height: 104px;
-  border-width: 3px;
-  border-radius: 22px;
-  font-size: clamp(1.55rem, 8vw, 2rem);
+  min-height: 72px;
+  border-width: 2px;
+  border-radius: var(--lcdp-radius-medium);
+  font-size: 1.25rem;
   line-height: 1;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  box-shadow: 0 14px 30px rgba(31, 42, 36, 0.16);
+  letter-spacing: 0.05em;
 }
 
 .lcdp-cle-action--brighta {
@@ -152,7 +124,7 @@
 }
 
 .lcdp-cle-cooldown {
-  margin: -8px 0 2px;
+  margin: 0;
   color: var(--lcdp-color-text-muted);
   font-size: 0.95rem;
   line-height: 1.3;
@@ -181,24 +153,11 @@
 }
 
 @media (min-width: 768px) {
-  .lcdp-cle-ecran {
-    padding: 52px var(--lcdp-page-padding-desktop) 56px;
-  }
-
-  .lcdp-cle-ecran--saisie {
-    gap: 48px;
-  }
-
   .lcdp-cle-code-field {
-    min-height: 94px;
-  }
-
-  .lcdp-cle-ok {
-    width: 116px;
-    height: 116px;
+    min-height: 76px;
   }
 
   .lcdp-cle-action {
-    min-height: 112px;
+    min-height: 78px;
   }
 }

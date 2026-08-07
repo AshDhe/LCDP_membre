@@ -38,6 +38,14 @@
 
   async function initialiserPage() {
     lierActions();
+    appliquerRoutesSite(document);
+
+    try {
+      await initialiserBandeauMembre();
+      await initialiserFooter();
+    } catch (error) {
+      console.error("Erreur gabarit membre Ma clé :", error);
+    }
 
     if (!ENDPOINT_LA_CLE_DU_PARC) {
       await afficherAlerte("Le service Ma clé n'est pas configuré.");
@@ -601,6 +609,89 @@
     }
 
     return String(resultat?.message || resultat?.error || "Impossible d'ouvrir Ma clé.");
+  }
+
+  async function initialiserBandeauMembre() {
+    const slot = document.getElementById("lcdp-bandeau-slot");
+
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const bandeau = await chargerFragmentMembre("/ESPACE-MEMBRE/box-bandeau-nav-membre.html");
+    slot.appendChild(bandeau);
+    appliquerRoutesSite(slot);
+
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js");
+
+    if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
+      await window.LCDP_initialiserMenuBurgerMembre({});
+    }
+  }
+
+  async function initialiserFooter() {
+    const slot = document.getElementById("lcdp-footer-slot");
+
+    if (!slot) return;
+
+    slot.innerHTML = "";
+
+    const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
+    slot.appendChild(footer);
+    appliquerRoutesSite(slot);
+  }
+
+  function appliquerRoutesSite(racine = document) {
+    racine.querySelectorAll("[data-site-href]").forEach((element) => {
+      const chemin = element.dataset.siteHref || "";
+      const espace = element.dataset.space || "public";
+
+      element.setAttribute(
+        "href",
+        espace === "membre" ? construireUrlMembre(chemin) : construireUrlPublic(chemin)
+      );
+    });
+
+    racine.querySelectorAll("[data-site-src]").forEach((element) => {
+      const chemin = element.dataset.siteSrc || "";
+      const cheminObjet = chemin.replace(/^\/?OBJET\/?/, "/");
+      element.setAttribute("src", construireUrlObjet(cheminObjet));
+    });
+  }
+
+  async function chargerFragmentMembre(chemin) {
+    const reponse = await fetch(construireUrlMembre(chemin), {
+      method: "GET",
+      credentials: "omit",
+      cache: "no-cache"
+    });
+
+    if (!reponse.ok) {
+      throw new Error("Fragment membre introuvable : " + chemin);
+    }
+
+    const html = await reponse.text();
+    const template = document.createElement("template");
+    template.innerHTML = html.trim();
+    return template.content.cloneNode(true);
+  }
+
+  function chargerScriptMembreUneFois(chemin) {
+    const src = construireUrlMembre(chemin);
+
+    if (document.querySelector(`script[data-lcdp-script="${chemin}"]`)) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.defer = true;
+      script.dataset.lcdpScript = chemin;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("Script membre introuvable : " + chemin));
+      document.body.appendChild(script);
+    });
   }
 
   async function chargerFragmentObjet(chemin) {
