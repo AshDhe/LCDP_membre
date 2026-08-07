@@ -21,6 +21,10 @@
 }
 
 .lcdp-cle-ecran--saisie .lcdp-box-formulaire-page__inner {
+  background: transparent;
+}
+
+.lcdp-cle-ecran--saisie .lcdp-box-formulaire {
   background: var(--lcdp-color-blue);
 }
 
