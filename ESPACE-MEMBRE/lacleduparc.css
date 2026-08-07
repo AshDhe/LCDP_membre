@@ -182,3 +182,27 @@
     min-height: 78px;
   }
 }
+
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-cancel] {
+  border-color: var(--lcdp-color-blue);
+  color: var(--lcdp-color-blue);
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-cancel]:hover,
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-cancel]:focus-visible {
+  border-color: var(--lcdp-color-blue-hover);
+  color: var(--lcdp-color-blue-hover);
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-submit] {
+  background: var(--lcdp-color-blue);
+  border-color: var(--lcdp-color-blue);
+  color: #ffffff;
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-submit]:hover,
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-submit]:focus-visible {
+  background: var(--lcdp-color-blue-hover);
+  border-color: var(--lcdp-color-blue-hover);
+  color: #ffffff;
+}
