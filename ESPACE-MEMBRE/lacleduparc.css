@@ -33,6 +33,14 @@
   color: #ffffff;
 }
 
+.lcdp-cle-ecran--saisie .lcdp-box-formulaire__title {
+  text-transform: uppercase;
+}
+
+.lcdp-cle-ecran--saisie [data-lcdp-cle-submit] {
+  background: #ffffff;
+}
+
 .lcdp-cle-codes {
   width: 100%;
   display: flex;
