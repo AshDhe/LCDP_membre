@@ -20,6 +20,15 @@
   margin: 0 auto;
 }
 
+.lcdp-cle-ecran--saisie .lcdp-box-formulaire-page__inner {
+  background: var(--lcdp-color-blue);
+}
+
+.lcdp-cle-ecran--saisie .lcdp-box-formulaire__title,
+.lcdp-cle-ecran--saisie .lcdp-mention-connexion {
+  color: #ffffff;
+}
+
 .lcdp-cle-codes {
   width: 100%;
   display: flex;
