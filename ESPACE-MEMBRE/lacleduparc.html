@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+
+  <title>Ma clé - La Clé du Parc</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Validation de la clé d'accès La Clé du Parc.">
+
+  <script src="../config.js"></script>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const config = window.SITE_CONFIG || {};
+
+      function nettoyerBaseUrl(value) {
+        return String(value || "").replace(/\/+$/, "");
+      }
+
+      function buildUrl(base, path) {
+        return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
+      }
+
+      const membreBase = nettoyerBaseUrl(
+        config.membreBaseUrl ||
+        config.MEMBRE_BASE ||
+        config.siteBase ||
+        ""
+      );
+
+      const publicBase = nettoyerBaseUrl(
+        config.publicBaseUrl ||
+        config.PUBLIC_BASE ||
+        ""
+      );
+
+      const objetBase = nettoyerBaseUrl(
+        config.objetBaseUrl ||
+        config.OBJET_BASE ||
+        buildUrl(publicBase, "/OBJET")
+      );
+
+      window.LCDP_MEMBRE_BASE = membreBase;
+      window.LCDP_PUBLIC_BASE = publicBase;
+      window.LCDP_OBJET_BASE = objetBase;
+
+      window.LCDP_urlMembre = function LCDP_urlMembre(path) {
+        if (typeof config.membreUrl === "function") {
+          return config.membreUrl(path);
+        }
+
+        return buildUrl(membreBase, path);
+      };
+
+      window.LCDP_urlPublic = function LCDP_urlPublic(path) {
+        if (typeof config.publicUrl === "function") {
+          return config.publicUrl(path);
+        }
+
+        return buildUrl(publicBase, path);
+      };
+
+      window.LCDP_urlObjet = function LCDP_urlObjet(path) {
+        if (typeof config.objetUrl === "function") {
+          return config.objetUrl(path);
+        }
+
+        return buildUrl(objetBase, path);
+      };
+
+      [
+        "/CSSBASE/cssbase.css",
+        "/BOX/02-box-alerte.css",
+        "/BOX/04-box-dialogue-champ.css"
+      ].forEach((chemin) => {
+        document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(chemin) + '">');
+      });
+    })();
+  </script>
+
+  <link rel="stylesheet" href="./lacleduparc.css">
+</head>
+
+<body class="lcdp-page-cle-du-parc">
+  <div class="lcdp-cle-page">
+    <main class="lcdp-cle-main">
+      <section class="lcdp-cle-ecran lcdp-cle-ecran--saisie" data-lcdp-cle-screen="checkin">
+        <h1 class="lcdp-title-page-center">Ma clé</h1>
+
+        <div class="lcdp-cle-codes" aria-label="Saisie des codes de la clé">
+          <button class="lcdp-cle-code-field" type="button" data-lcdp-cle-code-button="1">
+            <span class="lcdp-cle-code-field__label">Code n°1</span>
+            <span class="lcdp-cle-code-field__value" data-lcdp-cle-code-value="1">Saisir le code</span>
+          </button>
+
+          <button class="lcdp-cle-code-field" type="button" data-lcdp-cle-code-button="2">
+            <span class="lcdp-cle-code-field__label">Code n°2</span>
+            <span class="lcdp-cle-code-field__value" data-lcdp-cle-code-value="2">Saisir le code</span>
+          </button>
+        </div>
+
+        <button class="lcdp-button-logo lcdp-cle-ok" type="button" aria-label="Valider les deux codes" data-lcdp-cle-submit>
+          <svg class="lcdp-cle-ok__logo" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+            <circle cx="60" cy="60" r="55" fill="#ffffff" stroke="#55733f" stroke-width="8"></circle>
+            <circle cx="60" cy="35" r="14" fill="none" stroke="#2f6fb3" stroke-width="8"></circle>
+            <path d="M60 49V87M60 69H77M60 79H72" fill="none" stroke="#2f6fb3" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+          <span class="lcdp-sr-only">OK</span>
+        </button>
+      </section>
+
+      <section class="lcdp-cle-ecran lcdp-cle-ecran--active" data-lcdp-cle-screen="active" hidden>
+        <h1 class="lcdp-title-page-center">Ma clé</h1>
+
+        <div class="lcdp-cle-active-actions">
+          <button class="lcdp-button lcdp-cle-action lcdp-cle-action--brighta" type="button" data-lcdp-cle-brighta>
+            BRIGHT-A
+          </button>
+
+          <p class="lcdp-cle-cooldown" data-lcdp-cle-cooldown aria-live="polite" hidden></p>
+
+          <button class="lcdp-button lcdp-cle-action lcdp-cle-action--checkout" type="button" data-lcdp-cle-checkout>
+            CHECKOUT
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <div id="lcdp-lightbox-slot"></div>
+  </div>
+
+  <script src="./lacleduparc.js"></script>
+</body>
+</html>

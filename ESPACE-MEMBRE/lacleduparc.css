@@ -1,0 +1,204 @@
+.lcdp-page-cle-du-parc {
+  min-height: 100vh;
+  background: #ffffff;
+}
+
+.lcdp-cle-page,
+.lcdp-cle-main,
+.lcdp-cle-ecran {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.lcdp-cle-main {
+  display: flex;
+}
+
+.lcdp-cle-ecran {
+  padding: 34px var(--lcdp-page-padding-mobile) 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.lcdp-cle-ecran[hidden] {
+  display: none;
+}
+
+.lcdp-cle-ecran--saisie {
+  justify-content: flex-start;
+  gap: 42px;
+  background: #ffffff;
+}
+
+.lcdp-cle-codes {
+  width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.lcdp-cle-code-field {
+  width: 100%;
+  min-height: 88px;
+  padding: 15px 18px;
+  border: 2px solid var(--lcdp-color-border-strong);
+  border-radius: var(--lcdp-radius-medium);
+  background: var(--lcdp-color-surface);
+  color: var(--lcdp-color-text);
+  box-shadow: 0 10px 24px rgba(31, 42, 36, 0.08);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.lcdp-cle-code-field:hover {
+  border-color: var(--lcdp-color-logo-green);
+  background: var(--lcdp-color-surface-soft);
+}
+
+.lcdp-cle-code-field__label {
+  font-size: 0.92rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--lcdp-color-text-muted);
+}
+
+.lcdp-cle-code-field__value {
+  font-size: clamp(1.35rem, 7vw, 1.8rem);
+  line-height: 1.15;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+
+.lcdp-cle-code-field__value.is-filled {
+  color: var(--lcdp-color-blue);
+}
+
+.lcdp-cle-ok {
+  width: 104px;
+  height: 104px;
+  margin-top: 2px;
+}
+
+.lcdp-cle-ok__logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.lcdp-cle-ecran--active {
+  justify-content: space-between;
+  gap: 38px;
+  background: #dff3df;
+}
+
+.lcdp-cle-active-actions {
+  width: min(100%, 420px);
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
+.lcdp-cle-action {
+  width: 100%;
+  max-width: none;
+  min-height: 104px;
+  border-width: 3px;
+  border-radius: 22px;
+  font-size: clamp(1.55rem, 8vw, 2rem);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  box-shadow: 0 14px 30px rgba(31, 42, 36, 0.16);
+}
+
+.lcdp-cle-action--brighta {
+  background: var(--lcdp-color-blue);
+  border-color: var(--lcdp-color-blue);
+  color: #ffffff;
+}
+
+.lcdp-cle-action--brighta:hover {
+  background: var(--lcdp-color-blue-hover);
+  border-color: var(--lcdp-color-blue-hover);
+}
+
+.lcdp-cle-action--brighta:disabled {
+  background: #92a7b9;
+  border-color: #92a7b9;
+  color: #ffffff;
+  opacity: 0.82;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.lcdp-cle-action--checkout {
+  background: #ffffff;
+  border-color: var(--lcdp-color-logo-green);
+  color: var(--lcdp-color-primary);
+}
+
+.lcdp-cle-action--checkout:hover {
+  background: var(--lcdp-color-surface-soft);
+  border-color: var(--lcdp-color-primary);
+  color: var(--lcdp-color-primary);
+}
+
+.lcdp-cle-cooldown {
+  margin: -8px 0 2px;
+  color: var(--lcdp-color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.3;
+  font-weight: 650;
+  text-align: center;
+}
+
+.lcdp-cle-confirm-code {
+  margin: 0 auto var(--lcdp-space-2);
+  padding: 10px 16px;
+  border-radius: var(--lcdp-radius-small);
+  background: var(--lcdp-color-surface-soft);
+  color: var(--lcdp-color-primary);
+  font-size: 2rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-align: center;
+}
+
+.lcdp-cle-dialogue-note {
+  margin: 0 0 var(--lcdp-space-2);
+  color: var(--lcdp-color-text-muted);
+  line-height: 1.35;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .lcdp-cle-ecran {
+    padding: 52px var(--lcdp-page-padding-desktop) 56px;
+  }
+
+  .lcdp-cle-ecran--saisie {
+    gap: 48px;
+  }
+
+  .lcdp-cle-code-field {
+    min-height: 94px;
+  }
+
+  .lcdp-cle-ok {
+    width: 116px;
+    height: 116px;
+  }
+
+  .lcdp-cle-action {
+    min-height: 112px;
+  }
+}

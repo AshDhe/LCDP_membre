@@ -80,9 +80,9 @@
   };
 
   const titresFiltres = {
-    encours: "Abonnement en cours",
-    avenir: "Abonnements à venir",
-    passe: "Abonnements passés"
+    encours: "Mon abonnement en cours",
+    avenir: "A venir",
+    passe: "Passés"
   };
 
   if (document.readyState === "loading") {

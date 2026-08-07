@@ -11,6 +11,13 @@
     "index-membre-api"
   );
 
+  const ENDPOINT_LA_CLE_DU_PARC = construireEndpointApi(
+    "workerLaCleDuParcUrl",
+    "WORKER_LA_CLE_DU_PARC_URL",
+    "W_LA_CLE_DU_PARC_URL",
+    "w-la-cle-du-parc-api"
+  );
+
   const ENDPOINT_DECONNEXION_MEMBRE = construireEndpointApi(
     "",
     "W_DECONNEXION_URL",
@@ -548,30 +555,69 @@
   }
 
   async function gererValidationPresence(etat) {
-    if (!etat.aReservationEnCours) {
+    if (!ENDPOINT_LA_CLE_DU_PARC) {
       await afficherAlerte(
-        "Vous n'avez pas de réservation en cours.",
+        "Le service Ma clé n'est pas configuré.",
         { variante: "ouvrir" }
       );
       return;
     }
 
-    await ouvrirDialogueBoutons({
-      titre: "Valider ma présence",
-      texte: "Choisissez le mode de validation.",
-      boutons: [
-        {
-          label: "BALISER",
-          valeur: "baliser",
-          style: "lcdp-button-primary"
-        },
-        {
-          label: "DÉLÉGUER",
-          valeur: "deleguer",
-          style: "lcdp-button-secondary"
-        }
-      ]
+    const reponse = await fetch(ENDPOINT_LA_CLE_DU_PARC + "/access", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json"
+      }
     });
+
+    const resultat = await reponse.json().catch(() => null);
+
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return;
+    }
+
+    if (!reponse.ok || !resultat) {
+      await afficherAlerte(
+        messageErreurAccesCle(resultat),
+        { variante: "ouvrir" }
+      );
+      return;
+    }
+
+    if (resultat.allowed !== true) {
+      await afficherAlerte(
+        messageErreurAccesCle(resultat),
+        { variante: "ouvrir" }
+      );
+      return;
+    }
+
+    redirigerMembre("/ESPACE-MEMBRE/lacleduparc.html");
+  }
+
+  function messageErreurAccesCle(resultat) {
+    const raison = String(resultat?.reason || "").trim().toLowerCase();
+
+    if (raison === "no_reservation" || raison === "no_invitation") {
+      return "Vous n'avez pas de réservation en cours.";
+    }
+
+    if (raison === "too_early") {
+      return "Votre clé sera accessible 30 minutes avant le début de votre réservation.";
+    }
+
+    if (raison === "subscription_unpaid") {
+      return "Votre abonnement n'est pas payé.";
+    }
+
+    if (raison === "sponsor_not_checked_in") {
+      return "Votre clé n'est pas encore disponible. Le membre qui vous a invité doit d'abord valider la sienne.";
+    }
+
+    return String(resultat?.message || resultat?.error || "Impossible d'ouvrir Ma clé.");
   }
 
   async function ouvrirPageAbonne(etat, fonction, chemin) {

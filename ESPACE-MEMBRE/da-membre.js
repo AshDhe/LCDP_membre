@@ -283,14 +283,18 @@
       throw new Error("Le service DA membre n’est pas configuré.");
     }
 
-    const reponse = await fetch(ENDPOINT_DA_MEMBRE + "/contexte", {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-      headers: {
-        "Accept": "application/json"
-      }
-    });
+    const reponse = await fetchAvecDelai(
+      ENDPOINT_DA_MEMBRE + "/contexte",
+      {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      },
+      20000
+    );
 
     const data = await reponse.json().catch(() => null);
 
@@ -948,6 +952,13 @@
   }
 
   async function transmettreDaDepuisFormulaire(form, options) {
+    if (
+      form.dataset.lcdpTransmissionDaEnCours ===
+      "true"
+    ) {
+      return;
+    }
+
     const payload = lirePayloadDa(form);
     const erreur = verifierPayloadDa(payload);
 
@@ -959,11 +970,18 @@
     const confirmation = await afficherAlerteDa("Votre DA est terminée ?", { boutonOk: "Confirmer" });
     if (!confirmation) return;
 
-    const bouton = form.querySelector("button[type='submit']");
+    const bouton =
+      form.querySelector("button[type='submit']");
+
+    form.dataset.lcdpTransmissionDaEnCours =
+      "true";
+
     if (bouton) {
       bouton.disabled = true;
       bouton.textContent = "Transmission...";
     }
+
+    let transmissionReussie = false;
 
     try {
       const reponse = await fetchAvecDelai(ENDPOINT_DA_MEMBRE + "/transmettre", {
@@ -990,40 +1008,104 @@
         daactive: true
       });
 
-      await afficherAlerteDa("Votre DA est envoyée. Merci. Nous espérons vous compter prochainement parmi nos membres abonnés !");
+      transmissionReussie = true;
+
+      const confirmationLue =
+        await afficherAlerteDa(
+          "Votre DA est envoyée. Merci. Nous espérons vous compter prochainement parmi nos membres abonnés !"
+        );
+
       obtenirLightboxSlotDa().innerHTML = "";
 
-      if (typeof options?.onTerminee === "function") {
-        options.onTerminee();
+      if (
+        typeof options?.onTerminee === "function"
+      ) {
+        await Promise.resolve(
+          options.onTerminee()
+        );
+      }
+
+      if (confirmationLue === true) {
+        window.requestAnimationFrame(() => {
+          window.location.reload();
+        });
       }
     } catch (error) {
       console.error("Transmission DA :", error);
 
+      /*
+       * Le bouton est rétabli avant l'Alert Box :
+       * l'interface ne reste jamais figée sur « Transmission... ».
+       */
+      if (bouton && bouton.isConnected) {
+        bouton.disabled = false;
+        bouton.textContent = "Transmettre";
+      }
+
       const message =
         error?.name === "AbortError"
-          ? "La transmission n'a pas répondu dans le délai attendu. Merci de réessayer."
-          : error.message || "Erreur technique. Merci de réessayer.";
+          ? "La transmission n’a pas répondu dans le délai attendu. Vérifiez votre connexion puis réessayez."
+          : error.message ||
+            "Erreur technique. Merci de réessayer.";
 
       await afficherAlerteDa(message);
+    } finally {
+      delete form.dataset.lcdpTransmissionDaEnCours;
 
-      if (bouton) {
+      if (
+        !transmissionReussie &&
+        bouton &&
+        bouton.isConnected
+      ) {
         bouton.disabled = false;
         bouton.textContent = "Transmettre";
       }
     }
   }
 
-  async function fetchAvecDelai(url, options = {}, delaiMs = 30000) {
+  async function fetchAvecDelai(
+    url,
+    options = {},
+    delaiMs = 30000
+  ) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), delaiMs);
+    let timeoutId = null;
+
+    const promesseFetch = Promise.resolve().then(
+      () =>
+        fetch(url, {
+          ...options,
+          signal: controller.signal
+        })
+    );
+
+    const promesseDelai = new Promise(
+      (_resolve, reject) => {
+        timeoutId = window.setTimeout(() => {
+          controller.abort();
+
+          const erreur = new Error(
+            "Délai de réponse dépassé."
+          );
+          erreur.name = "AbortError";
+          reject(erreur);
+        }, delaiMs);
+      }
+    );
 
     try {
-      return await fetch(url, {
-        ...options,
-        signal: controller.signal
-      });
+      /*
+       * Promise.race impose le délai même si window.fetch est
+       * intercepté et reste bloqué avant de lancer la requête native.
+       */
+      return await Promise.race([
+        promesseFetch,
+        promesseDelai
+      ]);
     } finally {
-      clearTimeout(timeoutId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     }
   }
 
