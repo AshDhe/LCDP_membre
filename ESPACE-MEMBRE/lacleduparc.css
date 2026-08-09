@@ -206,3 +206,16 @@
   border-color: var(--lcdp-color-blue-hover);
   color: #ffffff;
 }
+
+.lcdp-page-cle-du-parc [data-lcdp-alerte-ok] {
+  background: var(--lcdp-color-blue);
+  border-color: var(--lcdp-color-blue);
+  color: #ffffff;
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-alerte-ok]:hover,
+.lcdp-page-cle-du-parc [data-lcdp-alerte-ok]:focus-visible {
+  background: var(--lcdp-color-blue-hover);
+  border-color: var(--lcdp-color-blue-hover);
+  color: #ffffff;
+}
