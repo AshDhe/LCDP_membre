@@ -13,6 +13,7 @@
 
   const PAGE_ACCUEIL_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html");
 
+  const attenteInitiale = document.querySelector("[data-lcdp-cle-wait]");
   const workflowCle = document.querySelector("[data-lcdp-cle-workflow]");
   const ecranCheckin = document.querySelector('[data-lcdp-cle-screen="checkin"]');
   const ecranActif = document.querySelector('[data-lcdp-cle-screen="active"]');
@@ -48,6 +49,7 @@
     appliquerRoutesSite(document);
 
     if (!ENDPOINT_LA_CLE_DU_PARC) {
+      masquerAttenteInitiale();
       await initialiserGabaritMembre();
       await afficherAlerte("Le service Ma clé n'est pas configuré.");
       redirigerAccueil();
@@ -56,6 +58,7 @@
 
     try {
       const statut = await appelerApi("/status", { method: "GET" });
+      masquerAttenteInitiale();
 
       if (statut.allowed !== true) {
         await initialiserGabaritMembre();
@@ -77,6 +80,8 @@
       await initialiserGabaritMembre();
       afficherEcranCheckin();
     } catch (error) {
+      masquerAttenteInitiale();
+
       if (error?.sessionRemplaceeTraitee === true) return;
 
       console.error("Erreur initialisation Ma clé :", error);
@@ -283,6 +288,14 @@
         return;
       }
 
+      if (statut.checkoutAllowed === false) {
+        await afficherAlerte(
+          statut.checkoutMessage ||
+          "Votre parrain doit d'abord effectuer son checkout."
+        );
+        return;
+      }
+
       reinitialiserCodes();
       modeSaisie = "checkout";
       ecranActif.hidden = true;
@@ -347,6 +360,11 @@
       boutonValider: "Confirmer",
       codeAffiche
     });
+  }
+
+  function masquerAttenteInitiale() {
+    if (!attenteInitiale) return;
+    attenteInitiale.hidden = true;
   }
 
   function afficherWorkflowCle() {
@@ -820,7 +838,7 @@
     }
 
     if (raison === "sponsor_not_checked_in") {
-      return "Votre clé n'est pas encore disponible. Le membre qui vous a invité doit d'abord valider la sienne.";
+      return "Votre clé n'est pas activée par votre parrain.";
     }
 
     return String(resultat?.message || resultat?.error || "Impossible d'ouvrir Ma clé.");

@@ -15,6 +15,24 @@
   display: none;
 }
 
+.lcdp-cle-wait {
+  width: 100%;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lcdp-cle-wait[hidden] {
+  display: none !important;
+}
+
+.lcdp-cle-wait__image {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
 .lcdp-cle-workflow {
   width: 100%;
 }
