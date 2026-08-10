@@ -21,6 +21,7 @@
   const valeurCode1 = document.querySelector('[data-lcdp-cle-code-value="1"]');
   const valeurCode2 = document.querySelector('[data-lcdp-cle-code-value="2"]');
   const boutonValider = document.querySelector("[data-lcdp-cle-submit]");
+  const boutonAnnuler = document.querySelector("[data-lcdp-cle-cancel]");
   const boutonBrighta = document.querySelector("[data-lcdp-cle-brighta]");
   const boutonCheckout = document.querySelector("[data-lcdp-cle-checkout]");
   const texteCooldown = document.querySelector("[data-lcdp-cle-cooldown]");
@@ -93,6 +94,7 @@
     boutonCode1?.addEventListener("click", () => saisirCode(1));
     boutonCode2?.addEventListener("click", () => saisirCode(2));
     boutonValider?.addEventListener("click", validerCle);
+    boutonAnnuler?.addEventListener("click", gererAnnulationSaisie);
     boutonBrighta?.addEventListener("click", gererBrighta);
     boutonCheckout?.addEventListener("click", gererCheckout);
 
@@ -247,7 +249,22 @@
     ecranCheckin.hidden = false;
     document.body.classList.remove("is-cle-active", "is-cle-overstay");
     document.body.classList.add("is-cle-checkout");
-    arreterTransitionPresence();
+    verrouillerNavigation();
+  }
+
+  function gererAnnulationSaisie() {
+    if (modeSaisie !== "checkout") {
+      redirigerAccueil();
+      return;
+    }
+
+    modeSaisie = "checkin";
+    reinitialiserCodes();
+    ecranCheckin.hidden = true;
+    ecranActif.hidden = false;
+    document.body.classList.remove("is-cle-checkout");
+    document.body.classList.add("is-cle-active");
+    actualiserEtatPresence(false);
     verrouillerNavigation();
   }
 

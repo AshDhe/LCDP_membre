@@ -49,6 +49,19 @@
   background: #ffffff;
 }
 
+.lcdp-cle-cancel {
+  background: transparent;
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+.lcdp-cle-cancel:hover,
+.lcdp-cle-cancel:focus-visible {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: var(--lcdp-color-blue);
+}
+
 .lcdp-cle-codes {
   width: 100%;
   display: flex;
