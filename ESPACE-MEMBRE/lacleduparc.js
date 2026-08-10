@@ -29,6 +29,9 @@
   let navigationVerrouillee = false;
   let brightaDisponibleA = 0;
   let intervalleCooldown = null;
+  let timeoutEtatPresence = null;
+  let timeoutExpirationVerrouillage = null;
+  let depassementPresenceA = 0;
   let modeSaisie = "checkin";
 
   if (document.readyState === "loading") {
@@ -59,7 +62,12 @@
       }
 
       if (statut.screen === "active" || statut.checkinActive === true) {
-        afficherEcranActif(statut.brightaAvailableAt || statut.brightaDisponibleA || "");
+        afficherEcranActif(
+          statut.brightaAvailableAt || statut.brightaDisponibleA || "",
+          statut.overstayAt || "",
+          statut.presenceState || "active",
+          statut.lockExpiresAt || ""
+        );
         return;
       }
 
@@ -144,6 +152,12 @@
         }
 
         cleActive = false;
+        document.body.classList.remove("is-cle-overstay");
+        arreterTransitionPresence();
+        if (timeoutExpirationVerrouillage) {
+          window.clearTimeout(timeoutExpirationVerrouillage);
+          timeoutExpirationVerrouillage = null;
+        }
         deverrouillerNavigation();
         redirigerAccueil();
         return;
@@ -153,7 +167,12 @@
         throw creerErreurApi(resultat, "Votre clé n'est pas reconnue");
       }
 
-      afficherEcranActif(resultat.brightaAvailableAt || "");
+      afficherEcranActif(
+        resultat.brightaAvailableAt || "",
+        resultat.overstayAt || "",
+        resultat.presenceState || "active",
+        resultat.lockExpiresAt || ""
+      );
     } catch (error) {
       console.error("Erreur validation clé :", error);
 
@@ -224,8 +243,9 @@
     modeSaisie = "checkout";
     ecranActif.hidden = true;
     ecranCheckin.hidden = false;
-    document.body.classList.remove("is-cle-active");
+    document.body.classList.remove("is-cle-active", "is-cle-overstay");
     document.body.classList.add("is-cle-checkout");
+    arreterTransitionPresence();
     verrouillerNavigation();
   }
 
@@ -266,19 +286,89 @@
     reinitialiserCodes();
     ecranCheckin.hidden = false;
     ecranActif.hidden = true;
-    document.body.classList.remove("is-cle-active", "is-cle-checkout");
+    document.body.classList.remove("is-cle-active", "is-cle-checkout", "is-cle-overstay");
+    arreterTransitionPresence();
     deverrouillerNavigation();
   }
 
-  function afficherEcranActif(disponibiliteBrighta) {
+  function afficherEcranActif(disponibiliteBrighta, overstayAt, presenceState, lockExpiresAt) {
     modeSaisie = "checkin";
     cleActive = true;
     ecranCheckin.hidden = true;
     ecranActif.hidden = false;
     document.body.classList.add("is-cle-active");
     document.body.classList.remove("is-cle-checkout");
+    definirEtatPresence(overstayAt, presenceState);
+    definirExpirationVerrouillage(lockExpiresAt);
     definirDisponibiliteBrighta(disponibiliteBrighta);
     verrouillerNavigation();
+  }
+
+  function definirEtatPresence(overstayAt, presenceState) {
+    const date = new Date(overstayAt || 0);
+    depassementPresenceA = Number.isNaN(date.getTime()) ? 0 : date.getTime();
+
+    arreterTransitionPresence(false);
+    actualiserEtatPresence(presenceState === "overstay");
+
+    if (depassementPresenceA > Date.now()) {
+      timeoutEtatPresence = window.setTimeout(() => {
+        actualiserEtatPresence(false);
+      }, depassementPresenceA - Date.now() + 50);
+    }
+  }
+
+  function definirExpirationVerrouillage(lockExpiresAt) {
+    if (timeoutExpirationVerrouillage) {
+      window.clearTimeout(timeoutExpirationVerrouillage);
+      timeoutExpirationVerrouillage = null;
+    }
+
+    const date = new Date(lockExpiresAt || 0);
+    const expiration = Number.isNaN(date.getTime()) ? 0 : date.getTime();
+
+    if (!expiration) return;
+
+    const delai = expiration - Date.now();
+
+    if (delai <= 0) {
+      terminerVerrouillageExpire();
+      return;
+    }
+
+    timeoutExpirationVerrouillage = window.setTimeout(
+      terminerVerrouillageExpire,
+      delai + 50
+    );
+  }
+
+  function terminerVerrouillageExpire() {
+    if (!cleActive) return;
+
+    cleActive = false;
+    document.body.classList.remove("is-cle-active", "is-cle-overstay", "is-cle-checkout");
+    arreterTransitionPresence();
+    deverrouillerNavigation();
+    redirigerAccueil();
+  }
+
+  function actualiserEtatPresence(forcerDepassement) {
+    const depassee =
+      forcerDepassement === true ||
+      (depassementPresenceA > 0 && Date.now() >= depassementPresenceA);
+
+    document.body.classList.toggle("is-cle-overstay", cleActive && depassee);
+  }
+
+  function arreterTransitionPresence(reinitialiser = true) {
+    if (timeoutEtatPresence) {
+      window.clearTimeout(timeoutEtatPresence);
+      timeoutEtatPresence = null;
+    }
+
+    if (reinitialiser) {
+      depassementPresenceA = 0;
+    }
   }
 
 

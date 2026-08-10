@@ -98,6 +98,13 @@
   background: #dff3df;
 }
 
+.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay,
+.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-site-page,
+.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-site-main,
+.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-cle-ecran--active .lcdp-box-formulaire-page__inner {
+  background: #f6d7a7;
+}
+
 .lcdp-page-cle-du-parc.is-cle-active #lcdp-bandeau-slot,
 .lcdp-page-cle-du-parc.is-cle-active #lcdp-footer-slot,
 .lcdp-page-cle-du-parc.is-cle-checkout #lcdp-bandeau-slot,

@@ -175,6 +175,7 @@
 
   memoriserRetourMembreSiNecessaire();
   initialiserRenouvellementSessionMembre();
+  initialiserVerrouillageCleActive();
 
   window.LCDP_estUrlRetourMembreValide = estUrlRetourMembreValide;
   window.LCDP_lireRetourMembre = lireRetourMembre;
@@ -210,6 +211,71 @@
       "/ESPACE-PUBLIC/connexion-membre.html?" + params.toString()
     );
   };
+
+  function initialiserVerrouillageCleActive() {
+    if (!estUrlDansSiteMembre(window.location.href)) return;
+    if (estPageMembreSansSession(window.location.href)) return;
+    if (estPageMaCle(window.location.href)) return;
+    if (!WORKERS.laCleDuParc) return;
+
+    verifierVerrouillageCleActive();
+
+    window.addEventListener("pageshow", verifierVerrouillageCleActive);
+    window.addEventListener("focus", verifierVerrouillageCleActive);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        verifierVerrouillageCleActive();
+      }
+    });
+  }
+
+  async function verifierVerrouillageCleActive() {
+    try {
+      const reponse = await window.fetch(
+        nettoyerBaseUrl(WORKERS.laCleDuParc) + "/status",
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: { Accept: "application/json" }
+        }
+      );
+
+      if (reponse.status === 401) {
+        window.LCDP_redirigerConnexionMembre?.("ma-cle", "inactive");
+        return;
+      }
+
+      if (!reponse.ok) return;
+
+      const statut = await reponse.json().catch(() => null);
+
+      if (
+        statut?.success === true &&
+        (statut.screen === "active" || statut.checkinActive === true)
+      ) {
+        const destination = buildUrl(
+          active.membreBase,
+          "/ESPACE-MEMBRE/lacleduparc.html"
+        );
+
+        if (window.location.href !== destination) {
+          window.location.replace(destination);
+        }
+      }
+    } catch (error) {
+      console.error("Verrouillage Ma clé :", error);
+    }
+  }
+
+  function estPageMaCle(value) {
+    try {
+      const url = new URL(String(value || ""), window.location.href);
+      return extraireCheminMembre(url) === "/ESPACE-MEMBRE/lacleduparc.html";
+    } catch {
+      return false;
+    }
+  }
 
   function memoriserRetourMembreSiNecessaire() {
     if (estPageMembreSansSession(window.location.href)) return;
