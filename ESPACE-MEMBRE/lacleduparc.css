@@ -89,20 +89,20 @@
 }
 
 .lcdp-cle-ecran--active .lcdp-box-formulaire-page__inner {
-  background: #dff3df;
+  background: var(--lcdp-color-logo-green);
 }
 
 .lcdp-page-cle-du-parc.is-cle-active,
 .lcdp-page-cle-du-parc.is-cle-active .lcdp-site-page,
 .lcdp-page-cle-du-parc.is-cle-active .lcdp-site-main {
-  background: #dff3df;
+  background: var(--lcdp-color-logo-green);
 }
 
 .lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay,
 .lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-site-page,
 .lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-site-main,
 .lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-cle-ecran--active .lcdp-box-formulaire-page__inner {
-  background: #f6d7a7;
+  background: var(--lcdp-color-orange);
 }
 
 .lcdp-page-cle-du-parc.is-cle-active #lcdp-bandeau-slot,
@@ -159,15 +159,15 @@
 }
 
 .lcdp-cle-action--checkout {
-  background: #ffffff;
-  border-color: var(--lcdp-color-logo-green);
-  color: var(--lcdp-color-primary);
+  background: var(--lcdp-color-blue);
+  border-color: var(--lcdp-color-blue);
+  color: #ffffff;
 }
 
 .lcdp-cle-action--checkout:hover {
-  background: var(--lcdp-color-surface-soft);
-  border-color: var(--lcdp-color-primary);
-  color: var(--lcdp-color-primary);
+  background: var(--lcdp-color-blue-hover);
+  border-color: var(--lcdp-color-blue-hover);
+  color: #ffffff;
 }
 
 .lcdp-cle-cooldown {
