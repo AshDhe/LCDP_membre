@@ -98,6 +98,11 @@
   background: var(--lcdp-color-logo-green);
 }
 
+.lcdp-page-cle-du-parc.is-cle-active .lcdp-title-page-center,
+.lcdp-page-cle-du-parc.is-cle-active .lcdp-mention-connexion {
+  color: #ffffff;
+}
+
 .lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay,
 .lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-site-page,
 .lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-site-main,
