@@ -37,6 +37,7 @@
   let timeoutExpirationVerrouillage = null;
   let depassementPresenceA = 0;
   let modeSaisie = "checkin";
+  let bluetoothActif = null;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -58,6 +59,7 @@
 
     try {
       const statut = await appelerApi("/status", { method: "GET" });
+      bluetoothActif = statut?.bluetooth || null;
       masquerAttenteInitiale();
 
       if (statut.allowed !== true) {
@@ -146,8 +148,21 @@
     definirChargementBoutonLogo(true);
 
     try {
-      const geolocalisation = await obtenirGeolocalisation();
       const estCheckout = modeSaisie === "checkout";
+      let appareilCheckout = null;
+      let erreurExtinctionBracelet = null;
+
+      if (estCheckout && bluetoothActif) {
+        try {
+          appareilCheckout = await selectionnerBraceletBluetooth(
+            bluetoothActif
+          );
+        } catch (errorBluetooth) {
+          erreurExtinctionBracelet = errorBluetooth;
+        }
+      }
+
+      const geolocalisation = await obtenirGeolocalisation();
       const resultat = await appelerApi(estCheckout ? "/checkout" : "/checkin", {
         method: "POST",
         body: {
@@ -170,6 +185,34 @@
           timeoutExpirationVerrouillage = null;
         }
         deverrouillerNavigation();
+
+        if (resultat.braceletOff) {
+          try {
+            if (!appareilCheckout) {
+              throw erreurExtinctionBracelet ||
+                new Error("Le bracelet Bluetooth n'a pas pu être sélectionné.");
+            }
+
+            await envoyerCommandeBluetooth(
+              appareilCheckout,
+              resultat.braceletOff.bluetooth || bluetoothActif,
+              resultat.braceletOff.command
+            );
+          } catch (errorBluetooth) {
+            console.error(
+              "Erreur extinction Bluetooth au checkout :",
+              errorBluetooth
+            );
+
+            await afficherAlerte(
+              "Votre checkout est enregistré. Le bracelet n'a pas pu être éteint automatiquement.",
+              { fermetureParOkUniquement: true }
+            );
+            redirigerAccueil();
+            return;
+          }
+        }
+
         await afficherAlerte("Votre checkout est enregistré.", {
           fermetureParOkUniquement: true
         });
@@ -218,6 +261,10 @@
       const preparation = await preparerConfirmation("brighta");
       if (!preparation) return;
 
+      if (!preparation.bluetooth) {
+        throw new Error("Le Bluetooth de votre bracelet n'est pas configuré.");
+      }
+
       const confirmation = await demanderCodeConfirmation(
         "Confirmer BRIGHT-A",
         preparation.code
@@ -225,13 +272,17 @@
 
       if (!confirmation) return;
 
+      const appareil = await selectionnerBraceletBluetooth(
+        preparation.bluetooth
+      );
+
       let geolocalisation = null;
 
       if (preparation.locationRequired === true) {
         geolocalisation = await obtenirGeolocalisation();
       }
 
-      const resultat = await appelerApi("/brighta", {
+      const resultatPreparation = await appelerApi("/brighta", {
         method: "POST",
         body: {
           code: confirmation,
@@ -240,12 +291,41 @@
         }
       });
 
+      if (
+        resultatPreparation.success !== true ||
+        resultatPreparation.prepared !== true ||
+        !resultatPreparation.command
+      ) {
+        throw creerErreurApi(
+          resultatPreparation,
+          "Impossible de préparer l'allumage du bracelet."
+        );
+      }
+
+      const ack = await envoyerCommandeBluetooth(
+        appareil,
+        resultatPreparation.bluetooth || preparation.bluetooth,
+        resultatPreparation.command
+      );
+
+      const resultat = await appelerApi("/brighta-confirm", {
+        method: "POST",
+        body: {
+          command: resultatPreparation.command,
+          ack,
+          geolocalisation
+        }
+      });
+
       if (resultat.success !== true || resultat.brighta !== true) {
-        throw creerErreurApi(resultat, "Impossible d'allumer le bracelet.");
+        throw creerErreurApi(
+          resultat,
+          "Le bracelet n'a pas confirmé son allumage."
+        );
       }
 
       definirDisponibiliteBrighta(
-        resultat.brightaAvailableAt || new Date(Date.now() + 50 * 60 * 1000).toISOString()
+        resultat.brightaAvailableAt || ""
       );
 
       await afficherAlerte("Votre bracelet est allumé.", {
@@ -255,7 +335,14 @@
       if (error?.sessionRemplaceeTraitee === true) return;
 
       console.error("Erreur BRIGHT-A :", error);
-      await afficherAlerte(error.message || "Impossible d'allumer le bracelet.");
+
+      const message =
+        error?.name === "NotFoundError"
+          ? "Connexion Bluetooth au bracelet annulée."
+          : error?.message ||
+            "Le bracelet n'a pas pu être allumé. Vous pouvez réessayer.";
+
+      await afficherAlerte(message);
     } finally {
       definirBoutonEnCours(boutonBrighta, false);
       actualiserCooldown();
@@ -269,6 +356,7 @@
 
     try {
       const statut = await appelerApi("/status", { method: "GET" });
+      bluetoothActif = statut?.bluetooth || bluetoothActif;
       const visiteToujoursActive =
         statut?.success === true &&
         (statut.screen === "active" || statut.checkinActive === true);
@@ -348,7 +436,9 @@
     return {
       code: String(resultat.code),
       token: String(resultat.token),
-      locationRequired: resultat.locationRequired === true
+      locationRequired: resultat.locationRequired === true,
+      bracelet: resultat.bracelet || null,
+      bluetooth: resultat.bluetooth || null
     };
   }
 
@@ -739,6 +829,145 @@
         { once: true }
       );
     });
+  }
+
+  async function selectionnerBraceletBluetooth(configuration) {
+    if (!navigator.bluetooth) {
+      throw new Error(
+        "L'allumage Bluetooth du bracelet n'est pas disponible sur ce navigateur."
+      );
+    }
+
+    const nom = String(configuration?.name || "").trim();
+    const serviceUuid = String(configuration?.serviceUuid || "").trim();
+
+    if (!nom || !serviceUuid) {
+      throw new Error("La configuration Bluetooth du bracelet est incomplète.");
+    }
+
+    return navigator.bluetooth.requestDevice({
+      filters: [{ name: nom }],
+      optionalServices: [serviceUuid]
+    });
+  }
+
+  async function envoyerCommandeBluetooth(
+    appareil,
+    configuration,
+    commande
+  ) {
+    if (!appareil) {
+      throw new Error("Aucun bracelet Bluetooth n'a été sélectionné.");
+    }
+
+    const serviceUuid = String(configuration?.serviceUuid || "").trim();
+    const commandUuid = String(
+      configuration?.commandCharacteristicUuid || ""
+    ).trim();
+    const ackUuid = String(
+      configuration?.ackCharacteristicUuid || ""
+    ).trim();
+    const commandeTexte = String(commande || "").trim();
+
+    if (
+      !serviceUuid ||
+      !commandUuid ||
+      !ackUuid ||
+      !commandeTexte
+    ) {
+      throw new Error("La commande Bluetooth du bracelet est incomplète.");
+    }
+
+    const serveur = appareil.gatt?.connected
+      ? appareil.gatt
+      : await appareil.gatt?.connect();
+
+    if (!serveur) {
+      throw new Error("Impossible de se connecter au bracelet Bluetooth.");
+    }
+
+    try {
+      const service = await serveur.getPrimaryService(serviceUuid);
+      const caracteristiqueCommande =
+        await service.getCharacteristic(commandUuid);
+      const caracteristiqueAck =
+        await service.getCharacteristic(ackUuid);
+
+      await caracteristiqueAck.startNotifications();
+
+      let annulerAttenteAck = () => {};
+
+      const ackPromise = new Promise((resolve, reject) => {
+        let termine = false;
+
+        const nettoyer = () => {
+          if (termine) return;
+          termine = true;
+          window.clearTimeout(timeout);
+          caracteristiqueAck.removeEventListener(
+            "characteristicvaluechanged",
+            gererAck
+          );
+        };
+
+        const timeout = window.setTimeout(() => {
+          if (termine) return;
+          nettoyer();
+          reject(
+            new Error("Le bracelet n'a pas confirmé la commande Bluetooth.")
+          );
+        }, 10000);
+
+        function gererAck(event) {
+          if (termine) return;
+
+          const vue = event?.target?.value;
+
+          if (!vue) return;
+
+          const octets = new Uint8Array(
+            vue.buffer,
+            vue.byteOffset,
+            vue.byteLength
+          );
+          const valeur = new TextDecoder().decode(octets).trim();
+
+          if (!valeur) return;
+
+          nettoyer();
+          resolve(valeur);
+        }
+
+        annulerAttenteAck = nettoyer;
+
+        caracteristiqueAck.addEventListener(
+          "characteristicvaluechanged",
+          gererAck
+        );
+      });
+
+      const donnees = new TextEncoder().encode(commandeTexte);
+
+      try {
+        if (
+          typeof caracteristiqueCommande.writeValueWithResponse ===
+          "function"
+        ) {
+          await caracteristiqueCommande.writeValueWithResponse(donnees);
+        } else {
+          await caracteristiqueCommande.writeValue(donnees);
+        }
+      } catch (error) {
+        annulerAttenteAck();
+        throw error;
+      }
+
+      return await ackPromise;
+    } finally {
+      if (appareil.gatt?.connected) {
+        appareil.gatt.disconnect();
+      }
+    }
   }
 
   function obtenirGeolocalisation() {
