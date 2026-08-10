@@ -15,6 +15,14 @@
   display: none;
 }
 
+.lcdp-cle-workflow {
+  width: 100%;
+}
+
+.lcdp-cle-workflow[hidden] {
+  display: none !important;
+}
+
 .lcdp-cle-box {
   width: min(100%, 520px);
   margin: 0 auto;
@@ -33,7 +41,7 @@
   color: #ffffff;
 }
 
-.lcdp-cle-ecran--saisie .lcdp-box-formulaire__title {
+.lcdp-page-cle-du-parc .lcdp-box-formulaire__title {
   text-transform: uppercase;
 }
 
@@ -98,8 +106,8 @@
   background: var(--lcdp-color-logo-green);
 }
 
-.lcdp-page-cle-du-parc.is-cle-active .lcdp-title-page-center,
-.lcdp-page-cle-du-parc.is-cle-active .lcdp-mention-connexion {
+.lcdp-page-cle-du-parc.is-cle-active .lcdp-cle-ecran--active .lcdp-box-formulaire__title,
+.lcdp-page-cle-du-parc.is-cle-active .lcdp-cle-ecran--active .lcdp-mention-connexion {
   color: #ffffff;
 }
 
@@ -119,6 +127,7 @@
 
 .lcdp-cle-ecran--active .lcdp-box-formulaire {
   background: transparent;
+  border-color: #ffffff;
   box-shadow: none;
 }
 

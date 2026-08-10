@@ -172,6 +172,9 @@
   const CHEMINS_MEMBRE_SANS_SESSION = new Set([
     "/ESPACE-MEMBRE/mdp-membre.html"
   ]);
+  const CLASSE_CONTROLE_CLE = "lcdp-controle-cle-en-cours";
+  const ID_STYLE_CONTROLE_CLE = "lcdp-style-controle-cle-en-cours";
+  let verificationVerrouillageClePromise = null;
 
   memoriserRetourMembreSiNecessaire();
   initialiserRenouvellementSessionMembre();
@@ -229,43 +232,82 @@
     });
   }
 
+  function masquerPagePendantControleCle() {
+    if (!document.getElementById(ID_STYLE_CONTROLE_CLE)) {
+      const style = document.createElement("style");
+      style.id = ID_STYLE_CONTROLE_CLE;
+      style.textContent =
+        "html." + CLASSE_CONTROLE_CLE + " body{" +
+        "visibility:hidden!important;" +
+        "pointer-events:none!important;" +
+        "}";
+      document.head.appendChild(style);
+    }
+
+    document.documentElement.classList.add(CLASSE_CONTROLE_CLE);
+  }
+
+  function libererPageApresControleCle() {
+    document.documentElement.classList.remove(CLASSE_CONTROLE_CLE);
+  }
+
   async function verifierVerrouillageCleActive() {
-    try {
-      const reponse = await window.fetch(
-        nettoyerBaseUrl(WORKERS.laCleDuParc) + "/status",
-        {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-          headers: { Accept: "application/json" }
-        }
-      );
+    if (verificationVerrouillageClePromise) {
+      return verificationVerrouillageClePromise;
+    }
 
-      if (reponse.status === 401) {
-        window.LCDP_redirigerConnexionMembre?.("ma-cle", "inactive");
-        return;
-      }
+    masquerPagePendantControleCle();
 
-      if (!reponse.ok) return;
+    verificationVerrouillageClePromise = (async () => {
+      let conserverMasquage = false;
 
-      const statut = await reponse.json().catch(() => null);
-
-      if (
-        statut?.success === true &&
-        (statut.screen === "active" || statut.checkinActive === true)
-      ) {
-        const destination = buildUrl(
-          active.membreBase,
-          "/ESPACE-MEMBRE/lacleduparc.html"
+      try {
+        const reponse = await window.fetch(
+          nettoyerBaseUrl(WORKERS.laCleDuParc) + "/status",
+          {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+            headers: { Accept: "application/json" }
+          }
         );
 
-        if (window.location.href !== destination) {
-          window.location.replace(destination);
+        if (reponse.status === 401) {
+          conserverMasquage = true;
+          window.LCDP_redirigerConnexionMembre?.("ma-cle", "inactive");
+          return;
         }
+
+        if (!reponse.ok) return;
+
+        const statut = await reponse.json().catch(() => null);
+
+        if (
+          statut?.success === true &&
+          (statut.screen === "active" || statut.checkinActive === true)
+        ) {
+          const destination = buildUrl(
+            active.membreBase,
+            "/ESPACE-MEMBRE/lacleduparc.html"
+          );
+
+          if (window.location.href !== destination) {
+            conserverMasquage = true;
+            window.location.replace(destination);
+          }
+        }
+      } catch (error) {
+        console.error("Verrouillage Ma clé :", error);
+      } finally {
+        if (!conserverMasquage) {
+          libererPageApresControleCle();
+        }
+
+        verificationVerrouillageClePromise = null;
       }
-    } catch (error) {
-      console.error("Verrouillage Ma clé :", error);
-    }
+    })();
+
+    return verificationVerrouillageClePromise;
   }
 
   function estPageMaCle(value) {

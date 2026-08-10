@@ -13,6 +13,7 @@
 
   const PAGE_ACCUEIL_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html");
 
+  const workflowCle = document.querySelector("[data-lcdp-cle-workflow]");
   const ecranCheckin = document.querySelector('[data-lcdp-cle-screen="checkin"]');
   const ecranActif = document.querySelector('[data-lcdp-cle-screen="active"]');
   const boutonCode1 = document.querySelector('[data-lcdp-cle-code-button="1"]');
@@ -281,6 +282,11 @@
     });
   }
 
+  function afficherWorkflowCle() {
+    if (!workflowCle) return;
+    workflowCle.hidden = false;
+  }
+
   function afficherEcranCheckin() {
     modeSaisie = "checkin";
     cleActive = false;
@@ -290,6 +296,7 @@
     document.body.classList.remove("is-cle-active", "is-cle-checkout", "is-cle-overstay");
     arreterTransitionPresence();
     deverrouillerNavigation();
+    afficherWorkflowCle();
   }
 
   function afficherEcranActif(disponibiliteBrighta, overstayAt, presenceState, lockExpiresAt) {
@@ -303,6 +310,7 @@
     definirExpirationVerrouillage(lockExpiresAt);
     definirDisponibiliteBrighta(disponibiliteBrighta);
     verrouillerNavigation();
+    afficherWorkflowCle();
   }
 
   function definirEtatPresence(overstayAt, presenceState) {
