@@ -77,6 +77,8 @@
       await initialiserGabaritMembre();
       afficherEcranCheckin();
     } catch (error) {
+      if (error?.sessionRemplaceeTraitee === true) return;
+
       console.error("Erreur initialisation Ma clé :", error);
 
       try {
@@ -163,6 +165,9 @@
           timeoutExpirationVerrouillage = null;
         }
         deverrouillerNavigation();
+        await afficherAlerte("Votre checkout est enregistré.", {
+          fermetureParOkUniquement: true
+        });
         redirigerAccueil();
         return;
       }
@@ -171,6 +176,10 @@
         throw creerErreurApi(resultat, "Votre clé n'est pas reconnue");
       }
 
+      await afficherAlerte("Votre clé est validée.", {
+        fermetureParOkUniquement: true
+      });
+
       afficherEcranActif(
         resultat.brightaAvailableAt || "",
         resultat.overstayAt || "",
@@ -178,6 +187,8 @@
         resultat.lockExpiresAt || ""
       );
     } catch (error) {
+      if (error?.sessionRemplaceeTraitee === true) return;
+
       console.error("Erreur validation clé :", error);
 
       if (error.reason === "key_unrecognized") {
@@ -231,7 +242,13 @@
       definirDisponibiliteBrighta(
         resultat.brightaAvailableAt || new Date(Date.now() + 50 * 60 * 1000).toISOString()
       );
+
+      await afficherAlerte("Votre bracelet est allumé.", {
+        fermetureParOkUniquement: true
+      });
     } catch (error) {
+      if (error?.sessionRemplaceeTraitee === true) return;
+
       console.error("Erreur BRIGHT-A :", error);
       await afficherAlerte(error.message || "Impossible d'allumer le bracelet.");
     } finally {
@@ -243,13 +260,46 @@
   async function gererCheckout() {
     if (!cleActive) return;
 
-    reinitialiserCodes();
-    modeSaisie = "checkout";
-    ecranActif.hidden = true;
-    ecranCheckin.hidden = false;
-    document.body.classList.remove("is-cle-active", "is-cle-overstay");
-    document.body.classList.add("is-cle-checkout");
-    verrouillerNavigation();
+    definirBoutonEnCours(boutonCheckout, true);
+
+    try {
+      const statut = await appelerApi("/status", { method: "GET" });
+      const visiteToujoursActive =
+        statut?.success === true &&
+        (statut.screen === "active" || statut.checkinActive === true);
+
+      if (!visiteToujoursActive) {
+        cleActive = false;
+        arreterTransitionPresence();
+
+        if (timeoutExpirationVerrouillage) {
+          window.clearTimeout(timeoutExpirationVerrouillage);
+          timeoutExpirationVerrouillage = null;
+        }
+
+        deverrouillerNavigation();
+        await afficherAlerte("Cette visite est déjà terminée.");
+        window.location.replace(PAGE_ACCUEIL_MEMBRE);
+        return;
+      }
+
+      reinitialiserCodes();
+      modeSaisie = "checkout";
+      ecranActif.hidden = true;
+      ecranCheckin.hidden = false;
+      document.body.classList.remove("is-cle-active", "is-cle-overstay");
+      document.body.classList.add("is-cle-checkout");
+      verrouillerNavigation();
+    } catch (error) {
+      if (error?.sessionRemplaceeTraitee === true) return;
+
+      console.error("Erreur vérification checkout :", error);
+      await afficherAlerte(
+        error.message || "Impossible de vérifier l'état de votre visite."
+      );
+    } finally {
+      definirBoutonEnCours(boutonCheckout, false);
+    }
   }
 
   function gererAnnulationSaisie() {
@@ -634,6 +684,13 @@
     texte.textContent = normaliserPonctuation(message);
     boutonOk.textContent = options.boutonOkLabel || "OK";
 
+    const fermetureParOkUniquement =
+      options.fermetureParOkUniquement === true;
+
+    if (fermetureParOkUniquement) {
+      boutonFermer.hidden = true;
+    }
+
     return new Promise((resolve) => {
       let resolu = false;
 
@@ -644,16 +701,22 @@
         resolve(valeur);
       }
 
-      boutonFermer.addEventListener("click", () => fermer(false));
+      boutonFermer.addEventListener("click", () => {
+        if (!fermetureParOkUniquement) fermer(false);
+      });
       boutonOk.addEventListener("click", () => fermer(true));
       alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) fermer(false);
+        if (!fermetureParOkUniquement && event.target === alerte) {
+          fermer(false);
+        }
       });
 
       document.addEventListener(
         "keydown",
         (event) => {
-          if (event.key === "Escape") fermer(false);
+          if (!fermetureParOkUniquement && event.key === "Escape") {
+            fermer(false);
+          }
         },
         { once: true }
       );
@@ -707,6 +770,20 @@
     const resultat = await reponse.json().catch(() => null);
 
     if (reponse.status === 401) {
+      if (
+        String(resultat?.reason || "") === "session_replaced" &&
+        typeof window.LCDP_gererSessionRemplacee === "function"
+      ) {
+        await window.LCDP_gererSessionRemplacee();
+        const erreur = new Error(
+          resultat?.message ||
+          "Ce compte vient d'être connecté sur un autre appareil. Votre session a été fermée."
+        );
+        erreur.reason = "session_replaced";
+        erreur.sessionRemplaceeTraitee = true;
+        throw erreur;
+      }
+
       redirigerConnexion();
       throw new Error("Votre session membre n'est plus active.");
     }

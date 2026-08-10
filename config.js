@@ -174,7 +174,10 @@
   ]);
   const CLASSE_CONTROLE_CLE = "lcdp-controle-cle-en-cours";
   const ID_STYLE_CONTROLE_CLE = "lcdp-style-controle-cle-en-cours";
+  const MESSAGE_SESSION_REMPLACEE =
+    "Ce compte vient d'être connecté sur un autre appareil. Votre session a été fermée.";
   let verificationVerrouillageClePromise = null;
+  let sessionRemplaceePromise = null;
 
   memoriserRetourMembreSiNecessaire();
   initialiserRenouvellementSessionMembre();
@@ -185,6 +188,7 @@
   window.LCDP_effacerRetourMembre = effacerRetourMembre;
   window.LCDP_programmerProchaineVerificationSessionMembre = programmerProchaineVerificationSessionMembre;
   window.LCDP_lireCookie = lireCookie;
+  window.LCDP_gererSessionRemplacee = gererSessionRemplacee;
   window.LCDP_membreAbonne = function LCDP_membreAbonne() {
     return Boolean(lireCookie("abonne"));
   };
@@ -214,6 +218,118 @@
       "/ESPACE-PUBLIC/connexion-membre.html?" + params.toString()
     );
   };
+
+  async function gererSessionRemplacee() {
+    if (sessionRemplaceePromise) {
+      return sessionRemplaceePromise;
+    }
+
+    sessionRemplaceePromise = (async () => {
+      supprimerCookiePartage(COOKIE_SESSION_MEMBRE_NEXT_REFRESH);
+
+      try {
+        await afficherAlerteSessionRemplacee();
+      } catch (error) {
+        console.error("Alerte session remplacée :", error);
+        window.alert(MESSAGE_SESSION_REMPLACEE);
+      }
+
+      window.location.replace(nettoyerBaseUrl(active.publicBase) + "/");
+      return false;
+    })();
+
+    return sessionRemplaceePromise;
+  }
+
+  async function afficherAlerteSessionRemplacee() {
+    await attendreBodyDisponible();
+    await assurerCssAlerteSessionRemplacee();
+
+    let slot = document.getElementById("lcdp-lightbox-slot");
+
+    if (!slot) {
+      slot = document.createElement("div");
+      slot.id = "lcdp-lightbox-slot";
+      document.body.appendChild(slot);
+    }
+
+    slot.innerHTML = "";
+
+    const reponse = await fetch(
+      buildUrl(objetBase, "/BOX/02-box-alerte.html"),
+      {
+        method: "GET",
+        credentials: "omit",
+        cache: "no-cache"
+      }
+    );
+
+    if (!reponse.ok) {
+      throw new Error("Box alerte indisponible.");
+    }
+
+    const html = await reponse.text();
+    const template = document.createElement("template");
+    template.innerHTML = html.trim();
+    slot.appendChild(template.content.cloneNode(true));
+
+    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
+    const texte = slot.querySelector("[data-lcdp-alerte-message]");
+    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
+    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
+
+    if (!alerte || !texte || !boutonFermer || !boutonOk) {
+      slot.innerHTML = "";
+      throw new Error("Structure de la Box alerte incomplète.");
+    }
+
+    texte.textContent = MESSAGE_SESSION_REMPLACEE;
+    boutonOk.textContent = "OK";
+
+    return new Promise((resolve) => {
+      let resolu = false;
+
+      function fermer() {
+        if (resolu) return;
+        resolu = true;
+        slot.innerHTML = "";
+        resolve(true);
+      }
+
+      boutonFermer.addEventListener("click", fermer);
+      boutonOk.addEventListener("click", fermer);
+      alerte.addEventListener("click", (event) => {
+        if (event.target === alerte) fermer();
+      });
+    });
+  }
+
+  function assurerCssAlerteSessionRemplacee() {
+    const href = buildUrl(objetBase, "/BOX/02-box-alerte.css");
+    const existant = Array.from(
+      document.querySelectorAll('link[rel="stylesheet"]')
+    ).find((link) => String(link.href || "") === href);
+
+    if (existant) return Promise.resolve();
+
+    return new Promise((resolve) => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      link.dataset.lcdpSessionAlerteCss = "true";
+      link.onload = resolve;
+      link.onerror = resolve;
+      document.head.appendChild(link);
+    });
+  }
+
+  function attendreBodyDisponible() {
+    if (document.body) return Promise.resolve();
+
+    return new Promise((resolve) => {
+      document.addEventListener("DOMContentLoaded", resolve, { once: true });
+    });
+  }
 
   function initialiserVerrouillageCleActive() {
     if (!estUrlDansSiteMembre(window.location.href)) return;
@@ -272,15 +388,21 @@
           }
         );
 
+        const statut = await reponse.json().catch(() => null);
+
         if (reponse.status === 401) {
+          if (String(statut?.reason || "") === "session_replaced") {
+            libererPageApresControleCle();
+            await gererSessionRemplacee();
+            return;
+          }
+
           conserverMasquage = true;
           window.LCDP_redirigerConnexionMembre?.("ma-cle", "inactive");
           return;
         }
 
         if (!reponse.ok) return;
-
-        const statut = await reponse.json().catch(() => null);
 
         if (
           statut?.success === true &&
@@ -381,6 +503,12 @@
 
           if (reponse.status === 401) {
             supprimerCookiePartage(COOKIE_SESSION_MEMBRE_NEXT_REFRESH);
+
+            if (String(data?.reason || "") === "session_replaced") {
+              await gererSessionRemplacee();
+              return false;
+            }
+
             window.LCDP_redirigerConnexionMembre("session-refresh", "inactive");
             return false;
           }
