@@ -29,6 +29,7 @@
   let navigationVerrouillee = false;
   let brightaDisponibleA = 0;
   let intervalleCooldown = null;
+  let modeSaisie = "checkin";
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -40,14 +41,8 @@
     lierActions();
     appliquerRoutesSite(document);
 
-    try {
-      await initialiserBandeauMembre();
-      await initialiserFooter();
-    } catch (error) {
-      console.error("Erreur gabarit membre Ma clé :", error);
-    }
-
     if (!ENDPOINT_LA_CLE_DU_PARC) {
+      await initialiserGabaritMembre();
       await afficherAlerte("Le service Ma clé n'est pas configuré.");
       redirigerAccueil();
       return;
@@ -57,6 +52,7 @@
       const statut = await appelerApi("/status", { method: "GET" });
 
       if (statut.allowed !== true) {
+        await initialiserGabaritMembre();
         await afficherAlerte(messageErreurAccesCle(statut));
         redirigerAccueil();
         return;
@@ -67,9 +63,17 @@
         return;
       }
 
+      await initialiserGabaritMembre();
       afficherEcranCheckin();
     } catch (error) {
       console.error("Erreur initialisation Ma clé :", error);
+
+      try {
+        await initialiserGabaritMembre();
+      } catch (gabaritError) {
+        console.error("Erreur gabarit membre Ma clé :", gabaritError);
+      }
+
       await afficherAlerte(error.message || "Impossible d'ouvrir Ma clé.");
       redirigerAccueil();
     }
@@ -124,7 +128,8 @@
 
     try {
       const geolocalisation = await obtenirGeolocalisation();
-      const resultat = await appelerApi("/checkin", {
+      const estCheckout = modeSaisie === "checkout";
+      const resultat = await appelerApi(estCheckout ? "/checkout" : "/checkin", {
         method: "POST",
         body: {
           code1,
@@ -132,6 +137,17 @@
           geolocalisation
         }
       });
+
+      if (estCheckout) {
+        if (resultat.success !== true || resultat.checkout !== true) {
+          throw creerErreurApi(resultat, "Votre clé n'est pas reconnue");
+        }
+
+        cleActive = false;
+        deverrouillerNavigation();
+        redirigerAccueil();
+        return;
+      }
 
       if (resultat.success !== true || resultat.checkin !== true) {
         throw creerErreurApi(resultat, "Votre clé n'est pas reconnue");
@@ -141,7 +157,7 @@
     } catch (error) {
       console.error("Erreur validation clé :", error);
 
-      if (error.reason === "key_unrecognized" || error.status === 422) {
+      if (error.reason === "key_unrecognized") {
         await afficherAlerte("Votre clé n'est pas reconnue", {
           boutonOkLabel: "Recommencer"
         });
@@ -204,42 +220,13 @@
   async function gererCheckout() {
     if (!cleActive) return;
 
-    definirBoutonEnCours(boutonCheckout, true);
-
-    try {
-      const preparation = await preparerConfirmation("checkout");
-      if (!preparation) return;
-
-      const confirmation = await demanderCodeConfirmation(
-        "Confirmer le checkout",
-        preparation.code
-      );
-
-      if (!confirmation) return;
-
-      const geolocalisation = await obtenirGeolocalisation();
-      const resultat = await appelerApi("/checkout", {
-        method: "POST",
-        body: {
-          code: confirmation,
-          token: preparation.token,
-          geolocalisation
-        }
-      });
-
-      if (resultat.success !== true || resultat.checkout !== true) {
-        throw creerErreurApi(resultat, "Impossible de valider le checkout.");
-      }
-
-      cleActive = false;
-      deverrouillerNavigation();
-      redirigerAccueil();
-    } catch (error) {
-      console.error("Erreur checkout :", error);
-      await afficherAlerte(error.message || "Impossible de valider le checkout.");
-    } finally {
-      definirBoutonEnCours(boutonCheckout, false);
-    }
+    reinitialiserCodes();
+    modeSaisie = "checkout";
+    ecranActif.hidden = true;
+    ecranCheckin.hidden = false;
+    document.body.classList.remove("is-cle-active");
+    document.body.classList.add("is-cle-checkout");
+    verrouillerNavigation();
   }
 
   async function preparerConfirmation(action) {
@@ -274,20 +261,32 @@
   }
 
   function afficherEcranCheckin() {
+    modeSaisie = "checkin";
     cleActive = false;
+    reinitialiserCodes();
     ecranCheckin.hidden = false;
     ecranActif.hidden = true;
-    document.body.classList.remove("is-cle-active");
+    document.body.classList.remove("is-cle-active", "is-cle-checkout");
     deverrouillerNavigation();
   }
 
   function afficherEcranActif(disponibiliteBrighta) {
+    modeSaisie = "checkin";
     cleActive = true;
     ecranCheckin.hidden = true;
     ecranActif.hidden = false;
     document.body.classList.add("is-cle-active");
+    document.body.classList.remove("is-cle-checkout");
     definirDisponibiliteBrighta(disponibiliteBrighta);
     verrouillerNavigation();
+  }
+
+
+  function reinitialiserCodes() {
+    code1 = "";
+    code2 = "";
+    afficherValeurCode(valeurCode1, "");
+    afficherValeurCode(valeurCode2, "");
   }
 
   function definirDisponibiliteBrighta(valeur) {
@@ -609,6 +608,16 @@
     }
 
     return String(resultat?.message || resultat?.error || "Impossible d'ouvrir Ma clé.");
+  }
+
+
+  async function initialiserGabaritMembre() {
+    try {
+      await initialiserBandeauMembre();
+      await initialiserFooter();
+    } catch (error) {
+      console.error("Erreur gabarit membre Ma clé :", error);
+    }
   }
 
   async function initialiserBandeauMembre() {
