@@ -25,6 +25,36 @@
     const urlConnexionMembre = construireUrlConnexionMembre();
 
     let envoiEnCours = false;
+    let passwordEnAttente = "";
+    let confirmationTerminee = false;
+    const formulaireConfirmation = document.getElementById("formulaire-confirmation-mdp");
+    const boutonConfirmer = document.getElementById("bouton-confirmer-mdp");
+    const casesCoda = Array.from(document.querySelectorAll("[data-coda-case]"));
+    const config = window.SITE_CONFIG || {};
+    const urlAccueil = typeof config.publicUrl === "function"
+      ? config.publicUrl("/ESPACE-PUBLIC/accueil-public.html")
+      : joindreBaseEtChemin(config.publicBaseUrl || config.PUBLIC_BASE || "", "/ESPACE-PUBLIC/accueil-public.html");
+
+    casesCoda.forEach((champ, index) => {
+      champ.addEventListener("input", () => {
+        champ.value = champ.value.replace(/[^0-9]/g, "").slice(-1);
+        if (champ.value && index < casesCoda.length - 1) casesCoda[index + 1].focus();
+      });
+      champ.addEventListener("keydown", (event) => {
+        if (event.key === "Backspace" && !champ.value && index > 0) casesCoda[index - 1].focus();
+      });
+      champ.addEventListener("focus", () => champ.select());
+    });
+    formulaireConfirmation?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (envoiEnCours || confirmationTerminee || mode !== "change" || !passwordEnAttente) return;
+      const coda = casesCoda.map(champ => champ.value).join("");
+      if (!/^[0-9]{4}$/.test(coda)) {
+        await afficherInformation("Veuillez renseigner les quatre cases.");
+        return;
+      }
+      await envoyerMotDePasse(passwordEnAttente, coda);
+    });
 
     function definirEtatBoutonValidation(enCours) {
       boutonValider.disabled = enCours;
@@ -122,8 +152,21 @@
         return;
       }
 
+      if (mode === "change") {
+        passwordEnAttente = passwordmembre;
+        champMotDePasse.value = "";
+        formulaire.hidden = true;
+        formulaireConfirmation.hidden = false;
+        casesCoda[0].focus();
+        return;
+      }
+      await envoyerMotDePasse(passwordmembre);
+    }
+
+    async function envoyerMotDePasse(passwordmembre, coda = "") {
       envoiEnCours = true;
       definirEtatBoutonValidation(true);
+      if (boutonConfirmer) boutonConfirmer.disabled = true;
 
       try {
         const response = await fetch(endpointMdptokenz, {
@@ -139,6 +182,7 @@
             token,
             mode,
             passwordmembre,
+            ...(mode === "change" ? { coda } : {}),
             unikuser: confirmationUtilisateurUniqueMdp.checked === true
           })
         });
@@ -146,15 +190,23 @@
         const data = await response.json().catch(() => null);
 
         if (!response.ok || !data || data.success !== true) {
-          afficherInformation(
-            data?.message || "La demande n’a pas pu être enregistrée."
-          );
-
+          if (mode === "change" && ["coda_incorrect", "coda_bloque", "coda_absent", "token_invalide"].includes(data?.reason)) {
+            confirmationTerminee = true;
+            passwordEnAttente = "";
+            casesCoda.forEach(champ => { champ.value = ""; champ.disabled = true; });
+            await afficherInformation(data.message, urlAccueil);
+            return;
+          }
+          await afficherInformation(data?.message || "La demande n’a pas pu être enregistrée.");
           envoiEnCours = false;
           definirEtatBoutonValidation(false);
+          if (boutonConfirmer) boutonConfirmer.disabled = false;
           return;
         }
 
+        confirmationTerminee = true;
+        passwordEnAttente = "";
+        casesCoda.forEach(champ => { champ.value = ""; champ.disabled = true; });
         afficherInformation(
           "Votre mot de passe est enregistré. Vous pouvez maintenant vous connecter à votre compte membre.",
           urlConnexionMembre
@@ -169,6 +221,7 @@
 
         envoiEnCours = false;
         definirEtatBoutonValidation(false);
+        if (boutonConfirmer) boutonConfirmer.disabled = false;
       }
     }
   }

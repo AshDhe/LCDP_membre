@@ -11,7 +11,7 @@
   <script>
     window.LCDP_PAGE_MEMBRE_SANS_SESSION = true;
   </script>
-  <script src="../config.js?v=20260706-mdp-sans-session"></script>
+  <script src="../config.js"></script>
 
   <script>
     (() => {
@@ -79,6 +79,16 @@
       }
 
     }
+
+    #formulaire-confirmation-mdp[hidden], #formulaire-mdp-membre[hidden] { display: none !important; }
+    .lcdp-coda-cases { display: flex; justify-content: center; gap: 12px; margin: 18px 0; }
+    .lcdp-coda-cases input { box-sizing: border-box; width: 52px; min-width: 0; height: 60px;
+      border: 1px solid var(--lcdp-color-border, #bac1b9); border-radius: 12px;
+      background: var(--lcdp-color-surface, #fff); color: var(--lcdp-color-text, #1f2a24);
+      font: inherit; font-size: 1.6rem; text-align: center; }
+    .lcdp-coda-cases input:focus { outline: 2px solid var(--lcdp-color-primary, #55733f); outline-offset: 3px; }
+    .lcdp-coda-mention { text-align: center; }
+    @media (max-width: 360px) { .lcdp-coda-cases { gap: 8px; } .lcdp-coda-cases input { width: 44px; height: 54px; } }
   </style>
 </head>
 
@@ -191,6 +201,25 @@
                   </button>
                 </div>
               </form>
+
+              <form id="formulaire-confirmation-mdp" class="lcdp-box-formulaire" hidden novalidate>
+                <header class="lcdp-box-formulaire__header">
+                  <h1 class="lcdp-box-formulaire__title">Espace membre</h1>
+                  <p class="lcdp-box-formulaire__subtitle">Mise à jour du mot de passe</p>
+                  <p class="lcdp-coda-mention" id="titre-confirmation-mdp">Confirmer l’opération</p>
+                </header>
+                <div class="lcdp-coda-cases" role="group" aria-labelledby="titre-confirmation-mdp">
+                  <input type="password" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" aria-label="Chiffre 1" data-coda-case required>
+                  <input type="password" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" aria-label="Chiffre 2" data-coda-case required>
+                  <input type="password" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" aria-label="Chiffre 3" data-coda-case required>
+                  <input type="password" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" aria-label="Chiffre 4" data-coda-case required>
+                </div>
+                <p class="lcdp-coda-mention">Vous avez un seul essai.</p>
+                <div class="lcdp-box-formulaire__actions">
+                  <button type="submit" id="bouton-confirmer-mdp" class="lcdp-button lcdp-button-primary">Confirmer</button>
+                </div>
+              </form>
+
 
             </div>
           </section>
