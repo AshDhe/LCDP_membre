@@ -91,6 +91,14 @@
       });
     })();
   </script>
+  <style>
+    .lcdp-transfert-coda-cases { display: flex; justify-content: center; gap: 10px; margin: 18px 0; }
+    .lcdp-transfert-coda-cases input { box-sizing: border-box; width: 48px; min-width: 0; height: 56px;
+      border: 1px solid var(--lcdp-color-border, #bac1b9); border-radius: 12px;
+      background: var(--lcdp-color-surface, #fff); color: var(--lcdp-color-text, #1f2a24);
+      font: inherit; font-size: 1.6rem; text-align: center; }
+    .lcdp-transfert-coda-cases input:focus { outline: 2px solid var(--lcdp-color-primary, #55733f); outline-offset: 3px; }
+  </style>
 </head>
 
 <body class="lcdp-page-accueil-membre">
@@ -98,24 +106,20 @@
 
     <div id="lcdp-bandeau-slot"></div>
 
-    <main class="lcdp-site-main lcdp-accueil-main">
-      <section class="lcdp-page-section lcdp-accueil-section" aria-label="Accueil membre">
-        <div class="lcdp-page-container lcdp-accueil-container">
-          <div class="lcdp-page-content lcdp-page-content--avec-entete lcdp-accueil-content">
+    <main class="lcdp-site-main">
+      <section class="lcdp-page-section">
+        <div class="lcdp-page-container">
+          <div class="lcdp-page-content lcdp-stack-large">
 
-            <header class="lcdp-page-header lcdp-accueil-header">
-              <h1 class="lcdp-sr-only">Accueil membre</h1>
+            <p class="lcdp-mention-connexion lcdp-accueil-mention">
+              [Espace membre de l'application]
+            </p>
 
-              <p class="lcdp-mention-connexion lcdp-accueil-mention">
-                [Espace membre de l'application]
-              </p>
+            <p class="lcdp-mention-connexion" id="mention-statut-membre" aria-live="polite">
+              [Chargement du statut membre]
+            </p>
 
-              <p class="lcdp-mention-connexion" id="mention-statut-membre" aria-live="polite">
-                [Chargement du statut membre]
-              </p>
-            </header>
-
-            <div id="lcdp-menu-central-slot"></div>
+            <div id="lcdp-menu-central-slot" class="lcdp-stack"></div>
 
           </div>
         </div>

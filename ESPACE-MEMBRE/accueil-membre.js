@@ -554,7 +554,19 @@
     });
   }
 
+  let lancementCleEnCours = false;
+
   async function gererValidationPresence(etat) {
+    if (lancementCleEnCours) return;
+    lancementCleEnCours = true;
+    try {
+      await lancerValidationPresence(etat);
+    } finally {
+      lancementCleEnCours = false;
+    }
+  }
+
+  async function lancerValidationPresence(etat) {
     if (!ENDPOINT_LA_CLE_DU_PARC) {
       await afficherAlerte(
         "Le service Ma clé n'est pas configuré.",
@@ -563,6 +575,7 @@
       return;
     }
 
+    preparerIdentiteNavigateurCle();
     const reponse = await fetch(ENDPOINT_LA_CLE_DU_PARC + "/access", {
       method: "GET",
       credentials: "include",
@@ -576,6 +589,11 @@
 
     if (reponse.status === 401) {
       redirigerConnexionMembre("inactive");
+      return;
+    }
+
+    if (resultat?.reason === "browser_not_owner") {
+      await proposerTransfertNavigateur();
       return;
     }
 
@@ -596,6 +614,77 @@
     }
 
     redirigerMembre("/ESPACE-MEMBRE/lacleduparc.html");
+  }
+
+  function preparerIdentiteNavigateurCle() {
+    if (!/iPhone|iPod|Android.*Mobile|Windows Phone/i.test(navigator.userAgent || "")) return;
+    const nom = "lcdp_navigateur_proprietaire";
+    const lire = () => (document.cookie.split(";").map(v => v.trim()).find(v => v.startsWith(nom + "=")) || "").slice(nom.length + 1);
+    let secret = lire();
+    if (!/^[a-f0-9]{64}$/.test(secret)) {
+      secret = Array.from(crypto.getRandomValues(new Uint8Array(32)), v => v.toString(16).padStart(2, "0")).join("");
+    }
+    const domaine = /(^|\.)lacleduparc\.fr$/i.test(window.location.hostname) ? "; Domain=.lacleduparc.fr" : "";
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = nom + "=" + secret + "; Path=/; Max-Age=34560000; SameSite=Lax" + domaine + secure;
+    if (lire() !== secret) throw new Error("Autorisez les cookies de l’application pour utiliser Ma clé.");
+  }
+
+  async function proposerTransfertNavigateur() {
+    const choix = await ouvrirDialogueBoutons({
+      titre: "Navigateur propriétaire",
+      texte: "Ce navigateur n’est pas votre navigateur propriétaire.",
+      boutons: [{ label: "Utiliser ce navigateur à la place", valeur: "transferer" }]
+    });
+    if (choix !== "transferer") return;
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    if (!slot) return;
+    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    slot.innerHTML = "";
+    slot.appendChild(fragment);
+    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
+    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
+    const fermer = slot.querySelector("[data-lcdp-dialogue-close]");
+    if (!dialogue || !titre || !texte || !actions || !fermer) throw new Error("Dialogue de transfert incomplet.");
+    titre.textContent = "Changer de navigateur propriétaire";
+    texte.textContent = "Le changement de navigateur propriétaire n’est pas encore disponible.";
+    actions.innerHTML = "";
+    const formulaire = document.createElement("form");
+    const cases = document.createElement("div");
+    cases.className = "lcdp-transfert-coda-cases";
+    const champs = Array.from({ length: 4 }, (_, i) => {
+      const champ = document.createElement("input");
+      champ.type = "password";
+      champ.inputMode = "numeric";
+      champ.autocomplete = "off";
+      champ.maxLength = 1;
+      champ.required = true;
+      champ.pattern = "[0-9]";
+      champ.setAttribute("aria-label", "Chiffre " + (i + 1) + " du CODA");
+      champ.addEventListener("input", () => {
+        champ.value = champ.value.replace(/[^0-9]/g, "").slice(-1);
+        if (champ.value && i < 3) champs[i + 1].focus();
+      });
+      champ.addEventListener("keydown", event => {
+        if (event.key === "Backspace" && !champ.value && i > 0) champs[i - 1].focus();
+      });
+      cases.appendChild(champ);
+      return champ;
+    });
+    const valider = document.createElement("button");
+    valider.type = "submit";
+    valider.className = "lcdp-button lcdp-button-primary";
+    valider.textContent = "Valider le changement";
+    // Pas de collecte inutile du CODA tant que son vérificateur n'est pas raccordé.
+    valider.disabled = true;
+    champs.forEach(champ => { champ.disabled = true; });
+    formulaire.append(cases, valider);
+    actions.appendChild(formulaire);
+    fermer.addEventListener("click", () => { slot.innerHTML = ""; }, { once: true });
+    dialogue.addEventListener("click", event => { if (event.target === dialogue) slot.innerHTML = ""; });
+    formulaire.addEventListener("submit", event => event.preventDefault());
   }
 
   function messageErreurAccesCle(resultat) {

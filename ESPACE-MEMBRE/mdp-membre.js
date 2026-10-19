@@ -117,6 +117,29 @@
       return;
     }
 
+    // Démarre à l'arrivée, avant la saisie du mot de passe (création seulement).
+    let enregistrementNavigateur = null;
+    if (mode === "create") {
+      enregistrementNavigateur = enregistrerNavigateurInitial().catch(() => false);
+    }
+
+    async function enregistrerNavigateurInitial() {
+      const navigateur = obtenirIdentiteNavigateurMobile();
+      if (!navigateur) return true; // Inscription sur ordinateur : attribution ultérieure.
+      const reponse = await fetch(endpointMdptokenz, {
+        method: "POST",
+        credentials: "omit",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "register-browser", token, navigateur })
+      });
+      const resultat = await reponse.json().catch(() => null);
+      if (!reponse.ok || resultat?.success !== true) {
+        throw new Error(resultat?.message || "L’enregistrement du navigateur est indisponible. Veuillez réessayer.");
+      }
+      return true; // Un propriétaire existant n'est jamais remplacé.
+    }
+
     if (afficherMotDePasse) {
       afficherMotDePasse.addEventListener("change", () => {
         champMotDePasse.type = afficherMotDePasse.checked ? "text" : "password";
@@ -169,6 +192,10 @@
       if (boutonConfirmer) boutonConfirmer.disabled = true;
 
       try {
+        if (mode === "create") {
+          const enregistre = await enregistrementNavigateur;
+          if (!enregistre) await enregistrerNavigateurInitial();
+        }
         const response = await fetch(endpointMdptokenz, {
           method: "POST",
           credentials: "omit",
@@ -224,6 +251,33 @@
         if (boutonConfirmer) boutonConfirmer.disabled = false;
       }
     }
+  }
+
+
+  // Identité persistante du navigateur, commune aux sous-domaines de production.
+  // L'effacement du cookie ne supprime jamais le propriétaire côté serveur.
+  function obtenirIdentiteNavigateurMobile() {
+    const ua = navigator.userAgent || "";
+    if (!/iPhone|iPod|Android.*Mobile|Windows Phone/i.test(ua)) return null;
+    const nom = "lcdp_navigateur_proprietaire";
+    const lire = () => {
+      const prefixe = nom + "=";
+      const cookie = document.cookie.split(";").map(v => v.trim()).find(v => v.startsWith(prefixe));
+      return cookie ? cookie.slice(prefixe.length) : "";
+    };
+    let identite = lire();
+    if (!/^[a-f0-9]{64}$/.test(identite)) {
+      const octets = crypto.getRandomValues(new Uint8Array(32));
+      identite = Array.from(octets, v => v.toString(16).padStart(2, "0")).join("");
+    }
+    const domaine = /(^|\.)lacleduparc\.fr$/i.test(window.location.hostname)
+      ? "; Domain=.lacleduparc.fr" : "";
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = nom + "=" + identite + "; Path=/; Max-Age=34560000; SameSite=Lax" + domaine + secure;
+    if (lire() !== identite) {
+      throw new Error("Autorisez les cookies de l’application pour enregistrer ce navigateur.");
+    }
+    return identite;
   }
 
   function appliquerSourcesObjet(racine = document) {
