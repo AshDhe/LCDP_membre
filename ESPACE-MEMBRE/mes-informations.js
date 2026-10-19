@@ -102,10 +102,9 @@
       key: "codeAAffichage",
       action: {
         id: "modifier-code-a-membre",
-        texte: "CODA — fonction à venir",
+        texte: "Modifier le CODA",
         mode: "picto",
-        pictoRouge: true,
-        enAttente: true
+        pictoRouge: true
       }
     },
     {
@@ -117,10 +116,9 @@
       key: "codeRAffichage",
       action: {
         id: "modifier-code-r-membre",
-        texte: "CODR — fonction à venir",
+        texte: "Demander la modification du CODR",
         mode: "picto",
-        pictoRouge: true,
-        enAttente: true
+        pictoRouge: true
       }
     },
     {
@@ -685,6 +683,10 @@
 
 
   function initialiserActionsModification() {
+    const boutonCodr=document.getElementById("modifier-code-r-membre");
+    if (boutonCodr) boutonCodr.addEventListener("click",demanderModificationCodr);
+    const boutonCoda = document.getElementById("modifier-code-a-membre");
+    if (boutonCoda) boutonCoda.addEventListener("click", ouvrirModificationCoda);
     const boutonAlias = document.getElementById("modifier-alias-membre");
     const boutonEmail = document.getElementById("modifier-email-membre");
     const boutonPoints = document.getElementById("voir-mes-points");
@@ -1567,6 +1569,91 @@
     return ["iban", "swift", "rib"].includes(valeur) ? valeur : "";
   }
 
+  let demandeCodrEnCours=false;
+  async function demanderModificationCodr() {
+    if (demandeCodrEnCours) return;
+    demandeCodrEnCours=true;
+    try {
+      const slot=document.getElementById("lcdp-lightbox-slot");
+      if (!slot) throw new Error("Dialogue indisponible");
+      slot.innerHTML="";
+      slot.appendChild(await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html"));
+      slot.querySelector("[data-lcdp-dialogue-title]").textContent="Modifier votre CODR";
+      slot.querySelector("[data-lcdp-dialogue-text]").textContent="Souhaitez-vous transmettre une demande de modification de votre CODR à l’administrateur de l’application ?";
+      const actions=slot.querySelector("[data-lcdp-dialogue-actions]");
+      const confirmer=await new Promise(resolve=>{
+        const fermer=valeur=>{slot.innerHTML="";resolve(valeur);};
+        for (const [texte,valeur] of [["OK",true],["Annuler",false]]) {
+          const bouton=document.createElement("button");bouton.type="button";
+          bouton.className="lcdp-button "+(valeur?"lcdp-button-primary":"lcdp-button-secondary");
+          bouton.textContent=texte;bouton.addEventListener("click",()=>fermer(valeur),{once:true});actions.appendChild(bouton);
+        }
+        slot.querySelector("[data-lcdp-dialogue-close]").addEventListener("click",()=>fermer(false),{once:true});
+      });
+      if (!confirmer) return;
+      const reponse=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/codr-admin-request",{
+        method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({})
+      });
+      const resultat=await reponse.json().catch(()=>null);
+      await afficherResultatSecurite(resultat?.message||"La transmission n’a pas pu être confirmée. Vous pouvez réessayer dans une minute.");
+    } catch { await afficherAlerte("La transmission n’a pas pu être confirmée. Vous pouvez réessayer dans une minute."); }
+    finally {demandeCodrEnCours=false;}
+  }
+
+  async function afficherResultatSecurite(message) {
+    const conteneur=document.createElement("div");
+    document.body.appendChild(conteneur);
+    try {
+      conteneur.appendChild(await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html"));
+      conteneur.querySelector("[data-lcdp-dialogue-title]").textContent="Sécurité du compte";
+      conteneur.querySelector("[data-lcdp-dialogue-text]").textContent=message;
+      const actions=conteneur.querySelector("[data-lcdp-dialogue-actions]");
+      await new Promise(resolve=>{
+        const fermer=()=>{conteneur.remove();resolve();};
+        for (const texte of ["OK","Annuler"]) {
+          const bouton=document.createElement("button");bouton.type="button";bouton.className="lcdp-button "+(texte==="OK"?"lcdp-button-primary":"lcdp-button-secondary");
+          bouton.textContent=texte;bouton.addEventListener("click",fermer,{once:true});actions.appendChild(bouton);
+        }
+        conteneur.querySelector("[data-lcdp-dialogue-close]").addEventListener("click",fermer,{once:true});
+      });
+    } catch { conteneur.remove();await afficherAlerteSuperposee(message); }
+  }
+
+  let verificationCodaEnCours = false;
+  async function ouvrirModificationCoda() {
+    if (verificationCodaEnCours) return;
+    verificationCodaEnCours = true;
+    try {
+      const reponse=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/security-status",{credentials:"include",cache:"no-store"});
+      const statut=await reponse.json().catch(()=>null);
+      if (!reponse.ok || !statut?.ok) { await afficherAlerte(statut?.message||"Reconnectez-vous à votre compte."); return; }
+      if (statut.desactive) { await afficherAlerte("L’utilisation du CODR est désactivée. Contactez l’administrateur."); return; }
+      let terminal = false;
+      await ouvrirDialogueChamp({
+        titre:"Vérification de sécurité", libelleValider:"OK",
+        message:statut.essais_restants===1 ? "Attention : il vous reste un dernier essai." : "Attention : deux essais maximum. Après deux erreurs, l’utilisation du CODR est désactivée.",
+        champs:Array.from({length:4},(_,i)=>({id:"verification-codr-"+i,name:"mot"+i,label:"CODR — mot "+(i+1),type:"password",required:true,autocomplete:"off",autocapitalize:"characters",maxlength:4})),
+        onSubmit:async data=>{
+          const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/coda-change",{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({mots:[data.mot0,data.mot1,data.mot2,data.mot3]})});
+          const resultat=await r.json().catch(()=>null);
+          if (!resultat) throw new Error("Réponse indisponible");
+          await afficherResultatSecurite(resultat.message||"La modification n’a pas pu être confirmée.");
+          terminal = r.ok && resultat.ok===true || resultat.reason==="codr_disabled";
+          if (!terminal) {
+            document.querySelectorAll('[id^="verification-codr-"]').forEach(champ=>{champ.value="";});
+            if (resultat.reason==="codr_incorrect") {
+              const note=document.querySelector("[data-lcdp-dialogue-champ-content] .lcdp-box-formulaire__note");
+              if (note) note.textContent="Attention : il vous reste un dernier essai.";
+            }
+            document.getElementById("verification-codr-0")?.focus();
+          }
+          return terminal;
+        }
+      });
+    } catch { await afficherAlerte("Le service de sécurité est momentanément indisponible."); }
+    finally { verificationCodaEnCours=false; }
+  }
+
   async function ouvrirDialogueAliasMembre() {
     const resultat = await ouvrirDialogueChamp({
       titre: "Modifier l'alias",
@@ -1834,6 +1921,14 @@
     }
 
     titre.textContent = options.titre || "";
+    const boutonValider = slot.querySelector("[data-lcdp-dialogue-champ-submit]");
+    if (options.libelleValider && boutonValider) boutonValider.textContent = options.libelleValider;
+    if (options.message) {
+      const note=document.createElement("p");
+      note.className="lcdp-box-formulaire__note";
+      note.textContent=options.message;
+      zoneContent.appendChild(note);
+    }
 
     for (const champ of options.champs || []) {
       zoneContent.appendChild(await creerChampDialogue(champ));
@@ -1853,11 +1948,13 @@
       boutonAnnuler.addEventListener("click", () => fermer(null));
 
       dialogue.addEventListener("click", (event) => {
-        if (event.target === dialogue) fermer(null);
+        if (event.target === dialogue && !soumissionEnCours) fermer(null);
       });
 
+      let soumissionEnCours = false;
       formulaire.addEventListener("submit", async (event) => {
         event.preventDefault();
+        if (soumissionEnCours) return;
 
         erreur.hidden = true;
         erreur.textContent = "";
@@ -1908,11 +2005,28 @@
         }
 
         if (champRequisManquant || messageValidation) {
-          erreur.textContent = messageValidation || "Merci de renseigner le champ demandé.";
-          erreur.hidden = false;
+          await afficherAlerteSuperposee(messageValidation || "Merci de renseigner le champ demandé.");
           return;
         }
 
+        if (typeof options.onSubmit === "function") {
+          soumissionEnCours=true;
+          if (boutonValider) boutonValider.disabled=true;
+          boutonAnnuler.disabled=true;
+          boutonFermer.disabled=true;
+          try {
+            if (!await options.onSubmit(data)) return;
+          } catch {
+            await afficherAlerteSuperposee("La réponse n’a pas pu être confirmée. Fermez ce dialogue puis vérifiez l’état avant de réessayer.");
+            fermer(null);
+            return;
+          } finally {
+            soumissionEnCours=false;
+            if (boutonValider) boutonValider.disabled=false;
+            boutonAnnuler.disabled=false;
+            boutonFermer.disabled=false;
+          }
+        }
         fermer(data);
       });
 
@@ -1965,6 +2079,8 @@
     input.type = configurationChamp.type || "text";
     input.required = configurationChamp.required === true;
     input.value = configurationChamp.value || "";
+    if (configurationChamp.autocapitalize) input.setAttribute("autocapitalize",configurationChamp.autocapitalize);
+    if (configurationChamp.maxlength) input.maxLength=configurationChamp.maxlength;
 
     if (configurationChamp.autocomplete) {
       input.autocomplete = configurationChamp.autocomplete;

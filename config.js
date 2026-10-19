@@ -180,8 +180,9 @@
   let sessionRemplaceePromise = null;
 
   memoriserRetourMembreSiNecessaire();
-  initialiserRenouvellementSessionMembre();
   initialiserVerrouillageCleActive();
+  initialiserControleAccesMembre();
+  initialiserRenouvellementSessionMembre();
 
   window.LCDP_estUrlRetourMembreValide = estUrlRetourMembreValide;
   window.LCDP_lireRetourMembre = lireRetourMembre;
@@ -224,6 +225,7 @@
       return sessionRemplaceePromise;
     }
 
+    if (await window.LCDP_verifierExclusiviteCle?.() === false) return false;
     sessionRemplaceePromise = (async () => {
       supprimerCookiePartage(COOKIE_SESSION_MEMBRE_NEXT_REFRESH);
 
@@ -332,109 +334,96 @@
   }
 
   function initialiserVerrouillageCleActive() {
-    if (!estUrlDansSiteMembre(window.location.href)) return;
-    if (estPageMembreSansSession(window.location.href)) return;
-    if (estPageMaCle(window.location.href)) return;
-    if (!WORKERS.laCleDuParc) return;
-
-    verifierVerrouillageCleActive({ masquerPage: true });
-
-    window.addEventListener("pageshow", verifierVerrouillageCleActive);
-    window.addEventListener("focus", verifierVerrouillageCleActive);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        verifierVerrouillageCleActive();
+    const fetchBrut = window.fetch.bind(window);
+    let controleEnCours = null;
+    let bloque = false;
+    let affiche = false;
+    const endpoint = String(WORKERS.laCleDuParc || "").replace(/\/+$/, "");
+    const deconnexion = WORKERS.deconnexionMembre || "https://deconnexion-membre-api.lacleduparc.fr";
+    const corpsDisponible = () => document.body ? Promise.resolve() : new Promise(r=>document.addEventListener("DOMContentLoaded",r,{once:true}));
+    async function afficher(message = "Votre compte est actuellement utilisé sur un autre appareil.") {
+      bloque = true;
+      document.documentElement.classList.remove(CLASSE_CONTROLE_CLE);
+      document.documentElement.classList.add("lcdp-compte-bloque");
+      await corpsDisponible();
+      if (affiche) {
+        document.querySelector("#lcdp-compte-bloque p").textContent=message;
+        return;
       }
-    });
-  }
-
-  function masquerPagePendantControleCle() {
-    if (!document.getElementById(ID_STYLE_CONTROLE_CLE)) {
-      const style = document.createElement("style");
-      style.id = ID_STYLE_CONTROLE_CLE;
-      style.textContent =
-        "html." + CLASSE_CONTROLE_CLE + " body{" +
-        "visibility:hidden!important;" +
-        "pointer-events:none!important;" +
-        "}";
-      document.head.appendChild(style);
+      affiche = true;
+      const lien = document.createElement("link");
+      lien.rel="stylesheet"; lien.href=buildUrl(active.publicBase,"/OBJET/CSSBASE/cssbase.css");
+      document.head.appendChild(lien);
+      const ecran=document.createElement("main"); ecran.id="lcdp-compte-bloque";
+      ecran.setAttribute("role","alertdialog");ecran.setAttribute("aria-modal","true");
+      ecran.setAttribute("aria-labelledby","lcdp-compte-bloque-message");
+      const texte=document.createElement("p");texte.id="lcdp-compte-bloque-message";texte.textContent=message;
+      const securiser=document.createElement("button");securiser.type="button";securiser.className="lcdp-button";securiser.textContent="Sécuriser mon compte";securiser.disabled=true;
+      const quitter=document.createElement("button");quitter.type="button";quitter.className="lcdp-button";quitter.textContent="Me déconnecter";
+      quitter.addEventListener("click",async()=>{
+        quitter.disabled=true;
+        try {
+          const r=await fetchBrut(deconnexion+"/deconnexion",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:"{}"});
+          const d=await r.json();
+          if(!r.ok || d.success !== true) throw new Error("Déconnexion non confirmée. Réessayez.");
+          window.location.replace(buildUrl(active.publicBase,"/"));
+        } catch(error) {texte.textContent=error.message;quitter.disabled=false;}
+      });
+      const actions=document.createElement("div");actions.className="lcdp-compte-bloque-actions";actions.append(quitter,securiser);ecran.append(texte,actions);document.body.appendChild(ecran);quitter.focus();
     }
-
+    // Ce style critique est également livré dans cssbase.css : évite le flash du contenu.
+    const style=document.createElement("style");
+    style.textContent="html.lcdp-controle-cle-en-cours body{visibility:hidden!important}html.lcdp-compte-bloque{background:#000!important}html.lcdp-compte-bloque body{background:#000!important;color:#fff!important}html.lcdp-compte-bloque body>*:not(#lcdp-compte-bloque){display:none!important}#lcdp-compte-bloque{position:fixed;inset:0;z-index:2147483647;overflow:auto;background:#000;color:#fff;padding:24px;box-sizing:border-box;display:flex;flex-direction:column}#lcdp-compte-bloque p{color:#fff!important}#lcdp-compte-bloque .lcdp-compte-bloque-actions{margin-top:auto;padding-top:24px;padding-bottom:env(safe-area-inset-bottom)}#lcdp-compte-bloque button{display:block;margin-top:16px}";
+    document.head.appendChild(style);
+    window.LCDP_afficherCompteUtilise=afficher;
+    window.LCDP_verifierExclusiviteCle = verifier;
+    async function verifier() {
+      if(controleEnCours) return controleEnCours;
+      controleEnCours=(async()=>{
+        try {
+          const r=await fetchBrut(endpoint+"/lock-status",{credentials:"include",cache:"no-store",headers:{Accept:"application/json"}});
+          const d=await r.json();
+          if(d.reason === "key_in_use") {await afficher();return false;}
+          if(!r.ok && r.status !== 401 && r.status !== 403) throw new Error("Contrôle indisponible");
+          if(bloque && r.ok) {window.location.reload();return false;}
+          if(d.holder === true && !estPageMaCle(window.location.href) &&
+             !(d.returnHomeAllowed === true && new URL(window.location.href).pathname === "/ESPACE-MEMBRE/accueil-membre.html")) {
+            window.location.replace(buildUrl(active.membreBase,"/ESPACE-MEMBRE/lacleduparc.html"));return false;
+          }
+          return !bloque;
+        } catch {
+          await afficher("La vérification de votre compte est momentanément indisponible.");
+          return false;
+        } finally {document.documentElement.classList.remove(CLASSE_CONTROLE_CLE);controleEnCours=null;}
+      })();
+      return controleEnCours;
+    }
+    // Les API doivent aussi effectuer leur propre contrôle serveur, indépendamment du navigateur.
+    window.fetch=async function(input,init) {
+      const url=new URL(typeof input==="string"?input:input.url,window.location.href);
+      const horsControle=url.origin===new URL(endpoint).origin && ["/lock-status","/ouvrir"].includes(url.pathname);
+      const sortie=url.origin===new URL(deconnexion).origin;
+      if(url.hostname.endsWith("-api.lacleduparc.fr") && !horsControle && !sortie) {
+        if(!await verifier()) return new Response(JSON.stringify({success:false,reason:"key_in_use",message:"Votre compte est actuellement utilisé sur un autre appareil."}),{status:423,headers:{"Content-Type":"application/json"}});
+      }
+      const r=await fetchBrut(input,init);
+      if(r.status===423) {
+        const d=await r.clone().json().catch(()=>null);
+        if(d?.reason==="key_in_use") await afficher();
+      }
+      return r;
+    };
+    if(!endpoint) return;
     document.documentElement.classList.add(CLASSE_CONTROLE_CLE);
+    verifier();
+    window.setInterval(()=>{if(document.visibilityState==="visible") verifier();},3000);
+    window.addEventListener("focus",verifier);
+    window.addEventListener("pageshow",verifier);
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")verifier();});
   }
 
-  function libererPageApresControleCle() {
-    document.documentElement.classList.remove(CLASSE_CONTROLE_CLE);
-  }
-
-  async function verifierVerrouillageCleActive(options = {}) {
-    if (verificationVerrouillageClePromise) {
-      return verificationVerrouillageClePromise;
-    }
-
-    // Masquer seulement au controle initial, pas a chaque retour de focus.
-    // Les controles serveur et leurs redirections restent executes.
-    if (options.masquerPage === true) {
-      masquerPagePendantControleCle();
-    }
-
-    verificationVerrouillageClePromise = (async () => {
-      let conserverMasquage = false;
-
-      try {
-        const reponse = await window.fetch(
-          nettoyerBaseUrl(WORKERS.laCleDuParc) + "/status",
-          {
-            method: "GET",
-            credentials: "include",
-            cache: "no-store",
-            headers: { Accept: "application/json" }
-          }
-        );
-
-        const statut = await reponse.json().catch(() => null);
-
-        if (reponse.status === 401) {
-          if (String(statut?.reason || "") === "session_replaced") {
-            libererPageApresControleCle();
-            await gererSessionRemplacee();
-            return;
-          }
-
-          conserverMasquage = true;
-          window.LCDP_redirigerConnexionMembre?.("ma-cle", "inactive");
-          return;
-        }
-
-        if (!reponse.ok) return;
-
-        if (
-          statut?.success === true &&
-          (statut.screen === "active" || statut.checkinActive === true)
-        ) {
-          const destination = buildUrl(
-            active.membreBase,
-            "/ESPACE-MEMBRE/lacleduparc.html"
-          );
-
-          if (window.location.href !== destination) {
-            conserverMasquage = true;
-            window.location.replace(destination);
-          }
-        }
-      } catch (error) {
-        console.error("Verrouillage Ma clé :", error);
-      } finally {
-        if (!conserverMasquage) {
-          libererPageApresControleCle();
-        }
-
-        verificationVerrouillageClePromise = null;
-      }
-    })();
-
-    return verificationVerrouillageClePromise;
-  }
+  function masquerPagePendantControleCle() {}
+  function libererPageApresControleCle() {document.documentElement.classList.remove(CLASSE_CONTROLE_CLE);}
 
   function estPageMaCle(value) {
     try {
@@ -461,6 +450,32 @@
     );
   }
 
+  function initialiserControleAccesMembre() {
+    if (!estUrlDansSiteMembre(window.location.href) || estPageMembreSansSession(window.location.href)) return;
+    const fetchControle = window.fetch.bind(window);
+    let enCours = false;
+    const verifier = async () => {
+      if (enCours) return;
+      enCours = true;
+      try {
+        if (await window.LCDP_verifierExclusiviteCle?.() === false) return;
+        const reponse = await fetchControle(nettoyerBaseUrl(WORKERS.userRouteur), {
+          method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({compte:"membre"})
+        });
+        const data = await reponse.json().catch(()=>null);
+        if (!reponse.ok || !data?.success) {
+          window.location.replace(buildUrl(active.publicBase,"/ESPACE-PUBLIC/hello.html"));
+        } else if (!data.connected) {
+          const destination = data.reason === "security_setup_required" ? buildUrl(active.publicBase,"/ESPACE-PUBLIC/hello.html") : buildUrl(active.publicBase,"/ESPACE-PUBLIC/connexion-membre.html");
+          window.location.replace(destination);
+        }
+      } catch { window.location.replace(buildUrl(active.publicBase,"/ESPACE-PUBLIC/hello.html")); }
+      finally { enCours=false; }
+    };
+    verifier();
+    window.addEventListener("pageshow",event=>{if(event.persisted)verifier();});
+  }
+
   function initialiserRenouvellementSessionMembre() {
     if (!estUrlDansSiteMembre(window.location.href)) return;
     if (estPageMembreSansSession(window.location.href)) return;
@@ -471,6 +486,7 @@
     let dernierSignalActivite = 0;
 
     async function verifierSiNecessaire(options = {}) {
+      if (await window.LCDP_verifierExclusiviteCle?.() === false) return false;
       const maintenant = Date.now();
       const verificationAvantFetch = options && options.avantFetch === true;
 

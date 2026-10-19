@@ -38,6 +38,10 @@
   let depassementPresenceA = 0;
   let modeSaisie = "checkin";
   let bluetoothActif = null;
+  let exclusiviteCle = false;
+  let controleAccesEtat = null;
+  let controleAccesTimer = null;
+  let controleAccesEnCours = false;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -58,33 +62,28 @@
     }
 
     try {
-      const statut = await appelerApi("/status", { method: "GET" });
-      bluetoothActif = statut?.bluetooth || null;
-      masquerAttenteInitiale();
-
-      if (statut.allowed !== true) {
-        await initialiserGabaritMembre();
-        await afficherAlerte(messageErreurAccesCle(statut));
-        redirigerAccueil();
-        return;
+      try {
+        await appelerApi("/ouvrir", {method:"POST",body:{}});
+      } catch (error) {
+        if (error.reason !== "browser_not_owner") throw error;
+        masquerAttenteInitiale();
+        const coda = await ouvrirDialogueChamp({titre:"MA CLÉ",description:"Votre navigateur n’est pas reconnu. Authentifiez-vous.",longueur:4,mention:"Vous n’avez droit qu’à une seule tentative.",secret:true});
+        if (coda === null) { redirigerAccueil(); return; }
+        await appelerApi("/ouvrir", {method:"POST",body:{coda}});
       }
-
-      if (statut.screen === "active" || statut.checkinActive === true) {
-        afficherEcranActif(
-          statut.brightaAvailableAt || statut.brightaDisponibleA || "",
-          statut.overstayAt || "",
-          statut.presenceState || "active",
-          statut.lockExpiresAt || ""
-        );
-        return;
-      }
-
+      exclusiviteCle = true;
+      verrouillerNavigation();
+      if(boutonAnnuler) {boutonAnnuler.hidden=true;boutonAnnuler.style.display="none";}
       await initialiserGabaritMembre();
-      afficherEcranCheckin();
+      await chargerControleAcces();
+      masquerAttenteInitiale();
+      controleAccesTimer=window.setInterval(()=>{
+        if(document.visibilityState==="visible" && ["guest_pending","guest_waiting_control"].includes(controleAccesEtat?.screen)) chargerControleAcces().catch(console.error);
+      },5000);
     } catch (error) {
       masquerAttenteInitiale();
 
-      if (error?.sessionRemplaceeTraitee === true) return;
+      if (error?.reason === "key_in_use" || error?.sessionRemplaceeTraitee === true) return;
 
       console.error("Erreur initialisation Ma clé :", error);
 
@@ -482,7 +481,7 @@
     document.body.classList.add("is-cle-active");
     document.body.classList.remove("is-cle-checkout");
     definirEtatPresence(overstayAt, presenceState);
-    definirExpirationVerrouillage(lockExpiresAt);
+    // Aucun délai de sortie du verrou n’est défini à ce stade.
     definirDisponibiliteBrighta(disponibiliteBrighta);
     verrouillerNavigation();
     afficherWorkflowCle();
@@ -500,40 +499,6 @@
         actualiserEtatPresence(false);
       }, depassementPresenceA - Date.now() + 50);
     }
-  }
-
-  function definirExpirationVerrouillage(lockExpiresAt) {
-    if (timeoutExpirationVerrouillage) {
-      window.clearTimeout(timeoutExpirationVerrouillage);
-      timeoutExpirationVerrouillage = null;
-    }
-
-    const date = new Date(lockExpiresAt || 0);
-    const expiration = Number.isNaN(date.getTime()) ? 0 : date.getTime();
-
-    if (!expiration) return;
-
-    const delai = expiration - Date.now();
-
-    if (delai <= 0) {
-      terminerVerrouillageExpire();
-      return;
-    }
-
-    timeoutExpirationVerrouillage = window.setTimeout(
-      terminerVerrouillageExpire,
-      delai + 50
-    );
-  }
-
-  function terminerVerrouillageExpire() {
-    if (!cleActive) return;
-
-    cleActive = false;
-    document.body.classList.remove("is-cle-active", "is-cle-overstay", "is-cle-checkout");
-    arreterTransitionPresence();
-    deverrouillerNavigation();
-    redirigerAccueil();
   }
 
   function actualiserEtatPresence(forcerDepassement) {
@@ -602,16 +567,17 @@
   }
 
   function deverrouillerNavigation() {
+    if (exclusiviteCle) {verrouillerNavigation();return;}
     navigationVerrouillee = false;
   }
 
   function gererRetourNavigateur() {
-    if (!cleActive || !navigationVerrouillee) return;
+    if (!exclusiviteCle || !navigationVerrouillee) return;
     window.history.pushState({ lcdpCleActive: true }, "", window.location.href);
   }
 
   function gererFermeturePage(event) {
-    if (!cleActive) return;
+    if (!exclusiviteCle) return;
     event.preventDefault();
     event.returnValue = "";
   }
@@ -685,7 +651,26 @@
     titre.textContent = options.titre || "Saisie";
     boutonSoumettre.textContent = options.boutonValider || "Valider";
     contenu.innerHTML = "";
+    const saisieQuatreCases = options.secret === true;
+    boutonAnnuler.hidden = saisieQuatreCases;
+    boutonFermer.hidden = saisieQuatreCases;
+    if (saisieQuatreCases) {
+      boutonAnnuler.style.display = "none";
+      boutonFermer.style.display = "none";
+    }
+    if (options.description) {
+      const description=document.createElement("p");
+      description.className="lcdp-cle-dialogue-description";
+      description.textContent=options.description;
+      contenu.appendChild(description);
+    }
 
+    if (options.mention) {
+      const mention=document.createElement("p");
+      mention.className="lcdp-cle-dialogue-note";
+      mention.textContent=options.mention;
+      contenu.appendChild(mention);
+    }
     if (options.codeAffiche) {
       const note = document.createElement("p");
       note.className = "lcdp-cle-dialogue-note";
@@ -708,7 +693,7 @@
 
     const input = document.createElement("input");
     input.className = "lcdp-box-dialogue-champ__input";
-    input.type = "text";
+    input.type = options.secret ? "password" : "text";
     input.inputMode = "numeric";
     input.autocomplete = "one-time-code";
     input.maxLength = Number(options.longueur || 4);
@@ -722,9 +707,44 @@
       erreur.textContent = "";
     });
 
-    champ.appendChild(libelle);
-    champ.appendChild(input);
-    contenu.appendChild(champ);
+    const casesCode = [];
+    if (saisieQuatreCases) {
+      const groupe=document.createElement("div");
+      groupe.className="lcdp-cle-code-quatre-cases";
+      groupe.setAttribute("role","group");
+      groupe.setAttribute("aria-label","Saisie du code à quatre chiffres");
+      for(let i=0;i<4;i++) {
+        const caseCode=document.createElement("input");
+        caseCode.type="password";caseCode.inputMode="numeric";caseCode.maxLength=1;
+        caseCode.autocomplete="off";caseCode.pattern="[0-9]";
+        caseCode.setAttribute("aria-label","Chiffre "+String(i+1)+" sur 4");
+        caseCode.addEventListener("input",()=>{
+          caseCode.value=caseCode.value.replace(/\D/g,"").slice(-1);
+          erreur.hidden=true;erreur.textContent="";
+          if(caseCode.value && i<3) casesCode[i+1].focus();
+        });
+        caseCode.addEventListener("keydown",event=>{
+          if(event.key==="Backspace" && !caseCode.value && i>0) casesCode[i-1].focus();
+          if(event.key==="ArrowLeft" && i>0) casesCode[i-1].focus();
+          if(event.key==="ArrowRight" && i<3) casesCode[i+1].focus();
+        });
+        caseCode.addEventListener("paste",event=>{
+          const texte=event.clipboardData?.getData("text") || "";
+          const chiffres=texte.replace(/\D/g,"").slice(0,4-i);
+          if(!chiffres) return;
+          event.preventDefault();
+          Array.from(chiffres).forEach((chiffre,j)=>{casesCode[i+j].value=chiffre;});
+          erreur.hidden=true;erreur.textContent="";
+          casesCode[Math.min(3,i+chiffres.length)].focus();
+        });
+        casesCode.push(caseCode);groupe.appendChild(caseCode);
+      }
+      contenu.appendChild(groupe);
+    } else {
+      champ.appendChild(libelle);
+      champ.appendChild(input);
+      contenu.appendChild(champ);
+    }
 
     return new Promise((resolve) => {
       let resolu = false;
@@ -738,12 +758,12 @@
 
       formulaire.addEventListener("submit", (event) => {
         event.preventDefault();
-        const valeur = input.value.replace(/\D/g, "");
+        const valeur = saisieQuatreCases ? casesCode.map(c=>c.value).join("") : input.value.replace(/\D/g, "");
 
         if (valeur.length !== input.maxLength) {
           erreur.textContent = "Saisissez exactement " + String(input.maxLength) + " chiffres.";
           erreur.hidden = false;
-          input.focus();
+          (casesCode.find(c=>!c.value) || input).focus();
           return;
         }
 
@@ -765,8 +785,9 @@
       );
 
       window.setTimeout(() => {
-        input.focus();
-        input.select();
+        const premierChamp=casesCode[0] || input;
+        premierChamp.focus();
+        premierChamp.select();
       }, 0);
     });
   }
@@ -1016,6 +1037,10 @@
     const reponse = await fetch(ENDPOINT_LA_CLE_DU_PARC + chemin, configuration);
     const resultat = await reponse.json().catch(() => null);
 
+    if (resultat?.reason === "key_in_use") {
+      window.LCDP_afficherCompteUtilise?.();
+      throw creerErreurApi(resultat,"Compte utilisé sur un autre appareil.",423);
+    }
     if (reponse.status === 401) {
       if (
         String(resultat?.reason || "") === "session_replaced" &&
@@ -1048,6 +1073,7 @@
     );
     erreur.reason = String(resultat?.reason || "");
     erreur.status = Number(status || resultat?.status || 0);
+    erreur.resultat = resultat;
     return erreur;
   }
 
@@ -1244,7 +1270,58 @@
     return texte + ".";
   }
 
+  async function chargerControleAcces() {
+    if(controleAccesEnCours) return;
+    controleAccesEnCours=true;
+    try {
+      const etat=await appelerApi("/control-access",{method:"GET"});
+      if(etat.screen==="active" && etat.role==="abonne") {
+        const statut=await appelerApi("/status",{method:"GET"});
+        controleAccesEtat=etat;
+        document.querySelector("[data-lcdp-control-access]").hidden=true;
+        bluetoothActif=statut.bluetooth || null;
+        afficherEcranActif(statut.brightaAvailableAt || "",statut.overstayAt || "",statut.presenceState || "active",null);
+      } else afficherControleAcces(etat);
+    } finally {controleAccesEnCours=false;}
+  }
+  function afficherControleAcces(etat) {
+    controleAccesEtat=etat;
+    const root=document.querySelector("[data-lcdp-control-access]");
+    if(!root || !window.LCDP_ControleAccesUI) throw new Error("Écran du contrôle d’accès indisponible.");
+    workflowCle.hidden=true;root.hidden=false;
+    window.LCDP_ControleAccesUI.render(root,etat,{
+      onCode:async code=>{
+        try {
+          const suite=await appelerApi("/control-access-code",{method:"POST",body:{coda:code}});
+          afficherControleAcces(suite);
+        } catch(error) {
+          if(error.reason==="access_code_incorrect") {
+            afficherControleAcces({...controleAccesEtat,screen:"access_code",attemptsRemaining:error.resultat.attemptsRemaining});return;
+          }
+          if(error.reason==="access_blocked") {
+            afficherControleAcces({...controleAccesEtat,screen:"denied",attemptsRemaining:0,blockedUntil:error.resultat.blockedUntil});return;
+          }
+          // Une réponse perdue ne remet jamais les tentatives à zéro côté navigateur.
+          try {await chargerControleAcces();} catch {}
+          throw error;
+        }
+      },
+      onHome:()=>{
+        if(controleAccesEtat?.screen!=="denied") return;
+        window.clearInterval(controleAccesTimer);
+        // Exception validée : accueil après refus, sans aucune libération du verrou.
+        window.location.href=PAGE_ACCUEIL_MEMBRE;
+      }
+    });
+  }
+
   function redirigerAccueil() {
+    if(exclusiviteCle) {
+      // Ni une annulation, ni un refus ultérieur, ni un checkout ne libèrent
+      // le verrou : les règles de sortie seront définies séparément.
+      if(!controleAccesEtat) afficherControleAcces({screen:"unavailable"});
+      return;
+    }
     window.location.href = PAGE_ACCUEIL_MEMBRE;
   }
 
