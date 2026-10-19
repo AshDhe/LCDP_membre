@@ -633,7 +633,7 @@
   async function proposerTransfertNavigateur() {
     const choix = await ouvrirDialogueBoutons({
       titre: "Navigateur propriétaire",
-      texte: "Ce navigateur n’est pas votre navigateur propriétaire.",
+      texte: "Ce navigateur n’est pas votre navigateur propriétaire. Le changement retirera l’autorisation de Ma clé à l’ancien navigateur.",
       boutons: [{ label: "Utiliser ce navigateur à la place", valeur: "transferer" }]
     });
     if (choix !== "transferer") return;
@@ -649,7 +649,7 @@
     const fermer = slot.querySelector("[data-lcdp-dialogue-close]");
     if (!dialogue || !titre || !texte || !actions || !fermer) throw new Error("Dialogue de transfert incomplet.");
     titre.textContent = "Changer de navigateur propriétaire";
-    texte.textContent = "Le changement de navigateur propriétaire n’est pas encore disponible.";
+    texte.textContent = "Saisissez votre code d’accès (CODA) pour autoriser le changement. Vous disposez d’un essai ; une erreur impose un délai de 30 minutes.";
     actions.innerHTML = "";
     const formulaire = document.createElement("form");
     const cases = document.createElement("div");
@@ -677,14 +677,36 @@
     valider.type = "submit";
     valider.className = "lcdp-button lcdp-button-primary";
     valider.textContent = "Valider le changement";
-    // Pas de collecte inutile du CODA tant que son vérificateur n'est pas raccordé.
-    valider.disabled = true;
-    champs.forEach(champ => { champ.disabled = true; });
     formulaire.append(cases, valider);
     actions.appendChild(formulaire);
     fermer.addEventListener("click", () => { slot.innerHTML = ""; }, { once: true });
     dialogue.addEventListener("click", event => { if (event.target === dialogue) slot.innerHTML = ""; });
-    formulaire.addEventListener("submit", event => event.preventDefault());
+    let envoiTransfert = false;
+    formulaire.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (envoiTransfert) return;
+      const coda = champs.map(champ => champ.value).join("");
+      if (!/^[0-9]{4}$/.test(coda)) return;
+      envoiTransfert = true;
+      valider.disabled = true;
+      champs.forEach(champ => { champ.value = ""; champ.disabled = true; });
+      try {
+        const reponse = await fetch(ENDPOINT_LA_CLE_DU_PARC + "/browser-transfer", {
+          method: "POST", credentials: "include", cache: "no-store",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ coda })
+        });
+        const resultat = await reponse.json().catch(() => null);
+        slot.innerHTML = "";
+        if (reponse.status === 401) { redirigerConnexionMembre("inactive"); return; }
+        await afficherAlerte(resultat?.message || "La réponse n’a pas pu être confirmée. Réessayez plus tard.");
+        if (reponse.ok && resultat?.success === true) await gererValidationPresence(etatMembre);
+      } catch {
+        slot.innerHTML = "";
+        await afficherAlerte("La réponse n’a pas pu être confirmée. Réessayez plus tard.");
+      }
+    });
+    champs[0].focus();
   }
 
   function messageErreurAccesCle(resultat) {

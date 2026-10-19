@@ -94,6 +94,36 @@
       }
     },
     {
+      section: "Sécurité du compte",
+      id: "champ-code-a-membre",
+      name: "codeAAffichage",
+      label: "CODA",
+      type: "text",
+      key: "codeAAffichage",
+      action: {
+        id: "modifier-code-a-membre",
+        texte: "CODA — fonction à venir",
+        mode: "picto",
+        pictoRouge: true,
+        enAttente: true
+      }
+    },
+    {
+      section: "Sécurité du compte",
+      id: "champ-code-r-membre",
+      name: "codeRAffichage",
+      label: "CODR",
+      type: "text",
+      key: "codeRAffichage",
+      action: {
+        id: "modifier-code-r-membre",
+        texte: "CODR — fonction à venir",
+        mode: "picto",
+        pictoRouge: true,
+        enAttente: true
+      }
+    },
+    {
       section: "Participation au club",
       id: "champ-membre-depuis",
       name: "membreDepuisAffichage",
@@ -613,6 +643,10 @@
 
     bouton.setAttribute("aria-label", action.texte || "Modifier l'alias");
     bouton.title = action.texte || "Modifier l'alias";
+    if (action.enAttente === true) {
+      bouton.disabled = true;
+      bouton.setAttribute("aria-disabled", "true");
+    }
     bouton.innerHTML = `
       <svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
         <path d="M4 16.8V20h3.2L17.9 9.3l-3.2-3.2L4 16.8Z"></path>
@@ -1206,6 +1240,8 @@
 
     const compteAffiche = {
       ...compteMembreActuel,
+      codeAAffichage: "CODA",
+      codeRAffichage: "CODR",
       alias: formaterAliasAffichage(compteMembreActuel.alias),
       membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
       parrainAffichage: formaterParrainAffichage(compteMembreActuel.parrain),
