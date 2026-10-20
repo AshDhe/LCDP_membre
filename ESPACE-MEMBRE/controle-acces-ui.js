@@ -7,7 +7,7 @@
     root.replaceChildren();root.className="lcdp-acces";root.dataset.screen=etat.screen;
     const titre=element("h1","lcdp-acces-titre",etat.action==="checkout"?"CONTRÔLE DE SORTIE":etat.screen==="presence"?"CONTRÔLE DE PRÉSENCE":"CONTRÔLE D’ACCÈS");root.appendChild(titre);
     if(etat.screen==="expired"){
-      root.appendChild(element("p","lcdp-acces-message","Votre réservation est terminée. Effectuez votre check-out."));
+      root.appendChild(element("p","lcdp-acces-message",etat.message || "Votre réservation est terminée. Effectuez votre check-out."));
       root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));return;
     }
     if(etat.screen==="checkout_done" || etat.screen==="key_closed"){
@@ -20,25 +20,26 @@
       const attente=element("div","lcdp-acces-spinner");attente.setAttribute("aria-hidden","true");root.appendChild(attente);
       const message=element("p","lcdp-acces-message",etat.screen==="uploading"?"Envoi de la vidéo…":"Analyse en cours…");message.setAttribute("role","status");root.appendChild(message);return;
     }
-    if(etat.screen==="access_confirmed" || etat.screen==="guest_list" || etat.screen==="confirmation_done"){
-      root.appendChild(element("p","lcdp-acces-message","Contrôle d’accès validé."));
-      if(etat.screen!=="guest_list" && etat.presence?.image)ajouterImagePresence(root,etat.presence);
+    if(etat.screen==="access_confirmed" || etat.screen==="exit_confirmed" || etat.screen==="guest_list" || etat.screen==="confirmation_done"){
+      const sortie=etat.action==="checkout";
+      root.appendChild(element("p","lcdp-acces-message",sortie?"Contrôle de sortie validé.":"Contrôle d’accès validé."));
+      if(!sortie && etat.screen!=="guest_list" && etat.presence?.image)ajouterImagePresence(root,etat.presence);
       if(etat.screen==="guest_list"){
         const form=element("form","lcdp-acces-invites-form");
         const liste=element("ul","lcdp-acces-instructions");
         (etat.guests || []).forEach(g=>{
-          const item=element("li"),label=element("label"),casePresence=element("input");casePresence.type="checkbox";casePresence.value=g.id;casePresence.name="guest";casePresence.checked=g.present===true;casePresence.disabled=g.present===true;
-          label.append(casePresence,document.createTextNode(" "+g.name+(g.present?" — présence déjà confirmée":"")));item.appendChild(label);liste.appendChild(item);
+          const item=element("li"),label=element("label"),casePresence=element("input");casePresence.type="checkbox";casePresence.value=g.id;casePresence.name="guest";const deja=sortie?g.exited===true:g.present===true;casePresence.checked=deja;casePresence.disabled=deja;
+          label.append(casePresence,document.createTextNode(" "+g.name+(deja?(sortie?" — sortie déjà confirmée":" — présence déjà confirmée"):"")));item.appendChild(label);liste.appendChild(item);
         });
         const valider=bouton("Valider");valider.type="submit";
         const defilement=element("div","lcdp-acces-invites-liste");defilement.setAttribute("role","region");defilement.setAttribute("aria-label","Liste des invités");defilement.tabIndex=0;defilement.appendChild(liste);
-        form.append(defilement,valider);form.addEventListener("submit",async event=>{event.preventDefault();if(valider.disabled)return;valider.disabled=true;try{await actions.onGuestConfirm?.(Array.from(form.querySelectorAll('input[name="guest"]:checked')).map(i=>i.value));}catch(e){valider.disabled=false;const erreur=element("p","lcdp-acces-erreur",e.message);erreur.setAttribute("role","alert");form.appendChild(erreur);}});
+        form.append(defilement,valider);form.addEventListener("submit",async event=>{event.preventDefault();if(valider.disabled)return;valider.disabled=true;try{await actions.onGuestConfirm?.(Array.from(form.querySelectorAll('input[name="guest"]:checked:not(:disabled)')).map(i=>i.value));}catch(e){valider.disabled=false;const erreur=element("p","lcdp-acces-erreur",e.message);erreur.setAttribute("role","alert");form.appendChild(erreur);}});
         root.append(form,bouton("Retour",()=>actions.onBack?.()));return;
       }
       if(etat.screen==="confirmation_done")return;
-      if(etat.guests?.length){root.appendChild(element("p","lcdp-acces-message","Confirmez des invités."));const ouvrirInvites=element("button","lcdp-acces-camera");ouvrirInvites.type="button";ouvrirInvites.setAttribute("aria-label","Valider mes invités");ouvrirInvites.addEventListener("click",()=>actions.onGuests?.());
+      if(etat.guests?.length){root.appendChild(element("p","lcdp-acces-message",sortie?"Cochez les invités qui sortent avec vous.":"Confirmez des invités."));const ouvrirInvites=element("button","lcdp-acces-camera");ouvrirInvites.type="button";ouvrirInvites.setAttribute("aria-label","Valider mes invités");ouvrirInvites.addEventListener("click",()=>actions.onGuests?.());
       const imageInvites=element("img","lcdp-acces-camera-image");imageInvites.alt="";imageInvites.setAttribute("aria-hidden","true");imageInvites.src=typeof global.LCDP_urlObjet==="function"?global.LCDP_urlObjet("/IMAG/BOUTON/controle-invites.webp"):String(global.SITE_CONFIG?.objetBaseUrl || "/OBJET").replace(/\/+$/,"")+"/IMAG/BOUTON/controle-invites.webp";ouvrirInvites.appendChild(imageInvites);root.appendChild(ouvrirInvites);}
-      else root.appendChild(bouton("OK",()=>actions.onConfirmed?.()));
+      else root.appendChild(bouton("OK",()=>sortie?actions.onGuestConfirm?.([]):actions.onConfirmed?.()));
       if(etat.checkoutEnabled)root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));
       return;
     }
@@ -50,9 +51,18 @@
     if(etat.reservation){
       const resa=element("section","lcdp-acces-reservation");resa.setAttribute("aria-label",etat.role==="invite"?"Votre invitation":"Votre réservation");
       resa.appendChild(element("h2","lcdp-acces-parc",etat.reservation.parkName));
-      const date=new Date(etat.reservation.startsAt);
-      const heure=Number.isNaN(date.getTime())?"Heure indisponible":new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",hour:"2-digit",minute:"2-digit"}).format(date);
-      resa.appendChild(element("p","lcdp-acces-heure",heure));
+      const debut=new Date(etat.reservation.startsAt || NaN),fin=new Date(etat.reservation.endsAt || etat.endAt || NaN);
+      const formatHeure=date=>{
+        if(Number.isNaN(date.getTime()))return null;
+        const parties=new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(date);
+        const h=parties.find(p=>p.type==="hour").value,m=parties.find(p=>p.type==="minute").value;
+        return Number(h)+" h"+(m==="00"?"":" "+m);
+      };
+      const hDebut=formatHeure(debut),hFin=formatHeure(fin);
+      const jour=new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",day:"numeric",month:"long",year:"numeric"});
+      const autreJour=hDebut && hFin && jour.format(debut)!==jour.format(fin);
+      const horaires=(hDebut || "Début indisponible")+" – "+(hFin || "Fin non renseignée")+(autreJour?" ("+jour.format(fin)+")":"");
+      resa.appendChild(element("p","lcdp-acces-heure",horaires));
       const n=etat.reservation.guestCount;
       resa.appendChild(element("p","lcdp-acces-invites",Number.isInteger(n)?n+" invité"+(n===1?"":"s"):"Nombre d’invités indisponible"));root.appendChild(resa);
     }
