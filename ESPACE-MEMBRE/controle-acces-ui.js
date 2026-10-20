@@ -31,11 +31,13 @@
           label.append(casePresence,document.createTextNode(" "+g.name+(g.present?" — présence déjà confirmée":"")));item.appendChild(label);liste.appendChild(item);
         });
         const valider=bouton("Valider");valider.type="submit";
-        form.append(liste,valider);form.addEventListener("submit",async event=>{event.preventDefault();if(valider.disabled)return;valider.disabled=true;try{await actions.onGuestConfirm?.(Array.from(form.querySelectorAll('input[name="guest"]:checked')).map(i=>i.value));}catch(e){valider.disabled=false;const erreur=element("p","lcdp-acces-erreur",e.message);erreur.setAttribute("role","alert");form.appendChild(erreur);}});
+        const defilement=element("div","lcdp-acces-invites-liste");defilement.setAttribute("role","region");defilement.setAttribute("aria-label","Liste des invités");defilement.tabIndex=0;defilement.appendChild(liste);
+        form.append(defilement,valider);form.addEventListener("submit",async event=>{event.preventDefault();if(valider.disabled)return;valider.disabled=true;try{await actions.onGuestConfirm?.(Array.from(form.querySelectorAll('input[name="guest"]:checked')).map(i=>i.value));}catch(e){valider.disabled=false;const erreur=element("p","lcdp-acces-erreur",e.message);erreur.setAttribute("role","alert");form.appendChild(erreur);}});
         root.append(form,bouton("Retour",()=>actions.onBack?.()));return;
       }
       if(etat.screen==="confirmation_done")return;
-      if(etat.guests?.length){root.appendChild(element("p","lcdp-acces-message","Confirmez des invités."));root.appendChild(bouton("Liste",()=>actions.onGuests?.()));}
+      if(etat.guests?.length){root.appendChild(element("p","lcdp-acces-message","Confirmez des invités."));const ouvrirInvites=element("button","lcdp-acces-camera");ouvrirInvites.type="button";ouvrirInvites.setAttribute("aria-label","Valider mes invités");ouvrirInvites.addEventListener("click",()=>actions.onGuests?.());
+      const imageInvites=element("img","lcdp-acces-camera-image");imageInvites.alt="";imageInvites.setAttribute("aria-hidden","true");imageInvites.src=typeof global.LCDP_urlObjet==="function"?global.LCDP_urlObjet("/IMAG/BOUTON/controle-invites.webp"):String(global.SITE_CONFIG?.objetBaseUrl || "/OBJET").replace(/\/+$/,"")+"/IMAG/BOUTON/controle-invites.webp";ouvrirInvites.appendChild(imageInvites);root.appendChild(ouvrirInvites);}
       else root.appendChild(bouton("OK",()=>actions.onConfirmed?.()));
       if(etat.checkoutEnabled)root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));
       return;
@@ -104,6 +106,7 @@
     root.appendChild(image);
   }
   async function filmer(root,options) {
+    if(options.boxSeconds!==4 || ![0,6].includes(options.selfieSeconds) || (options.selfieSeconds===6 && options.braceletAtSeconds!==3))throw Error("Paramètres de capture invalides. Rechargez Ma clé.");
     if(!navigator.mediaDevices?.getUserMedia || !global.MediaRecorder)throw Error("Ce navigateur ne permet pas l’enregistrement vidéo. Utilisez un navigateur compatible en HTTPS.");
     const canvas=document.createElement("canvas");canvas.width=720;canvas.height=960;
     if(typeof canvas.captureStream!=="function")throw Error("L’enregistrement avec changement de caméra n’est pas disponible sur ce navigateur.");
@@ -112,7 +115,7 @@
     const titre=element("h1","lcdp-acces-titre",options.action==="checkout"?"CONTRÔLE DE SORTIE":"CONTRÔLE D’ACCÈS");
     const instruction=element("p","lcdp-acces-message","Ouverture de la caméra…");instruction.setAttribute("role","status");
     const video=element("video","lcdp-acces-video");video.autoplay=true;video.muted=true;video.playsInline=true;video.setAttribute("playsinline","");
-    const compte=element("p","lcdp-acces-message");
+    const compte=element("p","lcdp-acces-message");compte.setAttribute("role","timer");
     const switcher=bouton("Passer en mode selfie");switcher.hidden=true;
     root.append(titre,instruction,video,compte,switcher);
     let stream=null,sortie=null,recorder=null,raf=null,closed=false,cameraPrete=false,abortError=null,taille=0;
@@ -140,7 +143,7 @@
     }
     async function minuter(secondes,bracelet=false){
       const debut=performance.now();
-      while(performance.now()-debut<secondes*1000){verifier();const ecoule=(performance.now()-debut)/1000;compte.textContent=Math.max(1,Math.ceil(secondes-ecoule))+" s";if(bracelet && ecoule>=options.braceletAtSeconds)instruction.textContent="Mettez le bracelet devant votre visage.";await attente(100);}
+      while(performance.now()-debut<secondes*1000){verifier();const ecoule=(performance.now()-debut)/1000;compte.textContent=(bracelet?"Séquence 2/2 — ":"Séquence 1/"+(options.selfieSeconds>0?2:1)+" — ")+Math.max(1,Math.ceil(secondes-ecoule))+" s";if(bracelet && options.showBraceletPrompt!==false && ecoule>=options.braceletAtSeconds)instruction.textContent="Mettez le bracelet devant votre visage.";await attente(100);}
       verifier();compte.textContent="";
     }
     document.addEventListener("visibilitychange",visibilite);global.addEventListener("pagehide",interrompre);
@@ -159,7 +162,7 @@
       instruction.textContent="Filmez le code du boîtier.";
       await minuter(options.boxSeconds);
       if(options.selfieSeconds>0){
-      instruction.textContent="Passez en mode selfie. Inversez la prise de vue.";switcher.hidden=false;
+      instruction.textContent="Tournez votre téléphone";switcher.hidden=false;
       await new Promise((resolve,reject)=>{
         const debut=performance.now();
         const timer=setInterval(()=>{if(abortError || performance.now()-debut>30000){clearInterval(timer);switcher.onclick=null;reject(abortError || Error("Le passage en mode selfie a pris trop de temps. Recommencez."));}},100);

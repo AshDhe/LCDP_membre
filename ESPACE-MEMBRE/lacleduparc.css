@@ -358,3 +358,11 @@
 /* Fin du créneau : le verrou reste actif jusqu'à sortie validée ou fin + 10 h. */
 .lcdp-acces[data-screen="expired"]{position:fixed;inset:0;z-index:11000;overflow:auto;background:#E90505;color:#fff;padding:calc(env(safe-area-inset-top,0px) + 2rem) 1.25rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;}
 .lcdp-acces[data-screen="expired"] .lcdp-acces-titre,.lcdp-acces[data-screen="expired"] .lcdp-acces-message{color:#fff;}
+
+/* Pointage invités : liste défilable, actions hors de la zone défilante. */
+.lcdp-acces-invites-form {width:100%;display:flex;flex-direction:column;align-items:stretch;gap:16px;}
+.lcdp-acces-invites-liste {max-height:360px;max-height:min(45svh,360px);overflow-y:auto;overscroll-behavior-y:contain;min-width:0;}
+.lcdp-acces-invites-liste .lcdp-acces-instructions {margin:0;padding-left:26px;}
+.lcdp-acces-invites-form label {min-width:0;overflow-wrap:anywhere;}
+.lcdp-acces-invites-form input[type="checkbox"] {flex-shrink:0;}
+.lcdp-acces-invites-form > button[type="submit"] {align-self:center;}
