@@ -5,21 +5,39 @@
   function bouton(texte,action){const b=element("button","lcdp-button",texte);b.type="button";if(action)b.addEventListener("click",action);return b;}
   function render(root,etat,actions={}){
     root.replaceChildren();root.className="lcdp-acces";root.dataset.screen=etat.screen;
-    const titre=element("h1","lcdp-acces-titre",etat.screen==="presence"?"CONTRÔLE DE PRÉSENCE":"CONTRÔLE D’ACCÈS");root.appendChild(titre);
+    const titre=element("h1","lcdp-acces-titre",etat.action==="checkout"?"CONTRÔLE DE SORTIE":etat.screen==="presence"?"CONTRÔLE DE PRÉSENCE":"CONTRÔLE D’ACCÈS");root.appendChild(titre);
+    if(etat.screen==="expired"){
+      root.appendChild(element("p","lcdp-acces-message","Votre réservation est terminée. Effectuez votre check-out."));
+      root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));return;
+    }
+    if(etat.screen==="checkout_done" || etat.screen==="key_closed"){
+      root.appendChild(element("p","lcdp-acces-message",etat.screen==="checkout_done"?"Check-out validé.":"Le processus Ma clé est terminé."));
+      if(etat.simulation)root.appendChild(element("p","lcdp-acces-message","Sortie simulée : le verrou réel reste inchangé."));
+      if(etat.unlocked)root.appendChild(bouton("Retour à l’accueil",()=>actions.onClosed?.()));return;
+    }
     if(etat.simulation)root.appendChild(element("p","lcdp-acces-message","Mode test — validation simulée"));
-    if(etat.screen==="processing"){
+    if(etat.screen==="processing" || etat.screen==="uploading"){
       const attente=element("div","lcdp-acces-spinner");attente.setAttribute("aria-hidden","true");root.appendChild(attente);
-      const message=element("p","lcdp-acces-message","Analyse en cours…");message.setAttribute("role","status");root.appendChild(message);return;
+      const message=element("p","lcdp-acces-message",etat.screen==="uploading"?"Envoi de la vidéo…":"Analyse en cours…");message.setAttribute("role","status");root.appendChild(message);return;
     }
     if(etat.screen==="access_confirmed" || etat.screen==="guest_list" || etat.screen==="confirmation_done"){
       root.appendChild(element("p","lcdp-acces-message","Contrôle d’accès validé."));
+      if(etat.screen!=="guest_list" && etat.presence?.image)ajouterImagePresence(root,etat.presence);
       if(etat.screen==="guest_list"){
-        const liste=element("ul","lcdp-acces-instructions");(etat.guests || []).forEach(g=>liste.appendChild(element("li","",g.name)));root.appendChild(liste);
-        root.appendChild(bouton("Retour",()=>actions.onBack?.()));return;
+        const form=element("form","lcdp-acces-invites-form");
+        const liste=element("ul","lcdp-acces-instructions");
+        (etat.guests || []).forEach(g=>{
+          const item=element("li"),label=element("label"),casePresence=element("input");casePresence.type="checkbox";casePresence.value=g.id;casePresence.name="guest";casePresence.checked=g.present===true;casePresence.disabled=g.present===true;
+          label.append(casePresence,document.createTextNode(" "+g.name+(g.present?" — présence déjà confirmée":"")));item.appendChild(label);liste.appendChild(item);
+        });
+        const valider=bouton("Valider");valider.type="submit";
+        form.append(liste,valider);form.addEventListener("submit",async event=>{event.preventDefault();if(valider.disabled)return;valider.disabled=true;try{await actions.onGuestConfirm?.(Array.from(form.querySelectorAll('input[name="guest"]:checked')).map(i=>i.value));}catch(e){valider.disabled=false;const erreur=element("p","lcdp-acces-erreur",e.message);erreur.setAttribute("role","alert");form.appendChild(erreur);}});
+        root.append(form,bouton("Retour",()=>actions.onBack?.()));return;
       }
       if(etat.screen==="confirmation_done")return;
       if(etat.guests?.length){root.appendChild(element("p","lcdp-acces-message","Confirmez des invités."));root.appendChild(bouton("Liste",()=>actions.onGuests?.()));}
       else root.appendChild(bouton("OK",()=>actions.onConfirmed?.()));
+      if(etat.checkoutEnabled)root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));
       return;
     }
     if(etat.screen==="capture_error"){
@@ -38,7 +56,7 @@
     }
     if(etat.screen==="camera_ready"){
       const ol=element("ol","lcdp-acces-instructions");
-      ["Allumez votre bracelet.","Allumez le contrôleur.","Préparez-vous à filmer.","Lancez la caméra et suivez les indications de l’application."].forEach(t=>ol.appendChild(element("li","",t)));
+      [...(etat.hasBracelet===false?[]:[etat.action==="checkout"?"Préparez votre bracelet.":"Allumez votre bracelet."]),"Allumez le contrôleur.","Préparez-vous à filmer.","Lancez la caméra et suivez les indications de l’application."].forEach(t=>ol.appendChild(element("li","",t)));
       root.appendChild(ol);
       const camera=element("button","lcdp-acces-camera");camera.type="button";camera.disabled=etat.cameraEnabled!==true;camera.addEventListener("click",()=>actions.onCamera?.());camera.setAttribute("aria-label","Contrôle d’accès");
       const image=element("img","lcdp-acces-camera-image");
@@ -52,6 +70,7 @@
       const texte=etat.screen==="guest_pending"?"Vous êtes invité(e). Validation en cours.":"Vous êtes invité(e). Votre parrain attend votre contrôle d’accès.";
       const message=element("p","lcdp-acces-message",texte);message.setAttribute("role","status");root.appendChild(message);return;
     }
+    if(etat.screen==="presence" && etat.presence?.image){ajouterImagePresence(root,etat.presence);root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));return;}
     if(etat.screen==="presence"){
       const indicateur=etat.indicator;
       if(!indicateur || !["active","overstay"].includes(indicateur.state))throw new Error("Indicateur de présence non autorisé.");
@@ -75,13 +94,22 @@
     }
     root.appendChild(element("p","lcdp-acces-message","Le contrôle d’accès est momentanément indisponible."));
   }
+  function ajouterImagePresence(root,presence){
+    const image=element("img","lcdp-presence-image");
+    const fichier="presence_fond_"+presence.image.names[0]+"_cercle_"+presence.image.names[1]+"_cle_"+presence.image.names[2]+".webp";
+    const chemin="/IMAG/PRESENCE/"+fichier;
+    image.src=typeof global.LCDP_urlObjet==="function"?global.LCDP_urlObjet(chemin):"/OBJET"+chemin;
+    image.alt="Présence autorisée — "+presence.image.names.join(", ");
+    image.addEventListener("error",()=>{image.hidden=true;root.appendChild(element("p","lcdp-acces-message","Présence autorisée. Le visuel est momentanément indisponible."));},{once:true});
+    root.appendChild(image);
+  }
   async function filmer(root,options) {
     if(!navigator.mediaDevices?.getUserMedia || !global.MediaRecorder)throw Error("Ce navigateur ne permet pas l’enregistrement vidéo. Utilisez un navigateur compatible en HTTPS.");
     const canvas=document.createElement("canvas");canvas.width=720;canvas.height=960;
     if(typeof canvas.captureStream!=="function")throw Error("L’enregistrement avec changement de caméra n’est pas disponible sur ce navigateur.");
     const ctx=canvas.getContext("2d");
     root.replaceChildren();
-    const titre=element("h1","lcdp-acces-titre","CONTRÔLE D’ACCÈS");
+    const titre=element("h1","lcdp-acces-titre",options.action==="checkout"?"CONTRÔLE DE SORTIE":"CONTRÔLE D’ACCÈS");
     const instruction=element("p","lcdp-acces-message","Ouverture de la caméra…");instruction.setAttribute("role","status");
     const video=element("video","lcdp-acces-video");video.autoplay=true;video.muted=true;video.playsInline=true;video.setAttribute("playsinline","");
     const compte=element("p","lcdp-acces-message");
@@ -130,6 +158,7 @@
       recorder.onstop=resolveStop;recorder.start(500);
       instruction.textContent="Filmez le code du boîtier.";
       await minuter(options.boxSeconds);
+      if(options.selfieSeconds>0){
       instruction.textContent="Passez en mode selfie. Inversez la prise de vue.";switcher.hidden=false;
       await new Promise((resolve,reject)=>{
         const debut=performance.now();
@@ -140,6 +169,7 @@
       await ouvrirCamera("user");verifier();
       instruction.textContent="Placez votre visage dans l’image.";
       await minuter(options.selfieSeconds,true);
+      }
       if(recorder.state!=="recording")throw Error("L’enregistrement s’est interrompu.");
       recorder.stop();await stopPromise;verifier();
       if(taille>MAX)throw Error("La vidéo est trop volumineuse. Recommencez.");

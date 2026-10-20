@@ -1289,12 +1289,17 @@
     const root=document.querySelector("[data-lcdp-control-access]");
     if(!root || !window.LCDP_ControleAccesUI) throw new Error("Écran du contrôle d’accès indisponible.");
     workflowCle.hidden=true;root.hidden=false;
+    actualiserSuiviVideo(etat);
+    if(etat.unlocked===true){exclusiviteCle=false;deverrouillerNavigation();window.clearInterval(controleAccesTimer);if(etat.screen==="key_closed"){window.location.href=PAGE_ACCUEIL_MEMBRE;return;}}
     window.LCDP_ControleAccesUI.render(root,etat,{
       onCamera:()=>lancerCaptureControleAcces(),
-      onRetry:()=>chargerControleAcces().catch(error=>afficherControleAcces({screen:"capture_error",message:error.message})),
+      onCheckout:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:"checkout"}}));}catch(e){afficherControleAcces({screen:"capture_error",action:"checkout",message:e.message});}},
+      onClosed:()=>{if(!controleAccesEtat?.unlocked)return;exclusiviteCle=false;window.clearInterval(suiviVideoTimer);window.clearInterval(controleAccesTimer);window.location.href=PAGE_ACCUEIL_MEMBRE;},
+      onRetry:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:controleAccesEtat?.action || "checkin"}}));}catch(error){afficherControleAcces({screen:"capture_error",message:error.message});}},
       onGuests:()=>afficherControleAcces({...controleAccesEtat,screen:"guest_list"}),
       onBack:()=>afficherControleAcces({...controleAccesEtat,screen:"access_confirmed"}),
-      onConfirmed:()=>afficherControleAcces({...controleAccesEtat,screen:"confirmation_done"}),
+      onConfirmed:async()=>{if(controleAccesEtat.simulation){afficherControleAcces({...controleAccesEtat,screen:"confirmation_done"});return;}try{afficherControleAcces(await appelerApi("/presence",{method:"GET"}));}catch(e){afficherControleAcces({screen:"capture_error",message:e.message});}},
+      onGuestConfirm:async guests=>afficherControleAcces(await appelerApi("/guests/confirm",{method:"POST",body:{guests}})),
       onHome:()=>{
         if(controleAccesEtat?.screen!=="denied") return;
         window.clearInterval(controleAccesTimer);
@@ -1304,19 +1309,37 @@
     });
   }
 
+  let suiviVideoTimer=null,suiviVideoRequete=false;
+  function actualiserSuiviVideo(etat){
+    window.clearInterval(suiviVideoTimer);suiviVideoTimer=null;
+    if(!["processing","presence","access_confirmed","expired","guest_pending","guest_list","camera_ready","capture_error"].includes(etat.screen) || (etat.screen==="access_confirmed" && !etat.presence))return;
+    suiviVideoTimer=window.setInterval(async()=>{
+      if(suiviVideoRequete || document.visibilityState!=="visible")return;
+      suiviVideoRequete=true;
+      try{const chemin=etat.screen==="presence"?"/presence":"/video/status"+(etat.attemptId?"?attempt="+encodeURIComponent(etat.attemptId):"");
+        const suite=await appelerApi(chemin,{method:"GET"});
+        if(etat.screen==="guest_list" && suite.screen==="access_confirmed")return;
+        // Ne pas effacer des saisies ou redessiner le bouton pendant une capture.
+        if(!captureControleEnCours && (suite.screen!==etat.screen || ["processing","presence","access_confirmed","expired"].includes(etat.screen)))afficherControleAcces(suite);}
+      catch(error){if(error.reason!=="key_in_use")afficherControleAcces({screen:"capture_error",message:error.message});}
+      finally{suiviVideoRequete=false;}
+    },etat.screen==="processing"?2000:10000);
+  }
   let captureControleEnCours=false;
   async function lancerCaptureControleAcces(){
     if(captureControleEnCours)return;
+    window.clearInterval(suiviVideoTimer);
     captureControleEnCours=true;
     const precedent=controleAccesEtat;
     try{
-      const preparation=await appelerApi("/control-access-video-start",{method:"POST",body:{}});
+      const geolocation=await obtenirGeolocalisation();
+      const preparation=await appelerApi("/video/start",{method:"POST",body:{action:precedent?.action || "checkin",geolocation}});
       if(!preparation.success || !preparation.attempt)throw Error("Préparation du contrôle indisponible.");
       if(preparation.attempt.state==="validated"){await chargerControleAcces();return;}
       const root=document.querySelector("[data-lcdp-control-access]");
       const blob=await window.LCDP_ControleAccesUI.filmer(root,preparation);
-      afficherControleAcces({screen:"processing",simulation:true});
-      const reponse=await fetch(ENDPOINT_LA_CLE_DU_PARC+"/control-access-video?attempt="+encodeURIComponent(preparation.attempt.id),{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":blob.type,"Accept":"application/json"},body:blob});
+      afficherControleAcces({screen:"uploading",simulation:preparation.simulation,action:preparation.action});
+      const reponse=await fetch(ENDPOINT_LA_CLE_DU_PARC+"/video/upload?attempt="+encodeURIComponent(preparation.attempt.id),{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":blob.type,"Accept":"application/json"},body:blob});
       const resultat=await reponse.json().catch(()=>null);
       if(resultat?.reason==="key_in_use"){window.LCDP_afficherCompteUtilise?.();return;}
       if(reponse.status===401){redirigerConnexion();return;}
@@ -1324,7 +1347,7 @@
       afficherControleAcces(resultat);
     }catch(error){
       if(error.reason==="key_in_use" || error.sessionRemplaceeTraitee)return;
-      afficherControleAcces({...precedent,screen:"capture_error",message:error.name==="NotAllowedError"?"Autorisez l’accès à la caméra pour poursuivre.":error.message,simulation:true});
+      afficherControleAcces({...precedent,screen:"capture_error",message:error.name==="NotAllowedError"?"Autorisez l’accès à la caméra pour poursuivre.":error.message,simulation:precedent?.simulation});
     }finally{captureControleEnCours=false;}
   }
 

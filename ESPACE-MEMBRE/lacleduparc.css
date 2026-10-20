@@ -348,3 +348,13 @@
 .lcdp-acces-spinner{width:32px;height:32px;border:4px solid #ddd;border-top-color:currentColor;border-radius:50%;margin:1rem auto;animation:lcdp-acces-tourne 1s linear infinite}
 @keyframes lcdp-acces-tourne{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.lcdp-acces-spinner{animation:none}}
+
+.lcdp-presence-image{display:block;width:100%;max-width:480px;max-height:80vh;object-fit:contain;margin:auto}
+.lcdp-acces-invites-form label{display:flex;align-items:center;gap:.75rem;padding:.5rem 0}
+.lcdp-acces-invites-form input[type=checkbox]{width:24px;height:24px;flex-shrink:0}
+
+.lcdp-acces[data-screen="access_confirmed"] .lcdp-presence-image{max-height:35vh}
+
+/* Fin du créneau : le verrou reste actif jusqu'à sortie validée ou fin + 10 h. */
+.lcdp-acces[data-screen="expired"]{position:fixed;inset:0;z-index:11000;overflow:auto;background:#E90505;color:#fff;padding:calc(env(safe-area-inset-top,0px) + 2rem) 1.25rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;}
+.lcdp-acces[data-screen="expired"] .lcdp-acces-titre,.lcdp-acces[data-screen="expired"] .lcdp-acces-message{color:#fff;}
