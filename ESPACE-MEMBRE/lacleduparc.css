@@ -342,3 +342,9 @@
 .lcdp-acces-lightbox .lcdp-button { width: 100%; }
 .lcdp-acces-lightbox button:disabled { opacity: .5; cursor: default; }
 @media (max-width: 359px) { .lcdp-acces { padding-left: 18px; padding-right: 18px; } .lcdp-acces-titre { font-size: 21px; } }
+
+/* Capture guidée et attente de l'analyse. */
+.lcdp-acces-video{display:block;width:100%;max-width:420px;max-height:55vh;object-fit:contain;background:#000;margin:0 auto}
+.lcdp-acces-spinner{width:32px;height:32px;border:4px solid #ddd;border-top-color:currentColor;border-radius:50%;margin:1rem auto;animation:lcdp-acces-tourne 1s linear infinite}
+@keyframes lcdp-acces-tourne{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.lcdp-acces-spinner{animation:none}}

@@ -1290,22 +1290,11 @@
     if(!root || !window.LCDP_ControleAccesUI) throw new Error("Écran du contrôle d’accès indisponible.");
     workflowCle.hidden=true;root.hidden=false;
     window.LCDP_ControleAccesUI.render(root,etat,{
-      onCode:async code=>{
-        try {
-          const suite=await appelerApi("/control-access-code",{method:"POST",body:{coda:code}});
-          afficherControleAcces(suite);
-        } catch(error) {
-          if(error.reason==="access_code_incorrect") {
-            afficherControleAcces({...controleAccesEtat,screen:"access_code",attemptsRemaining:error.resultat.attemptsRemaining});return;
-          }
-          if(error.reason==="access_blocked") {
-            afficherControleAcces({...controleAccesEtat,screen:"denied",attemptsRemaining:0,blockedUntil:error.resultat.blockedUntil});return;
-          }
-          // Une réponse perdue ne remet jamais les tentatives à zéro côté navigateur.
-          try {await chargerControleAcces();} catch {}
-          throw error;
-        }
-      },
+      onCamera:()=>lancerCaptureControleAcces(),
+      onRetry:()=>chargerControleAcces().catch(error=>afficherControleAcces({screen:"capture_error",message:error.message})),
+      onGuests:()=>afficherControleAcces({...controleAccesEtat,screen:"guest_list"}),
+      onBack:()=>afficherControleAcces({...controleAccesEtat,screen:"access_confirmed"}),
+      onConfirmed:()=>afficherControleAcces({...controleAccesEtat,screen:"confirmation_done"}),
       onHome:()=>{
         if(controleAccesEtat?.screen!=="denied") return;
         window.clearInterval(controleAccesTimer);
@@ -1313,6 +1302,30 @@
         window.location.href=PAGE_ACCUEIL_MEMBRE;
       }
     });
+  }
+
+  let captureControleEnCours=false;
+  async function lancerCaptureControleAcces(){
+    if(captureControleEnCours)return;
+    captureControleEnCours=true;
+    const precedent=controleAccesEtat;
+    try{
+      const preparation=await appelerApi("/control-access-video-start",{method:"POST",body:{}});
+      if(!preparation.success || !preparation.attempt)throw Error("Préparation du contrôle indisponible.");
+      if(preparation.attempt.state==="validated"){await chargerControleAcces();return;}
+      const root=document.querySelector("[data-lcdp-control-access]");
+      const blob=await window.LCDP_ControleAccesUI.filmer(root,preparation);
+      afficherControleAcces({screen:"processing",simulation:true});
+      const reponse=await fetch(ENDPOINT_LA_CLE_DU_PARC+"/control-access-video?attempt="+encodeURIComponent(preparation.attempt.id),{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":blob.type,"Accept":"application/json"},body:blob});
+      const resultat=await reponse.json().catch(()=>null);
+      if(resultat?.reason==="key_in_use"){window.LCDP_afficherCompteUtilise?.();return;}
+      if(reponse.status===401){redirigerConnexion();return;}
+      if(!reponse.ok || !resultat?.success)throw Error(resultat?.message || "La vidéo n’a pas pu être analysée.");
+      afficherControleAcces(resultat);
+    }catch(error){
+      if(error.reason==="key_in_use" || error.sessionRemplaceeTraitee)return;
+      afficherControleAcces({...precedent,screen:"capture_error",message:error.name==="NotAllowedError"?"Autorisez l’accès à la caméra pour poursuivre.":error.message,simulation:true});
+    }finally{captureControleEnCours=false;}
   }
 
   function redirigerAccueil() {

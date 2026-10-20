@@ -6,6 +6,26 @@
   function render(root,etat,actions={}){
     root.replaceChildren();root.className="lcdp-acces";root.dataset.screen=etat.screen;
     const titre=element("h1","lcdp-acces-titre",etat.screen==="presence"?"CONTRÔLE DE PRÉSENCE":"CONTRÔLE D’ACCÈS");root.appendChild(titre);
+    if(etat.simulation)root.appendChild(element("p","lcdp-acces-message","Mode test — validation simulée"));
+    if(etat.screen==="processing"){
+      const attente=element("div","lcdp-acces-spinner");attente.setAttribute("aria-hidden","true");root.appendChild(attente);
+      const message=element("p","lcdp-acces-message","Analyse en cours…");message.setAttribute("role","status");root.appendChild(message);return;
+    }
+    if(etat.screen==="access_confirmed" || etat.screen==="guest_list" || etat.screen==="confirmation_done"){
+      root.appendChild(element("p","lcdp-acces-message","Contrôle d’accès validé."));
+      if(etat.screen==="guest_list"){
+        const liste=element("ul","lcdp-acces-instructions");(etat.guests || []).forEach(g=>liste.appendChild(element("li","",g.name)));root.appendChild(liste);
+        root.appendChild(bouton("Retour",()=>actions.onBack?.()));return;
+      }
+      if(etat.screen==="confirmation_done")return;
+      if(etat.guests?.length){root.appendChild(element("p","lcdp-acces-message","Confirmez des invités."));root.appendChild(bouton("Liste",()=>actions.onGuests?.()));}
+      else root.appendChild(bouton("OK",()=>actions.onConfirmed?.()));
+      return;
+    }
+    if(etat.screen==="capture_error"){
+      const message=element("p","lcdp-acces-erreur",etat.message || "La capture n’a pas pu être terminée.");message.setAttribute("role","alert");root.appendChild(message);
+      root.appendChild(bouton("Réessayer",()=>actions.onRetry?.()));return;
+    }
     const erreur=element("p","lcdp-acces-erreur");erreur.setAttribute("role","alert");
     if(etat.reservation){
       const resa=element("section","lcdp-acces-reservation");resa.setAttribute("aria-label",etat.role==="invite"?"Votre invitation":"Votre réservation");
@@ -20,7 +40,7 @@
       const ol=element("ol","lcdp-acces-instructions");
       ["Allumez votre bracelet.","Allumez le contrôleur.","Préparez-vous à filmer.","Lancez la caméra et suivez les indications de l’application."].forEach(t=>ol.appendChild(element("li","",t)));
       root.appendChild(ol);
-      const camera=element("button","lcdp-acces-camera");camera.type="button";camera.disabled=true;camera.setAttribute("aria-label","Contrôle d’accès");
+      const camera=element("button","lcdp-acces-camera");camera.type="button";camera.disabled=etat.cameraEnabled!==true;camera.addEventListener("click",()=>actions.onCamera?.());camera.setAttribute("aria-label","Contrôle d’accès");
       const image=element("img","lcdp-acces-camera-image");
       image.src=typeof global.LCDP_urlObjet === "function"
         ? global.LCDP_urlObjet("/IMAG/BOUTON/controle-acces.webp")
@@ -55,5 +75,82 @@
     }
     root.appendChild(element("p","lcdp-acces-message","Le contrôle d’accès est momentanément indisponible."));
   }
-  global.LCDP_ControleAccesUI={render};
+  async function filmer(root,options) {
+    if(!navigator.mediaDevices?.getUserMedia || !global.MediaRecorder)throw Error("Ce navigateur ne permet pas l’enregistrement vidéo. Utilisez un navigateur compatible en HTTPS.");
+    const canvas=document.createElement("canvas");canvas.width=720;canvas.height=960;
+    if(typeof canvas.captureStream!=="function")throw Error("L’enregistrement avec changement de caméra n’est pas disponible sur ce navigateur.");
+    const ctx=canvas.getContext("2d");
+    root.replaceChildren();
+    const titre=element("h1","lcdp-acces-titre","CONTRÔLE D’ACCÈS");
+    const instruction=element("p","lcdp-acces-message","Ouverture de la caméra…");instruction.setAttribute("role","status");
+    const video=element("video","lcdp-acces-video");video.autoplay=true;video.muted=true;video.playsInline=true;video.setAttribute("playsinline","");
+    const compte=element("p","lcdp-acces-message");
+    const switcher=bouton("Passer en mode selfie");switcher.hidden=true;
+    root.append(titre,instruction,video,compte,switcher);
+    let stream=null,sortie=null,recorder=null,raf=null,closed=false,cameraPrete=false,abortError=null,taille=0;
+    const morceaux=[];const MAX=20*1024*1024;
+    function verifier(){if(abortError)throw abortError;if(closed)throw Error("Capture interrompue. Recommencez la séquence.");}
+    function interrompre(){abortError=Error("Capture interrompue. Recommencez la séquence sans quitter l’application.");stream?.getTracks().forEach(t=>t.stop());if(recorder?.state==="recording")recorder.stop();}
+    function visibilite(){if(document.visibilityState==="hidden")interrompre();}
+    const attente=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+    async function ouvrirCamera(mode){
+      cameraPrete=false;stream?.getTracks().forEach(t=>t.stop());video.srcObject=null;
+      const obtenu=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:mode},width:{ideal:720},height:{ideal:960}},audio:false});
+      if(closed || abortError){obtenu.getTracks().forEach(t=>t.stop());verifier();}
+      stream=obtenu;video.srcObject=stream;await video.play();
+      const debut=performance.now();while(!video.videoWidth){verifier();if(performance.now()-debut>10000)throw Error("La caméra ne fournit pas d’image.");await attente(50);}
+      const face=stream.getVideoTracks()[0]?.getSettings?.().facingMode;
+      if(face && face!==mode)throw Error("La caméra demandée n’est pas disponible sur cet appareil.");
+      cameraPrete=true;
+      video.style.transform=mode==="user"?"scaleX(-1)":"none";
+    }
+    function dessiner(){
+      if(closed)return;
+      ctx.fillStyle="#000";ctx.fillRect(0,0,canvas.width,canvas.height);
+      if(cameraPrete && video.videoWidth){const ratio=Math.min(canvas.width/video.videoWidth,canvas.height/video.videoHeight);const w=video.videoWidth*ratio,h=video.videoHeight*ratio;ctx.drawImage(video,(canvas.width-w)/2,(canvas.height-h)/2,w,h);}
+      raf=requestAnimationFrame(dessiner);
+    }
+    async function minuter(secondes,bracelet=false){
+      const debut=performance.now();
+      while(performance.now()-debut<secondes*1000){verifier();const ecoule=(performance.now()-debut)/1000;compte.textContent=Math.max(1,Math.ceil(secondes-ecoule))+" s";if(bracelet && ecoule>=options.braceletAtSeconds)instruction.textContent="Mettez le bracelet devant votre visage.";await attente(100);}
+      verifier();compte.textContent="";
+    }
+    document.addEventListener("visibilitychange",visibilite);global.addEventListener("pagehide",interrompre);
+    try {
+      await ouvrirCamera("environment");verifier();dessiner();
+      sortie=canvas.captureStream(24);
+      const mime=["video/mp4","video/webm;codecs=vp8","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
+      if(!mime)throw Error("Aucun format vidéo compatible n’est disponible.");
+      recorder=new MediaRecorder(sortie,{mimeType:mime,videoBitsPerSecond:1500000});
+      let resolveStop,rejectStop;
+      const stopPromise=new Promise((resolve,reject)=>{resolveStop=resolve;rejectStop=reject;});
+      stopPromise.catch(()=>{});
+      recorder.ondataavailable=e=>{if(e.data.size){taille+=e.data.size;if(taille>MAX){interrompre();return;}morceaux.push(e.data);}};
+      recorder.onerror=()=>{abortError=Error("L’enregistrement vidéo a échoué.");rejectStop(abortError);};
+      recorder.onstop=resolveStop;recorder.start(500);
+      instruction.textContent="Filmez le code du boîtier.";
+      await minuter(options.boxSeconds);
+      instruction.textContent="Passez en mode selfie. Inversez la prise de vue.";switcher.hidden=false;
+      await new Promise((resolve,reject)=>{
+        const debut=performance.now();
+        const timer=setInterval(()=>{if(abortError || performance.now()-debut>30000){clearInterval(timer);switcher.onclick=null;reject(abortError || Error("Le passage en mode selfie a pris trop de temps. Recommencez."));}},100);
+        switcher.onclick=()=>{clearInterval(timer);switcher.onclick=null;resolve();};
+      });
+      verifier();switcher.hidden=true;instruction.textContent="Ouverture du mode selfie…";
+      await ouvrirCamera("user");verifier();
+      instruction.textContent="Placez votre visage dans l’image.";
+      await minuter(options.selfieSeconds,true);
+      if(recorder.state!=="recording")throw Error("L’enregistrement s’est interrompu.");
+      recorder.stop();await stopPromise;verifier();
+      if(taille>MAX)throw Error("La vidéo est trop volumineuse. Recommencez.");
+      const blob=new Blob(morceaux,{type:mime.split(";")[0]});if(!blob.size)throw Error("La vidéo est vide.");
+      return blob;
+    } finally {
+      closed=true;cameraPrete=false;if(raf!==null)cancelAnimationFrame(raf);
+      stream?.getTracks().forEach(t=>t.stop());sortie?.getTracks().forEach(t=>t.stop());
+      if(recorder?.state==="recording")recorder.stop();video.srcObject=null;
+      document.removeEventListener("visibilitychange",visibilite);global.removeEventListener("pagehide",interrompre);
+    }
+  }
+  global.LCDP_ControleAccesUI={render,filmer};
 })(window);
