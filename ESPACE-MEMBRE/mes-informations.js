@@ -188,6 +188,15 @@
       }
     },
     {
+      section: "Participation au club",
+      id: "champ-bracelet-presence",
+      name: "braceletPresenceAffichage",
+      label: "Bracelet présence",
+      type: "text",
+      key: "braceletPresenceAffichage",
+      action: {id:"modifier-wifi-bracelet",texte:"Modifier le Wi-Fi du bracelet présence",mode:"picto",pictoRouge:true}
+    },
+    {
       section: "Acceptation du règlement",
       id: "champ-reglement-club",
       name: "reglementClubAffichage",
@@ -399,6 +408,123 @@
 
     ajouterActionsAdresseFacturation();
     initialiserActionsModification();
+    initialiserZoneSelfie();
+    document.getElementById("modifier-wifi-bracelet")?.addEventListener("click",ouvrirWifiBracelet);
+  }
+
+  let wifiBraceletActuel=null;
+  async function chargerWifiBracelet() {
+    const champ=document.getElementById("champ-bracelet-presence");
+    try {
+      const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/bracelet-wifi",{credentials:"include",cache:"no-store"});
+      const d=await r.json().catch(()=>null);
+      if(r.status===401){redirigerConnexionMembre("inactive");return;}
+      if(!r.ok || !d?.ok){wifiBraceletActuel=null;champ.value=d?.message || "Bracelet indisponible";return;}
+      wifiBraceletActuel=d.bracelet;
+      champ.value="Bracelet présence — "+(d.bracelet.ssid || "Wi-Fi à renseigner");
+    }catch{wifiBraceletActuel=null;champ.value="Bracelet présence — service indisponible";}
+  }
+  let modificationWifiEnCours=false;
+  async function ouvrirWifiBracelet() {
+    if(modificationWifiEnCours)return;
+    modificationWifiEnCours=true;
+    try {
+      await chargerWifiBracelet();
+      if(!wifiBraceletActuel){await afficherAlerte(document.getElementById("champ-bracelet-presence").value);return;}
+      await ouvrirDialogueChamp({
+        titre:"Bracelet présence",libelleValider:"Valider",
+        message:"Renseignez le réseau Wi-Fi auquel votre bracelet devra se connecter. Confirmez avec votre CODA. Vous n’avez droit qu’à une seule tentative.",
+        champs:[
+          {id:"wifi-bracelet-ssid",name:"ssid",label:"Nom du réseau Wi-Fi",type:"text",value:wifiBraceletActuel.ssid,required:true,maxlength:32,autocomplete:"off",nettoyer:v=>v,valider:v=>new TextEncoder().encode(v).length>32 || /[\x00-\x1f\x7f]/.test(v)?"Nom du réseau invalide : 32 octets maximum.":""},
+          {id:"wifi-bracelet-password",name:"password",label:"Mot de passe du réseau Wi-Fi",type:"password",required:true,maxlength:64,autocomplete:"new-password",nettoyer:v=>v,valider:v=>/^[\x20-\x7e]{8,63}$/.test(v)||/^[a-f0-9]{64}$/i.test(v)?"":"Utilisez 8 à 63 caractères ASCII, ou une clé de 64 caractères hexadécimaux."},
+          {id:"wifi-bracelet-coda",name:"coda",label:"Authentifiez-vous",type:"coda",required:true,valider:v=>/^[0-9]{4}$/.test(v)?"":"Saisissez les quatre chiffres."}
+        ],
+        onSubmit:async donnees=>{
+          const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/bracelet-wifi",{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(donnees)});
+          const d=await r.json().catch(()=>null);
+          if(r.status===401){redirigerConnexionMembre("inactive");return true;}
+          if(!d)throw Error("Réponse indisponible");
+          // Une réponse termine cette tentative ; aucune boucle d'essais CODA.
+          await afficherAlerteSuperposee(d.message || "La modification n’a pas pu être confirmée.");
+          if(r.ok && d.ok)await chargerWifiBracelet();
+          return true;
+        }
+      });
+    }catch{await afficherAlerte("La modification Wi-Fi n’a pas pu être confirmée. Vérifiez son état avant de réessayer.");}
+    finally{modificationWifiEnCours=false;}
+  }
+
+  let selfieUrl = null;
+  function initialiserZoneSelfie() {
+    const email = document.getElementById("champ-email-membre");
+    const bloc = email?.closest("[data-lcdp-box-champ-formulaire]");
+    if (!bloc || document.getElementById("zone-selfie")) return;
+    const zone = document.createElement("section");
+    zone.id = "zone-selfie";
+    zone.setAttribute("aria-label", "Selfie pour le contrôle d’accès");
+    zone.innerHTML = '<span>Selfie</span><span id="selfie-badge"><img id="selfie-photo" alt="Votre selfie" hidden></span><span id="selfie-etat" role="status">Chargement…</span><span data-lcdp-champ-control></span>';
+    const fauxInput = {parentNode:zone.lastElementChild};
+    ajouterPictoModificationDansChamp(fauxInput, zone, {id:"modifier-selfie",texte:"Prendre ou remplacer mon selfie",pictoRouge:true});
+    bloc.insertAdjacentElement("afterend", zone);
+    document.getElementById("modifier-selfie").addEventListener("click", ouvrirSelfie);
+    const style = document.createElement("style");
+    style.textContent = `#zone-selfie{display:flex;align-items:center;gap:1rem;position:relative;min-height:80px;padding-right:3rem}#selfie-badge{display:block;width:64px;height:64px;border-radius:50%;overflow:hidden;border:1px solid currentColor;flex-shrink:0}#selfie-photo{width:100%;height:100%;object-fit:cover}#selfie-etat{font-size:.9rem}#dialogue-selfie{width:min(92vw,440px);max-height:90vh;overflow:auto;border:0;border-radius:12px;padding:1.25rem}#dialogue-selfie::backdrop{background:rgba(0,0,0,.65)}#dialogue-selfie video{width:100%;max-height:50vh;object-fit:contain;transform:scaleX(-1)}#dialogue-selfie .lcdp-selfie-actions{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}`;
+    document.head.appendChild(style);
+  }
+  async function chargerSelfie() {
+    const statut = document.getElementById("selfie-etat");
+    try {
+      const r = await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie",{credentials:"include",cache:"no-store"});
+      if(r.status===401){redirigerConnexionMembre("inactive");return;}
+      if(r.status===404){statut.textContent="Aucun selfie";return;}
+      if(!r.ok)throw Error("Selfie indisponible");
+      const blob=await r.blob();
+      const image=document.getElementById("selfie-photo");
+      const ancienne=selfieUrl;selfieUrl=URL.createObjectURL(blob);image.src=selfieUrl;image.hidden=false;
+      if(ancienne)URL.revokeObjectURL(ancienne);
+      statut.textContent="";
+    } catch { statut.textContent="Selfie indisponible. Réessayez."; }
+  }
+  async function ouvrirSelfie() {
+    if(document.getElementById("dialogue-selfie"))return;
+    const retourFocus=document.activeElement;
+    const d=document.createElement("dialog");d.id="dialogue-selfie";
+    d.setAttribute("aria-labelledby","titre-selfie");
+    d.innerHTML='<h2 id="titre-selfie" class="lcdp-title-section">Selfie</h2><p>Prenez une photo de votre visage pour le contrôle d’accès.</p><video autoplay playsinline muted></video><p role="status" data-selfie-message>Ouverture de la caméra…</p><div class="lcdp-selfie-actions"><button type="button" class="lcdp-button" data-selfie-capture disabled>Prendre la photo</button><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Fermer</button></div>';
+    document.body.appendChild(d);d.showModal();
+    const video=d.querySelector("video"),message=d.querySelector("[data-selfie-message]"),capture=d.querySelector("[data-selfie-capture]"),fermer=d.querySelector("[data-selfie-fermer]");
+    let stream=null,actif=true,enregistrement=false;
+    function arreter(){actif=false;stream?.getTracks().forEach(t=>t.stop());video.srcObject=null;}
+    d.addEventListener("close",()=>{arreter();d.remove();retourFocus?.focus();});
+    d.addEventListener("cancel",e=>{if(enregistrement)e.preventDefault();});
+    fermer.onclick=()=>d.close();
+    const quitter=()=>arreter();window.addEventListener("pagehide",quitter,{once:true});
+    d.addEventListener("close",()=>window.removeEventListener("pagehide",quitter),{once:true});
+    capture.onclick=async()=>{
+      if(enregistrement || !video.videoWidth)return;
+      enregistrement=true;capture.disabled=true;fermer.disabled=true;message.textContent="Enregistrement…";
+      try {
+        const canvas=document.createElement("canvas");canvas.width=512;canvas.height=512;
+        const cote=Math.min(video.videoWidth,video.videoHeight);
+        canvas.getContext("2d").drawImage(video,(video.videoWidth-cote)/2,(video.videoHeight-cote)/2,cote,cote,0,0,512,512);
+        const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.85));
+        if(!blob)throw Error("La photo n’a pas pu être créée.");
+        const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie",{method:"PUT",credentials:"include",cache:"no-store",headers:{"Content-Type":"image/jpeg"},body:blob});
+        if(r.status===401){redirigerConnexionMembre("inactive");return;}
+        const resultat=await r.json().catch(()=>null);
+        if(!r.ok || !resultat?.ok)throw Error(resultat?.message || "La photo n’a pas pu être enregistrée.");
+        await chargerSelfie();d.close();
+      }catch(e){message.textContent=e.message || "Enregistrement impossible.";}
+      finally{enregistrement=false;capture.disabled=false;fermer.disabled=false;}
+    };
+    try {
+      if(!navigator.mediaDevices?.getUserMedia)throw Error("La caméra n’est pas accessible. Utilisez un navigateur compatible en HTTPS.");
+      const obtenu=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"user"},width:{ideal:720},height:{ideal:720}},audio:false});
+      if(!actif){obtenu.getTracks().forEach(t=>t.stop());return;}
+      stream=obtenu;video.srcObject=stream;
+      await video.play();if(!actif)return;
+      capture.disabled=false;message.textContent="Placez votre visage au centre de l’image.";
+    }catch(e){if(actif)message.textContent=e.name==="NotAllowedError"?"Autorisez l’accès à la caméra pour prendre votre selfie.":e.name==="NotFoundError"?"Aucune caméra disponible sur cet appareil.":e.message || "Caméra indisponible.";}
   }
 
   function injecterStylesMesInformations() {
@@ -745,6 +871,8 @@
     const compte = resultat.compte;
 
     afficherCompteMembre(compte);
+    await chargerSelfie();
+    await chargerWifiBracelet();
     afficherEtatMembreCompte(compte);
     await actualiserBurgerMembre(compteIndiqueAbonne(compte));
   }
@@ -2045,6 +2173,20 @@
 
     if (!champ || !zoneLabel || !zoneDescription || !zoneControl) {
       throw new Error("Structure champ formulaire incomplète.");
+    }
+
+    if (configurationChamp.type === "coda") {
+      const label=document.createElement("p");label.textContent=configurationChamp.label || "Authentifiez-vous";zoneLabel.appendChild(label);
+      const valeur=document.createElement("input");valeur.type="hidden";valeur.name=configurationChamp.name;valeur.id=configurationChamp.id;
+      const groupe=document.createElement("div");groupe.className="lcdp-cle-code-quatre-cases";groupe.setAttribute("role","group");groupe.setAttribute("aria-label","Authentifiez-vous");
+      groupe.style.cssText="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;max-width:260px";
+      const chiffres=[];
+      for(let i=0;i<4;i++){
+        const chiffre=document.createElement("input");chiffre.type="password";chiffre.inputMode="numeric";chiffre.maxLength=1;chiffre.autocomplete="off";chiffre.setAttribute("aria-label","Chiffre "+(i+1)+" sur 4");chiffre.style.cssText="min-width:0;text-align:center;font-size:1.4rem";
+        chiffre.addEventListener("input",()=>{chiffre.value=chiffre.value.replace(/\D/g,"").slice(-1);valeur.value=chiffres.map(c=>c.value).join("");});
+        chiffres.push(chiffre);groupe.appendChild(chiffre);
+      }
+      zoneControl.append(valeur,groupe);return champ;
     }
 
     if (configurationChamp.type === "checkbox") {
