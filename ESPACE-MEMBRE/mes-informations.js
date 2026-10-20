@@ -464,13 +464,14 @@
     zone.setAttribute("aria-label", "Selfie pour le contrôle d’accès");
     zone.className = bloc.className;
     zone.setAttribute("data-lcdp-box-champ-formulaire", "");
-    zone.innerHTML = '<div class="lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><span id="selfie-badge" hidden><img id="selfie-photo" alt="Votre selfie" hidden></span><span class="lcdp-selfie-texte"><span>Selfie</span><span id="selfie-etat" role="status">Chargement…</span></span></div></div>';
+    zone.innerHTML = '<div class="lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><button type="button" id="selfie-badge" aria-label="Agrandir mon selfie" title="Agrandir mon selfie" hidden><img id="selfie-photo" alt="Votre selfie" hidden></button><span class="lcdp-selfie-texte"><span>Selfie</span><span id="selfie-etat" role="status">Chargement…</span></span></div></div>';
     const fauxInput = {parentNode:zone.lastElementChild};
     ajouterPictoModificationDansChamp(fauxInput, zone, {id:"modifier-selfie",texte:"Prendre ou remplacer mon selfie",pictoRouge:true});
     bloc.insertAdjacentElement("afterend", zone);
     document.getElementById("modifier-selfie").addEventListener("click", ouvrirSelfie);
+    document.getElementById("selfie-badge").addEventListener("click", agrandirSelfie);
     const style = document.createElement("style");
-    style.textContent = `#zone-selfie .lcdp-selfie-control{position:relative;box-sizing:border-box;min-height:46px;width:100%;padding:10px 58px 10px 14px;border:1px solid #bdc5d0;border-radius:16px;background:#f0f2f4;box-shadow:inset 0 1px 2px rgba(0,0,0,.04)}#zone-selfie .lcdp-selfie-contenu{display:flex;align-items:center;gap:12px;min-width:0}#zone-selfie .lcdp-selfie-texte{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;min-width:0;overflow-wrap:anywhere}#zone-selfie #selfie-badge{display:block;width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0}#zone-selfie #selfie-photo{display:block;width:100%;height:100%;object-fit:cover}#zone-selfie #selfie-badge[hidden],#zone-selfie #selfie-photo[hidden]{display:none!important}#zone-selfie #selfie-etat{font-size:.9rem}#zone-selfie #selfie-etat:empty{display:none}#dialogue-selfie{width:min(92vw,440px);max-height:90vh;overflow:auto;border:0;border-radius:12px;padding:1.25rem}#dialogue-selfie::backdrop{background:rgba(0,0,0,.65)}#dialogue-selfie video{width:100%;max-height:50vh;object-fit:contain;transform:scaleX(-1)}#dialogue-selfie .lcdp-selfie-actions{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}`;
+    style.textContent = `#zone-selfie .lcdp-selfie-control{position:relative;box-sizing:border-box;min-height:46px;width:100%;padding:10px 58px 10px 14px;border:1px solid #bdc5d0;border-radius:16px;background:#f0f2f4;box-shadow:inset 0 1px 2px rgba(0,0,0,.04)}#zone-selfie .lcdp-selfie-contenu{display:flex;align-items:center;gap:12px;min-width:0}#zone-selfie .lcdp-selfie-texte{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;min-width:0;overflow-wrap:anywhere}#zone-selfie #selfie-badge{display:block;width:48px;height:48px;border:0;padding:0;background:transparent;border-radius:50%;overflow:hidden;flex-shrink:0;cursor:zoom-in}#zone-selfie #selfie-badge:focus-visible{outline:3px solid #557347;outline-offset:3px}#zone-selfie #selfie-photo{display:block;width:100%;height:100%;object-fit:cover}#zone-selfie #selfie-badge[hidden],#zone-selfie #selfie-photo[hidden]{display:none!important}#zone-selfie #selfie-etat{font-size:.9rem}#zone-selfie #selfie-etat:empty{display:none}#dialogue-selfie{width:min(92vw,440px);max-height:90vh;overflow:auto;border:0;border-radius:12px;padding:1.25rem}#dialogue-selfie::backdrop{background:rgba(0,0,0,.65)}#dialogue-selfie video{width:100%;max-height:50vh;object-fit:contain;transform:scaleX(-1)}#dialogue-selfie .lcdp-selfie-actions{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}#dialogue-selfie-agrandi{box-sizing:border-box;position:relative;width:min(92vw,720px);max-width:92vw;max-height:92vh;overflow:auto;padding:45px 12px 12px;border:0;border-radius:14px;background:#fff}#dialogue-selfie-agrandi::backdrop{background:rgba(0,0,0,.82)}#dialogue-selfie-agrandi img{display:block;max-width:100%;max-height:calc(92vh - 70px);width:auto;height:auto;object-fit:contain;margin:auto;border-radius:8px}#dialogue-selfie-agrandi button{position:absolute;top:8px;right:8px;width:34px;height:34px;border:0;border-radius:50%;background:#f0f2f4;color:#202820;font-size:24px;line-height:1;cursor:pointer}`;
     document.head.appendChild(style);
   }
   async function chargerSelfie() {
@@ -500,6 +501,28 @@
       statut.textContent="";
     } catch { masquerPhoto();statut.textContent="Selfie indisponible. Réessayez."; }
   }
+  function agrandirSelfie() {
+    if (!selfieUrl || document.getElementById("dialogue-selfie-agrandi")) return;
+    const retourFocus = document.activeElement;
+    const dialogue = document.createElement("dialog");
+    dialogue.id = "dialogue-selfie-agrandi";
+    dialogue.setAttribute("aria-label", "Selfie agrandi");
+    const fermer = document.createElement("button");
+    fermer.type = "button";
+    fermer.setAttribute("aria-label", "Fermer la photo");
+    fermer.textContent = "×";
+    const photo = document.createElement("img");
+    photo.alt = "Votre selfie agrandi";
+    photo.src = selfieUrl;
+    dialogue.append(fermer, photo);
+    document.body.appendChild(dialogue);
+    dialogue.addEventListener("close", () => { dialogue.remove(); retourFocus?.focus(); }, {once:true});
+    fermer.addEventListener("click", () => dialogue.close());
+    dialogue.addEventListener("click", event => { if (event.target === dialogue) dialogue.close(); });
+    dialogue.showModal();
+    fermer.focus();
+  }
+
   async function ouvrirSelfie() {
     if(document.getElementById("dialogue-selfie"))return;
     const retourFocus=document.activeElement;
@@ -1781,11 +1804,11 @@
           {id:"codr-modification-membre",name:"codr",label:"Code de récupération (CODR)",type:"codr",required:true,
             valider:v=>/^[A-Z]{4}(-[A-Z]{4}){3}$/.test(v)?"":"Saisissez les quatre mots de quatre lettres du CODR."}
         ],
-        noteFin:"Attention : vous n’avez droit qu’à une seule saisie du CODR. Ces informations sont strictement confidentielles.",
+        noteFin:"Attention : deux essais maximum pour le CODR. Après deux erreurs, le CODR est désactivé. Ces informations sont strictement confidentielles.",
         onSubmit:async donnees=>{
           const mots=donnees.codr.split("-");
           let message="La modification n’a pas pu être confirmée.";
-          let succes=false;
+          let succes=false, nouvelleTentative=false;
           try {
             const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/coda-change",{
               method:"POST",credentials:"include",cache:"no-store",
@@ -1795,10 +1818,18 @@
             const d=await r.json().catch(()=>null);
             message=d?.message || message;
             succes=r.ok && d?.success===true;
+            nouvelleTentative=!succes && d?.reason==="codr_incorrect";
             if(!d) message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer.";
           } catch { message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer."; }
-          // Aucun nouvel essai dans ce dialogue, même après un refus serveur.
           await afficherAlerteSuperposee(message);
+          if(nouvelleTentative){
+            const cache=document.getElementById("codr-modification-membre");
+            const groupe=cache?.parentNode;
+            if(cache) cache.value="";
+            groupe?.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"])').forEach(champ=>{champ.value="";});
+            groupe?.querySelector('input:not([type="hidden"]):not([type="checkbox"])')?.focus();
+            return false;
+          }
           if(succes) redirigerConnexionMembre("coda_modifie");
           return true;
         }
