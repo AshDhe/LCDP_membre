@@ -1007,8 +1007,8 @@
             capturedAt: new Date(position.timestamp || Date.now()).toISOString()
           });
         },
-        () => {
-          reject(new Error("La géolocalisation est nécessaire pour valider cette action."));
+        (erreur) => {
+          reject(Object.assign(new Error("La géolocalisation est nécessaire pour valider cette action."),{geolocationCode:erreur.code}));
         },
         {
           enableHighAccuracy: true,
@@ -1309,6 +1309,34 @@
     });
   }
 
+  let geolocRequete=false,geolocProchainEssai=0;
+  async function verifierGeolocIntermediaire(){
+    if(geolocRequete || captureControleEnCours || document.visibilityState!=="visible" || Date.now()<geolocProchainEssai
+      || !["presence","access_confirmed","guest_list"].includes(controleAccesEtat?.screen) || controleAccesEtat?.simulation)return;
+    geolocRequete=true;
+    try{
+      const statut=await appelerApi("/geolocation/status",{method:"GET"});
+      if(!statut.due)return;
+      // Une autorisation refusée ne doit pas provoquer de demandes répétées.
+      const permission=navigator.permissions?.query?await navigator.permissions.query({name:"geolocation"}).catch(()=>null):null;
+      if(permission?.state==="denied"){
+        await appelerApi("/geolocation/check",{method:"POST",body:{error:"permission_refusee"}});
+        geolocProchainEssai=Date.now()+300000;return;
+      }
+      let geolocation;
+      try{geolocation=await obtenirGeolocalisation();}
+      catch(error){
+        await appelerApi("/geolocation/check",{method:"POST",body:{error:error.geolocationCode===1?"permission_refusee":"position_indisponible"}});
+        geolocProchainEssai=Date.now()+(error.geolocationCode===1?300000:60000);return;
+      }
+      const resultat=await appelerApi("/geolocation/check",{method:"POST",body:{geolocation}});
+      geolocProchainEssai=Date.now()+(resultat.validated?10000:60000);
+    }catch(error){geolocProchainEssai=Date.now()+60000;}
+    finally{geolocRequete=false;}
+  }
+  window.setInterval(verifierGeolocIntermediaire,15000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")verifierGeolocIntermediaire();});
+  window.addEventListener("focus",verifierGeolocIntermediaire);
   let suiviVideoTimer=null,suiviVideoRequete=false;
   function actualiserSuiviVideo(etat){
     window.clearInterval(suiviVideoTimer);suiviVideoTimer=null;
@@ -1332,7 +1360,8 @@
     captureControleEnCours=true;
     const precedent=controleAccesEtat;
     try{
-      const geolocation=await obtenirGeolocalisation();
+      const reglage=await appelerApi("/geolocation/status",{method:"GET"});
+      const geolocation=reglage.geoloc_frq===0?null:await obtenirGeolocalisation();
       const preparation=await appelerApi("/video/start",{method:"POST",body:{action:precedent?.action || "checkin",geolocation}});
       if(!preparation.success || !preparation.attempt)throw Error("Préparation du contrôle indisponible.");
       if(preparation.attempt.state==="validated"){await chargerControleAcces();return;}
