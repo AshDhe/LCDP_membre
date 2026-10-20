@@ -338,6 +338,7 @@
     let controleEnCours = null;
     let bloque = false;
     let affiche = false;
+    let resultatControlePage = null; // Conservé durant la navigation courante, sans sondage périodique.
     const endpoint = String(WORKERS.laCleDuParc || "").replace(/\/+$/, "");
     const deconnexion = WORKERS.deconnexionMembre || "https://deconnexion-membre-api.lacleduparc.fr";
     const corpsDisponible = () => document.body ? Promise.resolve() : new Promise(r=>document.addEventListener("DOMContentLoaded",r,{once:true}));
@@ -348,6 +349,8 @@
       await corpsDisponible();
       if (affiche) {
         document.querySelector("#lcdp-compte-bloque p").textContent=message;
+        const boutonReessai=document.querySelector("#lcdp-compte-bloque .lcdp-compte-bloque-actions button:last-child");
+        if(boutonReessai){boutonReessai.textContent=message.includes("momentanément indisponible") ? "Réessayer la vérification" : "Sécuriser mon compte";boutonReessai.disabled=!message.includes("momentanément indisponible");}
         return;
       }
       affiche = true;
@@ -358,7 +361,14 @@
       ecran.setAttribute("role","alertdialog");ecran.setAttribute("aria-modal","true");
       ecran.setAttribute("aria-labelledby","lcdp-compte-bloque-message");
       const texte=document.createElement("p");texte.id="lcdp-compte-bloque-message";texte.textContent=message;
-      const securiser=document.createElement("button");securiser.type="button";securiser.className="lcdp-button";securiser.textContent="Sécuriser mon compte";securiser.disabled=true;
+      const securiser=document.createElement("button");securiser.type="button";securiser.className="lcdp-button";
+      securiser.textContent=message.includes("momentanément indisponible") ? "Réessayer la vérification" : "Sécuriser mon compte";
+      securiser.disabled=!message.includes("momentanément indisponible");
+      securiser.addEventListener("click", async () => {
+        securiser.disabled=true;
+        await verifier({force:true});
+        if(document.documentElement.classList.contains("lcdp-compte-bloque")) securiser.disabled=false;
+      });
       const quitter=document.createElement("button");quitter.type="button";quitter.className="lcdp-button";quitter.textContent="Me déconnecter";
       quitter.addEventListener("click",async()=>{
         quitter.disabled=true;
@@ -377,49 +387,55 @@
     document.head.appendChild(style);
     window.LCDP_afficherCompteUtilise=afficher;
     window.LCDP_verifierExclusiviteCle = verifier;
-    async function verifier() {
-      if(controleEnCours) return controleEnCours;
+    async function verifier(options = {}) {
+      if (estPageMembreSansSession(window.location.href)) return true;
+      if (options.force === true) resultatControlePage = null;
+      if (controleEnCours) return controleEnCours;
+      if (resultatControlePage !== null) return resultatControlePage;
       controleEnCours=(async()=>{
         try {
           const r=await fetchBrut(endpoint+"/lock-status",{credentials:"include",cache:"no-store",headers:{Accept:"application/json"}});
           const d=await r.json();
-          if(d.reason === "key_in_use") {await afficher();return false;}
-          if(!r.ok && r.status !== 401 && r.status !== 403) throw new Error("Contrôle indisponible");
+          if(d?.reason === "key_in_use") {await afficher();resultatControlePage=false;return false;}
+          if (!r.ok && r.status !== 401 && r.status !== 403) throw new Error("Contrôle indisponible");
+          if (!r.ok && (r.status === 401 || r.status === 403)) { resultatControlePage=true; return true; }
+          if (d?.success !== true) throw new Error("Réponse du contrôle invalide");
           if(bloque && r.ok) {window.location.reload();return false;}
           if(d.holder === true && !estPageMaCle(window.location.href) &&
              !(d.returnHomeAllowed === true && new URL(window.location.href).pathname === "/ESPACE-MEMBRE/accueil-membre.html")) {
             window.location.replace(buildUrl(active.membreBase,"/ESPACE-MEMBRE/lacleduparc.html"));return false;
           }
-          return !bloque;
+          resultatControlePage = !bloque;
+          return resultatControlePage;
         } catch {
+          // Incident technique : interdiction des actions protégées, sans prétendre qu’une autre session détient la clé.
           await afficher("La vérification de votre compte est momentanément indisponible.");
+          resultatControlePage = false;
           return false;
         } finally {document.documentElement.classList.remove(CLASSE_CONTROLE_CLE);controleEnCours=null;}
       })();
       return controleEnCours;
     }
-    // Les API doivent aussi effectuer leur propre contrôle serveur, indépendamment du navigateur.
-    window.fetch=async function(input,init) {
-      const url=new URL(typeof input==="string"?input:input.url,window.location.href);
-      const horsControle=url.origin===new URL(endpoint).origin && ["/lock-status","/ouvrir"].includes(url.pathname);
-      const sortie=url.origin===new URL(deconnexion).origin;
-      if(url.hostname.endsWith("-api.lacleduparc.fr") && !horsControle && !sortie) {
-        if(!await verifier()) return new Response(JSON.stringify({success:false,reason:"key_in_use",message:"Votre compte est actuellement utilisé sur un autre appareil."}),{status:423,headers:{"Content-Type":"application/json"}});
-      }
-      const r=await fetchBrut(input,init);
-      if(r.status===423) {
-        const d=await r.clone().json().catch(()=>null);
-        if(d?.reason==="key_in_use") await afficher();
+    // Les Workers restent seuls responsables du contrôle effectif de chaque opération.
+    // Aucun nouveau /lock-status n'est déclenché par les appels fetch ordinaires.
+    window.fetch = async function(input, init) {
+      const r = await fetchBrut(input, init);
+      if (r.status === 423) {
+        const d = await r.clone().json().catch(() => null);
+        if (d?.reason === "key_in_use") {
+          resultatControlePage = false;
+          await afficher();
+        }
       }
       return r;
     };
-    if(!endpoint) return;
+    if (!endpoint || estPageMembreSansSession(window.location.href)) return;
+    // Une vérification par entrée dans la page ; nouveau contrôle uniquement en restauration BFCache.
     document.documentElement.classList.add(CLASSE_CONTROLE_CLE);
     verifier();
-    window.setInterval(()=>{if(document.visibilityState==="visible") verifier();},3000);
-    window.addEventListener("focus",verifier);
-    window.addEventListener("pageshow",verifier);
-    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")verifier();});
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted) verifier({ force: true });
+    });
   }
 
   function masquerPagePendantControleCle() {}
@@ -463,13 +479,18 @@
           method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({compte:"membre"})
         });
         const data = await reponse.json().catch(()=>null);
-        if (!reponse.ok || !data?.success) {
-          window.location.replace(buildUrl(active.publicBase,"/ESPACE-PUBLIC/hello.html"));
-        } else if (!data.connected) {
-          const destination = data.reason === "security_setup_required" ? buildUrl(active.publicBase,"/ESPACE-PUBLIC/hello.html") : buildUrl(active.publicBase,"/ESPACE-PUBLIC/connexion-membre.html");
+        if (!reponse.ok || !data || data.success !== true) {
+          // Une panne du routeur (500, réseau, JSON invalide) n'est pas une absence de compte.
+          console.error("Contrôle d'accès membre indisponible :", reponse.status, data?.message || "Réponse invalide");
+          return;
+        }
+        if (!data.connected) {
+          const destination = data.reason === "security_setup_required"
+            ? buildUrl(active.publicBase,"/ESPACE-PUBLIC/hello.html")
+            : buildUrl(active.publicBase,"/ESPACE-PUBLIC/connexion-membre.html");
           window.location.replace(destination);
         }
-      } catch { window.location.replace(buildUrl(active.publicBase,"/ESPACE-PUBLIC/hello.html")); }
+      } catch (error) { console.error("Contrôle d'accès membre indisponible :", error); }
       finally { enCours=false; }
     };
     verifier();
