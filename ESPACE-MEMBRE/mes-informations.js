@@ -122,6 +122,15 @@
       }
     },
     {
+      section: "Sécurité du compte",
+      id: "champ-bracelet-presence",
+      name: "braceletPresenceAffichage",
+      label: "Bracelet présence",
+      type: "text",
+      key: "braceletPresenceAffichage",
+      action: {id:"modifier-wifi-bracelet",texte:"Modifier le Wi-Fi du bracelet présence",mode:"picto",pictoRouge:true}
+    },
+    {
       section: "Participation au club",
       id: "champ-membre-depuis",
       name: "membreDepuisAffichage",
@@ -186,15 +195,6 @@
         id: "badge-points-club-membre",
         type: "points"
       }
-    },
-    {
-      section: "Participation au club",
-      id: "champ-bracelet-presence",
-      name: "braceletPresenceAffichage",
-      label: "Bracelet présence",
-      type: "text",
-      key: "braceletPresenceAffichage",
-      action: {id:"modifier-wifi-bracelet",texte:"Modifier le Wi-Fi du bracelet présence",mode:"picto",pictoRouge:true}
     },
     {
       section: "Acceptation du règlement",
@@ -456,34 +456,49 @@
 
   let selfieUrl = null;
   function initialiserZoneSelfie() {
-    const email = document.getElementById("champ-email-membre");
-    const bloc = email?.closest("[data-lcdp-box-champ-formulaire]");
+    const codeR = document.getElementById("champ-code-r-membre");
+    const bloc = codeR?.closest("[data-lcdp-box-champ-formulaire]");
     if (!bloc || document.getElementById("zone-selfie")) return;
     const zone = document.createElement("section");
     zone.id = "zone-selfie";
     zone.setAttribute("aria-label", "Selfie pour le contrôle d’accès");
-    zone.innerHTML = '<span>Selfie</span><span id="selfie-badge"><img id="selfie-photo" alt="Votre selfie" hidden></span><span id="selfie-etat" role="status">Chargement…</span><span data-lcdp-champ-control></span>';
+    zone.className = bloc.className;
+    zone.setAttribute("data-lcdp-box-champ-formulaire", "");
+    zone.innerHTML = '<div class="lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><span id="selfie-badge" hidden><img id="selfie-photo" alt="Votre selfie" hidden></span><span class="lcdp-selfie-texte"><span>Selfie</span><span id="selfie-etat" role="status">Chargement…</span></span></div></div>';
     const fauxInput = {parentNode:zone.lastElementChild};
     ajouterPictoModificationDansChamp(fauxInput, zone, {id:"modifier-selfie",texte:"Prendre ou remplacer mon selfie",pictoRouge:true});
     bloc.insertAdjacentElement("afterend", zone);
     document.getElementById("modifier-selfie").addEventListener("click", ouvrirSelfie);
     const style = document.createElement("style");
-    style.textContent = `#zone-selfie{display:flex;align-items:center;gap:1rem;position:relative;min-height:80px;padding-right:3rem}#selfie-badge{display:block;width:64px;height:64px;border-radius:50%;overflow:hidden;border:1px solid currentColor;flex-shrink:0}#selfie-photo{width:100%;height:100%;object-fit:cover}#selfie-etat{font-size:.9rem}#dialogue-selfie{width:min(92vw,440px);max-height:90vh;overflow:auto;border:0;border-radius:12px;padding:1.25rem}#dialogue-selfie::backdrop{background:rgba(0,0,0,.65)}#dialogue-selfie video{width:100%;max-height:50vh;object-fit:contain;transform:scaleX(-1)}#dialogue-selfie .lcdp-selfie-actions{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}`;
+    style.textContent = `#zone-selfie .lcdp-selfie-control{position:relative;box-sizing:border-box;min-height:46px;width:100%;padding:10px 58px 10px 14px;border:1px solid #bdc5d0;border-radius:16px;background:#f0f2f4;box-shadow:inset 0 1px 2px rgba(0,0,0,.04)}#zone-selfie .lcdp-selfie-contenu{display:flex;align-items:center;gap:12px;min-width:0}#zone-selfie .lcdp-selfie-texte{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;min-width:0;overflow-wrap:anywhere}#zone-selfie #selfie-badge{display:block;width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0}#zone-selfie #selfie-photo{display:block;width:100%;height:100%;object-fit:cover}#zone-selfie #selfie-badge[hidden],#zone-selfie #selfie-photo[hidden]{display:none!important}#zone-selfie #selfie-etat{font-size:.9rem}#zone-selfie #selfie-etat:empty{display:none}#dialogue-selfie{width:min(92vw,440px);max-height:90vh;overflow:auto;border:0;border-radius:12px;padding:1.25rem}#dialogue-selfie::backdrop{background:rgba(0,0,0,.65)}#dialogue-selfie video{width:100%;max-height:50vh;object-fit:contain;transform:scaleX(-1)}#dialogue-selfie .lcdp-selfie-actions{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}`;
     document.head.appendChild(style);
   }
   async function chargerSelfie() {
     const statut = document.getElementById("selfie-etat");
+    const photo = document.getElementById("selfie-photo");
+    const badge = document.getElementById("selfie-badge");
+    function masquerPhoto() {
+      photo.hidden = true;
+      badge.hidden = true;
+      photo.removeAttribute("src");
+      if (selfieUrl) URL.revokeObjectURL(selfieUrl);
+      selfieUrl = null;
+    }
+    photo.onerror = () => {
+      masquerPhoto();
+      statut.textContent = "Selfie indisponible. Réessayez.";
+    };
     try {
       const r = await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie",{credentials:"include",cache:"no-store"});
       if(r.status===401){redirigerConnexionMembre("inactive");return;}
-      if(r.status===404){statut.textContent="Aucun selfie";return;}
+      if(r.status===404){masquerPhoto();statut.textContent="Aucun selfie";return;}
       if(!r.ok)throw Error("Selfie indisponible");
       const blob=await r.blob();
       const image=document.getElementById("selfie-photo");
-      const ancienne=selfieUrl;selfieUrl=URL.createObjectURL(blob);image.src=selfieUrl;image.hidden=false;
+      const ancienne=selfieUrl;selfieUrl=URL.createObjectURL(blob);image.src=selfieUrl;image.hidden=false;badge.hidden=false;
       if(ancienne)URL.revokeObjectURL(ancienne);
       statut.textContent="";
-    } catch { statut.textContent="Selfie indisponible. Réessayez."; }
+    } catch { masquerPhoto();statut.textContent="Selfie indisponible. Réessayez."; }
   }
   async function ouvrirSelfie() {
     if(document.getElementById("dialogue-selfie"))return;
