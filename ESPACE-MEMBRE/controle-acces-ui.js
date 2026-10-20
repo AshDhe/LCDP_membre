@@ -7,31 +7,6 @@
     root.replaceChildren();root.className="lcdp-acces";root.dataset.screen=etat.screen;
     const titre=element("h1","lcdp-acces-titre",etat.screen==="presence"?"CONTRÔLE DE PRÉSENCE":"CONTRÔLE D’ACCÈS");root.appendChild(titre);
     const erreur=element("p","lcdp-acces-erreur");erreur.setAttribute("role","alert");
-    if(etat.screen==="access_code"){
-      const form=element("form","lcdp-acces-form");form.noValidate=true;
-      const cases=element("div","lcdp-cle-code-quatre-cases");cases.setAttribute("role","group");cases.setAttribute("aria-label","Authentifiez-vous avec vos quatre chiffres");
-      const champs=[];
-      for(let i=0;i<4;i++){
-        const input=element("input");input.type="password";input.inputMode="numeric";input.maxLength=1;input.pattern="[0-9]";input.autocomplete="off";input.setAttribute("aria-label","Chiffre "+(i+1)+" sur 4");
-        input.addEventListener("input",()=>{input.value=input.value.replace(/\D/g,"").slice(-1);erreur.textContent="";});
-        input.addEventListener("paste",event=>{
-          const chiffres=(event.clipboardData?.getData("text")||"").replace(/\D/g,"").slice(0,4-i);if(!chiffres)return;
-          event.preventDefault();Array.from(chiffres).forEach((ch,j)=>champs[i+j].value=ch);erreur.textContent="";
-        });
-        champs.push(input);cases.appendChild(input);
-      }
-      form.append(cases);
-      if(etat.attemptsRemaining===1)form.appendChild(element("p","lcdp-acces-dernier-essai","Il ne vous reste plus qu’un essai."));
-      const valider=bouton("Valider");valider.type="submit";form.append(erreur,valider);
-      form.addEventListener("submit",async event=>{
-        event.preventDefault();if(valider.disabled)return;
-        const code=champs.map(c=>c.value).join("");
-        if(!/^[0-9]{4}$/.test(code)){erreur.textContent="Saisissez les quatre chiffres.";return;}
-        valider.disabled=true;
-        try{await actions.onCode?.(code);}catch(e){erreur.textContent=e.message || "Vérification momentanément indisponible.";valider.disabled=false;}
-      });
-      root.appendChild(form);return;
-    }
     if(etat.reservation){
       const resa=element("section","lcdp-acces-reservation");resa.setAttribute("aria-label",etat.role==="invite"?"Votre invitation":"Votre réservation");
       resa.appendChild(element("h2","lcdp-acces-parc",etat.reservation.parkName));
@@ -43,7 +18,7 @@
     }
     if(etat.screen==="camera_ready"){
       const ol=element("ol","lcdp-acces-instructions");
-      ["Allumez le contrôleur.","Préparez-vous à filmer.","Appuyez sur le bouton caméra.","Laissez l’application filmer et attendez."].forEach(t=>ol.appendChild(element("li","",t)));
+      ["Allumez votre bracelet.","Allumez le contrôleur.","Préparez-vous à filmer.","Lancez la caméra et suivez les indications de l’application."].forEach(t=>ol.appendChild(element("li","",t)));
       root.appendChild(ol);
       const camera=element("button","lcdp-acces-camera");camera.type="button";camera.disabled=true;camera.setAttribute("aria-label","Contrôle d’accès");
       const image=element("img","lcdp-acces-camera-image");
