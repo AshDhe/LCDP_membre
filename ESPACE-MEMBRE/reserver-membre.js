@@ -1781,8 +1781,15 @@
       throw new Error("Structure de la liste des parcs incomplète.");
     }
 
-    titre.textContent =
-      "Parcs dans le " + (departement || "département");
+    const enteteListe = titre.closest(
+      "[data-lcdp-liste-card-header], .lcdp-box-liste-card__header, header"
+    );
+    if (enteteListe && listeCard.contains(enteteListe) && !enteteListe.contains(zoneListe)) {
+      // Dans cette page, les actions de l'en-tête de liste sont vides.
+      enteteListe.remove();
+    } else {
+      titre.remove();
+    }
     zoneListe.innerHTML = "";
 
     if (zoneActions) {
@@ -1903,6 +1910,7 @@
 
       etatPage.departement = departement;
       etatPage.parcs = parcs;
+      actualiserTitreParcsDepartement();
 
       publierListeParcs(listePreparee);
     } catch (error) {
@@ -1975,6 +1983,7 @@
 
       etatPage.departement = departementRecu;
       etatPage.parcs = parcs;
+      actualiserTitreParcsDepartement();
 
       publierListeParcs(listePreparee);
     } catch (error) {
@@ -2001,10 +2010,21 @@
 
   function afficherTitreListe() {
     const titre = document.querySelector("[data-lcdp-liste-card-title]");
+    if (titre) {
+      titre.textContent = "";
+      titre.hidden = true;
+    }
+    actualiserTitreParcsDepartement();
+  }
 
+  function actualiserTitreParcsDepartement() {
+    const titre = document.getElementById("titre-parcs-departement");
     if (!titre) return;
-
-    titre.textContent = "Parcs dans le " + (etatPage.departement || "département");
+    titre.replaceChildren(document.createTextNode("Parcs près de chez vous"));
+    if (etatPage.departement) {
+      titre.appendChild(document.createElement("br"));
+      titre.appendChild(document.createTextNode("dans le " + etatPage.departement));
+    }
   }
 
   function afficherParcs(parcs) {
@@ -2096,22 +2116,6 @@
           ariaLabel: "Ouvrir la présentation du parc " + nom,
           icone: "presentation",
           variante: "vert-plein",
-          idparc
-        }),
-        creerBoutonActionCardParc({
-          action: "partager-parc",
-          libelle: "Partager",
-          ariaLabel: "Partager le parc " + nom,
-          icone: "partager",
-          variante: "vert-contour",
-          idparc
-        }),
-        creerBoutonActionCardParc({
-          action: "voir-planning-parc",
-          libelle: "Planning",
-          ariaLabel: "Afficher le planning du parc " + nom,
-          icone: "planning",
-          variante: "orange-contour",
           idparc
         }),
         creerBoutonActionCardParc({
@@ -2288,89 +2292,12 @@
 
   async function autoriserReservationParc(parc) {
     if (!parc) {
-      await afficherAlerteDetailParcOuPage(
-        "Parc introuvable."
-      );
+      await afficherAlerteDetailParcOuPage("Parc introuvable.");
       return false;
     }
-
-    if (abonnementAnnuleNonPaye(etatMembre)) {
-      await afficherAlerteDetailParcOuPage(
-        "Votre abonnement est annulé (non payé)."
-      );
-      return false;
-    }
-
-    if (etatMembre?.abonnementSuspendu === true) {
-      await afficherEcheancesPaiementSuspension(
-        etatMembre
-      );
-      return false;
-    }
-
-    if (!ENDPOINT_FLUXM) {
-      await afficherAlerteDetailParcOuPage(
-        "Le service de réservation n’est pas configuré."
-      );
-      return false;
-    }
-
-    try {
-      const reponse = await fetch(
-        ENDPOINT_FLUXM +
-        "/eligibilite-reservation",
-        {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-          headers: {
-            "Accept": "application/json"
-          }
-        }
-      );
-      const data =
-        await reponse.json().catch(() => null);
-
-      if (
-        !reponse.ok ||
-        !data ||
-        !reponseApiOk(data)
-      ) {
-        throw new Error(
-          messageErreurApi(
-            data,
-            "Impossible de vérifier votre droit à planifier."
-          )
-        );
-      }
-
-      if (data.peutPlanifier !== true) {
-        if (
-          data.code ===
-            "ABONNEMENT_SUSPENDU_NON_PAYE" &&
-          etatMembre?.paiementSuspension
-        ) {
-          await afficherEcheancesPaiementSuspension(
-            etatMembre
-          );
-          return false;
-        }
-
-        await afficherAlerteDetailParcOuPage(
-          data.message ||
-          "Vous devez être membre abonné pour planifier votre activité."
-        );
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      await afficherAlerteDetailParcOuPage(
-        error?.message ||
-        "Impossible de vérifier votre droit à planifier."
-      );
-      return false;
-    }
+    // L'ouverture utilise le planning commun en lecture, authentifié par son Worker.
+    // Les droits d'abonnement ne conditionnent plus sa consultation.
+    return true;
   }
 
   async function demarrerReservationParc(parc) {
@@ -3981,9 +3908,27 @@
   }
 
   function construireDateBookd(dateIso, heure) {
-    const dateLocale = new Date(dateIso + "T" + heure + ":00");
-
-    return dateLocale.toISOString();
+    // Les horaires du parc sont toujours interprétés en Europe/Paris,
+    // indépendamment du fuseau configuré sur le téléphone.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateIso || "")) ||
+        !/^\d{2}:\d{2}$/.test(String(heure || ""))) return "";
+    const cible = Date.parse(dateIso + "T" + heure + ":00Z");
+    if (!Number.isFinite(cible) || new Date(cible).toISOString().slice(0, 16) !== dateIso + "T" + heure) return "";
+    const format = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
+    });
+    const lireLocal = (instant) => {
+      const p = Object.fromEntries(format.formatToParts(new Date(instant)).map(part => [part.type, part.value]));
+      return p.year + "-" + p.month + "-" + p.day + "T" + p.hour + ":" + p.minute + ":" + p.second;
+    };
+    let instant = cible;
+    for (let i = 0; i < 3; i += 1) {
+      instant += cible - Date.parse(lireLocal(instant) + "Z");
+    }
+    // Refuse notamment une heure qui n'existe pas au passage à l'heure d'été.
+    if (lireLocal(instant).slice(0, 16) !== dateIso + "T" + heure) return "";
+    return new Date(instant).toISOString();
   }
 
   async function ouvrirDialogueBoutonsSuperpose(options) {
