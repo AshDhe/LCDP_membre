@@ -39,6 +39,7 @@
 
     indexMembre: "https://index-membre-api.lacleduparc.fr",
     deconnexionMembre: "https://deconnexion-membre-api.lacleduparc.fr",
+    recuperationCompte: "https://recuperation-compte-api.lacleduparc.fr",
     laCleDuParc: "https://la-cle-du-parc-api.lacleduparc.fr",
 
     nouvelleDateMembre: "https://nouvelle-date-membre-api.lacleduparc.fr",
@@ -86,6 +87,7 @@
 
     workerIndexMembreUrl: WORKERS.indexMembre,
     workerLaCleDuParcUrl: WORKERS.laCleDuParc,
+    workerRecuperationCompteUrl: WORKERS.recuperationCompte,
 
     workerNouvelleDateMembreUrl: WORKERS.nouvelleDateMembre,
     workerFluxmUrl: WORKERS.fluxm,
@@ -119,6 +121,7 @@
     W_DECONNEXION_URL: WORKERS.deconnexionMembre,
     WORKER_LA_CLE_DU_PARC_URL: WORKERS.laCleDuParc,
     W_LA_CLE_DU_PARC_URL: WORKERS.laCleDuParc,
+    WORKER_RECUPERATION_COMPTE_URL: WORKERS.recuperationCompte,
 
     WORKER_NOUVELLE_DATE_MEMBRE_URL: WORKERS.nouvelleDateMembre,
     WORKER_FLUXM_URL: WORKERS.fluxm,
@@ -170,7 +173,10 @@
   const MARGE_COOKIE_PROCHAINE_VERIFICATION_SECONDES = 60 * 60;
   const DUREE_MEMOIRE_RETOUR_MEMBRE_SECONDES = 60 * 60 * 24 * 30;
   const CHEMINS_MEMBRE_SANS_SESSION = new Set([
-    "/ESPACE-MEMBRE/mdp-membre.html"
+    "/ESPACE-MEMBRE/mdp-membre.html",
+    "/ESPACE-MEMBRE/recuperation.html",
+    "/ESPACE-MEMBRE/compte-en-recuperation.html",
+    "/ESPACE-MEMBRE/compte-bloque.html"
   ]);
   const CLASSE_CONTROLE_CLE = "lcdp-controle-cle-en-cours";
   const ID_STYLE_CONTROLE_CLE = "lcdp-style-controle-cle-en-cours";
@@ -181,6 +187,7 @@
 
   memoriserRetourMembreSiNecessaire();
   initialiserVerrouillageCleActive();
+  initialiserTunnelRecuperationSurPagesStatut();
   initialiserControleAccesMembre();
   initialiserRenouvellementSessionMembre();
 
@@ -333,6 +340,28 @@
     });
   }
 
+  // Les pages de statut restent publiques, mais le navigateur récupérateur
+  // est automatiquement reconduit vers son tunnel exclusif.
+  function initialiserTunnelRecuperationSurPagesStatut() {
+    const chemin = extraireCheminMembre(new URL(window.location.href));
+    if (chemin !== "/ESPACE-MEMBRE/compte-en-recuperation.html" &&
+        chemin !== "/ESPACE-MEMBRE/compte-bloque.html") return;
+    const base = String(WORKERS.recuperationCompte || "").replace(/\/+$/, "");
+    if (!base) return;
+    fetch(base + "/status", {
+      credentials: "include", cache: "no-store", headers: {Accept: "application/json"}
+    }).then(async reponse => {
+      if (!reponse.ok) return;
+      const data = await reponse.json().catch(() => null);
+      if (data?.success !== true) return;
+      if (data.owner === true && data.state === "en_cours") {
+        window.location.replace(buildUrl(active.membreBase, "/ESPACE-MEMBRE/recuperation.html"));
+      } else if (data.state === "bloque" && chemin !== "/ESPACE-MEMBRE/compte-bloque.html") {
+        window.location.replace(buildUrl(active.membreBase, "/ESPACE-MEMBRE/compte-bloque.html"));
+      }
+    }).catch(() => {});
+  }
+
   function initialiserVerrouillageCleActive() {
     const fetchBrut = window.fetch.bind(window);
     let controleEnCours = null;
@@ -394,6 +423,24 @@
       if (resultatControlePage !== null) return resultatControlePage;
       controleEnCours=(async()=>{
         try {
+           // Contrôle central du statut de récupération avant le verrou Ma Clé.
+           // Les pages de récupération et de blocage sont exclues de ce contrôle.
+           const etatReponse = await fetchBrut(WORKERS.recuperationCompte + "/status", {
+             credentials:"include", cache:"no-store", headers:{Accept:"application/json"}
+           });
+           const etatCompte = await etatReponse.json().catch(() => null);
+           if (!etatReponse.ok || etatCompte?.success !== true) {
+             throw new Error("Statut de récupération indisponible");
+           }
+           const routeMembre = (nom) => buildUrl(active.membreBase, "/ESPACE-MEMBRE/" + nom);
+           if (etatCompte.state === "bloque") {
+             window.location.replace(routeMembre("compte-bloque.html"));
+             resultatControlePage=false; return false;
+           }
+           if (etatCompte.state === "en_cours") {
+             window.location.replace(routeMembre(etatCompte.owner === true ? "recuperation.html" : "compte-en-recuperation.html"));
+             resultatControlePage=false; return false;
+           }
           const r=await fetchBrut(endpoint+"/lock-status",{credentials:"include",cache:"no-store",headers:{Accept:"application/json"}});
           const d=await r.json();
           if(d?.reason === "key_in_use") {await afficher();resultatControlePage=false;return false;}
