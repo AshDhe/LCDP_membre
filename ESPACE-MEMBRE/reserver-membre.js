@@ -104,6 +104,9 @@
     appelsTraites: new Set()
   };
 
+  const panierPlanning = { reservations: [], abonnements: [], donneesConnues: false, calcul: null, generation: 0, selection: null, derniereAction: null };
+  let choixPlanningEnCours = false;
+
   const cachePlanningParcLecture = new Map();
   const DUREE_CACHE_PLANNING_LECTURE_MS = 30000;
 
@@ -2295,8 +2298,13 @@
       await afficherAlerteDetailParcOuPage("Parc introuvable.");
       return false;
     }
-    // L'ouverture utilise le planning commun en lecture, authentifié par son Worker.
-    // Les droits d'abonnement ne conditionnent plus sa consultation.
+    etatMembre = await chargerEtatMembre();
+    if (normaliserStatudaReservation(etatMembre.statuda) !== "oui") {
+      const message = etatMembre.statuda === "encours"
+        ? "Votre demande d’abonnement est en cours. Sa validation est nécessaire pour planifier."
+        : "Une demande d’abonnement validée est nécessaire pour planifier.";
+      await afficherAlerteDetailParcOuPage(message); return false;
+    }
     return true;
   }
 
@@ -2505,6 +2513,7 @@
       });
 
       const gererEscape = (event) => {
+        if (document.querySelector("[data-lcdp-box-dialogue-bouton], [data-lcdp-box-alerte]")) return;
         if (
           event.key === "Escape" &&
           document.body.contains(racine)
@@ -3718,163 +3727,347 @@
   }
 
 
-  async function traiterChoixReservationDepuisFicheParc(
-    choix
-  ) {
-    const messageBlocage =
-      messageBlocageNouvelleDate(etatMembre);
-
-    if (messageBlocage) {
-      await afficherAlerteSuperposee(
-        messageBlocage
-      );
-      return false;
-    }
-
-    const parc = choix?.parc || null;
-    const heure = String(
-      choix?.heure || ""
-    ).trim();
-    const dateIso = String(
-      choix?.dateIso || ""
-    ).trim();
-    const idparc = String(
-      parc?.idparc ||
-      parc?.id ||
-      ""
-    ).trim();
-    const plagebookd = String(
-      choix?.plagebookd || ""
-    ).trim();
-    const datebookd = construireDateBookd(
-      dateIso,
-      heure
-    );
-
-    if (
-      !heure ||
-      !dateIso ||
-      !idparc ||
-      !plagebookd ||
-      !datebookd
-    ) {
-      await afficherAlerteSuperposee(
-        "Heure, date ou parc manquant."
-      );
-      return false;
-    }
-
-    if (
-      new Date(datebookd).getTime() <=
-      Date.now()
-    ) {
-      await afficherAlerteSuperposee(
-        "Cette heure est déjà passée."
-      );
-      return false;
-    }
-
-    await chargerReservationsMembrePourBlocages();
-
-    const reservationsJour =
-      (Array.isArray(
-        etatPage.reservationsMembre
-      )
-        ? etatPage.reservationsMembre
-        : []
-      ).filter((reservation) => {
-        return (
-          reservation &&
-          reservation.statut !== "cancd" &&
-          extraireDateFranceReservation(
-            reservation.datebookd
-          ) === dateIso
-        );
-      });
-
-    if (reservationsJour.length >= 2) {
-      await afficherAlerteSuperposee(
-        "Vous avez déjà deux réservations actives sur cette journée."
-      );
-      return false;
-    }
-
-    const reservationMemePlage =
-      reservationsJour.find(
-        (reservation) =>
-          String(
-            reservation.plagebookd || ""
-          ) === plagebookd
-      );
-
-    if (reservationMemePlage) {
-      await afficherAlerteSuperposee(
-        "Vous avez déjà une réservation active sur cette plage horaire."
-      );
-      return false;
-    }
-
-    const confirmation =
-      await ouvrirDialogueBoutonsSuperpose({
-        titre: "Confirmer l'heure d'arrivée",
-        texte:
-          "Vous avez choisi le " +
-          formaterDateFr(dateIso) +
-          " à " +
-          formaterHeureAffichee(heure) +
-          ".",
-        boutons: [
-          {
-            label: "Annuler",
-            valeur: "annuler",
-            style: "lcdp-button-secondary"
-          },
-          {
-            label: "Confirmer",
-            valeur: "confirmer",
-            style: "lcdp-button-orange"
-          }
-        ]
-      });
-
-    if (confirmation !== "confirmer") {
-      return false;
-    }
-
-    if (
-      new Date(datebookd).getTime() <=
-      Date.now()
-    ) {
-      await afficherAlerteSuperposee(
-        "Cette heure est déjà passée."
-      );
-      return false;
-    }
-
+  async function traiterChoixReservationDepuisFicheParc(choix) {
+    if(choixPlanningEnCours)return false;
+    choixPlanningEnCours=true;
     try {
-      await enregistrerReservation({
-        idparc,
-        datebookd,
-        plagebookd
-      });
-
-      cachePlanningParcLecture.clear();
-      await chargerReservationsMembrePourBlocages();
-
-      await afficherAlerteSuperposee(
-        "Votre nouvelle date a bien été enregistrée.",
-        "orange"
-      );
-
-      fermerShiftDetailParc();
-      return true;
-    } catch (error) {
-      await afficherAlerteSuperposee(
-        error?.message ||
-        "Impossible d'enregistrer la réservation."
-      );
+    if (!choix?.parc || !choix.dateIso || !choix.heure || !choix.heureFin || !choix.plagebookd) {
+      throw new Error("Plage, date ou parc manquant.");
+    }
+    if (choix.planningMembre?.length) {
+      const resultat = await ouvrirPlanningEnCours(choix.planningMembre);
+      if (resultat === "actualiser") {
+        cachePlanningParcLecture.clear();
+        await choix.actualiser();
+      }
       return false;
     }
+    const debut = construireDateBookd(choix.dateIso, choix.heure);
+    if (!debut || Date.parse(debut) <= Date.now()) {
+      await afficherAlerteSuperposee("Cette plage a déjà commencé."); return false;
+    }
+    if(panierPlanning.reservations.some(r=>r.dateIso===choix.dateIso && r.plagebookd===choix.plagebookd)){
+      await afficherAlerteSuperposee("Ce créneau est déjà dans votre planning.");
+      await chargerDonneesPanierPlanning();
+      await ouvrirVotrePlanning(choix);return false;
+    }
+    const contenu = document.createElement("div");
+    const date = new Intl.DateTimeFormat("fr-FR", {timeZone:"Europe/Paris",weekday:"long",day:"numeric",month:"long",year:"numeric"})
+      .format(new Date(choix.dateIso + "T12:00:00Z"));
+    for (const texte of [choix.parc.nom || choix.parc.nomparc || "Parc", date.charAt(0).toUpperCase()+date.slice(1),
+      "Horaire : " + formaterHeureAffichee(choix.heure) + "–" + formaterHeureAffichee(choix.heureFin)]) {
+      const ligne = document.createElement("div"); ligne.textContent = texte; contenu.append(ligne);
+    }
+    const reponse = await ouvrirDialogueBoutonsSuperpose({
+      titre:"Confirmez votre venue", contenu,
+      boutons:[{label:"Annuler",valeur:"annuler",style:"lcdp-button-secondary"},
+        {label:"Confirmer",valeur:"confirmer",style:"lcdp-button-orange"}]
+    });
+    if (reponse !== "confirmer") return false;
+    await chargerDonneesPanierPlanning();
+    if(!panierPlanning.donneesConnues)return false;
+    if(reservationPanierCouverte(choix)===true){
+      try {
+        const reservation=await enregistrerReservation({
+          idparc:String(choix.parc.idparc||choix.parc.id||''),
+          datebookd:debut,plagebookd:choix.plagebookd,modePlanningCouvert:true
+        });
+        if(!reservation?.idflux)throw Error('Le serveur n’a pas confirmé l’enregistrement. Consultez Mon planning avant de réessayer.');
+        etatPage.reservationsMembre.push({...reservation,parc:{...choix.parc}});
+        cachePlanningParcLecture.clear();
+        panierPlanning.derniereAction={enregistree:true,reservation:{...choix}};
+        await ouvrirVotrePlanning(choix);
+      }catch(error){await afficherAlerteSuperposee(error.message||'Impossible d’enregistrer cette réservation.');}
+      return false;
+    }
+    const resultat = ajouterReservationPanierPlanning(choix);
+    if(resultat==='ajoute')panierPlanning.derniereAction={enregistree:false,reservation:{...choix}};
+    if (resultat === "doublon") await afficherAlerteSuperposee("Ce créneau est déjà dans votre planning.");
+    if (resultat === "existant") await afficherAlerteSuperposee("Vous avez déjà une réservation ou une invitation pour cette plage dans ce parc.");
+    if (resultat === "limite") await afficherAlerteSuperposee("Votre planning contient déjà douze nouvelles réservations.");
+    if(resultat==="mois")await afficherAlerteSuperposee("Cinq nouvelles réservations maximum par mois, tous parcs confondus.");
+    if(resultat==="horizon")await afficherAlerteSuperposee("Choisissez une date entre M et M+12.");
+    if(resultat==="conflit")await afficherAlerteSuperposee("Cette plage est déjà dans votre planning, dans ce parc ou un autre.");
+    await ouvrirVotrePlanning(choix);
+    return false;
+    } finally {choixPlanningEnCours=false;}
+  }
+
+  function cleReservationPanierPlanning(choix) {
+    return [String(choix.parc?.idparc || choix.parc?.id || choix.idparc || ""),
+      choix.dateIso || extraireDateFranceReservation(choix.datebookd), choix.plagebookd].join("|");
+  }
+
+  function ajouterReservationPanierPlanning(choix) {
+    const cle=cleReservationPanierPlanning(choix);
+    if (panierPlanning.reservations.some(r=>cleReservationPanierPlanning(r)===cle)) return "doublon";
+    if (etatPage.reservationsMembre.some(r=>r.statut!=="cancd" && cleReservationPanierPlanning(r)===cle)) return "existant";
+    if (panierPlanning.reservations.length>=12) return "limite";
+    const relatif=numeroMoisPanier(choix.dateIso);
+    if(relatif<0 || relatif>12)return "horizon";
+    if(panierPlanning.reservations.some(r=>r.dateIso===choix.dateIso && r.plagebookd===choix.plagebookd))return "conflit";
+    if(panierPlanning.reservations.filter(r=>r.dateIso.slice(0,7)===choix.dateIso.slice(0,7)).length>=5)return "mois";
+    panierPlanning.calcul=null;panierPlanning.selection=null;
+    panierPlanning.reservations.push({parc:{...choix.parc},dateIso:choix.dateIso,heure:choix.heure,
+      heureFin:choix.heureFin,plagebookd:choix.plagebookd,
+      datebookd:construireDateBookd(choix.dateIso,choix.heure)});
+    return "ajoute";
+  }
+
+  async function chargerDonneesPanierPlanning() {
+    panierPlanning.donneesConnues=false;
+    try {
+      if(!ENDPOINT_PLANNING_MEMBRE)throw new Error("Le service du planning membre n’est pas configuré.");
+      const response=await fetch(ENDPOINT_PLANNING_MEMBRE+"/mes-reservations",{
+        method:"GET",credentials:"include",cache:"no-store",headers:{Accept:"application/json"}
+      });
+      const data=await response.json().catch(()=>null);
+      if(response.status===401){redirigerConnexionMembre("inactive");throw new Error("Votre session membre a expiré.");}
+      if(!response.ok || !reponseApiOk(data) || !Array.isArray(data.abonnements) || !Array.isArray(data.reservations)) {
+        throw new Error(data?.message || "Impossible de vérifier vos abonnements. Réessayez en ouvrant votre planning.");
+      }
+      panierPlanning.abonnements=data.abonnements;
+      etatPage.reservationsMembre=data.reservations;
+      panierPlanning.donneesConnues=true;
+    } catch(error) {
+      await afficherAlerteSuperposee(error.message || "Impossible de vérifier vos abonnements.");
+    }
+  }
+
+  function reservationPanierCouverte(reservation) {
+    if (!panierPlanning.donneesConnues) return null;
+    return panierPlanning.abonnements.some(abo =>
+      String(abo.statutabo || "").trim().toLowerCase() !== "cancd" &&
+      String(abo.debut || "").slice(0,10) <= reservation.dateIso &&
+      String(abo.fin || "").slice(0,10) >= reservation.dateIso);
+  }
+
+  function moisRelatifPanier(dateIso) {
+    const courant=extraireDateFranceReservation(new Date().toISOString()).slice(0,7).split("-").map(Number);
+    const cible=dateIso.slice(0,7).split("-").map(Number);
+    const difference=(cible[0]-courant[0])*12+cible[1]-courant[1];
+    return difference===0 ? "M" : "M"+(difference>0 ? "+" : "")+difference;
+  }
+
+  function nombreMoisPanierPlanning() {
+    return new Set(panierPlanning.reservations.map(r=>r.dateIso.slice(0,7))).size;
+  }
+
+  function construireContenuVotrePlanning(contenu, actions) {
+    contenu.replaceChildren();
+    if(panierPlanning.derniereAction){
+      const a=panierPlanning.derniereAction,r=a.reservation;
+      lignePanier(contenu,'p',a.enregistree?'Votre réservation est enregistrée.':'Cette date est ajoutée à votre planning à confirmer.').className='lcdp-panier-planning__confirmation';
+      lignePanier(contenu,'p',(r.parc.nom||r.parc.nomparc||'Parc')+' · '+r.dateIso+' · '+formaterHeureAffichee(r.heure)+'–'+formaterHeureAffichee(r.heureFin));
+    }
+    const sousTitre=document.createElement("h3"); sousTitre.className="lcdp-panier-planning__sous-titre";
+    sousTitre.textContent="Nouvelles réservations";
+    const compte=document.createElement("p");compte.className="lcdp-panier-planning__compte";
+    const nombre=panierPlanning.reservations.length, mois=nombreMoisPanierPlanning();
+    compte.textContent=nombre+" "+(nombre===1 ? "réservation" : "réservations")+" · "+mois+" "+(mois===1 ? "mois concerné" : "mois concernés");
+    const table=document.createElement("table");table.className="lcdp-panier-planning__table";
+    const caption=document.createElement("caption");caption.className="lcdp-panier-planning__caption";
+    caption.textContent="Vos nouvelles réservations et leur couverture par un abonnement";
+    const thead=document.createElement("thead"),entete=document.createElement("tr");
+    for(const titre of ["Réza","Mois M","Abonnement"]){const th=document.createElement("th");th.scope="col";th.textContent=titre;entete.append(th);}
+    thead.append(entete);
+    const tbody=document.createElement("tbody");
+    for(const reservation of [...panierPlanning.reservations].sort((a,b)=>a.datebookd.localeCompare(b.datebookd)||a.parc.nom?.localeCompare(b.parc.nom || "")||0)){
+      const ligne=document.createElement("tr"),detail=document.createElement("td"),colMois=document.createElement("td"),colAbo=document.createElement("td");
+      const nom=document.createElement("strong");nom.textContent=reservation.parc.nom || reservation.parc.nomparc || "Parc";
+      const date=document.createElement("span");
+      date.textContent=new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",weekday:"short",day:"numeric",month:"short",year:"numeric"}).format(new Date(reservation.dateIso+"T12:00:00Z"));
+      const heure=document.createElement("span");heure.textContent=formaterHeureAffichee(reservation.heure)+"–"+formaterHeureAffichee(reservation.heureFin);
+      const retirer=document.createElement("button");retirer.type="button";retirer.className="lcdp-button lcdp-button-secondary lcdp-panier-planning__retirer";
+      retirer.textContent="Retirer";retirer.setAttribute("aria-label","Retirer "+nom.textContent+", "+date.textContent+", "+heure.textContent);
+      retirer.addEventListener("click",()=>{
+        const cle=cleReservationPanierPlanning(reservation);
+        panierPlanning.reservations=panierPlanning.reservations.filter(r=>cleReservationPanierPlanning(r)!==cle);
+        panierPlanning.calcul=null;panierPlanning.selection=null;
+        if(!panierPlanning.derniereAction?.enregistree)panierPlanning.derniereAction=null;
+        construireContenuVotrePlanning(contenu,actions);
+      });
+      detail.append(nom,date,heure,retirer);colMois.textContent=moisRelatifPanier(reservation.dateIso);
+      const couvert=reservationPanierCouverte(reservation),picto=document.createElement("span");
+      picto.className="lcdp-panier-planning__couverture "+(couvert===true ? "lcdp-panier-planning__couverture--oui" : couvert===false ? "lcdp-panier-planning__couverture--non" : "lcdp-panier-planning__couverture--inconnue");
+      picto.textContent=couvert===true ? "✓" : couvert===false ? "●" : "?";
+      const libelle=couvert===true ? "Couverte par un abonnement" : couvert===false ? "À couvrir par un abonnement" : "Couverture non vérifiée";
+      picto.title=libelle;picto.setAttribute("role","img");picto.setAttribute("aria-label",libelle);
+      colAbo.append(picto);ligne.append(detail,colMois,colAbo);tbody.append(ligne);
+    }
+    table.append(caption,thead,tbody);
+    if(nombre)contenu.append(sousTitre,compte,table);
+    const ajouter=actions.querySelector('[data-lcdp-dialogue-valeur="ajouter"]');
+    const offres=document.createElement("section");offres.className="lcdp-panier-planning__offres";offres.setAttribute("aria-live","polite");contenu.append(offres);
+    if(nombre)actualiserOffresPanier(offres,actions);
+    const planifier=actions.querySelector('[data-lcdp-dialogue-valeur="planifier"]');
+    if(ajouter){ajouter.disabled=nombre>=12;ajouter.setAttribute("aria-disabled",String(ajouter.disabled));}
+    if(planifier){planifier.hidden=nombre===0;planifier.disabled=true;planifier.setAttribute("aria-disabled",String(planifier.disabled));}
+    const abandonner=actions.querySelector('[data-lcdp-dialogue-valeur="annuler"]');
+    if(abandonner)abandonner.hidden=nombre===0;
+  }
+
+  function numeroMoisPanier(dateIso){
+    const actuel=extraireDateFranceReservation(new Date().toISOString()).slice(0,7).split('-').map(Number);
+    const cible=dateIso.slice(0,7).split('-').map(Number);return (cible[0]-actuel[0])*12+cible[1]-actuel[1];
+  }
+  function texteMoisOffre(offset){
+    const actuel=extraireDateFranceReservation(new Date().toISOString()).slice(0,7).split('-').map(Number);
+    return new Intl.DateTimeFormat('fr-FR',{month:'long',year:'numeric',timeZone:'Europe/Paris'}).format(new Date(Date.UTC(actuel[0],actuel[1]-1+offset,15,12)));
+  }
+  function montantPanier(cents){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(cents/100);}
+  function nomOffrePanier(code){return ({'1J':'1 journée','1M':'1 mois','3M':'3 mois','5M':'5 mois','10M':'10 mois','11M':'11 mois','1A':'12 mois'})[code]||code;}
+  function lignePanier(parent,tag,texte){const e=document.createElement(tag);e.textContent=texte;parent.append(e);return e;}
+  async function calculerOffresPanier(){
+    panierPlanning.calcul=null;
+    if(!panierPlanning.reservations.length)return null;
+    const reservations=panierPlanning.reservations.map(r=>({idparc:String(r.parc.idparc||r.parc.id||''),dateIso:r.dateIso,plagebookd:r.plagebookd}));
+    const response=await fetch(ENDPOINT_PLANNING_MEMBRE+'/calculer-panier',{method:'POST',credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({reservations})});
+    const data=await response.json().catch(()=>null);
+    if(!response.ok || !data?.ok || !data.calcul)throw Error(data?.message||'Le calcul de votre planning est indisponible.');
+    panierPlanning.calcul=data.calcul;return data.calcul;
+  }
+  async function actualiserOffresPanier(zone,actions){
+    const generation=++panierPlanning.generation;
+    const bouton=actions.querySelector('[data-lcdp-dialogue-valeur="planifier"]');
+    if(bouton)bouton.disabled=true;
+    if(!panierPlanning.reservations.length){lignePanier(zone,'p','Ajoutez une première réservation pour découvrir l’abonnement adapté à votre planning.');return;}
+    lignePanier(zone,'p','Recherche de l’abonnement adapté à votre planning…');
+    try{
+      const calcul=await calculerOffresPanier();
+      if(generation!==panierPlanning.generation || !zone.isConnected)return;
+      zone.replaceChildren();rendreOffresPanier(zone,calcul);
+      if(bouton){bouton.disabled=!['optimal','partial'].includes(calcul.status);bouton.setAttribute('aria-disabled',String(bouton.disabled));}
+    }catch(error){if(generation!==panierPlanning.generation || !zone.isConnected)return;zone.replaceChildren();lignePanier(zone,'p',error.message);const retry=lignePanier(zone,'button','Réessayer');retry.type='button';retry.className='lcdp-button lcdp-button-secondary';retry.onclick=()=>{zone.replaceChildren();actualiserOffresPanier(zone,actions);};}
+  }
+  function rendreOffresPanier(zone,c){
+    function carte(titre,plan,prix,note){
+      const article=document.createElement('article');article.className='lcdp-panier-planning__offre';zone.append(article);
+      lignePanier(article,'h3',titre);lignePanier(article,'strong',plan.map(o=>nomOffrePanier(o.code)).join(' + ')+' — '+montantPanier(prix));
+      for(const o of plan)lignePanier(article,'p',o.code==='1J'?o.day+' '+texteMoisOffre(o.start):texteMoisOffre(o.start)+' – '+texteMoisOffre(o.end));
+      if(note)lignePanier(article,'p',note);
+    }
+    if(c.status==='limite_calcul'){lignePanier(zone,'p','Le calcul n’a pas abouti. Modifiez votre planning ou réessayez.');return;}
+    if(c.summary.toCover===0){lignePanier(zone,'h3','Votre abonnement couvre ces dates');lignePanier(zone,'p','Aucun nouvel abonnement nécessaire.');return;}
+    if(c.recommendation){const r=c.recommendation;carte('Abonnement recommandé',r.plan,r.priceCents,'Vos premières réservations sont incluses. Une fois abonné, continuez à enrichir votre planning sans supplément pendant la période souscrite, selon les disponibilités.');}
+    if(c.plan?.length){
+      const different=!c.recommendation || JSON.stringify(c.recommendation.plan)!==JSON.stringify(c.plan);
+      if(different)carte(c.recommendation?'Alternative':'Avec votre planning actuel',c.plan,c.priceCents,c.complete?'Vos nouvelles réservations sont incluses.':c.summary.newlyCovered+' réservation(s) incluse(s) sur '+c.summary.toCover+'.');
+    }
+    if(c.uncovered?.length){lignePanier(zone,'p',c.uncovered.length+' réservation(s) restent en dehors de l’offre disponible. Elles ne sont pas confirmées.');for(const row of c.uncovered){const r=panierPlanning.reservations[row.id-1];if(r)lignePanier(zone,'p',(r.parc.nom||r.parc.nomparc||'Parc')+' · '+r.dateIso+' · '+formaterHeureAffichee(r.heure));}}
+    if(c.provisional && !c.complete){const p=c.provisional;carte('Pour inclure toutes vos dates',[p],p.priceCents,'Ajoutez '+p.missingReservations+' réservation(s) '+(p.additionalDistinctMonths?'dans autant d’autres mois distincts de cette période.':': '+p.missingMonths.map(x=>x.count+' en '+texteMoisOffre(x.month)).join(', '))+ ' Cet abonnement n’est pas encore souscriptible.');}
+    if(!c.plan?.length && !c.provisional)lignePanier(zone,'p','Aucune offre ne correspond pour le moment. Ajoutez ou retirez des dates.');
+  }
+  async function presenterChoixPanier(){
+    const c=panierPlanning.calcul;if(!c || !['optimal','partial'].includes(c.status))return;
+    const contenu=document.createElement('div');rendreOffresPanier(contenu,c);
+    const boutons=[{label:'Modifier mon planning',valeur:'retour',style:'lcdp-button-secondary'}];
+    if(c.summary.toCover===0)boutons.push({label:'Continuer',valeur:'couvert',style:'lcdp-button-orange'});
+    else {
+      if(c.recommendation)boutons.push({label:'Choisir cet abonnement',valeur:'recommande',style:'lcdp-button-orange'});
+      if(c.plan?.length && (!c.recommendation || JSON.stringify(c.recommendation.plan)!==JSON.stringify(c.plan)))boutons.push({label:c.recommendation?'Choisir l’alternative':'Choisir cette proposition',valeur:'economique',style:'lcdp-button-secondary'});
+    }
+    const reponse=await ouvrirDialogueBoutonsSuperpose({titre:'Votre planning',contenu,classe:'lcdp-panier-planning',boutons});
+    if(!['couvert','recommande','economique'].includes(reponse))return;
+    const offre=reponse==='recommande'?c.recommendation:{plan:c.plan,priceCents:c.priceCents};
+    const inclus=new Set([...(c.alreadyCoveredIds||[]),...offre.plan.flatMap(p=>p.reservationIds)]);
+    const selection=panierPlanning.reservations.filter((r,i)=>inclus.has(i+1));
+    const exclus=panierPlanning.reservations.length-selection.length;
+    if(exclus){const decision=await ouvrirDialogueBoutonsSuperpose({titre:'Planning partiellement couvert',texte:exclus+' réservation(s) ne figurent pas dans cette proposition. Continuer avec les '+selection.length+' réservation(s) incluses ?',boutons:[{label:'Modifier mon planning',valeur:'retour',style:'lcdp-button-secondary'},{label:'Continuer',valeur:'oui',style:'lcdp-button-orange'}]});if(decision!=='oui')return;}
+    panierPlanning.selection={reservations:selection.map(r=>({...r})),offres:offre.plan,priceCents:offre.priceCents};
+    const recap=document.createElement('div');
+    lignePanier(recap,'p',selection.length+' réservation(s) · '+montantPanier(offre.priceCents));
+    for(const o of offre.plan)lignePanier(recap,'p',nomOffrePanier(o.code)+' · '+texteMoisOffre(o.start)+(o.code==='1J'?' · jour '+o.day:' – '+texteMoisOffre(o.end)));
+    for(const r of selection)lignePanier(recap,'p',(r.parc.nom||r.parc.nomparc||'Parc')+' · '+r.dateIso+' · '+formaterHeureAffichee(r.heure)+'–'+formaterHeureAffichee(r.heureFin));
+    lignePanier(recap,'p','Votre sélection est prête. Aucune réservation ni souscription n’est encore enregistrée. La finalisation sera disponible après le raccordement du paiement.');
+    await ouvrirDialogueBoutonsSuperpose({titre:'Récapitulatif de votre sélection',contenu:recap,classe:'lcdp-panier-planning',boutons:[{label:'Revenir à mon planning',valeur:'retour',style:'lcdp-button-orange'}]});
+  }
+
+  async function ouvrirVotrePlanning(choix) {
+    while(true){
+      const contenu=document.createElement("div");contenu.className="lcdp-panier-planning__contenu";
+      const reponse=await ouvrirDialogueBoutonsSuperpose({
+        titre:"Votre planning",contenu,classe:"lcdp-panier-planning",fermetureLibre:false,
+        preparer:({actions})=>construireContenuVotrePlanning(contenu,actions),
+        boutons:[{label:"Ajouter une réservation",valeur:"ajouter",style:"lcdp-button-secondary"},
+          {label:"Abandonner les dates en attente",valeur:"annuler",style:"lcdp-button-secondary"},
+          {label:"Fermer",valeur:"fermer",style:"lcdp-button-secondary"},
+          {label:"Continuer",valeur:"planifier",style:"lcdp-button-orange"}]
+      });
+      if(reponse==="fermer"){fermerShiftDetailParc();return;}
+      if(reponse==="ajouter"){
+        const parc=await ouvrirDialogueBoutonsSuperpose({titre:"Ajouter une réservation",texte:"Dans quel parc souhaitez-vous planifier ?",
+          boutons:[{label:"Ce parc",valeur:"meme",style:"lcdp-button-orange"},{label:"Autre parc",valeur:"autre",style:"lcdp-button-secondary"}]});
+        if(parc==="meme"){
+          if(typeof choix.retourMois==="function")choix.retourMois();
+          else await ouvrirShiftDetailParc(choix.parc,"planning");
+          return;
+        }
+        if(parc==="autre"){fermerShiftDetailParc();return;}
+      }
+      if(reponse==="annuler"){
+        const annuler=panierPlanning.reservations.length ? await ouvrirDialogueBoutonsSuperpose({titre:"Annuler votre planning ?",
+          texte:"Seules les dates en attente sont retirées. Vos réservations déjà enregistrées sont conservées.",
+          boutons:[{label:"NON",valeur:"non",style:"lcdp-button-secondary"},{label:"ANNULER",valeur:"annuler",style:"lcdp-button-orange"}]}) : "annuler";
+        if(annuler==="annuler"){panierPlanning.reservations=[];panierPlanning.calcul=null;panierPlanning.selection=null;panierPlanning.derniereAction=null;fermerShiftDetailParc();return;}
+      }
+      if(reponse==="planifier"){
+        await chargerDonneesPanierPlanning();
+        if(!panierPlanning.donneesConnues)continue;
+        try {
+          const valide=await calculerOffresPanier();
+          if(!valide)continue;
+          await presenterChoixPanier();
+        } catch(error){await afficherAlerteSuperposee(error.message);}
+      }
+    }
+  }
+
+  async function ouvrirPlanningEnCours(reservations) {
+    const contenu = document.createElement("div");
+    contenu.className = "lcdp-planning-en-cours";
+    return ouvrirDialogueBoutonsSuperpose({
+      titre:"Planning en cours", contenu,
+      preparer: ({fermer}) => {
+        for (const reservation of reservations) {
+          const carte = document.createElement("article"); carte.className="lcdp-planning-en-cours__carte";
+          const image = document.createElement("img"); image.src=construireUrlImageParc(reservation.parc);
+          image.alt=""; image.className="lcdp-planning-en-cours__photo";
+          const texte=document.createElement("div");
+          const type=document.createElement("strong"); type.textContent=reservation.invitation === true ? "Invitation reçue" : "Réservation";
+          const nom=document.createElement("div"); nom.textContent=reservation.parc?.nom || "Parc";
+          const date=document.createElement("div");
+          date.textContent=new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",weekday:"long",day:"numeric",month:"long",year:"numeric"}).format(new Date(reservation.datebookd));
+          const heure=document.createElement("div");
+          const format=new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",hour:"2-digit",minute:"2-digit"});
+          heure.textContent=format.format(new Date(reservation.datebookd)) + (reservation.datebookf ? "–"+format.format(new Date(reservation.datebookf)) : "");
+          texte.append(type,nom,date,heure);
+          const annuler=document.createElement("button"); annuler.type="button";
+          annuler.className="lcdp-button lcdp-button-secondary"; annuler.textContent="Annuler";
+          annuler.addEventListener("click", async () => {
+            annuler.disabled=true;
+            try {
+              const confirmation=await ouvrirDialogueBoutonsSuperpose({
+                titre:"Annuler le planning ?", texte:type.textContent + " · " + nom.textContent + " · " + date.textContent,
+                boutons:[{label:"NON",valeur:"non",style:"lcdp-button-secondary"},{label:"ANNULER",valeur:"annuler",style:"lcdp-button-orange"}]
+              });
+              if(confirmation !== "annuler")return;
+              const response=await fetch(ENDPOINT_PLANNING_MEMBRE+"/annuler-reservation",{
+                method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json","Accept":"application/json"},
+                body:JSON.stringify({idflux:reservation.idflux})
+              });
+              const data=await response.json().catch(()=>null);
+              if(!response.ok || !reponseApiOk(data))throw new Error(data?.message || "Impossible d’annuler ce planning.");
+              await afficherAlerteSuperposee(reservation.invitation === true ? "Votre invitation est annulée." : "Votre réservation est annulée.","orange");
+              fermer("actualiser");
+            } catch(error) {await afficherAlerteSuperposee(error.message);}
+            finally {annuler.disabled=false;}
+          });
+          carte.append(image,texte,annuler); contenu.append(carte);
+        }
+      },
+      boutons:[{label:"OK",valeur:"ok",style:"lcdp-button-orange"}]
+    });
   }
 
   async function enregistrerReservation(payload) {
@@ -3949,8 +4142,11 @@
       throw new Error("Structure de dialogue bouton incomplète.");
     }
 
+    if(options.classe)dialogue.classList.add(options.classe);
+    if(options.fermetureLibre===false)boutonFermer.hidden=true;
     titre.textContent = options.titre || "";
     texte.textContent = options.texte || "";
+    if (options.contenu) texte.replaceChildren(options.contenu);
     actions.innerHTML = "";
 
     return new Promise((resolve) => {
@@ -3968,6 +4164,7 @@
         bouton.type = "button";
         bouton.className = "lcdp-button " + (configuration.style || "lcdp-button-primary");
         bouton.textContent = configuration.label || "Valider";
+        bouton.dataset.lcdpDialogueValeur=configuration.valeur || "";
 
         bouton.addEventListener("click", () => {
           fermer(configuration.valeur || configuration.label || true);
@@ -3976,9 +4173,10 @@
         actions.appendChild(bouton);
       });
 
-      boutonFermer.addEventListener("click", () => fermer(null));
+      if (typeof options.preparer === "function") options.preparer({fermer,actions,dialogue});
+      boutonFermer.addEventListener("click", () => {if(options.fermetureLibre!==false)fermer(null);});
       dialogue.addEventListener("click", (event) => {
-        if (event.target === dialogue) fermer(null);
+        if (event.target === dialogue && options.fermetureLibre!==false) fermer(null);
       });
     });
   }
