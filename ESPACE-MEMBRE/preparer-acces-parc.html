@@ -25,6 +25,13 @@
     }
   </style>
   <script src="preparer-acces-parc.js" defer></script>
+  <script>
+    // Le HTML conserve le visuel choisi, même avec une ancienne version du JS.
+    document.addEventListener("DOMContentLoaded", function () {
+      const qr = document.getElementById("qr-geolocalisation");
+      if (qr) qr.src = "/ESPACE-MEMBRE/qr-geolocalisation-lcdp-vert-jaune.webp";
+    });
+  </script>
 </head>
 <body>
   <div class="lcdp-site-page">
