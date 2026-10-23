@@ -10,6 +10,21 @@
   <link rel="stylesheet" href="https://lacleduparc.fr/OBJET/BOX/03-box-formulaire.css">
   <link rel="stylesheet" href="https://lacleduparc.fr/OBJET/BOX/01-box-text.css">
   <script src="preparer-acces-parc.js" defer></script>
+  <style>
+    #autoriser-geolocalisation,
+    #plus-tard-geolocalisation {
+      box-sizing: border-box;
+      flex: 0 1 12rem;
+      width: 12rem;
+      max-width: 100%;
+      min-height: 3rem;
+      padding: .75rem 1rem;
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
 </head>
 <body>
   <div class="lcdp-site-page">
@@ -25,7 +40,7 @@
                   <p>La géolocalisation permet de vérifier votre position lorsque vous effectuez vous-même un contrôle d’entrée ou de sortie avec Ma Clé.</p>
                   <p>Appuyez sur le bouton ci-dessous, puis choisissez votre réponse dans la demande du navigateur.</p>
                   <div class="lcdp-box-formulaire__actions">
-                    <button type="button" class="lcdp-button" id="autoriser-geolocalisation">Autoriser la géolocalisation</button>
+                    <button type="button" class="lcdp-button" id="autoriser-geolocalisation">Autoriser</button>
                     <button type="button" class="lcdp-button lcdp-button-secondary" id="plus-tard-geolocalisation">Plus tard</button>
                   </div>
                   <p id="statut-geolocalisation" role="status" aria-live="polite"></p>
@@ -33,7 +48,7 @@
                   <p>Pour vous abonner et réserver avec votre abonnement, la géolocalisation sera nécessaire.</p>
                   <p class="lcdp-box-formulaire__note">Utilisez le même navigateur pour cette préparation et pour l’application. Vous pourrez modifier votre choix dans les autorisations du navigateur.</p>
                   <div class="lcdp-box-formulaire__actions">
-                    <a class="lcdp-link-secondary" href="https://lacleduparc.fr/ESPACE-PUBLIC/connexion-membre.html">Me connecter</a>
+                    <a class="lcdp-button lcdp-button-orange" href="https://lacleduparc.fr/ESPACE-PUBLIC/connexion-membre.html">Me connecter</a>
                   </div>
                 </div>
               </section>
