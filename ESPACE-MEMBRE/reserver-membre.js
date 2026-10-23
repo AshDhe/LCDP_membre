@@ -124,6 +124,8 @@
     shiftDetailParc: null
   };
 
+  let attenteListeParcs = null;
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
   } else {
@@ -174,8 +176,11 @@
       initialiserActionsPersistantesReserver();
       actualiserEspaceFooterReserver();
     } catch (error) {
+      masquerPictowaitListeParcs();
       console.error("Erreur réserver membre :", error);
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
+    } finally {
+      masquerPictowaitListeParcs();
     }
   }
 
@@ -1686,43 +1691,10 @@
     return attente;
   }
 
-  function afficherPictowaitListeParcs(
-    message,
-    conserverListe
-  ) {
-    const slot = document.getElementById(
-      "lcdp-liste-card-parcs-slot"
-    );
-
-    if (!slot) return;
-
-    const attenteExistante = slot.querySelector(
-      "[data-lcdp-pictowait]"
-    );
-
-    if (attenteExistante) {
-      attenteExistante.remove();
+  function afficherPictowaitListeParcs() {
+    if (!attenteListeParcs && window.LCDP_chargement) {
+      attenteListeParcs = window.LCDP_chargement.afficher();
     }
-
-    const attente = creerPictowait(message);
-
-    if (conserverListe === true) {
-      attente.classList.add(
-        "lcdp-pictowait--avec-liste"
-      );
-    }
-
-    if (
-      conserverListe === true &&
-      slot.children.length > 0
-    ) {
-      slot.prepend(attente);
-    } else {
-      slot.replaceChildren(attente);
-    }
-
-    slot.hidden = false;
-    slot.setAttribute("aria-hidden", "false");
   }
 
   function afficherPictowaitShiftDetailParc(
@@ -1752,12 +1724,9 @@
 
 
   function masquerPictowaitListeParcs() {
-    const attente = document.querySelector(
-      "#lcdp-liste-card-parcs-slot [data-lcdp-pictowait]"
-    );
-
-    if (attente) {
-      attente.remove();
+    if (attenteListeParcs) {
+      window.LCDP_chargement?.masquer(attenteListeParcs);
+      attenteListeParcs = null;
     }
   }
 
@@ -1837,6 +1806,7 @@
   }
 
   function publierListeParcs(listeCard) {
+    masquerPictowaitListeParcs();
     const slot = document.getElementById(
       "lcdp-liste-card-parcs-slot"
     );
@@ -4710,6 +4680,7 @@
   }
 
   function redirigerConnexionMembre(motif) {
+    masquerPictowaitListeParcs();
     const separateur = PAGE_CONNEXION_MEMBRE.includes("?") ? "&" : "?";
 
     window.location.href =
