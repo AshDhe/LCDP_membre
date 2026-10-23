@@ -6,10 +6,21 @@
   const contenu = document.getElementById("preparation-contenu");
   const confirmation = document.getElementById("confirmation-geolocalisation");
   const lien = new URL(location.href);
+  const depuisQr = lien.searchParams.get("via") === "qr";
   lien.hash = "";
-  document.getElementById("qr-geolocalisation").src =
-    "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(lien.href);
+  lien.searchParams.set("via", "qr");
   const telephone = /iPhone|iPod|Android.*Mobile|Windows Phone/i.test(navigator.userAgent);
+  if (depuisQr || telephone) {
+    document.getElementById("preparation-qr").hidden = true;
+    document.getElementById("titre-preparation").hidden = true;
+    document.getElementById("consigne-autorisation").textContent = "Autorisez la géolocalisation depuis votre téléphone.";
+  } else {
+    document.getElementById("qr-geolocalisation").src =
+      "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(lien.href);
+  }
+  function accueil() {
+    location.assign(new URL("/ESPACE-PUBLIC/accueil-public.html", location.href).href);
+  }
   let enCours = false;
   function terminer() {
     contenu.hidden = true;
@@ -45,6 +56,6 @@
         : "Position indisponible. Vérifiez la localisation de votre téléphone, puis réessayez.";
     }, {enableHighAccuracy:true, maximumAge:0, timeout:15000});
   });
-  plusTard.addEventListener("click", () => { if (!enCours) terminer(); });
-  if (location.hash === "#plus-tard") terminer();
+  plusTard.addEventListener("click", () => { if (!enCours) accueil(); });
+  if (location.hash === "#plus-tard") accueil();
 })();

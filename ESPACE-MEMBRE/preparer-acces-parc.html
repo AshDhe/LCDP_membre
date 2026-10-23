@@ -9,6 +9,20 @@
   <link rel="stylesheet" href="https://lacleduparc.fr/OBJET/CSSBASE/cssbase.css">
   <link rel="stylesheet" href="https://lacleduparc.fr/OBJET/BOX/03-box-formulaire.css">
   <link rel="stylesheet" href="https://lacleduparc.fr/OBJET/BOX/01-box-text.css">
+  <style>
+    [data-lcdp-boxtext],
+    #titre-preparation,
+    [data-lcdp-boxtext-content],
+    #preparation-contenu p,
+    #statut-geolocalisation,
+    #confirmation-geolocalisation { text-align: center; }
+    #preparation-contenu .lcdp-box-formulaire__actions,
+    #confirmation-geolocalisation form {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
   <script src="preparer-acces-parc.js" defer></script>
 </head>
 <body>
@@ -22,10 +36,11 @@
                 <h1 class="lcdp-boxtext__title" id="titre-preparation">Préparez votre accès au parc</h1>
                 <div class="lcdp-boxtext__content" data-lcdp-boxtext-content>
                   <div id="preparation-contenu">
-                    <p>Avant votre visite, préparez votre téléphone.</p>
+                    <div id="preparation-qr"><p>Avant votre visite, préparez votre téléphone.</p>
                     <p>Scannez ce QR code pour autoriser la géolocalisation.</p>
                     <p><img id="qr-geolocalisation" width="220" height="220" alt="QR code à scanner avec votre téléphone" style="display:block;max-width:100%;height:auto;margin:24px auto"></p>
-                    <p>Ou bien autorisez maintenent depuis votre téléphone.</p>
+                    </div>
+                    <p id="consigne-autorisation">Ou bien autorisez maintenant depuis votre téléphone.</p>
                     <div class="lcdp-box-formulaire__actions">
                       <button type="button" class="lcdp-button" id="autoriser-geolocalisation">Autoriser</button>
                     </div>
