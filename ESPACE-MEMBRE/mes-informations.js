@@ -166,6 +166,14 @@
     },
     {
       section: "Participation au club",
+      id: "champ-optin-geolocalisation-membre",
+      name: "optinGeolocalisationAffichage",
+      label: "Opt-in géolocalisation",
+      type: "text",
+      key: "optinGeolocalisationAffichage"
+    },
+    {
+      section: "Participation au club",
       id: "champ-da-membre",
       name: "daAffichage",
       label: "DA",
@@ -1414,6 +1422,7 @@
       membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
       parrainAffichage: formaterParrainAffichage(compteMembreActuel.parrain),
       departementAffichage: formaterDepartementAffichage(compteMembreActuel.departement),
+      optinGeolocalisationAffichage: compteMembreActuel.optinGeolocalisation ? formaterDate(compteMembreActuel.optinGeolocalisation) : "Non enregistré",
       daAffichage: formaterDaCompte(compteMembreActuel),
       statutAffichage: formaterStatutCompte(compteMembreActuel.statut),
       pointsClubAffichage: formaterPointsClub(compteMembreActuel),

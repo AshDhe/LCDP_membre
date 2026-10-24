@@ -16,7 +16,7 @@
     #preparation-contenu p,
     #statut-geolocalisation,
     #confirmation-geolocalisation { text-align: center; }
-    #consigne-autorisation + .lcdp-box-formulaire__actions { margin-top: 24px; }
+    #texte-optin + .lcdp-box-formulaire__actions { margin-top: 24px; }
     #preparation-contenu .lcdp-box-formulaire__actions,
     #confirmation-geolocalisation form {
       display: flex;
@@ -24,6 +24,14 @@
       align-items: center;
     }
   </style>
+  <script>
+    window.LCDP_PAGE_MEMBRE_SANS_SESSION = true;
+    const paramsPreparation = new URLSearchParams(location.hash.slice(1));
+    window.LCDP_GEO_FLOW = paramsPreparation.get("flow") || "";
+    window.LCDP_GEO_CONFIRMATION = paramsPreparation.get("confirmation") || "";
+    if (location.hash && location.hash !== "#plus-tard") history.replaceState(null,"",location.pathname+location.search);
+  </script>
+  <script src="../config.js"></script>
   <script src="preparer-acces-parc.js" defer></script>
   <script>
     // Le HTML conserve le visuel choisi, même avec une ancienne version du JS.
@@ -41,6 +49,7 @@
           <div class="lcdp-component lcdp-box-formulaire-page">
             <div class="lcdp-box-formulaire-page__inner">
               <section class="lcdp-component lcdp-boxtext" data-lcdp-boxtext>
+                <p id="etape-securite" class="lcdp-boxtext__title" hidden>Sécurité de votre compte — 3 sur 3</p>
                 <h1 class="lcdp-boxtext__title" id="titre-preparation">Préparez votre accès au parc</h1>
                 <div class="lcdp-boxtext__content" data-lcdp-boxtext-content>
                   <div id="preparation-contenu">
@@ -49,6 +58,7 @@
                     <p><img id="qr-geolocalisation" src="data:image/webp;base64,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" data-qr-integre="true" width="260" height="260" alt="QR code à scanner avec votre téléphone" style="display:block;max-width:100%;height:auto;margin:24px auto"></p>
                     </div>
                     <p id="consigne-autorisation">Ou bien autorisez maintenant depuis votre téléphone.</p>
+                    <p id="texte-optin" style="margin-top:16px">J’autorise la géolocalisation de mon téléphone pour mes contrôles d’entrée et de sortie dans les parcs.</p>
                     <div class="lcdp-box-formulaire__actions">
                       <button type="button" class="lcdp-button" id="autoriser-geolocalisation">Autoriser</button>
                     </div>
@@ -57,8 +67,19 @@
                     </div>
                   </div>
                   <p id="statut-geolocalisation" role="status" aria-live="polite"></p>
+                  <dialog id="email-optin" style="border:1px solid #cdd2cd;border-radius:22px;padding:28px;max-width:calc(100% - 48px);color:#1f2a24">
+                    <form id="form-email-optin">
+                      <label for="email-compte-optin">Confirmez avec votre email de compte</label>
+                      <input class="lcdp-input" id="email-compte-optin" type="email" autocomplete="email" maxlength="254" required style="display:block;margin:18px auto;width:100%;max-width:320px">
+                      <p id="message-email-optin" role="status" aria-live="polite"></p>
+                      <div class="lcdp-box-formulaire__actions" style="margin-top:24px;display:flex;justify-content:center;gap:16px">
+                        <button type="submit" class="lcdp-button" id="envoyer-email-optin">Confirmer</button>
+                        <button type="button" class="lcdp-button lcdp-button-secondary" id="annuler-email-optin">Plus tard</button>
+                      </div>
+                    </form>
+                  </dialog>
                   <dialog id="confirmation-geolocalisation" style="border:1px solid #cdd2cd;border-radius:22px;padding:28px;max-width:calc(100% - 48px);color:#1f2a24">
-                    <p>La géolocalisation est autorisée sur ce téléphone.</p>
+                    <p>Votre opt-in géolocalisation est enregistré.</p>
                     <form method="dialog"><button class="lcdp-button">OK</button></form>
                   </dialog>
                 </div>

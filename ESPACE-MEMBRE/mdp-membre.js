@@ -119,9 +119,8 @@
 
     // Démarre à l'arrivée, avant la saisie du mot de passe (création seulement).
     let enregistrementNavigateur = null;
-    if (mode === "create") {
-      enregistrementNavigateur = enregistrerNavigateurInitial().catch(() => false);
-    }
+    // Première attribution différée jusqu'à l'opt-in confirmé.
+    if (mode === "create") enregistrementNavigateur = Promise.resolve(true);
 
     async function enregistrerNavigateurInitial() {
       const navigateur = obtenirIdentiteNavigateurMobile();
@@ -234,10 +233,13 @@
         confirmationTerminee = true;
         passwordEnAttente = "";
         casesCoda.forEach(champ => { champ.value = ""; champ.disabled = true; });
-        afficherInformation(
-          "Votre mot de passe est enregistré. Vous pouvez maintenant vous connecter à votre compte membre.",
-          urlConnexionMembre
-        );
+        champMotDePasse.value = "";
+        if (mode === "create") {
+          if (!data.nextUrl) throw new Error("Suite du tunnel absente.");
+          await afficherInformation("Votre mot de passe est enregistré, merci.", data.nextUrl);
+        } else {
+          await afficherInformation("Votre mot de passe est enregistré. Vous pouvez maintenant vous connecter à votre compte membre.", urlConnexionMembre);
+        }
 
       } catch (error) {
         console.error("Erreur appel mdptokenz :", error);
