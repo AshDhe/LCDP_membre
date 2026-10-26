@@ -500,13 +500,12 @@
     slot.innerHTML = "";
     slot.classList.add("lcdp-stack");
 
-    const messageAccueil = document.createElement("p");
-    messageAccueil.className = "lcdp-text-strong-lead";
-    messageAccueil.id = "message-accueil-membre";
-    messageAccueil.textContent = etat.prenommembre
-      ? "Bonjour " + etat.prenommembre + ", c’est à vous."
-      : "Bonjour, c’est à vous.";
-    slot.appendChild(messageAccueil);
+    const messageAccueil = document.getElementById("message-accueil-membre");
+    if (messageAccueil) {
+      messageAccueil.textContent = etat.prenommembre
+        ? "Bonjour " + etat.prenommembre + ", c’est à vous."
+        : "Bonjour, c’est à vous.";
+    }
 
     const fragment = await chargerFragmentObjet("/BOX/02-box-menu-bouton.html");
     slot.appendChild(fragment);
