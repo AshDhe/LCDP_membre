@@ -75,6 +75,7 @@
       const feuillesCssObjet = [
         "/CSSBASE/cssbase.css",
         "/BOX/02-box-bandeau-nav.css",
+        "/BOX/01-box-text.css",
         "/BOX/02-box-menu-burger.css",
         "/BOX/02-box-alerte.css",
         "/BOX/02-box-dialogue-bouton.css",
@@ -99,12 +100,23 @@
       font: inherit; font-size: 1.6rem; text-align: center; }
     .lcdp-transfert-coda-cases input:focus { outline: 2px solid var(--lcdp-color-primary, #55733f); outline-offset: 3px; }
   </style>
+  <style>
+    #lcdp-actualite-bandeau { margin-top: 24px; }
+  </style>
 </head>
 
 <body class="lcdp-page-accueil-membre">
   <div class="lcdp-site-page">
 
     <div id="lcdp-bandeau-slot"></div>
+    <div id="lcdp-actualite-bandeau">
+      <div class="lcdp-page-container">
+        <div class="lcdp-page-content">
+          <!-- Réserver deux lignes avant le chargement des actualités. -->
+          <div class="lcdp-boxtext__text--center" aria-hidden="true" style="height:3em;min-height:3em;line-height:1.5;overflow:hidden"></div>
+        </div>
+      </div>
+    </div>
 
     <main class="lcdp-site-main">
       <section class="lcdp-page-section">
@@ -132,5 +144,13 @@
   </div>
 
   <script src="./accueil-membre.js"></script>
+  <script>
+    (() => {
+      const script = document.createElement("script");
+      script.src = window.LCDP_urlPublic("/ESPACE-PUBLIC/actualite.js?v=20261023-2lignes");
+      script.defer = true;
+      document.body.appendChild(script);
+    })();
+  </script>
 </body>
 </html>
