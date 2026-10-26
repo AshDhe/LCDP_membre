@@ -128,7 +128,7 @@
       label: "Géolocalisation",
       type: "text",
       key: "geolocalisationAffichage",
-      action: {id:"modifier-geolocalisation-membre",texte:"Mettre à jour votre autorisation de géolocalisation",mode:"picto"}
+      action: {id:"modifier-geolocalisation-membre",texte:"Mettre à jour votre autorisation de géolocalisation",mode:"picto",pictoRouge:true}
     },
     {
       section: "Sécurité du compte",
@@ -473,7 +473,7 @@
 
   let selfieUrl = null;
   function initialiserZoneSelfie() {
-    const codeR = document.getElementById("champ-code-r-membre");
+    const codeR = document.getElementById("champ-geolocalisation-membre") || document.getElementById("champ-code-r-membre");
     const bloc = codeR?.closest("[data-lcdp-box-champ-formulaire]");
     if (!bloc || document.getElementById("zone-selfie")) return;
     const zone = document.createElement("section");
@@ -1428,7 +1428,7 @@
       ...compteMembreActuel,
       codeAAffichage: "CODA",
       codeRAffichage: "CODR",
-      geolocalisationAffichage: "Autorisation enregistrée",
+      geolocalisationAffichage: "Géolocalisation",
       alias: formaterAliasAffichage(compteMembreActuel.alias),
       membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
       parrainAffichage: formaterParrainAffichage(compteMembreActuel.parrain),
