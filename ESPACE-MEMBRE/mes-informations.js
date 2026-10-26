@@ -123,6 +123,15 @@
     },
     {
       section: "Sécurité du compte",
+      id: "champ-geolocalisation-membre",
+      name: "geolocalisationAffichage",
+      label: "Géolocalisation",
+      type: "text",
+      key: "geolocalisationAffichage",
+      action: {id:"modifier-geolocalisation-membre",texte:"Mettre à jour votre autorisation de géolocalisation",mode:"picto"}
+    },
+    {
+      section: "Sécurité du compte",
       id: "champ-bracelet-presence",
       name: "braceletPresenceAffichage",
       label: "Bracelet présence",
@@ -855,6 +864,7 @@
 
 
   function initialiserActionsModification() {
+    document.getElementById("modifier-geolocalisation-membre")?.addEventListener("click",demanderMiseAJourGeolocalisation);
     const boutonCodr=document.getElementById("modifier-code-r-membre");
     if (boutonCodr) boutonCodr.addEventListener("click",demanderModificationCodr);
     const boutonCoda = document.getElementById("modifier-code-a-membre");
@@ -1418,6 +1428,7 @@
       ...compteMembreActuel,
       codeAAffichage: "CODA",
       codeRAffichage: "CODR",
+      geolocalisationAffichage: "Autorisation enregistrée",
       alias: formaterAliasAffichage(compteMembreActuel.alias),
       membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
       parrainAffichage: formaterParrainAffichage(compteMembreActuel.parrain),
@@ -1742,6 +1753,39 @@
   function normaliserChampRemboursement(champ) {
     const valeur = String(champ || "").trim().toLowerCase();
     return ["iban", "swift", "rib"].includes(valeur) ? valeur : "";
+  }
+
+  let demandeGeoEnCours=false;
+  async function demanderMiseAJourGeolocalisation(){
+    if(demandeGeoEnCours)return;
+    demandeGeoEnCours=true;
+    try{
+      const slot=document.getElementById("lcdp-lightbox-slot");
+      if(!slot)throw new Error("Dialogue indisponible.");
+      slot.innerHTML="";
+      slot.appendChild(await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html"));
+      slot.querySelector("[data-lcdp-dialogue-title]").textContent="Mettre à jour votre autorisation de géolocalisation ?";
+      slot.querySelector("[data-lcdp-dialogue-text]").textContent="Cette opération vous déconnectera.";
+      const actions=slot.querySelector("[data-lcdp-dialogue-actions]");
+      const confirmer=await new Promise(resolve=>{
+        const fermer=valeur=>{slot.innerHTML="";resolve(valeur);};
+        for(const [texte,valeur] of [["OK",true],["Annuler",false]]){
+          const bouton=document.createElement("button");bouton.type="button";
+          bouton.className="lcdp-button "+(valeur?"lcdp-button-primary":"lcdp-button-secondary");
+          bouton.textContent=texte;bouton.addEventListener("click",()=>fermer(valeur),{once:true});actions.appendChild(bouton);
+        }
+        slot.querySelector("[data-lcdp-dialogue-close]").addEventListener("click",()=>fermer(false),{once:true});
+      });
+      if(confirmer){
+        const cfg=window.SITE_CONFIG||{};
+        const endpoint=String(cfg.workerDeconnexionMembreUrl||cfg.WORKER_DECONNEXION_MEMBRE_URL||cfg.W_DECONNEXION_URL||(typeof cfg.apiUrl==="function"?cfg.apiUrl("deconnexion-membre-api"):"https://deconnexion-membre-api.lacleduparc.fr")).replace(/\/+$/,"");
+        const reponse=await fetch(endpoint+"/deconnexion",{method:"POST",credentials:"include",cache:"no-store"});
+        const resultat=await reponse.json().catch(()=>null);
+        if(!reponse.ok||resultat?.success!==true)throw new Error(resultat?.message||"La déconnexion n’a pas été confirmée. Réessayez.");
+        location.assign(construireUrlPublic("/ESPACE-PUBLIC/preparer-acces-parc.html?mode=actualisation"));
+      }
+    }catch(e){await afficherAlerte(e.message||"La mise à jour est indisponible.");}
+    finally{demandeGeoEnCours=false;}
   }
 
   let demandeCodrEnCours=false;
