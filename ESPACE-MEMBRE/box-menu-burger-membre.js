@@ -1125,14 +1125,14 @@
         href: "/ESPACE-PUBLIC/actualite.html"
       },
       {
-        label: "FAQ",
-        espace: "membre",
-        href: "/ESPACE-MEMBRE/FAQ-membre.html"
-      },
-      {
         label: "Le club",
         espace: "public",
         href: "/ESPACE-PUBLIC/la-cle-du-parc.html"
+      },
+      {
+        label: "FAQ",
+        espace: "membre",
+        href: "/ESPACE-MEMBRE/FAQ-membre.html"
       },
       {
         label: "Changer d'espace connecté",

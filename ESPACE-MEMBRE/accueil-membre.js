@@ -214,8 +214,8 @@
 
     if (message) {
       message.textContent = etat.prenommembre
-        ? "Bonjour " + etat.prenommembre + ", que voulez-vous faire ?"
-        : "Bonjour, que voulez-vous faire ?";
+        ? "Bonjour " + etat.prenommembre + ", c’est à vous."
+        : "Bonjour, c’est à vous.";
     }
 
     afficherMentionAbonnementMembre(etat);
@@ -504,8 +504,8 @@
     messageAccueil.className = "lcdp-text-strong-lead";
     messageAccueil.id = "message-accueil-membre";
     messageAccueil.textContent = etat.prenommembre
-      ? "Bonjour " + etat.prenommembre + ", que voulez-vous faire ?"
-      : "Bonjour, que voulez-vous faire ?";
+      ? "Bonjour " + etat.prenommembre + ", c’est à vous."
+      : "Bonjour, c’est à vous.";
     slot.appendChild(messageAccueil);
 
     const fragment = await chargerFragmentObjet("/BOX/02-box-menu-bouton.html");
@@ -526,7 +526,7 @@
         action: () => redirigerMembre("/ESPACE-MEMBRE/reserver-membre.html")
       },
       {
-        label: "MON AGENDA",
+        label: "MES VISITES",
         style: "lcdp-button-accueil lcdp-button-accueil-green",
         action: () => redirigerMembre("/ESPACE-MEMBRE/planning-membre.html")
       },
