@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>FAQ - La Clé du Parc</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Les réponses aux questions fréquentes sur La Clé du Parc.">
+  <style>
+    html.lcdp-faq-preparation .lcdp-site-page { visibility: hidden; }
+    .lcdp-page-faq .lcdp-page-header { text-align: center; }
+    .lcdp-page-faq .lcdp-page-header h1 { text-align: center; }
+  </style>
+  <script>
+    document.documentElement.classList.add("lcdp-faq-preparation");
+    // Secours si un script ou une ressource ne répond pas.
+    window.LCDP_FAQ_SECOURS = setTimeout(() => {
+      document.documentElement.classList.remove("lcdp-faq-preparation");
+    }, 12000);
+  </script>
+  <script src="../config.js"></script>
+  <script>
+    (() => {
+      const c = window.SITE_CONFIG || {};
+      const membre = true;
+      const joindre = (base, chemin) => String(base || "").replace(/\/+$/, "") + "/" + chemin.replace(/^\/+/, "");
+      const publicUrl = path => typeof c.publicUrl === "function" ? c.publicUrl(path) : joindre(c.publicBaseUrl || c.PUBLIC_BASE || (membre ? "https://lacleduparc.fr" : c.siteBase) || "", path);
+      const objetUrl = path => typeof c.objetUrl === "function" ? c.objetUrl(path) : c.objetBaseUrl || c.OBJET_BASE ? joindre(c.objetBaseUrl || c.OBJET_BASE, path) : publicUrl("/OBJET/" + path.replace(/^\/+/, ""));
+      window.LCDP_FAQ_PAGE = { membre, publicUrl, objetUrl };
+      const styles = [];
+      function chargerStyle(href) {
+        styles.push(new Promise(resolve => {
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.onload = () => resolve(true);
+          link.onerror = () => resolve(false);
+          link.href = href;
+          document.head.appendChild(link);
+        }));
+      }
+      for (const path of ["/CSSBASE/cssbase.css", "/BOX/02-box-bandeau-nav.css", "/BOX/02-box-menu-burger.css", "/BOX/02-box-footer.css", "/BOX/02-box-dialogue-bouton.css", "/BOX/02-box-alerte.css"]) chargerStyle(objetUrl(path));
+      chargerStyle(publicUrl("/ESPACE-PUBLIC/faq-accordeon.css"));
+      window.LCDP_FAQ_PAGE.stylesPrets = Promise.all(styles);
+    })();
+  </script>
+</head>
+<body class="lcdp-page-faq">
+  <div class="lcdp-site-page">
+    <div id="lcdp-bandeau-slot"></div>
+    <main class="lcdp-site-main">
+      <section class="lcdp-page-section" aria-label="Questions fréquentes">
+        <div class="lcdp-page-container">
+          <div class="lcdp-page-content lcdp-stack-large">
+            <header class="lcdp-page-header">
+              <h1 class="lcdp-title-page-center">FAQ</h1>
+              <p style="text-align:center;color:#666">Questions fréquentes</p>
+            </header>
+            <p id="lcdp-faq-status" role="status">Chargement des FAQ…</p>
+            <div id="lcdp-faq-liste"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <div id="lcdp-footer-slot"></div>
+    <div id="lcdp-lightbox-slot"></div>
+  </div>
+  <script>
+    (() => {
+      const attribut = value => String(value).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+      for (const fichier of ["faq-accordeon.js", "faq.js"]) {
+        const src = window.LCDP_FAQ_PAGE.publicUrl("/ESPACE-PUBLIC/" + fichier);
+        document.write('<script src="' + attribut(src) + '"><\/script>');
+      }
+    })();
+  </script>
+</body>
+</html>
