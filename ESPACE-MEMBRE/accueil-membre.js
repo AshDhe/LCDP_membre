@@ -103,12 +103,19 @@
       throw new Error(messageErreurApi(resultat, "Impossible de vérifier votre session membre."));
     }
 
-    const abonnementEnCours = extraireAbonnementEnCours(resultat);
-    const affichageStatut = determinerAffichageStatutMembre(abonnementEnCours);
+    // Le statut de membre vient uniquement du Worker : abonnement en cours et non annulé.
+    const abonnementEnCours = resultat.abonnementEnCours || null;
+    const abonnementSuspendu = valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu);
+    const paiementSuspension = resultat.paiementSuspension || resultat.paiementRegularisation || null;
+    const mentionAbonnement = abonnementSuspendu
+      ? (paiementSuspensionDelaiDepasse(paiementSuspension)
+        ? "[Votre abonnement est annulé (non payé)]"
+        : "[Votre abonnement est suspendu (non payé)]")
+      : "";
 
     return {
       prenommembre: nettoyerPrenom(resultat.prenommembre),
-      abonne: affichageStatut.abonne,
+      abonne: valeurBooleenneVraie(resultat.abonne),
       emailparrain: nettoyerEmail(resultat.emailparrain),
       parrainRenseigne: valeurBooleenneVraie(resultat.parrainRenseigne),
       aReservationEnCours: valeurBooleenneVraie(resultat.aReservationEnCours || resultat.aReservationValidable),
@@ -116,90 +123,13 @@
       statutabo: abonnementEnCours?.statutabo || "",
       debut: abonnementEnCours?.debut || "",
       fin: abonnementEnCours?.fin || "",
-      abonnementSuspendu: affichageStatut.suspendu,
-      abonnementAnnule: affichageStatut.annule,
-      mentionAbonnement: affichageStatut.mention,
-      paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null,
+      abonnementSuspendu,
+      mentionAbonnement,
+      paiementSuspension,
       statuda: resultat.statuda || null,
       dateda: resultat.dateda || null,
       datenext: resultat.datenext || null
     };
-  }
-
-  function extraireAbonnementEnCours(resultat) {
-    const candidats = [
-      resultat?.abonnementEnCours,
-      resultat?.abonnementCourant,
-      resultat?.abonnementActuel,
-      resultat?.abonnement
-    ].filter((item) => item && typeof item === "object");
-
-    if (resultat && (resultat.statutabo || resultat.debut || resultat.fin)) {
-      candidats.push({
-        statutabo: resultat.statutabo,
-        debut: resultat.debut,
-        fin: resultat.fin
-      });
-    }
-
-    if (Array.isArray(resultat?.abonnements)) {
-      candidats.push(...resultat.abonnements.filter((item) => item && typeof item === "object"));
-    }
-
-    return candidats.find((abonnement) => abonnementEnCoursSelonDates(abonnement)) || null;
-  }
-
-  function determinerAffichageStatutMembre(abonnement) {
-    if (!abonnement || !abonnementEnCoursSelonDates(abonnement)) {
-      return { abonne: false, suspendu: false, annule: false, mention: "" };
-    }
-
-    const statutabo = normaliserStatutabo(abonnement.statutabo);
-
-    if (statutabo === "paye") {
-      return { abonne: true, suspendu: false, annule: false, mention: "" };
-    }
-
-    if (statutabo === "impaye") {
-      return { abonne: true, suspendu: true, annule: false, mention: "[Votre abonnement est suspendu (non payé)]" };
-    }
-
-    if (statutabo === "cancd") {
-      return { abonne: true, suspendu: false, annule: true, mention: "[Votre abonnement est annulé]" };
-    }
-
-    return { abonne: false, suspendu: false, annule: false, mention: "" };
-  }
-
-  function abonnementEnCoursSelonDates(abonnement) {
-    const debut = dateIsoDepuisValeurStatut(abonnement?.debut);
-    const fin = dateIsoDepuisValeurStatut(abonnement?.fin);
-    const aujourdHui = dateIsoAujourdhuiParisStatut();
-
-    return Boolean(debut && fin && debut <= aujourdHui && fin >= aujourdHui);
-  }
-
-  function normaliserStatutabo(value) {
-    const statut = String(value || "").trim().toLowerCase();
-    return ["paye", "impaye", "cancd", "cree"].includes(statut) ? statut : "";
-  }
-
-  function dateIsoDepuisValeurStatut(value) {
-    const texte = String(value || "").trim();
-    const match = texte.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    return match ? match[1] + "-" + match[2] + "-" + match[3] : "";
-  }
-
-  function dateIsoAujourdhuiParisStatut() {
-    const morceaux = new Intl.DateTimeFormat("fr-FR", {
-      timeZone: "Europe/Paris",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
-    }).formatToParts(new Date());
-
-    const valeur = (type) => morceaux.find((item) => item.type === type)?.value || "";
-    return valeur("year") + "-" + valeur("month") + "-" + valeur("day");
   }
 
   function afficherEtatMembre(etat) {

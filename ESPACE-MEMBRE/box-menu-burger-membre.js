@@ -1127,7 +1127,7 @@
       {
         label: "Le club",
         espace: "public",
-        href: "/ESPACE-PUBLIC/la-cle-du-parc.html"
+        href: "/ESPACE-PUBLIC/le-club.html"
       },
       {
         label: "FAQ",
