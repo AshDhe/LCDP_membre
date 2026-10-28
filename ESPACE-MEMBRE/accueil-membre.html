@@ -102,6 +102,7 @@
   </style>
   <style>
     #lcdp-actualite-bandeau { margin-top: 24px; }
+    #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden] { display: none !important; }
     @media (max-width: 767px) {
       .lcdp-page-accueil-membre .lcdp-site-main > .lcdp-page-section {
         padding-top: calc(var(--lcdp-space-5) * 0.82);
@@ -126,14 +127,22 @@
     <main class="lcdp-site-main">
       <section class="lcdp-page-section">
         <div class="lcdp-page-container">
-          <div class="lcdp-page-content lcdp-stack-large">
+          <div id="lcdp-accueil-attente" role="status" aria-label="Chargement de votre espace membre" style="display:flex;align-items:center;justify-content:center;min-height:240px">
+            <script>document.write('<img src="' + window.LCDP_urlObjet('/BOX/pictowait.gif') + '" alt="" width="64" height="64">');</script>
+          </div>
+          <div id="lcdp-accueil-erreur" hidden role="alert">
+            <p>Impossible de charger votre espace membre.</p>
+            <button type="button" class="lcdp-button lcdp-button-primary" onclick="window.location.reload()">Réessayer</button>
+          </div>
+          <noscript>Activez JavaScript pour accéder à votre espace membre.</noscript>
+          <div id="lcdp-accueil-contenu" class="lcdp-page-content lcdp-stack-large" hidden aria-busy="true">
 
             <p class="lcdp-text-strong-lead lcdp-accueil-mention" id="message-accueil-membre" aria-live="polite">
               Bonjour, c’est à vous.
             </p>
 
             <p class="lcdp-mention-connexion" id="mention-statut-membre" aria-live="polite">
-              [Chargement du statut membre]
+              
             </p>
 
             <div id="lcdp-menu-central-slot" class="lcdp-stack"></div>
@@ -148,7 +157,14 @@
 
   </div>
 
-  <script src="./accueil-membre.js"></script>
+  <script>
+    window.LCDP_echecAccueilMembre = function () {
+      document.getElementById("lcdp-accueil-attente").style.display = "none";
+      document.getElementById("lcdp-accueil-contenu").hidden = true;
+      document.getElementById("lcdp-accueil-erreur").hidden = false;
+    };
+  </script>
+  <script src="./accueil-membre.js?v=20261028-gif1" onerror="window.LCDP_echecAccueilMembre()"></script>
   <script>
     (() => {
       const script = document.createElement("script");

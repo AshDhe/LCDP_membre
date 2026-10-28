@@ -72,8 +72,18 @@
       afficherEtatMembre(etatMembre);
       await initialiserBurgerMembre(etatMembre);
       await initialiserMenuCentral(etatMembre);
+      const contenu = document.getElementById("lcdp-accueil-contenu");
+      if (contenu) {
+        contenu.hidden = false;
+        contenu.setAttribute("aria-busy", "false");
+      }
+      const attente = document.getElementById("lcdp-accueil-attente");
+      if (attente) attente.style.display = "none";
     } catch (error) {
       console.error("Erreur accueil membre :", error);
+      if (typeof window.LCDP_echecAccueilMembre === "function") {
+        window.LCDP_echecAccueilMembre();
+      }
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
     }
   }
