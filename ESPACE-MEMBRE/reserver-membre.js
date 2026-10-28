@@ -147,6 +147,7 @@
       etatMembre = await chargerEtatMembre();
       afficherEtatMembre(etatMembre);
       await actualiserBurgerMembre(etatMembre.abonne);
+      chargerDialogueFiltrePlanifier().catch(erreur => console.warn("Préchargement du filtre indisponible.", erreur));
       await ouvrirPlanningGeneralVierge();
       await promesseFooter;
     } catch (erreur) {
@@ -159,12 +160,21 @@
   const filtresAccesPlanifier = new Set();
   let filtreParcOuvert = false;
   let parcInitialise = false;
+  // Le même fragment sert aux deux filtres : une seule requête, anticipée.
+  let promesseDialogueFiltre = null;
+  function chargerDialogueFiltrePlanifier() {
+    if (!promesseDialogueFiltre) {
+      promesseDialogueFiltre = chargerFragmentObjet("/BOX/04-box-dialogue-champ.html")
+        .catch(erreur => { promesseDialogueFiltre = null; throw erreur; });
+    }
+    return promesseDialogueFiltre.then(fragment => fragment.cloneNode(true));
+  }
 
   async function ouvrirFiltreAccesPlanifier() {
     const enveloppe = document.createElement("div");
     document.body.appendChild(enveloppe);
     try {
-      const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ.html");
+      const fragment = await chargerDialogueFiltrePlanifier();
       enveloppe.appendChild(fragment);
       const dialogue = enveloppe.querySelector("[data-lcdp-box-dialogue-champ]");
       const titre = enveloppe.querySelector("[data-lcdp-dialogue-champ-title]");
@@ -173,13 +183,14 @@
       const close = enveloppe.querySelector("[data-lcdp-dialogue-champ-close]");
       const cancel = enveloppe.querySelector("[data-lcdp-dialogue-champ-cancel]");
       const submit = enveloppe.querySelector("[data-lcdp-dialogue-champ-submit]");
-      if (![dialogue,titre,form,content,close,cancel,submit].every(Boolean)) throw new Error("Box Autorisé incomplète.");
-      titre.textContent = "Autorisé";
-      submit.textContent = "FILTRER";
-      cancel.hidden = true;
+      if (![dialogue,titre,form,content,close,submit].every(Boolean)) throw new Error("Box Autorisation incomplète.");
+      dialogue.classList.add("lcdp-planifier-acces-dialogue");
+      titre.textContent = "Autorisation";
+      submit.textContent = "VALIDER";
+      cancel?.remove();
       const choix = [
-        ["famille", "FAMILLE"],
-        ["coach", "COACH"],
+        ["famille", "Avec FAMILLE"],
+        ["coach", "Avec COACH"],
         ["famille-coach", "FAMILLE + COACH"]
       ];
       for (const [valeur, libelle] of choix) {
@@ -220,10 +231,17 @@
     filtreParcOuvert = true;
     const enveloppe = document.createElement("div");
     document.body.appendChild(enveloppe);
+    // Le pictogramme démarre immédiatement, avant les chargements réseau.
+    const chargement = document.createElement("div");
+    chargement.className = "lcdp-planifier-parcs-chargement";
+    chargement.setAttribute("role", "status");
+    chargement.setAttribute("aria-label", "Chargement des parcs");
+    chargement.appendChild(creerPictowait("Chargement des parcs…"));
+    enveloppe.appendChild(chargement);
     const barre = document.getElementById("lcdp-commande-bar-reserver-slot");
     const liste = document.getElementById("lcdp-liste-card-parcs-slot");
     try {
-      const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ.html");
+      const fragment = await chargerDialogueFiltrePlanifier();
       enveloppe.appendChild(fragment);
       const dialogue = enveloppe.querySelector("[data-lcdp-box-dialogue-champ]");
       const carte = enveloppe.querySelector(".lcdp-box-dialogue-champ__card");
@@ -234,8 +252,13 @@
       if (![dialogue,carte,titre,form,content,close,barre,liste].every(Boolean)) throw new Error("Box Parc incomplète.");
       carte.classList.add("lcdp-planifier-parcs-card");
       titre.textContent = "Parcs du département";
+      const nomDepartement = document.createElement("p");
+      nomDepartement.className = "lcdp-planifier-parcs-departement";
+      nomDepartement.textContent = etatPage.nomDepartement || etatPage.departement || "";
+      titre.insertAdjacentElement("afterend", nomDepartement);
       form.querySelector(".lcdp-box-dialogue-champ__actions")?.remove();
       content.append(barre,liste);
+      content.prepend(chargement);
       barre.hidden = false;
       liste.hidden = false;
       let ferme = false;
@@ -260,9 +283,12 @@
           document.addEventListener("click", gererClicDocument);
           await chargerReservationsMembrePourBlocages();
           await chargerParcsDepartementMembre();
+          chargement.remove();
+          nomDepartement.textContent = etatPage.nomDepartement || etatPage.departement || "";
         } catch(error) {parcInitialise = false; throw error;}
       } else {
         afficherCommandeBarReserver();
+        chargement.remove();
       }
     } catch(error) {
       const pageContent = document.querySelector(".lcdp-page-reserver .lcdp-page-content--avec-entete");
@@ -383,9 +409,7 @@
     });
     slot.replaceChildren(calendrier);
     afficher();
-    // Attendre le rendu initial pour montrer le calendrier derrière l'alerte.
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    await afficherAlerteSuperposee("Choisissez les filtres de vos accès.");
+
   }
 
   async function chargerEtatMembre() {
@@ -801,9 +825,9 @@
   async function initialiserCommandeBarReserver() {
     const slot = document.getElementById("lcdp-commande-bar-reserver-slot");
     const boutonDepartement = document.getElementById("bouton-changer-departement");
-    const boutonIa = document.getElementById("bouton-demander-ia");
+    const boutonCarte = document.getElementById("bouton-voir-carte");
 
-    if (!slot || !boutonDepartement || !boutonIa) {
+    if (!slot || !boutonDepartement || !boutonCarte) {
       throw new Error("Structure Command Bar réserver incomplète.");
     }
 
@@ -813,9 +837,9 @@
       "Changer de département"
     );
     ajouterPictoCommandeBar(
-      boutonIa,
-      "/IMAG/PICTO/picto-recherche-ia.svg",
-      "Rechercher avec l'IA"
+      boutonCarte,
+      "/IMAG/PICTO/picto-localiser.svg",
+      "Voir sur la carte"
     );
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-commande-bar.html");
@@ -828,8 +852,8 @@
 
     commandeBar.classList.add("lcdp-box-commande-bar--encadree");
 
-    actions.appendChild(boutonDepartement);
-    // La recherche IA sera placée ailleurs dans le parcours.
+    actions.append(boutonDepartement, boutonCarte);
+    // La carte sera raccordée lors d'une prochaine étape.
 
     slot.replaceChildren(commandeBar);
     slot.hidden = true;
@@ -884,7 +908,6 @@
 
   function initialiserBoutonDepartementPrincipal() {
     const boutonDepartement = document.getElementById("bouton-changer-departement");
-    const boutonIa = document.getElementById("bouton-demander-ia");
 
     if (boutonDepartement) {
       boutonDepartement.addEventListener("click", () => {
@@ -892,11 +915,6 @@
       });
     }
 
-    if (boutonIa) {
-      boutonIa.addEventListener("click", () => {
-        demanderOuvertureRechercheIaShift().catch(console.error);
-      });
-    }
   }
 
   async function demanderOuvertureRechercheIaShift() {
@@ -2080,6 +2098,7 @@
 
       const departement = String(data.departement || "");
       const parcs = Array.isArray(data.parcs) ? data.parcs : [];
+      etatPage.nomDepartement = String(data.nomDepartement || data.nomdepartement || data.libelleDepartement || data.departementNom || "").trim();
       const listePreparee = construireListeParcsPreparee(
         parcs,
         departement
@@ -2153,6 +2172,7 @@
         data.departement || departement
       );
       const parcs = Array.isArray(data.parcs) ? data.parcs : [];
+      etatPage.nomDepartement = String(data.nomDepartement || data.nomdepartement || data.libelleDepartement || data.departementNom || "").trim();
       const listePreparee = construireListeParcsPreparee(
         parcs,
         departementRecu
@@ -2195,6 +2215,8 @@
   }
 
   function actualiserTitreParcsDepartement() {
+    const sousTitre = document.querySelector(".lcdp-planifier-parcs-departement");
+    if (sousTitre) sousTitre.textContent = etatPage.nomDepartement || etatPage.departement || "";
     const titre = document.getElementById("titre-parcs-departement");
     if (!titre) return;
     titre.replaceChildren(document.createTextNode("Parcs près de chez vous"));
@@ -2262,7 +2284,7 @@
     }
 
     if (titre) {
-      titre.textContent = nom + (departement ? " (" + departement + ")" : "");
+      titre.textContent = nom.replace(/^parc\s+/i, "");
     }
 
     if (meta) {
@@ -4470,7 +4492,7 @@
     if (conteneur) document.body.appendChild(conteneur);
     else slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ.html");
+    const fragment = await chargerDialogueFiltrePlanifier();
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-champ]");

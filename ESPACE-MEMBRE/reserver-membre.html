@@ -121,13 +121,14 @@
     .lcdp-page-reserver .lcdp-planifier-entete-filtres {
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       flex-wrap: wrap;
       gap: 10px 14px;
       min-width: 0;
     }
     .lcdp-page-reserver .lcdp-planifier-entete-filtres [data-lcdp-calendrier-mois-title] {
       margin: 0;
+      text-align: left;
     }
     .lcdp-page-reserver .lcdp-planifier-actions-filtres {
       display: inline-flex;
@@ -153,7 +154,16 @@
       cursor: pointer;
       box-sizing: border-box;
     }
-    .lcdp-page-reserver .lcdp-planifier-filtre--acces { background: var(--lcdp-color-orange); }
+    .lcdp-page-reserver .lcdp-planifier-filtre--acces {
+      background: var(--lcdp-color-orange);
+      border-color: var(--lcdp-color-orange);
+      color: #ffffff;
+    }
+    .lcdp-page-reserver .lcdp-planifier-filtre--acces:hover,
+    .lcdp-page-reserver .lcdp-planifier-filtre--acces:focus-visible {
+      background: var(--lcdp-color-orange-hover);
+      color: #ffffff;
+    }
     .lcdp-page-reserver .lcdp-planifier-filtre--parc { background: var(--lcdp-color-logo-green, #43834a); }
     .lcdp-page-reserver .lcdp-planifier-filtre svg { display: block; width: 15px; height: 15px; flex: 0 0 15px; color: inherit; }
     .lcdp-page-reserver .lcdp-planifier-filtre:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
@@ -163,12 +173,14 @@
     @media (max-width: 767px) {
       .lcdp-page-reserver .lcdp-planifier-entete-filtres {
         flex-direction: column;
+        align-items: flex-start;
         gap: 8px;
       }
+
     }
 
     /* Filtres PLANIFIER : exceptions limitées à ces deux dialogues. */
-    .lcdp-planifier-acces-option { display:inline-flex; align-self:flex-start; align-items:center; gap:9px; padding:7px 11px; border-radius:var(--lcdp-radius-small); font-size:0.9rem; font-weight:700; color:white; cursor:pointer; }
+    .lcdp-planifier-acces-option { display:inline-flex; align-self:flex-start; align-items:center; gap:9px; width:216px; max-width:100%; min-height:38px; padding:7px 11px; border-radius:var(--lcdp-radius-small); font-size:0.9rem; font-weight:700; color:white; cursor:pointer; }
     .lcdp-planifier-acces-option input { width:18px; height:18px; margin:0; flex:none; accent-color:var(--lcdp-color-primary); }
     .lcdp-planifier-acces-option--famille { background:var(--lcdp-color-logo-green); }
     .lcdp-planifier-acces-option--coach { background:var(--lcdp-color-coach); }
@@ -176,6 +188,28 @@
     .lcdp-planifier-parcs-card { width:min(calc(100vw - 36px),720px); max-height:calc(100svh - 36px); overflow-y:auto; }
     .lcdp-planifier-parcs-card .lcdp-box-dialogue-champ__content { max-height:none; }
     .lcdp-planifier-parcs-card .lcdp-box-liste-card { text-align:left; }
+
+    /* Ajustements propres à PLANIFIER : sans changer les styles génériques. */
+    @media (max-width: 767px) {
+      .lcdp-planifier-acces-dialogue .lcdp-box-dialogue-champ__title { font-size: clamp(1.5rem, 6vw, 2.04rem); }
+      .lcdp-planifier-parcs-card .lcdp-box-commande-bar__actions { flex-direction: column; align-items: stretch; }
+      .lcdp-planifier-parcs-card .lcdp-box-commande-bar__actions > .lcdp-button { width: 100% !important; }
+      .lcdp-planifier-parcs-card .lcdp-box-card-parc__actions--reserver {
+        display: flex; flex-direction: row; flex-wrap: nowrap; gap: 6px; align-items: stretch;
+      }
+      .lcdp-planifier-parcs-card .lcdp-box-card-parc__actions--reserver > .lcdp-button {
+        flex: 1 1 0; width: 0; min-width: 0; max-width: none; min-height: 38px;
+        padding: 6px 5px; font-size: 0.78rem; white-space: nowrap; overflow-wrap: normal; gap: 4px;
+      }
+      .lcdp-planifier-parcs-card .lcdp-box-card-parc__actions--reserver .lcdp-box-card-parc__action-icone {
+        width: 17px; height: 17px; flex: 0 0 17px;
+      }
+    }
+    .lcdp-planifier-parcs-departement { display:block; text-align:center; font-weight:400; margin:0 0 var(--lcdp-space-2); }
+    .lcdp-planifier-parcs-chargement { display:flex; align-items:center; justify-content:center; min-height:110px; }
+    .lcdp-planifier-parcs-chargement .lcdp-pictowait { display:flex; align-items:center; justify-content:center; }
+    .lcdp-planifier-parcs-card #bouton-voir-carte { color:#fff; }
+    .lcdp-planifier-parcs-card #bouton-voir-carte:hover { color:#fff; }
   </style>
 </head>
 
@@ -214,8 +248,8 @@
                 Changer de département
               </button>
 
-              <button class="lcdp-button lcdp-button-orange" type="button" id="bouton-demander-ia">
-                Rechercher avec l'IA
+              <button class="lcdp-button lcdp-button-orange" type="button" id="bouton-voir-carte">
+                Voir sur la carte
               </button>
             </div>
 
@@ -231,6 +265,6 @@
 
   </div>
 
-  <script src="./reserver-membre.js?v=20261028-planifier-v4"></script>
+  <script src="./reserver-membre.js?v=20261028-planifier-v6"></script>
 </body>
 </html>
