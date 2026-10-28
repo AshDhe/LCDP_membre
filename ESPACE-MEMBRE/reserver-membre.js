@@ -135,53 +135,115 @@
   async function initialiserPage() {
     if (pageInitialisee) return;
     pageInitialisee = true;
-
     document.body.classList.add("lcdp-page-reserver");
-    initialiserDescriptionResponsiveCardParc();
-
     const titrePage = document.querySelector(".lcdp-title-page-center");
-
-    if (titrePage) {
-      titrePage.textContent = "PLANIFIER";
-    }
-
-    afficherPictowaitListeParcs(
-      "Construction de la liste des parcs…",
-      false
-    );
+    if (titrePage) titrePage.textContent = "PLANIFIER";
 
     try {
-      const promesseFooter = initialiserFooter()
-        .catch((error) => {
-          console.warn(
-            "Footer indisponible sur la page Réserver.",
-            error
-          );
-        });
-
+      const promesseFooter = initialiserFooter().catch((erreur) => {
+        console.warn("Footer indisponible sur la page Planifier.", erreur);
+      });
       await initialiserBandeau();
       etatMembre = await chargerEtatMembre();
       afficherEtatMembre(etatMembre);
       await actualiserBurgerMembre(etatMembre.abonne);
-      await initialiserListeParcs();
-      prechargerConstructeurFicheParc();
-      await initialiserCommandeBarReserver();
-      initialiserBoutonDepartementPrincipal();
-      initialiserActionsListeParcs();
-      document.addEventListener("click", gererClicDocument);
-      await chargerReservationsMembrePourBlocages();
-      await chargerParcsDepartementMembre();
+      await ouvrirPlanningGeneralVierge();
       await promesseFooter;
-
-      initialiserActionsPersistantesReserver();
-      actualiserEspaceFooterReserver();
-    } catch (error) {
-      masquerPictowaitListeParcs();
-      console.error("Erreur réserver membre :", error);
-      await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
-    } finally {
-      masquerPictowaitListeParcs();
+    } catch (erreur) {
+      console.error("Erreur ouverture du planning général :", erreur);
+      await afficherAlerte(erreur.message || "Impossible d’ouvrir le planning.");
     }
+  }
+
+  // Étape 1 du nouveau parcours PLANIFIER : aucune donnée de parc ni d'abonnement
+  // n'est utilisée pour remplir la grille. Les filtres seront ajoutés ensuite.
+  async function ouvrirPlanningGeneralVierge() {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    if (!slot) throw new Error("Emplacement du planning introuvable.");
+    const [fragmentCalendrier, fragmentJour] = await Promise.all([
+      chargerFragmentObjet("/BOX/04-box-calendrier-mois.html"),
+      chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html")
+    ]);
+    const calendrier = fragmentCalendrier.querySelector("[data-lcdp-box-calendrier-mois]");
+    const templateJour = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
+    if (!calendrier || !templateJour) throw new Error("Grille mensuelle indisponible.");
+
+    const titre = calendrier.querySelector("[data-lcdp-calendrier-mois-title]");
+    const meta = calendrier.querySelector("[data-lcdp-calendrier-mois-meta]");
+    const courant = calendrier.querySelector("[data-lcdp-calendrier-mois-current]");
+    const grille = calendrier.querySelector("[data-lcdp-calendrier-mois-grid]");
+    const message = calendrier.querySelector("[data-lcdp-calendrier-mois-message]");
+    const precedent = calendrier.querySelector("[data-lcdp-calendrier-mois-prev]");
+    const suivant = calendrier.querySelector("[data-lcdp-calendrier-mois-next]");
+    const fermer = calendrier.querySelector("[data-lcdp-calendrier-mois-close]");
+    if (![titre, meta, courant, grille, message, precedent, suivant, fermer].every(Boolean)) {
+      throw new Error("Structure du planning mensuel incomplète.");
+    }
+
+    titre.textContent = "Planning général";
+    meta.textContent = "";
+    meta.hidden = true;
+    message.hidden = true;
+    message.textContent = "";
+    const morceauxDate = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"
+    }).formatToParts(new Date());
+    const lirePartie = type => morceauxDate.find(partie => partie.type === type)?.value || "";
+    const aujourdhui = `${lirePartie("year")}-${lirePartie("month")}-${lirePartie("day")}`;
+    const annee = Number(lirePartie("year"));
+    const mois = Number(lirePartie("month"));
+    const etat = { annee, mois };
+    const borne = annee * 12 + mois;
+
+    function afficher() {
+      courant.textContent = formaterMoisAnnee(etat.annee, etat.mois);
+      grille.replaceChildren();
+      const premierJour = new Date(etat.annee, etat.mois - 1, 1);
+      const decalage = (premierJour.getDay() + 6) % 7;
+      const nbJours = new Date(etat.annee, etat.mois, 0).getDate();
+      for (let i = 0; i < decalage; i++) {
+        const vide = templateJour.cloneNode(true);
+        vide.classList.add("lcdp-box-card-jour-in-calendrier-mois--empty");
+        vide.disabled = true;
+        vide.setAttribute("aria-hidden", "true");
+        grille.appendChild(vide);
+      }
+      for (let jour = 1; jour <= nbJours; jour++) {
+        const iso = construireDateIso(etat.annee, etat.mois, jour);
+        const card = templateJour.cloneNode(true);
+        const numero = card.querySelector("[data-lcdp-card-jour-mois-number]");
+        if (numero) numero.textContent = String(jour);
+        card.dataset.date = iso;
+        card.setAttribute("aria-label", iso);
+        // Les plages restent véritablement vides : aucun statut de parc n'est simulé.
+        card.querySelectorAll("[data-lcdp-card-jour-mois-slot]").forEach(slotPlage => {
+          slotPlage.hidden = true;
+          slotPlage.replaceChildren();
+        });
+        if (iso < aujourdhui) {
+          card.classList.add("lcdp-box-card-jour-in-calendrier-mois--past");
+          card.disabled = true;
+        } else if (iso === aujourdhui) {
+          card.classList.add("lcdp-box-card-jour-in-calendrier-mois--today");
+        }
+        // Aucune action sur les jours avant définition des filtres.
+        grille.appendChild(card);
+      }
+      precedent.disabled = etat.annee * 12 + etat.mois <= borne;
+    }
+    precedent.addEventListener("click", () => {
+      if (etat.annee * 12 + etat.mois <= borne) return;
+      changerMois(etat, -1); afficher();
+    });
+    suivant.addEventListener("click", () => { changerMois(etat, 1); afficher(); });
+    fermer.addEventListener("click", () => {
+      window.location.href = construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html");
+    });
+    slot.replaceChildren(calendrier);
+    afficher();
+    // Attendre le rendu initial pour montrer le calendrier derrière l'alerte.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await afficherAlerteSuperposee("Choisissez les filtres de vos accès.");
   }
 
   async function chargerEtatMembre() {
