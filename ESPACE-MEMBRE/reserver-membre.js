@@ -1890,6 +1890,7 @@
   }
 
   async function ouvrirChoixDepartement() {
+    let donneesDepartementVerifiees = null;
     const resultat = await ouvrirDialogueChamp({
       titre: "Changer de département",
       champs: [
@@ -1898,24 +1899,44 @@
           name: "dptmt",
           label: "Département",
           type: "text",
-          inputmode: "numeric",
+          inputmode: "text",
           autocomplete: "off",
           placeholder: "Exemple : 08",
           required: true
         }
-      ]
+      ],
+      // La vérification utilise directement public.dptmt, via le nom
+      // renvoyé par le Worker. Aucun code n'est supposé valide par défaut.
+      verifier: async (saisie) => {
+        const code = nettoyerDepartement(saisie.dptmt);
+        if (!/^(?:0[1-9]|[1-8][0-9]|9[0-5]|2A|2B|97[1-6])$/.test(code)) {
+          return "Code de département invalide. Exemple : 08.";
+        }
+        if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
+          return "Service des départements indisponible. Réessayez.";
+        }
+        const reponse = await fetch(
+          ENDPOINT_NOUVELLE_DATE_MEMBRE + "/departement?dptmt=" + encodeURIComponent(code),
+          { method: "GET", credentials: "include", cache: "no-store", headers: { Accept: "application/json" } }
+        );
+        if (reponse.status === 401) {
+          redirigerConnexionMembre("inactive");
+          return "Session expirée. Reconnectez-vous.";
+        }
+        const data = await reponse.json().catch(() => null);
+        if (!reponse.ok || !data || !reponseApiOk(data)) {
+          throw new Error(messageErreurApi(data, "Vérification du département indisponible."));
+        }
+        if (!String(data.nomDepartement || "").trim()) {
+          return "Code de département invalide. Exemple : 08.";
+        }
+        donneesDepartementVerifiees = data;
+        return null;
+      }
     });
 
-    if (!resultat) return;
-
-    const departement = nettoyerDepartement(resultat.dptmt);
-
-    if (!departement) {
-      await afficherAlerte("Le département est obligatoire.");
-      return;
-    }
-
-    await chargerParcsDepartement(departement);
+    if (!resultat || !donneesDepartementVerifiees) return;
+    await chargerParcsDepartement(nettoyerDepartement(resultat.dptmt), donneesDepartementVerifiees);
   }
 
   function creerPictowait(message) {
@@ -2153,7 +2174,7 @@
     }
   }
 
-  async function chargerParcsDepartement(departement) {
+  async function chargerParcsDepartement(departement, donneesVerifiees = null) {
     if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
       await afficherAlerte(
         "Le service de réservation membre n’est pas configuré."
@@ -2167,34 +2188,20 @@
     );
 
     try {
-      const reponse = await fetch(
-        ENDPOINT_NOUVELLE_DATE_MEMBRE +
-        "/departement?dptmt=" +
-        encodeURIComponent(departement),
-        {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-          headers: {
-            "Accept": "application/json"
-          }
-        }
-      );
-
-      const data = await reponse.json().catch(() => null);
-
-      if (reponse.status === 401) {
-        redirigerConnexionMembre("inactive");
-        return;
-      }
-
-      if (!reponse.ok || !data || !reponseApiOk(data)) {
-        throw new Error(
-          messageErreurApi(
-            data,
-            "Impossible de charger les parcs de ce département."
-          )
+      let data = donneesVerifiees;
+      if (!data) {
+        const reponse = await fetch(
+          ENDPOINT_NOUVELLE_DATE_MEMBRE + "/departement?dptmt=" + encodeURIComponent(departement),
+          { method: "GET", credentials: "include", cache: "no-store", headers: { Accept: "application/json" } }
         );
+        data = await reponse.json().catch(() => null);
+        if (reponse.status === 401) {
+          redirigerConnexionMembre("inactive");
+          return;
+        }
+        if (!reponse.ok || !data || !reponseApiOk(data)) {
+          throw new Error(messageErreurApi(data, "Impossible de charger les parcs de ce département."));
+        }
       }
 
       const departementRecu = String(
@@ -4605,8 +4612,9 @@
         if (event.target === dialogue) fermer(null);
       });
 
-      formulaire.addEventListener("submit", (event) => {
+      formulaire.addEventListener("submit", async (event) => {
         event.preventDefault();
+        if (formulaire.dataset.lcdpVerificationEnCours === "true") return;
 
         erreur.hidden = true;
         erreur.textContent = "";
@@ -4631,6 +4639,28 @@
           return;
         }
 
+        if (typeof options.verifier === "function") {
+          formulaire.dataset.lcdpVerificationEnCours = "true";
+          const boutonValider = formulaire.querySelector('[type="submit"]');
+          if (boutonValider) boutonValider.disabled = true;
+          try {
+            const message = await options.verifier(data);
+            if (resolu) return;
+            if (message) {
+              erreur.textContent = String(message);
+              erreur.hidden = false;
+              return;
+            }
+          } catch (error) {
+            if (resolu) return;
+            erreur.textContent = error?.message || "Vérification momentanément indisponible.";
+            erreur.hidden = false;
+            return;
+          } finally {
+            delete formulaire.dataset.lcdpVerificationEnCours;
+            if (boutonValider) boutonValider.disabled = false;
+          }
+        }
         fermer(data);
       });
 
