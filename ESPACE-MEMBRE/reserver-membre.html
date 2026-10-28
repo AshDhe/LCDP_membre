@@ -250,6 +250,14 @@
     .lcdp-planifier-partage-confirmation [data-lcdp-alerte-message] { font-size:1.5rem !important; line-height:1.25; font-weight:700; }
     .lcdp-planifier-partage-confirmation [data-lcdp-alerte-ok] { background:#55733f !important; border-color:#55733f !important; color:#fff !important; }
   </style>
+<style>
+/* V17 : la coque de la fiche reste de taille stable pendant son chargement. */
+.lcdp-page-reserver .lcdp-box-shift-detail-parc--preparation .lcdp-box-shift-detail-parc__card { min-height:min(76dvh,740px); }
+.lcdp-page-reserver .lcdp-fiche-parc__chargement-plein { min-height:min(68dvh,660px); display:flex; flex-direction:column; align-items:stretch; gap:12px; }
+.lcdp-page-reserver .lcdp-fiche-parc__chargement-plein .lcdp-pictowait { flex:1; display:flex; align-items:center; justify-content:center; }
+.lcdp-page-reserver .lcdp-fiche-parc__chargement-plein .lcdp-pictowait__image { max-width:100%; }
+.lcdp-page-reserver [data-lcdp-box-alerte] [data-lcdp-alerte-message] { font-size:1.3rem; }
+</style>
 </head>
 
 <body>
@@ -307,6 +315,6 @@
 
   </div>
 
-  <script src="./reserver-membre.js?v=20261028-planifier-v16"></script>
+  <script src="./reserver-membre.js?v=20261028-planifier-v17"></script>
 </body>
 </html>

@@ -1978,14 +1978,18 @@
     }
 
     detail.contenu.replaceChildren(
-      creerPictowait(
-        message || "Chargement de la Fiche Parc…"
-      )
+      (() => {
+        const cadre = document.createElement("div");
+        cadre.className = "lcdp-fiche-parc__chargement-plein";
+        cadre.setAttribute("aria-busy", "true");
+        const titre = document.createElement("h2");
+        titre.className = "lcdp-box-fiche-parc__title";
+        titre.textContent = detail.racine.dataset.lcdpTitreParc || "Fiche parc";
+        cadre.append(titre, creerPictowait(message || "Chargement de la Fiche Parc…"));
+        return cadre;
+      })()
     );
     detail.racine.hidden = false;
-    detail.racine.classList.remove(
-      "lcdp-box-shift-detail-parc--preparation"
-    );
 
     window.requestAnimationFrame(() => {
       detail.racine.classList.add(
@@ -2550,7 +2554,7 @@
       if (![box, texte, fermerBouton, afficherBouton].every(Boolean)) {
         throw new Error("Box d'information indisponible.");
       }
-      texte.textContent = "sub planning";
+      texte.textContent = "Afficher ce parc";
       afficherBouton.textContent = "Afficher";
       return await new Promise(resolve => {
         let terminee = false;
@@ -2617,6 +2621,7 @@
       );
     }
 
+    detail.racine.dataset.lcdpTitreParc = "Parc de " + String(parc.nom || "").replace(/^parc\s+(?:de\s+|d['’]\s*)?/i, "");
     afficherPictowaitShiftDetailParc(
       detail,
       vueDemandee === "planning"
