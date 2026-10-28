@@ -116,6 +116,57 @@
     })();
     document.write('<script data-lcdp-footer-autonome src="' + window.LCDP_urlObjet('/BOX/02-box-footer.js') + '"><\/script>');
   </script>
+  <style>
+    /* En-tête du planning général : n'affecte pas les autres calendriers. */
+    .lcdp-page-reserver .lcdp-planifier-entete-filtres {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      min-width: 0;
+    }
+    .lcdp-page-reserver .lcdp-planifier-entete-filtres [data-lcdp-calendrier-mois-title] {
+      margin: 0;
+    }
+    .lcdp-page-reserver .lcdp-planifier-actions-filtres {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .lcdp-page-reserver .lcdp-planifier-filtre {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      width: 86px;
+      min-height: 29px;
+      padding: 4px 7px;
+      border: 0;
+      border-radius: 7px;
+      color: #fff;
+      font: inherit;
+      font-size: 0.73rem;
+      font-weight: 650;
+      line-height: 1.15;
+      white-space: nowrap;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    .lcdp-page-reserver .lcdp-planifier-filtre--acces { background: #d5a300; }
+    .lcdp-page-reserver .lcdp-planifier-filtre--parc { background: var(--lcdp-color-logo-green, #43834a); }
+    .lcdp-page-reserver .lcdp-planifier-filtre svg { display: block; width: 15px; height: 15px; flex: 0 0 15px; color: inherit; }
+    .lcdp-page-reserver .lcdp-planifier-filtre:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+    @media (min-width: 768px) {
+      .lcdp-page-reserver [data-lcdp-calendrier-mois-current] { zoom: .9; }
+    }
+    @media (max-width: 767px) {
+      .lcdp-page-reserver .lcdp-planifier-entete-filtres {
+        flex-direction: column;
+        gap: 8px;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -170,6 +221,6 @@
 
   </div>
 
-  <script src="./reserver-membre.js?v=20261028-planning-general-v1"></script>
+  <script src="./reserver-membre.js?v=20261028-planifier-v2"></script>
 </body>
 </html>

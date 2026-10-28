@@ -180,7 +180,29 @@
       throw new Error("Structure du planning mensuel incomplète.");
     }
 
-    titre.textContent = "Planning général";
+    titre.textContent = "PLANIFIER";
+    // Commandes de filtre : présentation seule à cette étape du parcours.
+    // Elles seront raccordées aux filtres de disponibilité lors du pas-à-pas.
+    const enteteFiltres = document.createElement("div");
+    enteteFiltres.className = "lcdp-planifier-entete-filtres";
+    titre.replaceWith(enteteFiltres);
+    enteteFiltres.appendChild(titre);
+    const actionsFiltres = document.createElement("div");
+    actionsFiltres.className = "lcdp-planifier-actions-filtres";
+    const boutonAcces = document.createElement("button");
+    boutonAcces.type = "button";
+    boutonAcces.className = "lcdp-planifier-filtre lcdp-planifier-filtre--acces";
+    boutonAcces.insertAdjacentHTML("beforeend", '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">\n  <circle cx="12" cy="7" r="4.5"/>\n  <path d="M12 11.5c-5.1 0-7.8 2.8-7.8 7.8v.9c0 .72.58 1.3 1.3 1.3h13c.72 0 1.3-.58 1.3-1.3v-.9c0-5-2.7-7.8-7.8-7.8Z"/>\n</svg>');
+    boutonAcces.appendChild(document.createTextNode("ACCÈS"));
+    boutonAcces.setAttribute("aria-label", "Filtre des accès : à configurer");
+    const boutonParc = document.createElement("button");
+    boutonParc.type = "button";
+    boutonParc.className = "lcdp-planifier-filtre lcdp-planifier-filtre--parc";
+    boutonParc.setAttribute("aria-label", "Filtre des parcs : à configurer");
+    boutonParc.insertAdjacentHTML("beforeend", '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">\n  <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n  <circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n</svg>');
+    boutonParc.appendChild(document.createTextNode("PARC"));
+    actionsFiltres.append(boutonAcces, boutonParc);
+    enteteFiltres.appendChild(actionsFiltres);
     meta.textContent = "";
     meta.hidden = true;
     message.hidden = true;
