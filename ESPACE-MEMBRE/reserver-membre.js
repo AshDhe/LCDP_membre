@@ -155,6 +155,123 @@
     }
   }
 
+  // Filtres d'affichage : les catégories ne valent pas autorisation de réserver.
+  const filtresAccesPlanifier = new Set();
+  let filtreParcOuvert = false;
+  let parcInitialise = false;
+
+  async function ouvrirFiltreAccesPlanifier() {
+    const enveloppe = document.createElement("div");
+    document.body.appendChild(enveloppe);
+    try {
+      const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ.html");
+      enveloppe.appendChild(fragment);
+      const dialogue = enveloppe.querySelector("[data-lcdp-box-dialogue-champ]");
+      const titre = enveloppe.querySelector("[data-lcdp-dialogue-champ-title]");
+      const form = enveloppe.querySelector("[data-lcdp-dialogue-champ-form]");
+      const content = enveloppe.querySelector("[data-lcdp-dialogue-champ-content]");
+      const close = enveloppe.querySelector("[data-lcdp-dialogue-champ-close]");
+      const cancel = enveloppe.querySelector("[data-lcdp-dialogue-champ-cancel]");
+      const submit = enveloppe.querySelector("[data-lcdp-dialogue-champ-submit]");
+      if (![dialogue,titre,form,content,close,cancel,submit].every(Boolean)) throw new Error("Box Autorisé incomplète.");
+      titre.textContent = "Autorisé";
+      submit.textContent = "FILTRER";
+      cancel.hidden = true;
+      const choix = [
+        ["famille", "FAMILLE"],
+        ["coach", "COACH"],
+        ["famille-coach", "FAMILLE + COACH"]
+      ];
+      for (const [valeur, libelle] of choix) {
+        const ligne = document.createElement("label");
+        ligne.className = "lcdp-planifier-acces-option lcdp-planifier-acces-option--" + valeur;
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.name = "type-acces";
+        input.value = valeur;
+        input.checked = filtresAccesPlanifier.has(valeur);
+        const texte = document.createElement("span");
+        texte.textContent = libelle;
+        ligne.append(input, texte);
+        content.appendChild(ligne);
+      }
+      return await new Promise(resolve => {
+        let termine = false;
+        function fermer(appliquer) {
+          if (termine) return;
+          termine = true;
+          if (appliquer) {
+            filtresAccesPlanifier.clear();
+            content.querySelectorAll('input[name="type-acces"]:checked').forEach(input => filtresAccesPlanifier.add(input.value));
+            document.getElementById("lcdp-planifier-bouton-acces")?.setAttribute("aria-label", "ACCÈS : " + (filtresAccesPlanifier.size ? [...filtresAccesPlanifier].join(", ") : "aucun filtre"));
+          }
+          enveloppe.remove();
+          resolve(appliquer);
+        }
+        form.addEventListener("submit", event => {event.preventDefault();fermer(true);});
+        close.addEventListener("click", () => fermer(false));
+        dialogue.addEventListener("click", event => {if(event.target === dialogue) fermer(false);});
+      });
+    } catch(error) {enveloppe.remove(); throw error;}
+  }
+
+  async function ouvrirFiltreParcPlanifier() {
+    if (filtreParcOuvert) return;
+    filtreParcOuvert = true;
+    const enveloppe = document.createElement("div");
+    document.body.appendChild(enveloppe);
+    const barre = document.getElementById("lcdp-commande-bar-reserver-slot");
+    const liste = document.getElementById("lcdp-liste-card-parcs-slot");
+    try {
+      const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ.html");
+      enveloppe.appendChild(fragment);
+      const dialogue = enveloppe.querySelector("[data-lcdp-box-dialogue-champ]");
+      const carte = enveloppe.querySelector(".lcdp-box-dialogue-champ__card");
+      const titre = enveloppe.querySelector("[data-lcdp-dialogue-champ-title]");
+      const form = enveloppe.querySelector("[data-lcdp-dialogue-champ-form]");
+      const content = enveloppe.querySelector("[data-lcdp-dialogue-champ-content]");
+      const close = enveloppe.querySelector("[data-lcdp-dialogue-champ-close]");
+      if (![dialogue,carte,titre,form,content,close,barre,liste].every(Boolean)) throw new Error("Box Parc incomplète.");
+      carte.classList.add("lcdp-planifier-parcs-card");
+      titre.textContent = "Parcs du département";
+      form.querySelector(".lcdp-box-dialogue-champ__actions")?.remove();
+      content.append(barre,liste);
+      barre.hidden = false;
+      liste.hidden = false;
+      let ferme = false;
+      const fermer = () => {
+        if (ferme) return;
+        ferme = true;
+        const pageContent = document.querySelector(".lcdp-page-reserver .lcdp-page-content--avec-entete");
+        if (pageContent) pageContent.append(barre,liste);
+        barre.hidden = true;
+        liste.hidden = true;
+        enveloppe.remove();
+        filtreParcOuvert = false;
+      };
+      close.addEventListener("click", fermer);
+      dialogue.addEventListener("click", event => {if(event.target === dialogue) fermer();});
+      if (!parcInitialise) {
+        parcInitialise = true;
+        try {
+          await initialiserListeParcs();
+          await initialiserCommandeBarReserver();
+          initialiserBoutonDepartementPrincipal();
+          document.addEventListener("click", gererClicDocument);
+          await chargerReservationsMembrePourBlocages();
+          await chargerParcsDepartementMembre();
+        } catch(error) {parcInitialise = false; throw error;}
+      } else {
+        afficherCommandeBarReserver();
+      }
+    } catch(error) {
+      const pageContent = document.querySelector(".lcdp-page-reserver .lcdp-page-content--avec-entete");
+      if (pageContent && barre && liste) pageContent.append(barre,liste);
+      enveloppe.remove(); filtreParcOuvert = false;
+      throw error;
+    }
+  }
+
   // Étape 1 du nouveau parcours PLANIFIER : aucune donnée de parc ni d'abonnement
   // n'est utilisée pour remplir la grille. Les filtres seront ajoutés ensuite.
   async function ouvrirPlanningGeneralVierge() {
@@ -194,11 +311,14 @@
     boutonAcces.className = "lcdp-planifier-filtre lcdp-planifier-filtre--acces";
     boutonAcces.insertAdjacentHTML("beforeend", '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">\n  <circle cx="12" cy="7" r="4.5"/>\n  <path d="M12 11.5c-5.1 0-7.8 2.8-7.8 7.8v.9c0 .72.58 1.3 1.3 1.3h13c.72 0 1.3-.58 1.3-1.3v-.9c0-5-2.7-7.8-7.8-7.8Z"/>\n</svg>');
     boutonAcces.appendChild(document.createTextNode("ACCÈS"));
-    boutonAcces.setAttribute("aria-label", "Filtre des accès : à configurer");
+    boutonAcces.id = "lcdp-planifier-bouton-acces";
+    boutonAcces.setAttribute("aria-label", "Filtrer les accès autorisés");
+    boutonAcces.addEventListener("click", () => ouvrirFiltreAccesPlanifier().catch(console.error));
     const boutonParc = document.createElement("button");
     boutonParc.type = "button";
     boutonParc.className = "lcdp-planifier-filtre lcdp-planifier-filtre--parc";
-    boutonParc.setAttribute("aria-label", "Filtre des parcs : à configurer");
+    boutonParc.setAttribute("aria-label", "Choisir les parcs");
+    boutonParc.addEventListener("click", () => ouvrirFiltreParcPlanifier().catch(console.error));
     boutonParc.insertAdjacentHTML("beforeend", '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">\n  <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n  <circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n</svg>');
     boutonParc.appendChild(document.createTextNode("PARC"));
     actionsFiltres.append(boutonAcces, boutonParc);
@@ -709,7 +829,7 @@
     commandeBar.classList.add("lcdp-box-commande-bar--encadree");
 
     actions.appendChild(boutonDepartement);
-    actions.appendChild(boutonIa);
+    // La recherche IA sera placée ailleurs dans le parcours.
 
     slot.replaceChildren(commandeBar);
     slot.hidden = true;
@@ -4342,11 +4462,13 @@
   }
 
   async function ouvrirDialogueChamp(options) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
+    const superposition = filtreParcOuvert;
+    const conteneur = superposition ? document.createElement("div") : null;
+    const slot = conteneur || document.getElementById("lcdp-lightbox-slot");
 
     if (!slot) return null;
-
-    slot.innerHTML = "";
+    if (conteneur) document.body.appendChild(conteneur);
+    else slot.innerHTML = "";
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ.html");
     slot.appendChild(fragment);
@@ -4375,7 +4497,8 @@
       function fermer(valeur) {
         if (resolu) return;
         resolu = true;
-        slot.innerHTML = "";
+        if (conteneur) conteneur.remove();
+        else slot.innerHTML = "";
         resolve(valeur);
       }
 

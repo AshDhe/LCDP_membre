@@ -153,7 +153,7 @@
       cursor: pointer;
       box-sizing: border-box;
     }
-    .lcdp-page-reserver .lcdp-planifier-filtre--acces { background: #d5a300; }
+    .lcdp-page-reserver .lcdp-planifier-filtre--acces { background: var(--lcdp-color-orange); }
     .lcdp-page-reserver .lcdp-planifier-filtre--parc { background: var(--lcdp-color-logo-green, #43834a); }
     .lcdp-page-reserver .lcdp-planifier-filtre svg { display: block; width: 15px; height: 15px; flex: 0 0 15px; color: inherit; }
     .lcdp-page-reserver .lcdp-planifier-filtre:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
@@ -166,6 +166,16 @@
         gap: 8px;
       }
     }
+
+    /* Filtres PLANIFIER : exceptions limitées à ces deux dialogues. */
+    .lcdp-planifier-acces-option { display:inline-flex; align-self:flex-start; align-items:center; gap:9px; padding:7px 11px; border-radius:var(--lcdp-radius-small); font-size:0.9rem; font-weight:700; color:white; cursor:pointer; }
+    .lcdp-planifier-acces-option input { width:18px; height:18px; margin:0; flex:none; accent-color:var(--lcdp-color-primary); }
+    .lcdp-planifier-acces-option--famille { background:var(--lcdp-color-logo-green); }
+    .lcdp-planifier-acces-option--coach { background:var(--lcdp-color-coach); }
+    .lcdp-planifier-acces-option--famille-coach { background:#80583d; }
+    .lcdp-planifier-parcs-card { width:min(calc(100vw - 36px),720px); max-height:calc(100svh - 36px); overflow-y:auto; }
+    .lcdp-planifier-parcs-card .lcdp-box-dialogue-champ__content { max-height:none; }
+    .lcdp-planifier-parcs-card .lcdp-box-liste-card { text-align:left; }
   </style>
 </head>
 
@@ -221,6 +231,6 @@
 
   </div>
 
-  <script src="./reserver-membre.js?v=20261028-planifier-v2"></script>
+  <script src="./reserver-membre.js?v=20261028-planifier-v4"></script>
 </body>
 </html>
