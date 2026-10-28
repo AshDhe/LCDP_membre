@@ -450,17 +450,17 @@
 
     const boutons = [
       {
-        label: "PLANIFIER",
+        label: "Planifier",
         style: "lcdp-button-accueil lcdp-button-accueil-orange",
         action: () => redirigerMembre("/ESPACE-MEMBRE/reserver-membre.html")
       },
       {
-        label: "MES VISITES",
+        label: "Mes accès",
         style: "lcdp-button-accueil lcdp-button-accueil-green",
         action: () => redirigerMembre("/ESPACE-MEMBRE/planning-membre.html")
       },
       {
-        label: "MA CLÉ",
+        label: "Ma Clé",
         style: "lcdp-button-accueil lcdp-button-accueil-blue",
         action: () => gererValidationPresence(etat)
       }
