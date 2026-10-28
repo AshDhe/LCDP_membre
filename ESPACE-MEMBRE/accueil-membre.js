@@ -60,18 +60,26 @@
     pageInitialisee = true;
 
     try {
-      await initialiserBandeau();
-      await initialiserFooter();
+      // Lancer les opérations indépendantes en parallèle.
+      // Le footer et l’initialisation finale du burger ne bloquent pas l’accueil.
+      const promesseBandeau = initialiserBandeau();
+      const promesseEtat = chargerEtatMembre();
+      const promesseMenu = chargerFragmentObjet("/BOX/02-box-menu-bouton.html");
+      initialiserFooter().catch((error) => {
+        console.warn("Footer indisponible sur l’accueil membre :", error);
+      });
 
-      const etat = await chargerEtatMembre();
+      const [, etat, fragmentMenu] = await Promise.all([
+        promesseBandeau,
+        promesseEtat,
+        promesseMenu
+      ]);
 
       if (!etat) return;
 
       etatMembre = etat;
-
       afficherEtatMembre(etatMembre);
-      await initialiserBurgerMembre(etatMembre);
-      await initialiserMenuCentral(etatMembre);
+      await initialiserMenuCentral(etatMembre, fragmentMenu);
       const contenu = document.getElementById("lcdp-accueil-contenu");
       if (contenu) {
         contenu.hidden = false;
@@ -79,6 +87,11 @@
       }
       const attente = document.getElementById("lcdp-accueil-attente");
       if (attente) attente.style.display = "none";
+
+      // Le burger utilise le script déjà chargé avec le bandeau.
+      initialiserBurgerMembre(etatMembre).catch((error) => {
+        console.warn("Menu burger membre indisponible :", error);
+      });
     } catch (error) {
       console.error("Erreur accueil membre :", error);
       if (typeof window.LCDP_echecAccueilMembre === "function") {
@@ -432,7 +445,7 @@
     }
   }
 
-  async function initialiserMenuCentral(etat) {
+  async function initialiserMenuCentral(etat, fragmentPrecharge) {
     const slot = document.getElementById("lcdp-menu-central-slot");
 
     if (!slot) return;
@@ -447,7 +460,7 @@
         : "Bonjour, c’est à vous.";
     }
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-menu-bouton.html");
+    const fragment = fragmentPrecharge || await chargerFragmentObjet("/BOX/02-box-menu-bouton.html");
     slot.appendChild(fragment);
 
     const liste = slot.querySelector("[data-lcdp-menu-bouton-list]");
