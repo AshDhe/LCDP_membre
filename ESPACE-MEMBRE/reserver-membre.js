@@ -179,7 +179,7 @@
   }
 
   // Filtres d'affichage : les catégories ne valent pas autorisation de réserver.
-  const filtresAccesPlanifier = new Set();
+  const filtresAccesPlanifier = new Set(["famille", "coach", "famille-coach"]);
   let filtreParcOuvert = false;
   let parcInitialise = false;
   // Le même fragment sert aux deux filtres : une seule requête, anticipée.
@@ -248,6 +248,12 @@
     } catch(error) {enveloppe.remove(); throw error;}
   }
 
+  function libelleDepartementListeParcs() {
+    const code = String(etatPage.departement || "").trim();
+    const nom = String(etatPage.nomDepartement || "").trim();
+    return nom && code ? nom + " (" + code + ")" : nom || code;
+  }
+
   async function ouvrirFiltreParcPlanifier() {
     if (filtreParcOuvert) return;
     filtreParcOuvert = true;
@@ -276,7 +282,7 @@
       titre.textContent = "Parcs du département";
       const nomDepartement = document.createElement("p");
       nomDepartement.className = "lcdp-planifier-parcs-departement";
-      nomDepartement.textContent = etatPage.nomDepartement || etatPage.departement || "";
+      nomDepartement.textContent = libelleDepartementListeParcs();
       titre.insertAdjacentElement("afterend", nomDepartement);
       form.querySelector(".lcdp-box-dialogue-champ__actions")?.remove();
       content.append(barre,liste);
@@ -306,7 +312,7 @@
           await chargerReservationsMembrePourBlocages();
           await chargerParcsDepartementMembre();
           chargement.remove();
-          nomDepartement.textContent = etatPage.nomDepartement || etatPage.departement || "";
+          nomDepartement.textContent = libelleDepartementListeParcs();
         } catch(error) {parcInitialise = false; throw error;}
       } else {
         afficherCommandeBarReserver();
@@ -1894,6 +1900,7 @@
           type: "text",
           inputmode: "numeric",
           autocomplete: "off",
+          placeholder: "Exemple : 08",
           required: true
         }
       ]
@@ -2238,7 +2245,7 @@
 
   function actualiserTitreParcsDepartement() {
     const sousTitre = document.querySelector(".lcdp-planifier-parcs-departement");
-    if (sousTitre) sousTitre.textContent = etatPage.nomDepartement || etatPage.departement || "";
+    if (sousTitre) sousTitre.textContent = libelleDepartementListeParcs();
     const titre = document.getElementById("titre-parcs-departement");
     if (!titre) return;
     titre.replaceChildren(document.createTextNode("Parcs près de chez vous"));
@@ -2340,10 +2347,10 @@
           idparc
         }),
         creerBoutonActionCardParc({
-          action: "nouvelle-date-parc",
-          libelle: "Planifier",
-          ariaLabel: "Planifier dans le parc " + nom,
-          icone: "reserver",
+          action: "voir-planning-parc",
+          libelle: "Planning",
+          ariaLabel: "Afficher le planning du parc " + nom,
+          icone: "planning",
           variante: "orange-plein",
           idparc
         })
@@ -2389,7 +2396,15 @@
     libelle.className = "lcdp-box-card-parc__action-libelle";
     libelle.textContent = configuration.libelle;
 
-    bouton.appendChild(icone);
+    if (configuration.icone === "planning") {
+      const support = document.createElement("span");
+      support.className = "lcdp-box-card-parc__action-icone lcdp-planifier-picto-planning";
+      support.setAttribute("aria-hidden", "true");
+      support.innerHTML = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" aria-hidden=\"true\">\n  <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"4\" ry=\"4\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  <rect x=\"7\" y=\"7\" width=\"2.3\" height=\"2.3\" rx=\"0.4\" fill=\"currentColor\"/>\n  <rect x=\"10.85\" y=\"7\" width=\"2.3\" height=\"2.3\" rx=\"0.4\" fill=\"currentColor\"/>\n  <rect x=\"14.7\" y=\"7\" width=\"2.3\" height=\"2.3\" rx=\"0.4\" fill=\"currentColor\"/>\n  <rect x=\"7\" y=\"10.85\" width=\"2.3\" height=\"2.3\" rx=\"0.4\" fill=\"currentColor\"/>\n  <rect x=\"10.85\" y=\"10.85\" width=\"2.3\" height=\"2.3\" rx=\"0.4\" fill=\"currentColor\"/>\n  <rect x=\"14.7\" y=\"10.85\" width=\"2.3\" height=\"2.3\" rx=\"0.4\" fill=\"currentColor\"/>\n  <rect x=\"7\" y=\"14.7\" width=\"2.3\" height=\"2.3\" rx=\"0.4\" fill=\"currentColor\"/>\n  <rect x=\"10.85\" y=\"14.7\" width=\"2.3\" height=\"2.3\" rx=\"0.4\" fill=\"currentColor\"/>\n  <rect x=\"14.7\" y=\"14.7\" width=\"2.3\" height=\"2.3\" rx=\"0.4\" fill=\"currentColor\"/>\n</svg>";
+      bouton.appendChild(support);
+    } else {
+      bouton.appendChild(icone);
+    }
     bouton.appendChild(libelle);
 
     if (
@@ -2452,6 +2467,7 @@
       }
 
       try {
+        // La fiche s'affiche au-dessus de la liste des parcs sans la fermer.
         await ouvrirFicheParc(parc);
       } catch (error) {
         console.error(
@@ -2490,7 +2506,9 @@
         return;
       }
 
-      await ouvrirPlanningMoisParc(parc);
+      if (await confirmerAffichagePlanningParc()) {
+        await ouvrirPlanningMoisParc(parc);
+      }
       return;
     }
 
@@ -2509,6 +2527,40 @@
       return;
     }
 
+  }
+
+  async function confirmerAffichagePlanningParc() {
+    // Reprise de la box d'alerte existante : seule l'action change.
+    const enveloppe = document.createElement("div");
+    document.body.appendChild(enveloppe);
+    try {
+      const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+      enveloppe.appendChild(fragment);
+      const box = enveloppe.querySelector("[data-lcdp-box-alerte]");
+      const texte = enveloppe.querySelector("[data-lcdp-alerte-message]");
+      const fermerBouton = enveloppe.querySelector("[data-lcdp-alerte-close]");
+      const afficherBouton = enveloppe.querySelector("[data-lcdp-alerte-ok]");
+      if (![box, texte, fermerBouton, afficherBouton].every(Boolean)) {
+        throw new Error("Box d'information indisponible.");
+      }
+      texte.textContent = "sub planning";
+      afficherBouton.textContent = "Afficher";
+      return await new Promise(resolve => {
+        let terminee = false;
+        function fermer(confirme) {
+          if (terminee) return;
+          terminee = true;
+          enveloppe.remove();
+          resolve(confirme);
+        }
+        fermerBouton.addEventListener("click", () => fermer(false));
+        afficherBouton.addEventListener("click", () => fermer(true));
+        box.addEventListener("click", event => { if (event.target === box) fermer(false); });
+      });
+    } catch (erreur) {
+      enveloppe.remove();
+      throw erreur;
+    }
   }
 
   async function autoriserReservationParc(parc) {
@@ -4511,9 +4563,6 @@
     const slot = conteneur || document.getElementById("lcdp-lightbox-slot");
 
     if (!slot) return null;
-    if (conteneur) document.body.appendChild(conteneur);
-    else slot.innerHTML = "";
-
     const fragment = await chargerDialogueFiltrePlanifier();
     slot.appendChild(fragment);
 
@@ -4525,15 +4574,18 @@
     const boutonFermer = slot.querySelector("[data-lcdp-dialogue-champ-close]");
     const boutonAnnuler = slot.querySelector("[data-lcdp-dialogue-champ-cancel]");
 
-    if (!dialogue || !titre || !formulaire || !zoneContent || !erreur || !boutonFermer || !boutonAnnuler) {
+    if (!dialogue || !titre || !formulaire || !zoneContent || !erreur || !boutonFermer) {
       throw new Error("Structure de dialogue champ incomplète.");
     }
 
     titre.textContent = options.titre || "";
-
+    boutonAnnuler?.remove();
     for (const champ of options.champs || []) {
       zoneContent.appendChild(await creerChampDialogue(champ));
     }
+    // Le dialogue complet apparaît en une seule fois (pas de flash du champ).
+    if (conteneur) document.body.appendChild(conteneur);
+    else document.getElementById("lcdp-lightbox-slot")?.replaceChildren(dialogue);
 
     return new Promise((resolve) => {
       let resolu = false;
@@ -4547,7 +4599,7 @@
       }
 
       boutonFermer.addEventListener("click", () => fermer(null));
-      boutonAnnuler.addEventListener("click", () => fermer(null));
+
 
       dialogue.addEventListener("click", (event) => {
         if (event.target === dialogue) fermer(null);
@@ -4609,6 +4661,7 @@
     input.type = configurationChamp.type || "text";
     input.required = configurationChamp.required === true;
     input.value = configurationChamp.value || "";
+    if (configurationChamp.placeholder) input.placeholder = configurationChamp.placeholder;
 
     if (configurationChamp.inputmode) {
       input.inputMode = configurationChamp.inputmode;

@@ -180,7 +180,8 @@
     }
 
     /* Filtres PLANIFIER : exceptions limitées à ces deux dialogues. */
-    .lcdp-planifier-acces-option { display:inline-flex; align-self:flex-start; align-items:center; gap:9px; width:216px; max-width:100%; min-height:38px; padding:7px 11px; border-radius:var(--lcdp-radius-small); font-size:0.9rem; font-weight:700; color:white; cursor:pointer; }
+    .lcdp-planifier-acces-option { display:inline-flex; align-self:center; align-items:center; gap:9px; width:216px; max-width:100%; min-height:38px; padding:7px 11px; border-radius:var(--lcdp-radius-small); font-size:0.9rem; font-weight:700; color:white; cursor:pointer; }
+    .lcdp-planifier-acces-dialogue .lcdp-box-dialogue-champ__content { align-items:center; }
     .lcdp-planifier-acces-option input { width:18px; height:18px; margin:0; flex:none; accent-color:var(--lcdp-color-primary); }
     .lcdp-planifier-acces-option--famille { background:var(--lcdp-color-logo-green); }
     .lcdp-planifier-acces-option--coach { background:var(--lcdp-color-coach); }
@@ -205,6 +206,31 @@
         width: 17px; height: 17px; flex: 0 0 17px;
       }
     }
+    .lcdp-planifier-parcs-card .lcdp-box-card-parc__actions--reserver > .lcdp-button {
+      min-height: 36px; padding: 6px 9px; font-size: 0.78rem; gap: 5px;
+    }
+    /* Tablette et ordinateur uniquement : réduire les deux actions des parcs.
+       Les dimensions mobiles de la V12 restent inchangées. */
+    @media (min-width: 768px) {
+      .lcdp-planifier-parcs-card .lcdp-box-card-parc__actions--reserver > .lcdp-button {
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        min-height: 34px;
+        padding: 5px 8px;
+        font-size: 0.73rem;
+        gap: 4px;
+      }
+      .lcdp-planifier-parcs-card .lcdp-box-card-parc__actions--reserver .lcdp-box-card-parc__action-icone {
+        width: 17px;
+        height: 17px;
+        flex: 0 0 17px;
+      }
+    }
+    .lcdp-planifier-parcs-card .lcdp-planifier-picto-planning { display:inline-flex; align-items:center; justify-content:center; }
+    .lcdp-planifier-parcs-card .lcdp-planifier-picto-planning svg { width:100%; height:100%; color:inherit; }
+    /* Fiche et planning du parc superposés à la liste, sans la fermer. */
+    body.lcdp-page-reserver #lcdp-lightbox-slot [data-lcdp-box-shift-detail-parc] { z-index: 5500; }
     .lcdp-planifier-parcs-card .lcdp-box-dialogue-champ__title { margin-bottom:4px; }
     .lcdp-planifier-parcs-departement { display:block; text-align:center; font-weight:400; margin:0 0 var(--lcdp-space-2); }
     .lcdp-planifier-parcs-chargement { display:flex; align-items:center; justify-content:center; min-height:110px; }
@@ -276,6 +302,6 @@
 
   </div>
 
-  <script src="./reserver-membre.js?v=20261028-planifier-v11"></script>
+  <script src="./reserver-membre.js?v=20261028-planifier-v12"></script>
 </body>
 </html>
