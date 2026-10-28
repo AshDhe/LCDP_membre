@@ -211,10 +211,20 @@
     .lcdp-planifier-parcs-chargement .lcdp-pictowait { display:flex; align-items:center; justify-content:center; }
     .lcdp-planifier-parcs-card #bouton-voir-carte { color:#fff; }
     .lcdp-planifier-parcs-card #bouton-voir-carte:hover { color:#fff; }
+    /* Attente visible dès l'arrivée sur la page, avant le chargement du JS. */
+    #lcdp-planifier-attente-initiale {
+      position: fixed; inset: 0; z-index: 7000;
+      display: flex; justify-content: center; align-items: center;
+      background: var(--lcdp-color-bg, #fff);
+    }
+    #lcdp-planifier-attente-initiale img { width: 64px; height: 64px; object-fit: contain; }
   </style>
 </head>
 
 <body>
+  <div id="lcdp-planifier-attente-initiale" role="status" aria-label="Chargement du planning mensuel">
+    <script>document.write('<img src="' + window.LCDP_urlObjet('/BOX/pictowait.gif') + '" alt="" width="64" height="64">');</script>
+  </div>
   <div class="lcdp-site-page">
 
     <div id="lcdp-bandeau-slot"></div>
@@ -266,6 +276,6 @@
 
   </div>
 
-  <script src="./reserver-membre.js?v=20261028-planifier-v6"></script>
+  <script src="./reserver-membre.js?v=20261028-planifier-v10"></script>
 </body>
 </html>

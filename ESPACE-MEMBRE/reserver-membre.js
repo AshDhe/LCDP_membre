@@ -149,11 +149,22 @@
       await actualiserBurgerMembre(etatMembre.abonne);
       chargerDialogueFiltrePlanifier().catch(erreur => console.warn("Préchargement du filtre indisponible.", erreur));
       await ouvrirPlanningGeneralVierge();
+      masquerAttenteInitialePlanifier();
       await promesseFooter;
     } catch (erreur) {
       console.error("Erreur ouverture du planning général :", erreur);
+      masquerAttenteInitialePlanifier();
       await afficherAlerte(erreur.message || "Impossible d’ouvrir le planning.");
     }
+  }
+
+  function masquerAttenteInitialePlanifier() {
+    const attente = document.getElementById("lcdp-planifier-attente-initiale");
+    if (!attente) return;
+    // Attendre que la grille ait pu être peinte avant de retirer le GIF.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => attente.remove());
+    });
   }
 
   // Filtres d'affichage : les catégories ne valent pas autorisation de réserver.
