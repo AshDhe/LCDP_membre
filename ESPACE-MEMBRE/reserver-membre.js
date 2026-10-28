@@ -139,18 +139,29 @@
     const titrePage = document.querySelector(".lcdp-title-page-center");
     if (titrePage) titrePage.textContent = "PLANIFIER";
 
+    // Les éléments non indispensables ne retardent pas l'affichage du calendrier.
+    const bandeauPret = initialiserBandeau().catch(erreur => {
+      console.warn("Bandeau indisponible sur la page Planifier.", erreur);
+    });
+    initialiserFooter().catch(erreur => {
+      console.warn("Footer indisponible sur la page Planifier.", erreur);
+    });
+
     try {
-      const promesseFooter = initialiserFooter().catch((erreur) => {
-        console.warn("Footer indisponible sur la page Planifier.", erreur);
-      });
-      await initialiserBandeau();
-      etatMembre = await chargerEtatMembre();
+      // Vérification de session et construction de la grille indépendantes.
+      const [etat] = await Promise.all([
+        chargerEtatMembre(),
+        ouvrirPlanningGeneralVierge()
+      ]);
+      etatMembre = etat;
       afficherEtatMembre(etatMembre);
-      await actualiserBurgerMembre(etatMembre.abonne);
-      chargerDialogueFiltrePlanifier().catch(erreur => console.warn("Préchargement du filtre indisponible.", erreur));
-      await ouvrirPlanningGeneralVierge();
       masquerAttenteInitialePlanifier();
-      await promesseFooter;
+
+      // L'initialisation du burger dépend du bandeau, mais pas l'affichage du planning.
+      bandeauPret.then(() => actualiserBurgerMembre(etatMembre.abonne))
+        .catch(erreur => console.warn("Menu burger indisponible.", erreur));
+      chargerDialogueFiltrePlanifier()
+        .catch(erreur => console.warn("Préchargement du filtre indisponible.", erreur));
     } catch (erreur) {
       console.error("Erreur ouverture du planning général :", erreur);
       masquerAttenteInitialePlanifier();
