@@ -2664,6 +2664,7 @@
         {
           vueInitiale: vueDemandee || "fiche",
           modeUsage: "reservation-membre",
+          nomDepartement: String(parc.nomDepartement || (String(parc.dptmt || "") === String(etatPage.departement || "") ? etatPage.nomDepartement : "") || ""),
           chargerFragmentObjet,
           construireUrlObjet,
           construireUrlImageParcFichier,
@@ -3132,18 +3133,22 @@
 
     if (!emails) return;
 
+    const attente = document.createElement("div");
+    attente.className = "lcdp-planifier-partage-attente";
+    attente.appendChild(creerPictowait("Envoi du partage en cours…"));
+    document.body.appendChild(attente);
+    let messageResultat = "";
+    let succes = false;
     try {
-      const resultat = await envoyerPartagePlanningParc(parc, emails, typepartage);
-      await afficherAlerteSuperposee(
-        resultat.message || "La page a été partagée.",
-        "vert-contour"
-      );
+      await envoyerPartagePlanningParc(parc, emails, typepartage);
+      messageResultat = "Partage envoyé";
+      succes = true;
     } catch (error) {
-      await afficherAlerteSuperposee(
-        normaliserMessageErreurPartage(error?.message),
-        "vert-contour"
-      );
+      messageResultat = normaliserMessageErreurPartage(error?.message);
+    } finally {
+      attente.remove();
     }
+    await afficherAlerteSuperposee(messageResultat, succes ? "vert-plein-partage" : "vert-contour");
   }
 
   async function ouvrirDialoguePartageEmails() {
@@ -4479,15 +4484,20 @@
     }
 
     texte.textContent = message || "";
+    if (couleurBouton === "vert-plein-partage") {
+      alerte.classList.add("lcdp-planifier-partage-confirmation");
+    }
     boutonOk.classList.remove(
       "lcdp-button-primary",
       "lcdp-button-secondary",
       "lcdp-button-orange"
     );
     boutonOk.classList.add(
-      couleurBouton === "vert-contour"
-        ? "lcdp-button-secondary"
-        : "lcdp-button-orange"
+      couleurBouton === "vert-plein-partage"
+        ? "lcdp-button-primary"
+        : couleurBouton === "vert-contour"
+          ? "lcdp-button-secondary"
+          : "lcdp-button-orange"
     );
 
     return new Promise((resolve) => {
@@ -4800,7 +4810,8 @@
   }
 
   function chargerScriptPublicUneFois(chemin) {
-    const src = construireUrlPublic(chemin);
+    const src = construireUrlPublic(chemin) +
+      (chemin === "/ESPACE-PUBLIC/fiche-parc.js" ? "?v=20261028-fiche-v16" : "");
     const selecteur =
       'script[data-lcdp-script-public="' + chemin + '"]';
     const scriptExistant = document.querySelector(selecteur);

@@ -244,6 +244,11 @@
       background: var(--lcdp-color-bg, #fff);
     }
     #lcdp-planifier-attente-initiale img { width: 64px; height: 64px; object-fit: contain; }
+    /* Envoi d'une fiche par e-mail : attente visible jusqu'à la réponse du Worker. */
+    .lcdp-planifier-partage-attente { position:fixed; inset:0; z-index:9500; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.88); }
+    .lcdp-planifier-partage-attente .lcdp-pictowait { display:flex; align-items:center; justify-content:center; }
+    .lcdp-planifier-partage-confirmation [data-lcdp-alerte-message] { font-size:1.5rem !important; line-height:1.25; font-weight:700; }
+    .lcdp-planifier-partage-confirmation [data-lcdp-alerte-ok] { background:#55733f !important; border-color:#55733f !important; color:#fff !important; }
   </style>
 </head>
 
@@ -302,6 +307,6 @@
 
   </div>
 
-  <script src="./reserver-membre.js?v=20261028-planifier-v15"></script>
+  <script src="./reserver-membre.js?v=20261028-planifier-v16"></script>
 </body>
 </html>
