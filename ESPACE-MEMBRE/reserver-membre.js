@@ -947,7 +947,7 @@
       const constructeur = await chargerConstructeurFicheParc();
       if (!estCourante()) return;
       if (typeof constructeur.rendreCarteDansConteneur !== "function") {
-        throw new Error("Le module de carte doit être actualisé. Rechargez la page.");
+        throw new Error("La carte n’a pas pu être chargée. Vous pouvez revenir à la liste des parcs.");
       }
       // La fiche fournit les coordonnées et les localités déjà utilisées par sa carte.
       // Seuls les parcs de la liste membre sont retenus pour les points et les actions.
@@ -4914,81 +4914,63 @@
     });
   }
 
+  const chargementsConstructeurFiche = new Map();
+
+  function constructeurFicheComplet() {
+    const constructeur = window.LCDP_FicheParc;
+    return constructeur && [
+      "chargerFicheParc", "monterDansConteneur", "rendreDansConteneur",
+      "rendrePlanningDansConteneur", "rendreCarteDansConteneur"
+    ].every(nom => typeof constructeur[nom] === "function");
+  }
+
   async function chargerConstructeurFicheParc() {
-    if (
-      window.LCDP_FicheParc &&
-      typeof window.LCDP_FicheParc.chargerFicheParc ===
-        "function" &&
-      typeof window.LCDP_FicheParc.monterDansConteneur ===
-        "function" &&
-      typeof window.LCDP_FicheParc.rendreDansConteneur ===
-        "function" &&
-      typeof window.LCDP_FicheParc.rendrePlanningDansConteneur ===
-        "function"
-    ) {
-      return window.LCDP_FicheParc;
+    if (constructeurFicheComplet()) return window.LCDP_FicheParc;
+    // Ne pas accepter un ancien module simplement parce que l'objet existe.
+    await chargerScriptPublicUneFois("/ESPACE-PUBLIC/fiche-parc.js");
+    if (!constructeurFicheComplet()) {
+      await chargerScriptPublicUneFois("/ESPACE-PUBLIC/fiche-parc.js", true);
     }
-
-    await chargerScriptPublicUneFois(
-      "/ESPACE-PUBLIC/fiche-parc.js"
-    );
-
-    if (
-      !window.LCDP_FicheParc ||
-      typeof window.LCDP_FicheParc.chargerFicheParc !==
-        "function" ||
-      typeof window.LCDP_FicheParc.monterDansConteneur !==
-        "function" ||
-      typeof window.LCDP_FicheParc.rendreDansConteneur !==
-        "function" ||
-      typeof window.LCDP_FicheParc.rendrePlanningDansConteneur !==
-        "function"
-    ) {
-      throw new Error(
-        "Constructeur commun de la fiche parc introuvable."
-      );
+    if (!constructeurFicheComplet()) {
+      throw new Error("La carte n’a pas pu être chargée. Vous pouvez revenir à la liste des parcs.");
     }
-
     return window.LCDP_FicheParc;
   }
 
-  function chargerScriptPublicUneFois(chemin) {
-    const src = construireUrlPublic(chemin) +
-      (chemin === "/ESPACE-PUBLIC/fiche-parc.js" ? "?v=20261029-carte-navigation-v1" : "");
-    const selecteur =
-      'script[data-lcdp-script-public="' + chemin + '"]';
-    const scriptExistant = document.querySelector(selecteur);
-
-    if (scriptExistant) {
-      if (window.LCDP_FicheParc) {
-        return Promise.resolve();
-      }
-
-      return new Promise((resolve, reject) => {
-        scriptExistant.addEventListener("load", resolve, {
-          once: true
-        });
-        scriptExistant.addEventListener(
-          "error",
-          () => reject(
-            new Error("Script public introuvable : " + chemin)
-          ),
-          { once: true }
-        );
-      });
-    }
-
-    return new Promise((resolve, reject) => {
+  function chargerScriptPublicUneFois(chemin, forcer = false) {
+    const cle = chemin + (forcer ? ":actualisation" : ":normal");
+    if (chargementsConstructeurFiche.has(cle)) return chargementsConstructeurFiche.get(cle);
+    const src = construireUrlPublic(chemin) + "?v=20261029-carte-navigation-v2" +
+      (forcer ? "&actualisation=" + Date.now() : "");
+    const promesse = new Promise((resolve, reject) => {
       const script = document.createElement("script");
+      let termine = false;
+      const finir = (erreur) => {
+        if (termine) return;
+        termine = true;
+        window.clearTimeout(delai);
+        script.onload = null;
+        script.onerror = null;
+        if (erreur) { script.remove(); reject(erreur); }
+        else resolve();
+      };
+      const delai = window.setTimeout(() => finir(new Error(
+        "Le chargement de la carte prend trop de temps. Réessayez ou revenez à la liste."
+      )), 20000);
       script.src = src;
       script.defer = true;
       script.dataset.lcdpScriptPublic = chemin;
-      script.onload = resolve;
-      script.onerror = () => reject(
-        new Error("Script public introuvable : " + chemin)
-      );
+      script.onload = () => finir();
+      script.onerror = () => finir(new Error(
+        "Impossible de charger la carte. Réessayez ou revenez à la liste."
+      ));
       document.body.appendChild(script);
     });
+    chargementsConstructeurFiche.set(cle, promesse);
+    promesse.then(() => {
+      if (!constructeurFicheComplet()) chargementsConstructeurFiche.delete(cle);
+    }, () => chargementsConstructeurFiche.delete(cle));
+    return promesse;
   }
 
   async function chargerFragmentObjet(chemin) {
