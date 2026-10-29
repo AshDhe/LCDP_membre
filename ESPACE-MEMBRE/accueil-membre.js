@@ -476,17 +476,17 @@
       {
         label: "Planifier",
         style: "lcdp-button-accueil lcdp-button-accueil-orange",
-        action: () => redirigerMembre("/ESPACE-MEMBRE/reserver-membre.html")
+        action: () => gererBoutonAccueilMembre("planifier")
       },
       {
         label: "Mes accès",
         style: "lcdp-button-accueil lcdp-button-accueil-green",
-        action: () => redirigerMembre("/ESPACE-MEMBRE/planning-membre.html")
+        action: () => gererBoutonAccueilMembre("mes_acces")
       },
       {
         label: "Ma Clé",
         style: "lcdp-button-accueil lcdp-button-accueil-blue",
-        action: () => gererValidationPresence(etat)
+        action: () => gererBoutonAccueilMembre("ma_cle")
       }
     ];
 
@@ -507,66 +507,12 @@
     });
   }
 
-  let lancementCleEnCours = false;
-
-  async function gererValidationPresence(etat) {
-    if (lancementCleEnCours) return;
-    lancementCleEnCours = true;
-    try {
-      await lancerValidationPresence(etat);
-    } finally {
-      lancementCleEnCours = false;
-    }
-  }
-
-  async function lancerValidationPresence(etat) {
-    if (!ENDPOINT_LA_CLE_DU_PARC) {
-      await afficherAlerte(
-        "Le service Ma clé n'est pas configuré.",
-        { variante: "ouvrir" }
-      );
-      return;
-    }
-
-    preparerIdentiteNavigateurCle();
-    const reponse = await fetch(ENDPOINT_LA_CLE_DU_PARC + "/access", {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-      headers: {
-        "Accept": "application/json"
-      }
+  async function gererBoutonAccueilMembre(action) {
+    const issue = await window.LCDP_AccueilDroits.executer(action, {
+      avantMaCle: preparerIdentiteNavigateurCle,
+      surNavigateurNonProprietaire: proposerTransfertNavigateur
     });
-
-    const resultat = await reponse.json().catch(() => null);
-
-    if (reponse.status === 401) {
-      redirigerConnexionMembre("inactive");
-      return;
-    }
-
-    if (resultat?.reason === "browser_not_owner") {
-      await proposerTransfertNavigateur();
-      return;
-    }
-
-    if (!reponse.ok || !resultat) {
-      await afficherAlerte(
-        messageErreurAccesCle(resultat),
-        { variante: "ouvrir" }
-      );
-      return;
-    }
-
-    if (resultat.allowed !== true) {
-      await afficherAlerte(
-        messageErreurAccesCle(resultat),
-        { variante: "ouvrir" }
-      );
-      return;
-    }
-
-    redirigerMembre("/ESPACE-MEMBRE/lacleduparc.html");
+    if (issue === "non_connecte") redirigerConnexionMembre("inactive");
   }
 
   function preparerIdentiteNavigateurCle() {
@@ -653,35 +599,13 @@
         slot.innerHTML = "";
         if (reponse.status === 401) { redirigerConnexionMembre("inactive"); return; }
         await afficherAlerte(resultat?.message || "La réponse n’a pas pu être confirmée. Réessayez plus tard.");
-        if (reponse.ok && resultat?.success === true) await gererValidationPresence(etatMembre);
+        if (reponse.ok && resultat?.success === true) await gererBoutonAccueilMembre("ma_cle");
       } catch {
         slot.innerHTML = "";
         await afficherAlerte("La réponse n’a pas pu être confirmée. Réessayez plus tard.");
       }
     });
     champs[0].focus();
-  }
-
-  function messageErreurAccesCle(resultat) {
-    const raison = String(resultat?.reason || "").trim().toLowerCase();
-
-    if (raison === "no_reservation" || raison === "no_invitation") {
-      return "Vous n'avez pas de réservation en cours.";
-    }
-
-    if (raison === "key_inactive" || raison === "too_early" || raison === "too_late") {
-      return "Votre clé n'est pas active actuellement.";
-    }
-
-    if (raison === "subscription_unpaid") {
-      return "Votre abonnement n'est pas payé.";
-    }
-
-    if (raison === "sponsor_not_checked_in") {
-      return "Votre clé n'est pas encore disponible. Le membre qui vous a invité doit d'abord valider la sienne.";
-    }
-
-    return String(resultat?.message || resultat?.error || "Impossible d'ouvrir Ma clé.");
   }
 
   async function ouvrirPageAbonne(etat, fonction, chemin) {
@@ -759,37 +683,8 @@
     return texte + ".";
   }
 
-  function assurerStyleAlerteAccueilMembre() {
-    if (document.querySelector('style[data-lcdp-alerte-accueil-membre="true"]')) {
-      return;
-    }
-
-    const style = document.createElement("style");
-    style.dataset.lcdpAlerteAccueilMembre = "true";
-    style.textContent = `
-      .lcdp-page-accueil-membre .lcdp-alerte-accueil-ouvrir [data-lcdp-alerte-ok] {
-        background: var(--lcdp-color-blue, #2f6fb3);
-        border-color: var(--lcdp-color-blue, #2f6fb3);
-        color: #ffffff;
-      }
-
-      .lcdp-page-accueil-membre .lcdp-alerte-accueil-ouvrir [data-lcdp-alerte-ok]:hover {
-        background: var(--lcdp-color-blue-hover, #255c96);
-        border-color: var(--lcdp-color-blue-hover, #255c96);
-        color: #ffffff;
-      }
-    `.trim();
-
-    document.head.appendChild(style);
-  }
-
   function appliquerVarianteAlerteAccueilMembre(alerte, variante) {
-    if (variante !== "ouvrir") {
-      return;
-    }
-
-    assurerStyleAlerteAccueilMembre();
-    alerte.classList.add("lcdp-alerte-accueil-ouvrir");
+    if (variante === "ouvrir") alerte.classList.add("lcdp-alerte-accueil-ouvrir");
   }
 
   async function afficherAlerte(message, options = {}) {

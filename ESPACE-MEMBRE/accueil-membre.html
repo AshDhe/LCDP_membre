@@ -76,6 +76,7 @@
         "/CSSBASE/cssbase.css",
         "/BOX/02-box-bandeau-nav.css",
         "/BOX/01-box-text.css",
+        "/BOX/01-box-actualite.css",
         "/BOX/02-box-menu-burger.css",
         "/BOX/02-box-alerte.css",
         "/BOX/02-box-dialogue-bouton.css",
@@ -101,21 +102,7 @@
     .lcdp-transfert-coda-cases input:focus { outline: 2px solid var(--lcdp-color-primary, #55733f); outline-offset: 3px; }
   </style>
   <style>
-    /* Supprimer le surlignage bleu au toucher, sans masquer le focus clavier. */
-    .lcdp-page-accueil-membre #lcdp-menu-central-slot .lcdp-button-accueil {
-      -webkit-tap-highlight-color: transparent;
-    }
-    .lcdp-page-accueil-membre #lcdp-menu-central-slot .lcdp-button-accueil:focus:not(:focus-visible) {
-      outline: none;
-      box-shadow: none;
-    }
-
     #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden] { display: none !important; }
-    @media (max-width: 767px) {
-      .lcdp-page-accueil-membre .lcdp-site-main > .lcdp-page-section {
-        padding-top: calc(var(--lcdp-space-5) * 0.42);
-      }
-    }
   </style>
 </head>
 
@@ -127,7 +114,7 @@
       <div class="lcdp-page-container">
         <div class="lcdp-page-content">
           <!-- Réserver deux lignes avant le chargement des actualités. -->
-          <div class="lcdp-boxtext__text--center" aria-hidden="true" style="height:3em;min-height:3em;line-height:1.5;overflow:hidden"></div>
+          <div class="lcdp-boxtext__text--center lcdp-actu-bandeau-placeholder" aria-hidden="true"></div>
         </div>
       </div>
     </div>
@@ -145,13 +132,15 @@
           <noscript>Activez JavaScript pour accéder à votre espace membre.</noscript>
           <div id="lcdp-accueil-contenu" class="lcdp-page-content lcdp-stack-large" hidden aria-busy="true">
 
-            <p class="lcdp-text-strong-lead lcdp-accueil-mention" id="message-accueil-membre" aria-live="polite">
-              Bonjour, c’est à vous.
-            </p>
+            <div class="lcdp-accueil-intro">
+              <p class="lcdp-text-strong-lead lcdp-accueil-mention" id="message-accueil-membre" aria-live="polite">
+                Bonjour, c’est à vous.
+              </p>
 
-            <p class="lcdp-mention-connexion" id="mention-statut-membre" aria-live="polite">
-              
-            </p>
+              <p class="lcdp-mention-connexion" id="mention-statut-membre" aria-live="polite">
+                
+              </p>
+            </div>
 
             <div id="lcdp-menu-central-slot" class="lcdp-stack"></div>
 
@@ -172,14 +161,11 @@
       document.getElementById("lcdp-accueil-erreur").hidden = false;
     };
   </script>
+  <script>document.write('<script src="' + window.LCDP_urlPublic("/ESPACE-PUBLIC/controle-acces-accueil.js") + '"><\/script>');</script>
   <script src="./accueil-membre.js?v=20261028-gif1" onerror="window.LCDP_echecAccueilMembre()"></script>
   <script>
-    (() => {
-      const script = document.createElement("script");
-      script.src = window.LCDP_urlPublic("/ESPACE-PUBLIC/actualite.js");
-      script.defer = true;
-      document.body.appendChild(script);
-    })();
+    // Même composant Actualités et même chargement différé que sur l'accueil public.
+    document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/actualite.js') + '"><\/script>');
   </script>
 </body>
 </html>
