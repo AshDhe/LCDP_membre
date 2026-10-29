@@ -519,7 +519,11 @@
       afficher();
       if (parcSelectionne) actualiserMoisParc();
     });
+    // Éviter la surbrillance tactile bleue sur la croix, sans supprimer le focus clavier.
+    fermer.style.webkitTapHighlightColor = "transparent";
     fermer.addEventListener("click", () => {
+      // Libérer le focus de la croix avant que le masque de chargement la recouvre.
+      fermer.blur();
       // Afficher l'attente AVANT de quitter PLANIFIER : aucun temps mort visuel.
       if (document.getElementById("lcdp-retour-accueil-attente")) return;
       const masque = document.createElement("div");
