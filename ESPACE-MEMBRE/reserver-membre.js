@@ -126,6 +126,8 @@
 
   let attenteListeParcs = null;
   let navigationParcs = null;
+  // Un seul calendrier mensuel persistant pour tout le tunnel PLANIFIER.
+  let selectionnerParcPlanningPrincipal = null;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -318,6 +320,7 @@
         enveloppe.remove();
         filtreParcOuvert = false;
       };
+      navigationParcs.fermer = fermer;
       close.addEventListener("click", fermer);
       dialogue.addEventListener("click", event => {if(event.target === dialogue) fermer();});
       if (!parcInitialise) {
@@ -356,6 +359,7 @@
     const calendrier = fragmentCalendrier.querySelector("[data-lcdp-box-calendrier-mois]");
     const templateJour = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
     if (!calendrier || !templateJour) throw new Error("Grille mensuelle indisponible.");
+    etatPage.templateJourMois = templateJour;
 
     const titre = calendrier.querySelector("[data-lcdp-calendrier-mois-title]");
     const meta = calendrier.querySelector("[data-lcdp-calendrier-mois-meta]");
@@ -408,6 +412,45 @@
     const mois = Number(lirePartie("month"));
     const etat = { annee, mois };
     const borne = annee * 12 + mois;
+    let parcSelectionne = null;
+    let droitsParc = null;
+    let planningCourant = [];
+    let generationPlanning = 0;
+
+    // Seule cette fonction change le parc du calendrier permanent.
+    selectionnerParcPlanningPrincipal = async (parc) => {
+      if (!parc) throw new Error("Parc introuvable.");
+      // Ne pas perdre le parc précédent lorsque le chargement échoue.
+      const droits = await chargerDroitsPlanningParcMembre(parc);
+      const demande = { parc, annee: etat.annee, mois: etat.mois };
+      const donnees = await chargerPlanningParcMoisLecture(demande);
+      parcSelectionne = parc;
+      droitsParc = droits;
+      planningCourant = donnees;
+      etatPage.calendrierMoisActif = { ...demande, modePlanning: "lecture", planning: donnees };
+      generationPlanning++;
+      afficher();
+      // La liste/carte est un filtre en superposition, jamais une autre page.
+      navigationParcs?.fermer?.();
+      fermerShiftDetailParc();
+    };
+
+    async function actualiserMoisParc() {
+      if (!parcSelectionne) return;
+      const generation = ++generationPlanning;
+      const demande = { parc: parcSelectionne, annee: etat.annee, mois: etat.mois };
+      try {
+        const donnees = await chargerPlanningParcMoisLecture(demande);
+        if (generation !== generationPlanning) return;
+        planningCourant = donnees;
+        etatPage.calendrierMoisActif = { ...demande, modePlanning: "lecture", planning: donnees };
+        remplirGrilleCalendrier(grille, etatPage.calendrierMoisActif, donnees);
+      } catch (error) {
+        if (generation !== generationPlanning) return;
+        message.textContent = error.message || "Impossible de charger le planning du parc.";
+        message.hidden = false;
+      }
+    }
 
     function afficher() {
       courant.textContent = formaterMoisAnnee(etat.annee, etat.mois);
@@ -443,13 +486,39 @@
         // Aucune action sur les jours avant définition des filtres.
         grille.appendChild(card);
       }
+      if (parcSelectionne) {
+        meta.textContent = nomParcAfficheMembre(parcSelectionne.nom || parcSelectionne.nomparc || "Parc") +
+          (parcSelectionne.dptmt ? " (" + parcSelectionne.dptmt + ")" : "");
+        meta.hidden = false;
+        message.hidden = true;
+        remplirGrilleCalendrier(grille, {
+          parc: parcSelectionne, annee: etat.annee, mois: etat.mois, modePlanning: "lecture"
+        }, planningCourant);
+      } else {
+        meta.hidden = true;
+      }
       precedent.disabled = etat.annee * 12 + etat.mois <= borne;
+      // Ne pas griser le mois suivant : afficher le message d'horizon au clic.
+      suivant.disabled = false;
     }
     precedent.addEventListener("click", () => {
       if (etat.annee * 12 + etat.mois <= borne) return;
-      changerMois(etat, -1); afficher();
+      changerMois(etat, -1);
+      afficher();
+      if (parcSelectionne) actualiserMoisParc();
     });
-    suivant.addEventListener("click", () => { changerMois(etat, 1); afficher(); });
+    suivant.addEventListener("click", () => {
+      const prochain = { ...etat };
+      changerMois(prochain, 1);
+      const cle = String(prochain.annee) + "-" + String(prochain.mois).padStart(2, "0");
+      if (parcSelectionne && droitsParc && cle > droitsParc.moisMaximum) {
+        afficherLimiteConsultationPlanning(droitsParc).catch(console.error);
+        return;
+      }
+      changerMois(etat, 1);
+      afficher();
+      if (parcSelectionne) actualiserMoisParc();
+    });
     fermer.addEventListener("click", () => {
       window.location.href = construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html");
     });
@@ -2115,33 +2184,28 @@
     }
   }
 
-  function afficherPictowaitShiftDetailParc(
-    detail,
-    message
-  ) {
-    if (!detail?.racine || !detail?.contenu) {
-      return;
-    }
+  function afficherPictowaitShiftDetailParc(detail, message) {
+    if (!detail?.racine || !detail?.contenu) return;
 
-    detail.contenu.replaceChildren(
-      (() => {
-        const cadre = document.createElement("div");
-        cadre.className = "lcdp-fiche-parc__chargement-plein";
-        cadre.setAttribute("aria-busy", "true");
-        const titre = document.createElement("h2");
-        titre.className = "lcdp-box-fiche-parc__title";
-        titre.textContent = detail.racine.dataset.lcdpTitreParc || "Fiche parc";
-        cadre.append(titre, creerPictowait(message || "Chargement de la Fiche Parc…"));
-        return cadre;
-      })()
-    );
+    // Masque indépendant de la vue, devant la totalité de la fiche.
+    // Aucun titre, bouton ou contenu partiellement construit n'est visible.
+    detail.racine.querySelector("[data-lcdp-fiche-attente]")?.remove();
+    const masque = document.createElement("div");
+    masque.className = "lcdp-planifier-fiche-attente";
+    masque.dataset.lcdpFicheAttente = "";
+    masque.setAttribute("role", "status");
+    masque.setAttribute("aria-label", message || "Chargement de la fiche du parc");
+    masque.appendChild(creerPictowait(message || "Chargement de la fiche du parc"));
+    detail.racine.appendChild(masque);
+    detail.racine.setAttribute("aria-busy", "true");
     detail.racine.hidden = false;
+    detail.racine.classList.add("lcdp-box-shift-detail-parc--visible");
+  }
 
-    window.requestAnimationFrame(() => {
-      detail.racine.classList.add(
-        "lcdp-box-shift-detail-parc--visible"
-      );
-    });
+  function terminerPictowaitShiftDetailParc(detail) {
+    if (!detail?.racine) return;
+    detail.racine.querySelector("[data-lcdp-fiche-attente]")?.remove();
+    detail.racine.removeAttribute("aria-busy");
   }
 
 
@@ -2732,10 +2796,7 @@
       return;
     }
 
-    await ouvrirShiftDetailParc(
-      parc,
-      "planning"
-    );
+    await ouvrirPlanningMoisParc(parc);
   }
 
   async function ouvrirFicheParc(parc) {
@@ -2888,6 +2949,7 @@
     detail.racine.classList.remove(
       "lcdp-box-shift-detail-parc--preparation"
     );
+    terminerPictowaitShiftDetailParc(detail);
 
     window.requestAnimationFrame(() => {
       detail.racine.classList.add(
@@ -3088,7 +3150,14 @@
   }
 
   async function ouvrirPlanningMoisParc(parc) {
-    await ouvrirShiftDetailParc(parc, "planning");
+    if (typeof selectionnerParcPlanningPrincipal !== "function") {
+      throw new Error("Le planning principal n'est pas initialisé.");
+    }
+    try {
+      await selectionnerParcPlanningPrincipal(parc);
+    } catch (error) {
+      await afficherAlerteDetailParcOuPage(error.message || "Impossible d'afficher ce parc.");
+    }
   }
 
   async function chargerDroitsPlanningParcMembre(parc) {
@@ -3840,10 +3909,13 @@
   }
 
   async function ouvrirCalendrierJourParc(contexte) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return;
-
+    // Le calendrier du jour est une couche, le planning mensuel reste immuable.
+    let slot = document.getElementById("lcdp-planifier-jour-overlay-slot");
+    if (!slot) {
+      slot = document.createElement("div");
+      slot.id = "lcdp-planifier-jour-overlay-slot";
+      document.body.appendChild(slot);
+    }
     slot.innerHTML = "";
 
     const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-jour.html");
@@ -3867,17 +3939,17 @@
     meta.textContent = formaterDateFr(contexte.dateIso) + " · " + nomParc + (departement ? " · " + departement : "");
 
     boutonFermer.addEventListener("click", () => {
-      slot.innerHTML = "";
+      slot.remove();
     });
 
     calendrier.addEventListener("click", (event) => {
-      if (event.target === calendrier) slot.innerHTML = "";
+      if (event.target === calendrier) slot.remove();
     });
 
     document.addEventListener(
       "keydown",
       (event) => {
-        if (event.key === "Escape") slot.innerHTML = "";
+        if (event.key === "Escape") slot.remove();
       },
       { once: true }
     );
