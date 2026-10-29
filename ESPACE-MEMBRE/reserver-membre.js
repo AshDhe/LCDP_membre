@@ -172,10 +172,19 @@
 
   function masquerAttenteInitialePlanifier() {
     const attente = document.getElementById("lcdp-planifier-attente-initiale");
-    if (!attente) return;
-    // Attendre que la grille ait pu être peinte avant de retirer le GIF.
+    const planning = document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-calendrier-mois]");
+    // Ne jamais découvrir les textes de la page avant que la grille soit montée.
+    // En cas d'erreur, l'alerte doit rester utilisable : le catch révèle alors la page.
+    if (!planning) {
+      document.documentElement.classList.add("lcdp-planifier-pret");
+      attente?.remove();
+      return;
+    }
     window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => attente.remove());
+      window.requestAnimationFrame(() => {
+        document.documentElement.classList.add("lcdp-planifier-pret");
+        attente?.remove();
+      });
     });
   }
 
