@@ -2750,7 +2750,7 @@
       );
     }
 
-    detail.racine.dataset.lcdpTitreParc = "Parc de " + String(parc.nom || "").replace(/^parc\s+(?:de\s+|d['’]\s*)?/i, "");
+    detail.racine.dataset.lcdpTitreParc = nomParcAfficheMembre(parc.nom);
     afficherPictowaitShiftDetailParc(
       detail,
       vueDemandee === "planning"
@@ -5135,6 +5135,13 @@
       "/" + encodeURIComponent(dossierParc) +
       "/" + NOM_IMAGE_CARD_PARC
     );
+  }
+
+  // Normalisation des titres visibles, sans toucher aux identifiants ni aux chemins d'images.
+  function nomParcAfficheMembre(valeur) {
+    const brut = String(valeur || "").trim();
+    const sansPrefixe = brut.replace(/^(?:(?:parc\s+(?:de\s+|d[’\']\s*))|(?:parc\s+))+/i, "").trim();
+    return "Parc de " + (sansPrefixe || brut || "nom inconnu");
   }
 
   function normaliserNomParcPourChemin(valeur) {
