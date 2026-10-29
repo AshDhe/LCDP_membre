@@ -8,6 +8,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Choisir un parc et réserver une nouvelle date dans votre espace membre La Clé du Parc.">
 
+  <!-- Affichage critique : disponible avant config.js et les feuilles CSS externes. -->
+  <style>
+    #lcdp-planifier-attente-initiale {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483646;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+    }
+    #lcdp-planifier-attente-initiale img {
+      display: block;
+      width: 64px;
+      height: 64px;
+      max-width: none;
+      object-fit: contain;
+    }
+  </style>
+
   <script src="../config.js"></script>
 
   <script>
