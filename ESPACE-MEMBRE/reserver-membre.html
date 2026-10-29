@@ -116,8 +116,8 @@
         "/BOX/04-box-fiche-parc.css",
         "/BOX/04-box-shift-detail-parc.css",
         "/BOX/04-box-calendrier-mois.css",
-        "/BOX/04-box-legende.css?v=20261029-diginum-palette-v1",
-        "/BOX/07-box-diginum.css",
+        "/BOX/04-box-legende.css?v=20261029-sans-scroll-v2",
+        "/BOX/07-box-diginum.css?v=20261029-compact-v2",
         "/BOX/04-box-card-jour-in-calendrier-mois.css?v=20260717-0655",
         "/BOX/04-box-calendrier-jour.css",
         "/BOX/04-box-card-heure-in-calendrier-jour.css",
@@ -139,7 +139,7 @@
         '"><\/script>'
       );
       document.write(
-        '<script src="' + window.LCDP_urlObjet("/BOX/07-box-diginum.js") + '"><\/script>'
+        '<script src="' + window.LCDP_urlObjet("/BOX/07-box-diginum.js?v=20261029-compact-v2") + '"><\/script>'
       );
     })();
     document.write('<script data-lcdp-footer-autonome src="' + window.LCDP_urlObjet('/BOX/02-box-footer.js') + '"><\/script>');
@@ -228,7 +228,12 @@
       box-sizing: border-box;
       border: 1px solid #dce2e5 !important;
       background: transparent !important;
-      border-radius: 2px;
+      border-radius: 3px; /* Même arrondi que les plages colorées sur mobile. */
+    }
+    @media (min-width: 768px) {
+      .lcdp-page-reserver [data-lcdp-box-calendrier-mois] .lcdp-planifier-plage--non-ouverte {
+        border-radius: 5px; /* Même arrondi que les plages colorées sur ordinateur. */
+      }
     }
     /* Ajustements propres à PLANIFIER : sans changer les styles génériques. */
     @media (max-width: 767px) {
