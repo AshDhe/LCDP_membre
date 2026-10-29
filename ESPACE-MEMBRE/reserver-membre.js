@@ -125,6 +125,7 @@
   };
 
   let attenteListeParcs = null;
+  let navigationParcs = null;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -289,10 +290,18 @@
       content.prepend(chargement);
       barre.hidden = false;
       liste.hidden = false;
+      const zoneCarte = document.createElement("div");
+      zoneCarte.className = "lcdp-planifier-parcs-carte";
+      zoneCarte.id = "lcdp-planifier-parcs-carte";
+      zoneCarte.hidden = true;
+      content.appendChild(zoneCarte);
+      navigationParcs = { zoneCarte, carte, liste, active: false, numero: 0, controleur: null };
       let ferme = false;
       const fermer = () => {
         if (ferme) return;
         ferme = true;
+        quitterCarteParcs();
+        navigationParcs = null;
         const pageContent = document.querySelector(".lcdp-page-reserver .lcdp-page-content--avec-entete");
         if (pageContent) pageContent.append(barre,liste);
         barre.hidden = true;
@@ -881,11 +890,139 @@
     commandeBar.classList.add("lcdp-box-commande-bar--encadree");
 
     actions.append(boutonDepartement, boutonCarte);
-    // La carte sera raccordée lors d'une prochaine étape.
+    boutonCarte.setAttribute("aria-controls", "lcdp-planifier-parcs-carte");
+    boutonCarte.setAttribute("aria-expanded", "false");
+    boutonCarte.addEventListener("click", () => {
+      if (!navigationParcs) return;
+      if (navigationParcs.active) quitterCarteParcs();
+      else afficherCarteParcs();
+    });
 
     slot.replaceChildren(commandeBar);
     slot.hidden = true;
     slot.setAttribute("aria-hidden", "true");
+  }
+
+
+  function quitterCarteParcs() {
+    const navigation = navigationParcs;
+    if (!navigation) return;
+    navigation.active = false;
+    navigation.numero += 1;
+    navigation.controleur?.detruire();
+    navigation.controleur = null;
+    navigation.zoneCarte.replaceChildren();
+    navigation.zoneCarte.classList.remove("is-loading");
+    navigation.zoneCarte.hidden = true;
+    navigation.liste.hidden = false;
+    const bouton = document.getElementById("bouton-voir-carte");
+    ajouterPictoCommandeBar(bouton, "/IMAG/PICTO/picto-localiser.svg", "Voir sur la carte");
+    bouton?.setAttribute("aria-expanded", "false");
+  }
+
+  async function afficherCarteParcs() {
+    const navigation = navigationParcs;
+    if (!navigation) return;
+    const numero = ++navigation.numero;
+    const estCourante = () => navigationParcs === navigation && navigation.active && numero === navigation.numero;
+    navigation.active = true;
+    navigation.controleur?.detruire();
+    navigation.controleur = null;
+    navigation.liste.hidden = true;
+    navigation.zoneCarte.hidden = false;
+    navigation.zoneCarte.classList.add("is-loading");
+    const bouton = document.getElementById("bouton-voir-carte");
+    ajouterPictoCommandeBar(bouton, "/IMAG/PICTO/picto-localiser.svg", "Voir la liste");
+    bouton?.setAttribute("aria-expanded", "true");
+    const attente = document.createElement("div");
+    attente.className = "lcdp-planifier-parcs-chargement lcdp-planifier-carte-attente";
+    attente.setAttribute("role", "status");
+    attente.setAttribute("aria-label", "Chargement de la carte des parcs");
+    attente.appendChild(creerPictowait("Chargement de la carte…"));
+    navigation.zoneCarte.replaceChildren(attente);
+    const parcs = [...etatPage.parcs];
+    const departement = etatPage.departement;
+    try {
+      if (!parcs.length) throw new Error("Aucun parc à afficher pour ce département.");
+      const constructeur = await chargerConstructeurFicheParc();
+      if (!estCourante()) return;
+      if (typeof constructeur.rendreCarteDansConteneur !== "function") {
+        throw new Error("Le module de carte doit être actualisé. Rechargez la page.");
+      }
+      // La fiche fournit les coordonnées et les localités déjà utilisées par sa carte.
+      // Seuls les parcs de la liste membre sont retenus pour les points et les actions.
+      const detail = await constructeur.chargerFicheParc(parcs[0].idparc || parcs[0].id);
+      if (!estCourante()) return;
+      const donneesCarte = new Map((detail.parcsDepartement || []).map(parc => [String(parc.idparc || parc.id || ""), parc]));
+      if (detail.parc) {
+        const id = String(detail.parc.idparc || detail.parc.id || "");
+        donneesCarte.set(id, { ...donneesCarte.get(id), ...detail.parc });
+      }
+      function coordonnee(parc, detailParc, cles, limite) {
+        for (const source of [parc, detailParc]) {
+          for (const cle of cles) {
+            const valeur = source?.[cle];
+            if (valeur != null && String(valeur).trim() !== "" && Number.isFinite(Number(valeur)) && Math.abs(Number(valeur)) <= limite) return Number(valeur);
+          }
+        }
+        return null;
+      }
+      const parcsCarte = parcs.map(parc => {
+        const detailParc = donneesCarte.get(String(parc.idparc || parc.id || ""));
+        return {
+          ...detailParc, ...parc,
+          lngparc: coordonnee(parc, detailParc, ["lngparc", "longitude", "lngloc"], 180),
+          latparc: coordonnee(parc, detailParc, ["latparc", "latitude", "latloc"], 90)
+        };
+      });
+      const hote = document.createElement("div");
+      hote.className = "lcdp-planifier-carte-hote";
+      // La carte est mesurable pendant sa construction ; seul le GIF est visible.
+      hote.style.visibility = "hidden";
+      navigation.zoneCarte.appendChild(hote);
+      const controleur = await constructeur.rendreCarteDansConteneur(hote, {
+        dptmt: departement,
+        parcsDepartement: parcsCarte,
+        localitesCarte: detail.localites || []
+      }, {
+        chargerFragmentObjet,
+        construireUrlObjet,
+        carteNavigation: true,
+        creerCardParcCarte: parc => {
+          const original = parcs.find(item => String(item.idparc || item.id || "") === String(parc.idparc || parc.id || ""));
+          return original ? creerCardParc(original) : null;
+        }
+      });
+      if (!estCourante()) { controleur?.detruire(); return; }
+      navigation.controleur = controleur;
+      const nombrePoints = hote.querySelectorAll(".lcdp-carte-dynamique__marker").length;
+      if (!nombrePoints) {
+        controleur?.detruire();
+        throw new Error("Les coordonnées des parcs ne sont pas disponibles. Consultez la liste.");
+      }
+      if (nombrePoints < parcs.length) {
+        const note = document.createElement("p");
+        note.textContent = "Certains parcs ne sont pas localisés sur la carte. Ils restent accessibles dans la liste.";
+        hote.appendChild(note);
+      }
+      attente.remove();
+      navigation.zoneCarte.classList.remove("is-loading");
+      hote.style.removeProperty("visibility");
+    } catch (error) {
+      if (!estCourante()) return;
+      navigation.controleur?.detruire();
+      navigation.controleur = null;
+      navigation.zoneCarte.classList.remove("is-loading");
+      const message = document.createElement("p");
+      message.setAttribute("role", "alert");
+      message.textContent = error.message || "Impossible de charger la carte.";
+      const reessayer = document.createElement("button");
+      reessayer.type = "button";
+      reessayer.className = "lcdp-button lcdp-button-secondary";
+      reessayer.textContent = "Réessayer";
+      reessayer.addEventListener("click", afficherCarteParcs);
+      navigation.zoneCarte.replaceChildren(message, reessayer);
+    }
   }
 
   function ajouterPictoCommandeBar(bouton, cheminPicto, libelle) {
@@ -2097,6 +2234,7 @@
 
     afficherCommandeBarReserver();
     planifierPrechargementDetailsParcs();
+    if (navigationParcs?.active) afficherCarteParcs();
   }
 
   function listeParcsDejaVisible() {
@@ -4816,7 +4954,7 @@
 
   function chargerScriptPublicUneFois(chemin) {
     const src = construireUrlPublic(chemin) +
-      (chemin === "/ESPACE-PUBLIC/fiche-parc.js" ? "?v=20261028-fiche-v16" : "");
+      (chemin === "/ESPACE-PUBLIC/fiche-parc.js" ? "?v=20261029-carte-navigation-v1" : "");
     const selecteur =
       'script[data-lcdp-script-public="' + chemin + '"]';
     const scriptExistant = document.querySelector(selecteur);

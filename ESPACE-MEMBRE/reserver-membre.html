@@ -249,6 +249,21 @@
     .lcdp-planifier-partage-attente .lcdp-pictowait { display:flex; align-items:center; justify-content:center; }
     .lcdp-planifier-partage-confirmation [data-lcdp-alerte-message] { font-size:1.5rem !important; line-height:1.25; font-weight:700; }
     .lcdp-planifier-partage-confirmation [data-lcdp-alerte-ok] { background:#55733f !important; border-color:#55733f !important; color:#fff !important; }
+    /* Carte de navigation PLANIFIER : largeur de la liste, surface carrée. */
+    .lcdp-planifier-parcs-carte { position:relative; min-width:0; width:100%; }
+    .lcdp-planifier-parcs-carte[hidden], .lcdp-planifier-carte-cartouche[hidden] { display:none !important; }
+    .lcdp-planifier-parcs-card #lcdp-liste-card-parcs-slot[hidden] { display:none !important; }
+    .lcdp-planifier-carte-attente { position:relative; aspect-ratio:1; min-height:0; }
+    .lcdp-planifier-parcs-carte.is-loading .lcdp-planifier-carte-hote { position:absolute; inset:0; }
+    .lcdp-planifier-parcs-carte .lcdp-carte-dynamique__map-shell {
+      aspect-ratio:1; height:auto; min-height:0; max-height:none; box-sizing:border-box;
+    }
+    .lcdp-planifier-parcs-carte .lcdp-carte-dynamique__map {
+      position:absolute; inset:0; width:100%; height:100%; min-height:0; max-height:none;
+    }
+    .lcdp-planifier-carte-hote:empty { aspect-ratio:1; }
+    .lcdp-planifier-carte-cartouche { display:grid; gap:var(--lcdp-space-2, 10px); margin-top:var(--lcdp-space-3, 16px); text-align:left; }
+    .lcdp-planifier-parcs-carte .lcdp-carte-dynamique__marker:focus-visible { stroke-width:4; }
   </style>
 <style>
 /* V17 : la coque de la fiche reste de taille stable pendant son chargement. */
@@ -315,6 +330,6 @@
 
   </div>
 
-  <script src="./reserver-membre.js?v=20261028-planifier-v17"></script>
+  <script src="./reserver-membre.js?v=20261029-carte-navigation-v1"></script>
 </body>
 </html>
