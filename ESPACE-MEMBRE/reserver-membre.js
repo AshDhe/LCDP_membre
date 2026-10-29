@@ -520,7 +520,25 @@
       if (parcSelectionne) actualiserMoisParc();
     });
     fermer.addEventListener("click", () => {
-      window.location.href = construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html");
+      // Afficher l'attente AVANT de quitter PLANIFIER : aucun temps mort visuel.
+      if (document.getElementById("lcdp-retour-accueil-attente")) return;
+      const masque = document.createElement("div");
+      masque.id = "lcdp-retour-accueil-attente";
+      masque.setAttribute("role", "status");
+      masque.setAttribute("aria-label", "Retour à l'accueil en cours");
+      masque.style.cssText = "position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:2147483647!important;background:#fff!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:0!important;padding:0!important;";
+      const gif = document.createElement("img");
+      gif.src = construireUrlObjet(CHEMIN_PICTOWAIT);
+      gif.alt = "";
+      gif.width = 64;
+      gif.height = 64;
+      gif.style.cssText = "display:block!important;width:64px!important;height:64px!important;max-width:none!important;object-fit:contain!important;position:static!important;margin:0!important;";
+      masque.appendChild(gif);
+      document.body.appendChild(masque);
+      // Deux frames laissent le navigateur peindre le GIF avant la navigation.
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+        window.location.href = construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html");
+      }));
     });
     slot.replaceChildren(calendrier);
     afficher();

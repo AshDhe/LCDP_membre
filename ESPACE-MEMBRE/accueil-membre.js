@@ -165,13 +165,18 @@
         : "MEMBRE INVITÉ";
     }
 
-    if (message) {
-      message.textContent = etat.prenommembre
-        ? "Bonjour " + etat.prenommembre + ", votre compte La Clé du Parc."
-        : "Bonjour, votre compte La Clé du Parc.";
-    }
+    if (message) afficherMessageAccueil(message, etat.prenommembre);
 
     afficherMentionAbonnementMembre(etat);
+  }
+
+  function afficherMessageAccueil(element, prenom) {
+    const premiereLigne = document.createTextNode("Votre compte La Clé du Parc");
+    const sautLigne = document.createElement("br");
+    const deuxiemeLigne = document.createElement("span");
+    deuxiemeLigne.textContent = prenom ? "Bonjour " + prenom : "Bonjour";
+    deuxiemeLigne.style.fontWeight = "400";
+    element.replaceChildren(premiereLigne, sautLigne, deuxiemeLigne);
   }
 
   function afficherMentionAbonnementMembre(etat) {
@@ -454,11 +459,7 @@
     slot.classList.add("lcdp-stack");
 
     const messageAccueil = document.getElementById("message-accueil-membre");
-    if (messageAccueil) {
-      messageAccueil.textContent = etat.prenommembre
-        ? "Bonjour " + etat.prenommembre + ", votre compte La Clé du Parc."
-        : "Bonjour, votre compte La Clé du Parc.";
-    }
+    if (messageAccueil) afficherMessageAccueil(messageAccueil, etat.prenommembre);
 
     const fragment = fragmentPrecharge || await chargerFragmentObjet("/BOX/02-box-menu-bouton.html");
     slot.appendChild(fragment);
