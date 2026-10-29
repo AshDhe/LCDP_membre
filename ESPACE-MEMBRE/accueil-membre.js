@@ -167,8 +167,8 @@
 
     if (message) {
       message.textContent = etat.prenommembre
-        ? "Bonjour " + etat.prenommembre + ", c’est à vous."
-        : "Bonjour, c’est à vous.";
+        ? "Bonjour " + etat.prenommembre + ", votre compte La Clé du Parc."
+        : "Bonjour, votre compte La Clé du Parc.";
     }
 
     afficherMentionAbonnementMembre(etat);
@@ -456,8 +456,8 @@
     const messageAccueil = document.getElementById("message-accueil-membre");
     if (messageAccueil) {
       messageAccueil.textContent = etat.prenommembre
-        ? "Bonjour " + etat.prenommembre + ", c’est à vous."
-        : "Bonjour, c’est à vous.";
+        ? "Bonjour " + etat.prenommembre + ", votre compte La Clé du Parc."
+        : "Bonjour, votre compte La Clé du Parc.";
     }
 
     const fragment = fragmentPrecharge || await chargerFragmentObjet("/BOX/02-box-menu-bouton.html");
