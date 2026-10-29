@@ -347,16 +347,40 @@
     }
   }
 
-  function membreSansDemandeDa() {
-    return etatMembre.statudaConnue === true && etatMembre.statuda === null;
+  // Les statuts DA sont distincts du droit de réservation.
+  // null = aucune demande ; encours/non = demande non validée ; oui = validée.
+  function statutDaPourPlanning(droits = null) {
+    if (etatMembre.statudaConnue === true) {
+      return normaliserStatudaReservation(etatMembre.statuda);
+    }
+    return normaliserStatudaReservation(droits?.statuda);
   }
 
-  async function afficherInformationJourSansDa() {
-    await ouvrirDialogueBoutonsSuperpose({
-      titre: "Réservation indisponible",
-      texte: "Pour réserver une journée, vous devez d'abord effectuer une demande d'abonnement.",
-      boutons: []
+  function membreSansDaValidee() {
+    return etatMembre.statudaConnue === true &&
+      statutDaPourPlanning() !== "oui";
+  }
+
+  async function afficherDialogueAbonnementPlanning(typeClic, droits = null) {
+    const statuda = statutDaPourPlanning(droits);
+    if (statuda === "oui") return false;
+
+    const texte = typeClic === "mois"
+      ? "Un abonnement 3M ou + est nécessaire pour continuer."
+      : "Un abonnement est nécessaire pour continuer.";
+    const sansDa = statuda === null;
+    const choix = await ouvrirDialogueBoutonsSuperpose({
+      titre: "Abonnement nécessaire",
+      texte,
+      boutons: [sansDa
+        ? { label: "Faire ma DA", valeur: "demande", style: "lcdp-button-primary" }
+        : { label: "Être invité(e)", valeur: "invitation", style: "lcdp-button-primary", disabled: true }
+      ]
     });
+    if (sansDa && choix === "demande") {
+      await ouvrirDemandeAbonnementDepuisPlanning();
+    }
+    return true;
   }
 
   async function ouvrirDemandeAbonnementDepuisPlanning() {
@@ -2788,8 +2812,8 @@
 
     if (jourCalendrier && !jourCalendrier.disabled) {
       event.preventDefault();
-      if (membreSansDemandeDa() && jourCalendrier.closest("#lcdp-lightbox-slot [data-lcdp-box-calendrier-mois]")) {
-        await afficherInformationJourSansDa();
+      if (membreSansDaValidee() && jourCalendrier.closest("#lcdp-lightbox-slot [data-lcdp-box-calendrier-mois]")) {
+        await afficherDialogueAbonnementPlanning("jour");
         return;
       }
       await ouvrirCalendrierJourDepuisCard(jourCalendrier);
@@ -2799,15 +2823,8 @@
   }
 
   async function afficherLimiteConsultationPlanning(droits) {
-    if (droits.sansDemandeAbonnement === true || membreSansDemandeDa()) {
-      const choix = await ouvrirDialogueBoutonsSuperpose({
-        titre: "Consultation limitée",
-        texte: "Sans demande d'abonnement, vous pouvez consulter le planning jusqu'au mois M+2. Pour accéder aux mois suivants, effectuez une demande d'abonnement.",
-        boutons: [{ label: "Faire ma demande d'abonnement", valeur: "demande", style: "lcdp-button-primary" }]
-      });
-      if (choix === "demande") await ouvrirDemandeAbonnementDepuisPlanning();
-      return;
-    }
+    // Le même dialogue est utilisé au-delà de M+2 pour les trois cas sans DA validée.
+    if (await afficherDialogueAbonnementPlanning("mois", droits)) return;
     if (droits.abonnementActif) {
       await afficherAlerteSuperposee("Votre abonnement ne permet pas de consulter le mois suivant.");
       return;
@@ -3828,12 +3845,14 @@
 
     if (!ouvert) {
       card.classList.add("lcdp-box-card-jour-in-calendrier-mois--closed");
-      // Sans DA, toute journée future sert uniquement à afficher l'information.
-      if (!membreSansDemandeDa() || estPasse) card.disabled = true;
+      // Sans DA validée, une journée future ouvre le dialogue, même si le parc est fermé.
+      if (!membreSansDaValidee() || estPasse) card.disabled = true;
     }
 
     if (modeLecture && !card.disabled) {
-      card.title = "Afficher le détail horaire de la journée";
+      card.title = membreSansDaValidee()
+        ? "Conditions de réservation"
+        : "Afficher le détail horaire de la journée";
       card.removeAttribute("aria-disabled");
     }
 
@@ -4688,8 +4707,11 @@
         bouton.className = "lcdp-button " + (configuration.style || "lcdp-button-primary");
         bouton.textContent = configuration.label || "Valider";
         bouton.dataset.lcdpDialogueValeur=configuration.valeur || "";
+        // Parcours "Être invité(e)" à définir : visible, sans action trompeuse.
+        bouton.disabled = configuration.disabled === true;
 
         bouton.addEventListener("click", () => {
+          if (bouton.disabled) return;
           fermer(configuration.valeur || configuration.label || true);
         });
 
