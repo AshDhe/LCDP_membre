@@ -263,6 +263,10 @@
     }
     .lcdp-planifier-carte-hote:empty { aspect-ratio:1; }
     .lcdp-planifier-carte-cartouche { display:grid; gap:var(--lcdp-space-2, 10px); margin-top:var(--lcdp-space-3, 16px); text-align:left; }
+    /* Points des parcs : jaune de la charte, contour foncé conservé. */
+    .lcdp-planifier-parcs-carte .lcdp-carte-dynamique__marker {
+      fill:var(--lcdp-color-orange, #f2a23a) !important;
+    }
     .lcdp-planifier-parcs-carte .lcdp-carte-dynamique__marker:focus-visible { stroke-width:4; }
   </style>
 <style>
