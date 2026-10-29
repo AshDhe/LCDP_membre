@@ -2655,9 +2655,7 @@
         return;
       }
 
-      if (await confirmerAffichagePlanningParc()) {
-        await ouvrirPlanningMoisParc(parc);
-      }
+      await ouvrirPlanningMoisParc(parc);
       return;
     }
 
@@ -2678,38 +2676,31 @@
 
   }
 
-  async function confirmerAffichagePlanningParc() {
-    // Reprise de la box d'alerte existante : seule l'action change.
-    const enveloppe = document.createElement("div");
-    document.body.appendChild(enveloppe);
-    try {
-      const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
-      enveloppe.appendChild(fragment);
-      const box = enveloppe.querySelector("[data-lcdp-box-alerte]");
-      const texte = enveloppe.querySelector("[data-lcdp-alerte-message]");
-      const fermerBouton = enveloppe.querySelector("[data-lcdp-alerte-close]");
-      const afficherBouton = enveloppe.querySelector("[data-lcdp-alerte-ok]");
-      if (![box, texte, fermerBouton, afficherBouton].every(Boolean)) {
-        throw new Error("Box d'information indisponible.");
-      }
-      texte.textContent = "Afficher ce parc";
-      afficherBouton.textContent = "Afficher";
-      return await new Promise(resolve => {
-        let terminee = false;
-        function fermer(confirme) {
-          if (terminee) return;
-          terminee = true;
-          enveloppe.remove();
-          resolve(confirme);
-        }
-        fermerBouton.addEventListener("click", () => fermer(false));
-        afficherBouton.addEventListener("click", () => fermer(true));
-        box.addEventListener("click", event => { if (event.target === box) fermer(false); });
-      });
-    } catch (erreur) {
-      enveloppe.remove();
-      throw erreur;
+  async function afficherLimiteConsultationPlanning(droits) {
+    if (droits.abonnementActif) {
+      await afficherAlerteSuperposee("Votre abonnement ne permet pas de consulter le mois suivant.");
+      return;
     }
+    const daValidee = droits.demandeAbonnementValidee === true;
+    const libelle = daValidee ? "Prendre mon abonnement" : "Faire ma demande d'abonnement";
+    const confirmer = await afficherAlerteSuperposee(
+      "Vous n'avez pas d'abonnement pour voir le mois suivant.", "orange", { libelleBouton: libelle }
+    );
+    if (!confirmer) return;
+    if (daValidee) {
+      window.location.href = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
+      return;
+    }
+    if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
+      await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js");
+    }
+    if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
+      throw new Error("Le formulaire de demande d'abonnement est indisponible.");
+    }
+    await window.LCDP_ouvrirPremiereDaMembre({
+      contexte: etatMembre,
+      onStatudaChange: donnees => Object.assign(etatMembre, donnees, { statudaConnue: true })
+    });
   }
 
   async function autoriserReservationParc(parc) {
@@ -2819,6 +2810,7 @@
           templateHeureJour: etatPage.templateHeureJour,
           chargerDroitsPlanning:
             chargerDroitsPlanningParcMembre,
+          onLimiteHorizon: afficherLimiteConsultationPlanning,
           chargerPlanningMois:
             chargerPlanningParcMoisLecture,
           chargerPlanningJour:
@@ -4608,7 +4600,8 @@
 
   async function afficherAlerteSuperposee(
     message,
-    couleurBouton = "orange"
+    couleurBouton = "orange",
+    options = {}
   ) {
     const conteneur = document.createElement("div");
     document.body.appendChild(conteneur);
@@ -4627,6 +4620,7 @@
     }
 
     texte.textContent = message || "";
+    if (options.libelleBouton) boutonOk.textContent = options.libelleBouton;
     if (couleurBouton === "vert-plein-partage") {
       alerte.classList.add("lcdp-planifier-partage-confirmation");
     }
@@ -4940,7 +4934,7 @@
   function chargerScriptPublicUneFois(chemin, forcer = false) {
     const cle = chemin + (forcer ? ":actualisation" : ":normal");
     if (chargementsConstructeurFiche.has(cle)) return chargementsConstructeurFiche.get(cle);
-    const src = construireUrlPublic(chemin) + "?v=20261029-carte-navigation-v2" +
+    const src = construireUrlPublic(chemin) + "?v=20261029-planning-horizon-v3" +
       (forcer ? "&actualisation=" + Date.now() : "");
     const promesse = new Promise((resolve, reject) => {
       const script = document.createElement("script");
