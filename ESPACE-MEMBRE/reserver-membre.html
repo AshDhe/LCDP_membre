@@ -116,7 +116,7 @@
         "/BOX/04-box-fiche-parc.css",
         "/BOX/04-box-shift-detail-parc.css",
         "/BOX/04-box-calendrier-mois.css",
-        "/BOX/04-box-legende.css?v=20261029-duovert-famillebleu",
+        "/BOX/04-box-legende.css?v=20261029-filtres-interactifs-v4",
         "/BOX/04-box-card-jour-in-calendrier-mois.css?v=20260717-0655",
         "/BOX/04-box-calendrier-jour.css",
         "/BOX/04-box-card-heure-in-calendrier-jour.css",
@@ -141,32 +141,49 @@
     document.write('<script data-lcdp-footer-autonome src="' + window.LCDP_urlObjet('/BOX/02-box-footer.js') + '"><\/script>');
   </script>
   <style>
-    /* En-tête du planning général : n'affecte pas les autres calendriers. */
+    /* En-tête PLANIFIER : parc, département, changement de parc, filtres directs. */
     .lcdp-page-reserver .lcdp-planifier-entete-filtres {
       display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      flex-wrap: wrap;
-      gap: 10px 14px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 7px;
       min-width: 0;
+      width: 100%;
     }
     .lcdp-page-reserver .lcdp-planifier-entete-filtres [data-lcdp-calendrier-mois-title] {
       margin: 0;
       text-align: left;
     }
+    .lcdp-page-reserver .lcdp-planifier-nom-parc {
+      margin: 2px 0 0;
+      padding: 0;
+      font-size: 1.2em !important; /* +20 % par rapport au nom précédent */
+      line-height: 1.25;
+      font-weight: 800 !important;
+      color: #111111 !important;
+      text-align: left;
+    }
+    .lcdp-page-reserver .lcdp-planifier-departement-parc {
+      margin: 0;
+      color: var(--lcdp-color-text, #343836);
+      font-size: 0.83rem;
+      line-height: 1.25;
+      font-weight: 500;
+    }
     .lcdp-page-reserver .lcdp-planifier-actions-filtres {
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: 7px;
+      margin: 5px 0 0;
     }
     .lcdp-page-reserver .lcdp-planifier-filtre {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
-      width: 86px;
-      min-height: 29px;
-      padding: 4px 7px;
+      gap: 7px;
+      width: auto;
+      min-width: 86px;
+      min-height: 31px;
+      padding: 5px 11px;
       border: 0;
       border-radius: 7px;
       color: #fff;
@@ -174,33 +191,19 @@
       font-size: 0.73rem;
       font-weight: 650;
       line-height: 1.15;
-      white-space: nowrap;
       cursor: pointer;
-      box-sizing: border-box;
-    }
-    .lcdp-page-reserver .lcdp-planifier-filtre--acces {
-      background: var(--lcdp-color-orange);
-      border-color: var(--lcdp-color-orange);
-      color: #ffffff;
-    }
-    .lcdp-page-reserver .lcdp-planifier-filtre--acces:hover,
-    .lcdp-page-reserver .lcdp-planifier-filtre--acces:focus-visible {
-      background: var(--lcdp-color-orange-hover);
-      color: #ffffff;
     }
     .lcdp-page-reserver .lcdp-planifier-filtre--parc { background: var(--lcdp-color-logo-green, #43834a); }
-    .lcdp-page-reserver .lcdp-planifier-filtre svg { display: block; width: 15px; height: 15px; flex: 0 0 15px; color: inherit; }
+    .lcdp-page-reserver .lcdp-planifier-filtre--parc img {
+      display: block;
+      width: 17px;
+      height: 17px;
+      flex: 0 0 17px;
+      object-fit: contain;
+    }
     .lcdp-page-reserver .lcdp-planifier-filtre:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
     @media (min-width: 768px) {
       .lcdp-page-reserver [data-lcdp-calendrier-mois-current] { zoom: .9; }
-    }
-    @media (max-width: 767px) {
-      .lcdp-page-reserver .lcdp-planifier-entete-filtres {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-      }
-
     }
 
     /* Filtres PLANIFIER : exceptions limitées à ces deux dialogues. */

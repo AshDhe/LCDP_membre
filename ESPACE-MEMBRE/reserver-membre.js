@@ -27,7 +27,7 @@
   // Couleurs d'autorisation des invités, indépendantes des abonnements.
   // Le DUO est accessible par défaut sur toutes les plages ouvertes.
   const COULEURS_AUTORISATIONS_PLANIFIER = Object.freeze({
-    duo: "#55733f",           // vert de base
+    duo: "#f2a23a",           // jaune PLANIFIER (charte)
     famille: "#2f6fb3",       // bleu de la charte
     coach: "#8660c8",         // violet COACH
     "famille-coach": "#80583d" // marron partagé
@@ -167,8 +167,6 @@
       // L'initialisation du burger dépend du bandeau, mais pas l'affichage du planning.
       bandeauPret.then(() => actualiserBurgerMembre(etatMembre.abonne))
         .catch(erreur => console.warn("Menu burger indisponible.", erreur));
-      chargerDialogueFiltrePlanifier()
-        .catch(erreur => console.warn("Préchargement du filtre indisponible.", erreur));
       // Préparer les parcs en arrière-plan, sans retarder le planning général.
       prechargerListeParcsPlanifier();
     } catch (erreur) {
@@ -197,7 +195,7 @@
   }
 
   // Filtres d'affichage : les catégories ne valent pas autorisation de réserver.
-  const filtresAccesPlanifier = new Set(["famille", "coach", "famille-coach"]);
+  const filtresAccesPlanifier = new Set(["duo", "famille", "coach", "famille-coach"]);
   let filtreParcOuvert = false;
   let parcInitialise = false;
   // Les fragments d'une liste sont préparés une seule fois et clonés à l'utilisation.
@@ -524,36 +522,42 @@
     }
 
     titre.textContent = "PLANIFIER";
-    // Commandes de filtre : présentation seule à cette étape du parcours.
-    // Elles seront raccordées aux filtres de disponibilité lors du pas-à-pas.
+    // En-tête PLANIFIER : identité du parc, changement de parc, filtres directs.
     const enteteFiltres = document.createElement("div");
     enteteFiltres.className = "lcdp-planifier-entete-filtres";
     titre.replaceWith(enteteFiltres);
     enteteFiltres.appendChild(titre);
+
+    meta.classList.add("lcdp-planifier-nom-parc");
+    enteteFiltres.appendChild(meta);
+    const departementParc = document.createElement("p");
+    departementParc.className = "lcdp-planifier-departement-parc";
+    departementParc.hidden = true;
+    enteteFiltres.appendChild(departementParc);
+
     const actionsFiltres = document.createElement("div");
     actionsFiltres.className = "lcdp-planifier-actions-filtres";
-    const boutonAcces = document.createElement("button");
-    boutonAcces.type = "button";
-    boutonAcces.className = "lcdp-planifier-filtre lcdp-planifier-filtre--acces";
-    boutonAcces.insertAdjacentHTML("beforeend", '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">\n  <circle cx="12" cy="7" r="4.5"/>\n  <path d="M12 11.5c-5.1 0-7.8 2.8-7.8 7.8v.9c0 .72.58 1.3 1.3 1.3h13c.72 0 1.3-.58 1.3-1.3v-.9c0-5-2.7-7.8-7.8-7.8Z"/>\n</svg>');
-    boutonAcces.appendChild(document.createTextNode("ACCÈS"));
-    boutonAcces.id = "lcdp-planifier-bouton-acces";
-    boutonAcces.setAttribute("aria-label", "Filtrer les accès autorisés");
-    boutonAcces.addEventListener("click", () => ouvrirFiltreAccesPlanifier().catch(console.error));
     const boutonParc = document.createElement("button");
     boutonParc.type = "button";
     boutonParc.className = "lcdp-planifier-filtre lcdp-planifier-filtre--parc";
-    boutonParc.setAttribute("aria-label", "Choisir les parcs");
+    boutonParc.setAttribute("aria-label", "Changer de parc");
     boutonParc.addEventListener("click", () => ouvrirFiltreParcPlanifier().catch(console.error));
-    boutonParc.insertAdjacentHTML("beforeend", '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">\n  <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n  <circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>\n</svg>');
-    boutonParc.appendChild(document.createTextNode("PARC"));
-    actionsFiltres.append(boutonAcces, boutonParc);
+    // Même pictogramme que « Changer de département ».
+    const iconeParc = document.createElement("img");
+    iconeParc.src = construireUrlObjet("/IMAG/PICTO/picto-changer-donnees.svg");
+    iconeParc.alt = "";
+    iconeParc.width = 17;
+    iconeParc.height = 17;
+    iconeParc.decoding = "async";
+    iconeParc.setAttribute("aria-hidden", "true");
+    boutonParc.append(iconeParc, document.createTextNode("PARC"));
+    actionsFiltres.appendChild(boutonParc);
     enteteFiltres.appendChild(actionsFiltres);
-    // Légende compacte : quatre carrés, sans les anciens codes d'abonnement.
+
     const legende = fragmentLegende?.querySelector("[data-lcdp-box-legende]") || document.createElement("div");
     legende.className = "lcdp-box-legende lcdp-planifier-legende-autorisations";
     legende.setAttribute("role", "group");
-    legende.setAttribute("aria-label", "Légende des autorisations d'accès du planning");
+    legende.setAttribute("aria-label", "Filtrer les plages par catégories autorisées");
     const contenuLegende = legende.querySelector("[data-lcdp-legende-contenu]") || document.createElement("div");
     contenuLegende.className = "lcdp-box-legende__contenu";
     if (!contenuLegende.parentNode) legende.appendChild(contenuLegende);
@@ -566,19 +570,37 @@
       ["coach", "+ COACH"],
       ["famille-coach", "+ FAMILLE + COACH"]
     ]) {
-      const item = document.createElement("span");
-      item.className = "lcdp-box-legende__item";
+      const item = document.createElement("label");
+      item.className = "lcdp-box-legende__item lcdp-planifier-filtre-categorie";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "lcdp-planifier-filtre-categorie__input";
+      input.value = type;
+      input.checked = filtresAccesPlanifier.has(type);
+      input.setAttribute("aria-label", "Afficher " + libelle);
       const carre = document.createElement("span");
       carre.className = "lcdp-box-legende__carre lcdp-box-legende__carre--" + type;
       carre.setAttribute("aria-hidden", "true");
+      const coche = document.createElement("span");
+      coche.className = "lcdp-planifier-filtre-categorie__coche";
+      coche.textContent = "✓";
+      carre.appendChild(coche);
       const texte = document.createElement("span");
       texte.className = "lcdp-box-legende__libelle";
       texte.textContent = libelle;
-      item.append(carre, texte);
+      input.addEventListener("change", () => {
+        if (input.checked) filtresAccesPlanifier.add(type);
+        else filtresAccesPlanifier.delete(type);
+        grille.querySelectorAll("[data-lcdp-card-jour-mois-slot][data-autorisation]").forEach(slot => {
+          appliquerVisibiliteCategorie(slot, slot.dataset.autorisation);
+        });
+        // Le filtre est exclusivement visuel : aucune écriture ni appel réseau.
+      });
+      item.append(input, carre, texte);
       ligneLegende.appendChild(item);
     }
     contenuLegende.appendChild(ligneLegende);
-    grille.before(legende);
+    enteteFiltres.appendChild(legende);
     meta.textContent = "";
     meta.hidden = true;
     message.hidden = true;
@@ -669,15 +691,20 @@
         grille.appendChild(card);
       }
       if (parcSelectionne) {
-        meta.textContent = nomParcAfficheMembre(parcSelectionne.nom || parcSelectionne.nomparc || "Parc") +
-          (parcSelectionne.dptmt ? " (" + parcSelectionne.dptmt + ")" : "");
+        meta.textContent = nomParcAfficheMembre(parcSelectionne.nom || parcSelectionne.nomparc || "Parc");
         meta.hidden = false;
+        const codeDpt = String(parcSelectionne.dptmt || parcSelectionne.departement || etatPage.departement || "").trim();
+        const nomDpt = String(parcSelectionne.nomDepartement || parcSelectionne.nomdepartement ||
+          (codeDpt === String(etatPage.departement || "") ? etatPage.nomDepartement : "") || "").trim();
+        departementParc.textContent = nomDpt && codeDpt ? nomDpt + " (" + codeDpt + ")" : nomDpt || (codeDpt ? "Département " + codeDpt : "");
+        departementParc.hidden = !departementParc.textContent;
         message.hidden = true;
         remplirGrilleCalendrier(grille, {
           parc: parcSelectionne, annee: etat.annee, mois: etat.mois, modePlanning: "lecture"
         }, planningCourant);
       } else {
         meta.hidden = true;
+        departementParc.hidden = true;
       }
       precedent.disabled = etat.annee * 12 + etat.mois <= borne;
       // Ne pas griser le mois suivant : afficher le message d'horizon au clic.
@@ -4003,6 +4030,7 @@
 
       slot.hidden = !clesActives.includes(nomPlage);
       slot.className = "lcdp-box-card-jour-in-calendrier-mois__slot";
+      delete slot.dataset.autorisation;
       slot.removeAttribute("style");
       slot.removeAttribute("title");
 
@@ -4020,7 +4048,9 @@
       if (plage?.ouverte === true) {
         const autorisation = determinerAutorisationPlage(plage);
         slot.classList.add("lcdp-planifier-plage--" + autorisation);
+        slot.dataset.autorisation = autorisation;
         slot.style.setProperty("background", COULEURS_AUTORISATIONS_PLANIFIER[autorisation], "important");
+        appliquerVisibiliteCategorie(slot, autorisation);
       } else {
         slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--gris-clair");
       }
@@ -4181,7 +4211,7 @@
     heures.forEach((heure) => {
       const plage = trouverPlagePourHeure(plages, heure);
 
-      if (!plage) return;
+      if (!plage || !filtresAccesPlanifier.has(plage.autorisation)) return;
 
       const reservationPlage = trouverReservationActiveDatePlage(contexte.dateIso, plage.nom);
       grille.appendChild(creerCardHeure(contexte, heure, plage, reservationPlage));
@@ -5610,6 +5640,11 @@
     return "duo";
   }
 
+  function appliquerVisibiliteCategorie(slot, autorisation) {
+    // Conserver la place du segment dans la grille pour ne pas déplacer les autres plages.
+    slot.style.setProperty("visibility", filtresAccesPlanifier.has(autorisation) ? "visible" : "hidden", "important");
+  }
+
   function appliquerRenduPlageLecture(slot, nomPlage, plage) {
     const plageOuverte = plage && plage.ouverte === true;
     if (!plageOuverte) {
@@ -5620,7 +5655,9 @@
     slot.style.removeProperty("visibility");
     const autorisation = determinerAutorisationPlage(plage);
     slot.classList.add("lcdp-planifier-plage--" + autorisation);
+    slot.dataset.autorisation = autorisation;
     slot.style.setProperty("background", COULEURS_AUTORISATIONS_PLANIFIER[autorisation], "important");
+    appliquerVisibiliteCategorie(slot, autorisation);
     const largeurJauge = normaliserLargeurJauge(plage?.jauge);
     if (largeurJauge > 0) {
       slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--avec-jauge");
