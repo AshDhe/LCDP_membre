@@ -106,6 +106,9 @@
 
   const panierPlanning = { reservations: [], abonnements: [], donneesConnues: false, calcul: null, generation: 0, selection: null, derniereAction: null };
   let choixPlanningEnCours = false;
+  // Le bouton « Abonnement » ouvre la préparation des dates dans PLANIFIER.
+  // Le choix d'une date est ensuite permis pour constituer le panier provisoire.
+  let preparationAbonnementPlanifier = false;
 
   const cachePlanningParcLecture = new Map();
   const DUREE_CACHE_PLANNING_LECTURE_MS = 30000;
@@ -121,6 +124,7 @@
     templateShiftDetailParc: null,
     calendrierMoisActif: null,
     planningParcLectureActif: null,
+    droitsPlanningParcActifs: null,
     shiftDetailParc: null
   };
 
@@ -361,26 +365,53 @@
       statutDaPourPlanning() !== "oui";
   }
 
+  function membreDaValideeSansAbonnement(droits = etatPage.droitsPlanningParcActifs) {
+    if (statutDaPourPlanning(droits) !== "oui") return false;
+    // Ne pas confondre absence d'abonnement et abonnement suspendu/impayé.
+    if (etatMembre.abonnementSuspendu === true || etatMembre.abonnementAnnuleNonPaye === true) return false;
+    // Le Worker du planning est la référence des abonnements couvrant l'horizon.
+    if (droits && typeof droits.abonnementActif === "boolean") {
+      return droits.abonnementActif === false;
+    }
+    return etatMembre.abonne !== true;
+  }
+
   async function afficherDialogueAbonnementPlanning(typeClic, droits = null) {
     const statuda = statutDaPourPlanning(droits);
-    if (statuda === "oui") return false;
+    if (statuda === "oui" && !membreDaValideeSansAbonnement(droits)) return false;
 
     const texte = typeClic === "mois"
       ? "Un abonnement 3M ou + est nécessaire pour continuer."
       : "Un abonnement est nécessaire pour continuer.";
     const sansDa = statuda === null;
+    const daValidee = statuda === "oui";
     const choix = await ouvrirDialogueBoutonsSuperpose({
       titre: "Abonnement nécessaire",
       texte,
       boutons: [sansDa
         ? { label: "Faire ma DA", valeur: "demande", style: "lcdp-button-primary" }
-        : { label: "Être invité(e)", valeur: "invitation", style: "lcdp-button-primary", disabled: true }
+        : daValidee
+          ? { label: "Abonnement", valeur: "abonnement", style: "lcdp-button-primary" }
+          : { label: "Être invité(e)", valeur: "invitation", style: "lcdp-button-primary", disabled: true }
       ]
     });
     if (sansDa && choix === "demande") {
       await ouvrirDemandeAbonnementDepuisPlanning();
     }
+    if (daValidee && choix === "abonnement") {
+      await ouvrirAbonnementDepuisPlanning();
+    }
     return true;
+  }
+
+  async function ouvrirAbonnementDepuisPlanning() {
+    // Entrée dans le tunnel PLANIFIER déjà présent : constitution d'un panier
+    // de réservations provisoires, puis calcul de l'abonnement correspondant.
+    // Ne jamais rediriger vers la page autonome abonnement-membre.html.
+    const parc = etatPage.calendrierMoisActif?.parc;
+    if (!parc) throw new Error("Sélectionnez d'abord un parc dans PLANIFIER.");
+    const suite = await ouvrirVotrePlanning({ parc, retourMois: () => {} });
+    preparationAbonnementPlanifier = suite === "ajouter";
   }
 
   async function ouvrirDemandeAbonnementDepuisPlanning() {
@@ -474,6 +505,8 @@
       const donnees = await chargerPlanningParcMoisLecture(demande);
       parcSelectionne = parc;
       droitsParc = droits;
+      etatPage.droitsPlanningParcActifs = droits;
+      preparationAbonnementPlanifier = false;
       planningCourant = donnees;
       etatPage.calendrierMoisActif = { ...demande, modePlanning: "lecture", planning: donnees };
       generationPlanning++;
@@ -2812,8 +2845,10 @@
 
     if (jourCalendrier && !jourCalendrier.disabled) {
       event.preventDefault();
-      if (membreSansDaValidee() && jourCalendrier.closest("#lcdp-lightbox-slot [data-lcdp-box-calendrier-mois]")) {
-        await afficherDialogueAbonnementPlanning("jour");
+      if (jourCalendrier.closest("#lcdp-lightbox-slot [data-lcdp-box-calendrier-mois]") &&
+          !preparationAbonnementPlanifier &&
+          (membreSansDaValidee() || membreDaValideeSansAbonnement())) {
+        await afficherDialogueAbonnementPlanning("jour", etatPage.droitsPlanningParcActifs);
         return;
       }
       await ouvrirCalendrierJourDepuisCard(jourCalendrier);
@@ -2823,7 +2858,7 @@
   }
 
   async function afficherLimiteConsultationPlanning(droits) {
-    // Le même dialogue est utilisé au-delà de M+2 pour les trois cas sans DA validée.
+    // Même texte selon le clic ; le bouton dépend du statut DA et de l'abonnement.
     if (await afficherDialogueAbonnementPlanning("mois", droits)) return;
     if (droits.abonnementActif) {
       await afficherAlerteSuperposee("Votre abonnement ne permet pas de consulter le mois suivant.");
@@ -3845,12 +3880,15 @@
 
     if (!ouvert) {
       card.classList.add("lcdp-box-card-jour-in-calendrier-mois--closed");
-      // Sans DA validée, une journée future ouvre le dialogue, même si le parc est fermé.
-      if (!membreSansDaValidee() || estPasse) card.disabled = true;
+      // Sans DA validée ou sans abonnement, une journée future ouvre le dialogue.
+      // Pendant la préparation d'un abonnement, seules les journées ouvertes
+      // permettront ensuite de sélectionner un créneau provisoire.
+      if (!(membreSansDaValidee() || membreDaValideeSansAbonnement()) || estPasse || preparationAbonnementPlanifier) card.disabled = true;
     }
 
     if (modeLecture && !card.disabled) {
-      card.title = membreSansDaValidee()
+      card.title = !preparationAbonnementPlanifier &&
+        (membreSansDaValidee() || membreDaValideeSansAbonnement())
         ? "Conditions de réservation"
         : "Afficher le détail horaire de la journée";
       card.removeAttribute("aria-disabled");
@@ -4442,6 +4480,7 @@
     const ajouter=actions.querySelector('[data-lcdp-dialogue-valeur="ajouter"]');
     const offres=document.createElement("section");offres.className="lcdp-panier-planning__offres";offres.setAttribute("aria-live","polite");contenu.append(offres);
     if(nombre)actualiserOffresPanier(offres,actions);
+    else lignePanier(offres,"p","Ajoutez une première réservation pour découvrir l’abonnement adapté à votre planning.");
     const planifier=actions.querySelector('[data-lcdp-dialogue-valeur="planifier"]');
     if(ajouter){ajouter.disabled=nombre>=12;ajouter.setAttribute("aria-disabled",String(ajouter.disabled));}
     if(planifier){planifier.hidden=nombre===0;planifier.disabled=true;planifier.setAttribute("aria-disabled",String(planifier.disabled));}
@@ -4536,16 +4575,16 @@
           {label:"Fermer",valeur:"fermer",style:"lcdp-button-secondary"},
           {label:"Continuer",valeur:"planifier",style:"lcdp-button-orange"}]
       });
-      if(reponse==="fermer"){fermerShiftDetailParc();return;}
+      if(reponse==="fermer"){fermerShiftDetailParc();return "fermer";}
       if(reponse==="ajouter"){
         const parc=await ouvrirDialogueBoutonsSuperpose({titre:"Ajouter une réservation",texte:"Dans quel parc souhaitez-vous planifier ?",
           boutons:[{label:"Ce parc",valeur:"meme",style:"lcdp-button-orange"},{label:"Autre parc",valeur:"autre",style:"lcdp-button-secondary"}]});
         if(parc==="meme"){
           if(typeof choix.retourMois==="function")choix.retourMois();
           else await ouvrirShiftDetailParc(choix.parc,"planning");
-          return;
+          return "ajouter";
         }
-        if(parc==="autre"){fermerShiftDetailParc();return;}
+        if(parc==="autre"){fermerShiftDetailParc();return "autre";}
       }
       if(reponse==="annuler"){
         const annuler=panierPlanning.reservations.length ? await ouvrirDialogueBoutonsSuperpose({titre:"Annuler votre planning ?",
