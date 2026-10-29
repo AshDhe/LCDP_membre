@@ -2887,54 +2887,47 @@
     });
   }
 
+  // Tunnel PLANIFIER : le calendrier principal est immuable. Les fiches et
+  // plannings contextuels sont des superpositions indépendantes, jamais des
+  // enfants de #lcdp-lightbox-slot (conteneur du processus de planification).
+  function obtenirHoteFicheParc() {
+    let hote = document.getElementById("lcdp-planifier-fiche-overlay-slot");
+    if (!hote) {
+      hote = document.createElement("div");
+      hote.id = "lcdp-planifier-fiche-overlay-slot";
+      document.body.appendChild(hote);
+    }
+    return hote;
+  }
+
   async function obtenirOuCreerShiftDetailParc() {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return null;
-
-    let racine = slot.querySelector("[data-lcdp-box-shift-detail-parc]");
+    const hote = obtenirHoteFicheParc();
+    let racine = hote.querySelector("[data-lcdp-box-shift-detail-parc]");
 
     if (!racine) {
-      slot.innerHTML = "";
-
       const shift = etatPage.templateShiftDetailParc
         ? etatPage.templateShiftDetailParc.cloneNode(true)
-        : (await chargerFragmentObjet("/BOX/04-box-shift-detail-parc.html")).querySelector("[data-lcdp-box-shift-detail-parc]");
-
-      if (!shift) {
-        throw new Error("Template shift détail parc introuvable.");
-      }
+        : (await chargerFragmentObjet("/BOX/04-box-shift-detail-parc.html"))
+            .querySelector("[data-lcdp-box-shift-detail-parc]");
+      if (!shift) throw new Error("Template shift détail parc introuvable.");
 
       shift.hidden = true;
+      shift.style.zIndex = "5500";
       shift.classList.add("lcdp-box-shift-detail-parc--preparation");
-      slot.appendChild(shift);
+      hote.appendChild(shift);
       racine = shift;
 
-      const boutonFermer = racine.querySelector("[data-lcdp-shift-detail-parc-close]");
-
-      if (boutonFermer) {
-        boutonFermer.addEventListener(
-          "click",
-          fermerShiftDetailParc
-        );
-      }
-
+      racine.querySelector("[data-lcdp-shift-detail-parc-close]")
+        ?.addEventListener("click", fermerShiftDetailParc);
       racine.addEventListener("click", (event) => {
-        if (event.target === racine) {
-          fermerShiftDetailParc();
-        }
+        if (event.target === racine) fermerShiftDetailParc();
       });
-
       const gererEscape = (event) => {
         if (document.querySelector("[data-lcdp-box-dialogue-bouton], [data-lcdp-box-alerte]")) return;
-        if (
-          event.key === "Escape" &&
-          document.body.contains(racine)
-        ) {
+        if (event.key === "Escape" && document.body.contains(racine)) {
           fermerShiftDetailParc();
         }
       };
-
       racine._lcdpShiftDetailParcEscape = gererEscape;
       document.addEventListener("keydown", gererEscape);
     }
@@ -2947,10 +2940,10 @@
   }
 
   function obtenirShiftDetailParcActif() {
-    const racine = document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-shift-detail-parc]");
-
+    const racine = document.querySelector(
+      "#lcdp-planifier-fiche-overlay-slot [data-lcdp-box-shift-detail-parc]"
+    );
     if (!racine) return null;
-
     return {
       racine,
       contenu: racine.querySelector("[data-lcdp-shift-detail-parc-content]"),
@@ -2959,46 +2952,19 @@
   }
 
   function fermerShiftDetailParc() {
-    const slot = document.getElementById(
-      "lcdp-lightbox-slot"
-    );
-    const racine = slot
-      ? slot.querySelector(
-          "[data-lcdp-box-shift-detail-parc]"
-        )
-      : null;
-    const controleur =
-      etatPage.shiftDetailParc?.controleur;
-
-    if (
-      controleur &&
-      typeof controleur.detruire === "function"
-    ) {
+    const hote = document.getElementById("lcdp-planifier-fiche-overlay-slot");
+    const racine = hote?.querySelector("[data-lcdp-box-shift-detail-parc]");
+    const controleur = etatPage.shiftDetailParc?.controleur;
+    if (controleur && typeof controleur.detruire === "function") {
       controleur.detruire();
     }
-
-    if (
-      racine &&
-      racine._lcdpShiftDetailParcEscape
-    ) {
-      document.removeEventListener(
-        "keydown",
-        racine._lcdpShiftDetailParcEscape
-      );
+    if (racine?._lcdpShiftDetailParcEscape) {
+      document.removeEventListener("keydown", racine._lcdpShiftDetailParcEscape);
     }
-
     etatPage.shiftDetailParc = null;
-    etatPage.planningParcLectureActif = null;
-
-    if (racine) {
-      racine.classList.remove(
-        "lcdp-box-shift-detail-parc--visible"
-      );
-    }
-
-    if (slot) {
-      slot.innerHTML = "";
-    }
+    // Ne toucher ni à la liste, ni à la carte, ni au calendrier de PLANIFIER.
+    racine?.remove();
+    hote?.remove();
   }
 
 
