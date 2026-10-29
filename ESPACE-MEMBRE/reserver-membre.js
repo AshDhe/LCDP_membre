@@ -4009,6 +4009,15 @@
       modeLecture ? "lecture" : "reservation"
     );
 
+    // Jour fermé : aucun emplacement horaire visible, même si une règle CSS
+    // impose visibility:visible sur les liserés des plages non ouvertes.
+    if (modeLecture && !ouvert) {
+      card.querySelectorAll("[data-lcdp-card-jour-mois-slot]").forEach((slot) => {
+        slot.hidden = true;
+        slot.style.setProperty("display", "none", "important");
+      });
+    }
+
     return card;
   }
 

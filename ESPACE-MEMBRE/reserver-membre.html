@@ -116,8 +116,8 @@
         "/BOX/04-box-fiche-parc.css",
         "/BOX/04-box-shift-detail-parc.css",
         "/BOX/04-box-calendrier-mois.css",
-        "/BOX/04-box-legende.css?v=20261029-sans-scroll-v2",
-        "/BOX/07-box-diginum.css?v=20261029-compact-v2",
+        "/BOX/04-box-legende.css?v=20261029-sans-trait-v3",
+        "/BOX/07-box-diginum.css?v=20261029-compact-sans-logo-v3",
         "/BOX/04-box-card-jour-in-calendrier-mois.css?v=20260717-0655",
         "/BOX/04-box-calendrier-jour.css",
         "/BOX/04-box-card-heure-in-calendrier-jour.css",
@@ -139,12 +139,23 @@
         '"><\/script>'
       );
       document.write(
-        '<script src="' + window.LCDP_urlObjet("/BOX/07-box-diginum.js?v=20261029-compact-v2") + '"><\/script>'
+        '<script src="' + window.LCDP_urlObjet("/BOX/07-box-diginum.js?v=20261029-compact-sans-logo-v3") + '"><\/script>'
       );
     })();
     document.write('<script data-lcdp-footer-autonome src="' + window.LCDP_urlObjet('/BOX/02-box-footer.js') + '"><\/script>');
   </script>
   <style>
+    /* PLANIFIER : pas de trait sous les filtres, sur mobile comme sur ordinateur. */
+    .lcdp-page-reserver [data-lcdp-box-calendrier-mois] .lcdp-box-calendrier-mois__header {
+      border-bottom: 0 !important;
+    }
+    /* Toujours rendre le nom et le département lorsqu'un parc a été sélectionné. */
+    .lcdp-page-reserver .lcdp-planifier-nom-parc:not([hidden]),
+    .lcdp-page-reserver .lcdp-planifier-departement-parc:not([hidden]) {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
     /* En-tête PLANIFIER : parc, département, changement de parc, filtres directs. */
     .lcdp-page-reserver .lcdp-planifier-entete-filtres {
       display: flex;
@@ -373,6 +384,6 @@
 
   </div>
 
-  <script src="./reserver-membre.js?v=20261029-diginum-palette-v1"></script>
+  <script src="./reserver-membre.js?v=20261029-plages-fermees-entete-v3"></script>
 </body>
 </html>
