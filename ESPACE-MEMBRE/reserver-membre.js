@@ -169,6 +169,8 @@
         .catch(erreur => console.warn("Menu burger indisponible.", erreur));
       chargerDialogueFiltrePlanifier()
         .catch(erreur => console.warn("Préchargement du filtre indisponible.", erreur));
+      // Préparer les parcs en arrière-plan, sans retarder le planning général.
+      prechargerListeParcsPlanifier();
     } catch (erreur) {
       console.error("Erreur ouverture du planning général :", erreur);
       masquerAttenteInitialePlanifier();
@@ -198,6 +200,70 @@
   const filtresAccesPlanifier = new Set(["famille", "coach", "famille-coach"]);
   let filtreParcOuvert = false;
   let parcInitialise = false;
+  // Les fragments d'une liste sont préparés une seule fois et clonés à l'utilisation.
+  const cacheFragmentsListeParcs = new Map();
+  const CHEMINS_FRAGMENTS_LISTE_PARCS = [
+    "/BOX/04-box-liste-card.html",
+    "/BOX/04-box-card-parc.html",
+    "/BOX/04-box-shift-detail-parc.html",
+    "/BOX/04-box-card-jour-in-calendrier-mois.html",
+    "/BOX/04-box-card-heure-in-calendrier-jour.html",
+    "/BOX/04-box-commande-bar.html"
+  ];
+  let promesseDonneesParcsMembre = null;
+  let promesseReservationsListeParcs = null;
+
+  function chargerFragmentListeParcs(chemin) {
+    if (!cacheFragmentsListeParcs.has(chemin)) {
+      const promesse = chargerFragmentObjet(chemin).catch(erreur => {
+        cacheFragmentsListeParcs.delete(chemin);
+        throw erreur;
+      });
+      cacheFragmentsListeParcs.set(chemin, promesse);
+    }
+    // Un fragment ne doit jamais être déplacé entre deux emplacements du DOM.
+    return cacheFragmentsListeParcs.get(chemin).then(fragment => fragment.cloneNode(true));
+  }
+
+  function demanderDonneesParcsMembre() {
+    if (!promesseDonneesParcsMembre) {
+      promesseDonneesParcsMembre = (async () => {
+        if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
+          throw new Error("Le service de réservation membre n’est pas configuré.");
+        }
+        const reponse = await fetch(ENDPOINT_NOUVELLE_DATE_MEMBRE + "/autour-de-moi", {
+          method: "GET", credentials: "include", cache: "no-store",
+          headers: { Accept: "application/json" }
+        });
+        const data = await reponse.json().catch(() => null);
+        if (reponse.status !== 401 && (!reponse.ok || !data || !reponseApiOk(data))) {
+          throw new Error(messageErreurApi(data, "Impossible de charger les parcs du département."));
+        }
+        return { statut: reponse.status, data };
+      })().catch(erreur => {
+        promesseDonneesParcsMembre = null; // autoriser un nouvel essai
+        throw erreur;
+      });
+    }
+    return promesseDonneesParcsMembre;
+  }
+
+  function assurerReservationsListeParcs() {
+    if (!promesseReservationsListeParcs) {
+      promesseReservationsListeParcs = chargerReservationsMembrePourBlocages();
+    }
+    return promesseReservationsListeParcs;
+  }
+
+  function prechargerListeParcsPlanifier() {
+    // Échecs silencieux au préchargement ; la boîte signale l'erreur à l'ouverture.
+    for (const chemin of CHEMINS_FRAGMENTS_LISTE_PARCS) {
+      chargerFragmentListeParcs(chemin).catch(() => {});
+    }
+    if (ENDPOINT_NOUVELLE_DATE_MEMBRE) demanderDonneesParcsMembre().catch(() => {});
+    assurerReservationsListeParcs().catch(() => {});
+  }
+
   // Le même fragment sert aux deux filtres : une seule requête, anticipée.
   let promesseDialogueFiltre = null;
   function chargerDialogueFiltrePlanifier() {
@@ -330,11 +396,15 @@
       if (!parcInitialise) {
         parcInitialise = true;
         try {
-          await initialiserListeParcs();
-          await initialiserCommandeBarReserver();
+          // Les templates, la barre et les réservations sont indépendants.
+          // Le résultat de /autour-de-moi a déjà été demandé au préchargement.
+          await Promise.all([
+            initialiserListeParcs(),
+            initialiserCommandeBarReserver(),
+            assurerReservationsListeParcs()
+          ]);
           initialiserBoutonDepartementPrincipal();
           document.addEventListener("click", gererClicDocument);
-          await chargerReservationsMembrePourBlocages();
           await chargerParcsDepartementMembre();
           chargement.remove();
           nomDepartement.textContent = libelleDepartementListeParcs();
@@ -1000,9 +1070,19 @@
       false
     );
 
-    const fragmentListe = await chargerFragmentObjet(
-      "/BOX/04-box-liste-card.html"
-    );
+    const [
+      fragmentListe,
+      fragmentCard,
+      fragmentShiftDetailParc,
+      fragmentJour,
+      fragmentHeure
+    ] = await Promise.all([
+      chargerFragmentListeParcs("/BOX/04-box-liste-card.html"),
+      chargerFragmentListeParcs("/BOX/04-box-card-parc.html"),
+      chargerFragmentListeParcs("/BOX/04-box-shift-detail-parc.html"),
+      chargerFragmentListeParcs("/BOX/04-box-card-jour-in-calendrier-mois.html"),
+      chargerFragmentListeParcs("/BOX/04-box-card-heure-in-calendrier-jour.html")
+    ]);
     const listeCard = fragmentListe.querySelector(
       "[data-lcdp-box-liste-card]"
     );
@@ -1014,16 +1094,12 @@
     listeCard.classList.add("lcdp-box-liste-card--encadree");
     etatPage.templateListeParcs = listeCard;
 
-    const fragmentCard = await chargerFragmentObjet("/BOX/04-box-card-parc.html");
     etatPage.templateCardParc = fragmentCard.querySelector("[data-lcdp-box-card-parc]");
 
-    const fragmentShiftDetailParc = await chargerFragmentObjet("/BOX/04-box-shift-detail-parc.html");
     etatPage.templateShiftDetailParc = fragmentShiftDetailParc.querySelector("[data-lcdp-box-shift-detail-parc]");
 
-    const fragmentJour = await chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html");
     etatPage.templateJourMois = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
 
-    const fragmentHeure = await chargerFragmentObjet("/BOX/04-box-card-heure-in-calendrier-jour.html");
     etatPage.templateHeureJour = fragmentHeure.querySelector("[data-lcdp-card-heure-jour]");
 
     if (
@@ -1060,7 +1136,7 @@
       "Voir sur la carte"
     );
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-commande-bar.html");
+    const fragment = await chargerFragmentListeParcs("/BOX/04-box-commande-bar.html");
     const commandeBar = fragment.querySelector("[data-lcdp-box-commande-bar]");
     const actions = fragment.querySelector("[data-lcdp-commande-bar-actions]");
 
@@ -2436,32 +2512,11 @@
     }
 
     try {
-      const reponse = await fetch(
-        ENDPOINT_NOUVELLE_DATE_MEMBRE + "/autour-de-moi",
-        {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-          headers: {
-            "Accept": "application/json"
-          }
-        }
-      );
+      const { statut, data } = await demanderDonneesParcsMembre();
 
-      const data = await reponse.json().catch(() => null);
-
-      if (reponse.status === 401) {
+      if (statut === 401) {
         redirigerConnexionMembre("inactive");
         return;
-      }
-
-      if (!reponse.ok || !data || !reponseApiOk(data)) {
-        throw new Error(
-          messageErreurApi(
-            data,
-            "Impossible de charger les parcs du département."
-          )
-        );
       }
 
       const departement = String(data.departement || "");
