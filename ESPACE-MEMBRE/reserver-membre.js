@@ -347,8 +347,32 @@
     }
   }
 
-  // Étape 1 du nouveau parcours PLANIFIER : aucune donnée de parc ni d'abonnement
-  // n'est utilisée pour remplir la grille. Les filtres seront ajoutés ensuite.
+  function membreSansDemandeDa() {
+    return etatMembre.statudaConnue === true && etatMembre.statuda === null;
+  }
+
+  async function afficherInformationJourSansDa() {
+    await ouvrirDialogueBoutonsSuperpose({
+      titre: "Réservation indisponible",
+      texte: "Pour réserver une journée, vous devez d'abord effectuer une demande d'abonnement.",
+      boutons: []
+    });
+  }
+
+  async function ouvrirDemandeAbonnementDepuisPlanning() {
+    if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
+      await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js");
+    }
+    if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
+      throw new Error("Le formulaire de demande d'abonnement est indisponible.");
+    }
+    await window.LCDP_ouvrirPremiereDaMembre({
+      contexte: etatMembre,
+      onStatudaChange: donnees => Object.assign(etatMembre, donnees, { statudaConnue: true })
+    });
+  }
+
+  // Un calendrier général reste affiché, avant et après sélection d'un parc.
   async function ouvrirPlanningGeneralVierge() {
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) throw new Error("Emplacement du planning introuvable.");
@@ -2764,7 +2788,10 @@
 
     if (jourCalendrier && !jourCalendrier.disabled) {
       event.preventDefault();
-
+      if (membreSansDemandeDa() && jourCalendrier.closest("#lcdp-lightbox-slot [data-lcdp-box-calendrier-mois]")) {
+        await afficherInformationJourSansDa();
+        return;
+      }
       await ouvrirCalendrierJourDepuisCard(jourCalendrier);
       return;
     }
@@ -2772,6 +2799,15 @@
   }
 
   async function afficherLimiteConsultationPlanning(droits) {
+    if (droits.sansDemandeAbonnement === true || membreSansDemandeDa()) {
+      const choix = await ouvrirDialogueBoutonsSuperpose({
+        titre: "Consultation limitée",
+        texte: "Sans demande d'abonnement, vous pouvez consulter le planning jusqu'au mois M+2. Pour accéder aux mois suivants, effectuez une demande d'abonnement.",
+        boutons: [{ label: "Faire ma demande d'abonnement", valeur: "demande", style: "lcdp-button-primary" }]
+      });
+      if (choix === "demande") await ouvrirDemandeAbonnementDepuisPlanning();
+      return;
+    }
     if (droits.abonnementActif) {
       await afficherAlerteSuperposee("Votre abonnement ne permet pas de consulter le mois suivant.");
       return;
@@ -3792,7 +3828,8 @@
 
     if (!ouvert) {
       card.classList.add("lcdp-box-card-jour-in-calendrier-mois--closed");
-      card.disabled = true;
+      // Sans DA, toute journée future sert uniquement à afficher l'information.
+      if (!membreSansDemandeDa() || estPasse) card.disabled = true;
     }
 
     if (modeLecture && !card.disabled) {
@@ -4743,6 +4780,10 @@
     const slot = document.getElementById("lcdp-lightbox-slot");
 
     if (!slot) return null;
+    // Le calendrier PLANIFIER est persistant : une erreur ne doit jamais le détruire.
+    if (slot.querySelector("[data-lcdp-box-calendrier-mois]")) {
+      return afficherAlerteSuperposee(message);
+    }
 
     slot.innerHTML = "";
 
