@@ -102,10 +102,36 @@
   </style>
   <style>
     #lcdp-actualite-bandeau { margin-top: 24px; }
+    /* Bandeau : cartouche et texte partagent le même axe de centrage. */
+    #lcdp-actualite-bandeau .lcdp-actu-bandeau-ligne {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      column-gap: .35em;
+      max-width: 100%;
+      vertical-align: middle;
+    }
+    #lcdp-actualite-bandeau .lcdp-actu-bandeau-ligne > .lcdp-actualite-groupe {
+      flex: none;
+    }
+    #lcdp-actualite-bandeau .lcdp-actu-bandeau-texte {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    /* Supprimer le surlignage bleu au toucher, sans masquer le focus clavier. */
+    .lcdp-page-accueil-membre #lcdp-menu-central-slot .lcdp-button-accueil {
+      -webkit-tap-highlight-color: transparent;
+    }
+    .lcdp-page-accueil-membre #lcdp-menu-central-slot .lcdp-button-accueil:focus:not(:focus-visible) {
+      outline: none;
+      box-shadow: none;
+    }
+
     #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden] { display: none !important; }
     @media (max-width: 767px) {
       .lcdp-page-accueil-membre .lcdp-site-main > .lcdp-page-section {
-        padding-top: calc(var(--lcdp-space-5) * 0.70);
+        padding-top: calc(var(--lcdp-space-5) * 0.525);
       }
     }
   </style>
