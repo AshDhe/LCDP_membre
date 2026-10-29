@@ -24,14 +24,14 @@
     "plage5"
   ];
 
-  const COULEURS_CSS_PLANNING = {
-    "gris-moyen": "#9ca09e",
-    "bleu-clair": "#cfe3f7",
-    "bleu-fonce": "#2f6fb3",
-    "violet": "#7b5aa6",
-    "orange-clair": "#ffd8a8",
-    "orange-fonce": "#f2a23a"
-  };
+  // Couleurs d'autorisation des invités, indépendantes des abonnements.
+  // Le DUO est accessible par défaut sur toutes les plages ouvertes.
+  const COULEURS_AUTORISATIONS_PLANIFIER = Object.freeze({
+    duo: "#55733f",           // vert de base
+    famille: "#2f6fb3",       // bleu de la charte
+    coach: "#8660c8",         // violet COACH
+    "famille-coach": "#80583d" // marron partagé
+  });
 
   const ENDPOINT_NOUVELLE_DATE_MEMBRE = construireEndpointApi(
     "workerNouvelleDateMembreUrl",
@@ -501,9 +501,10 @@
   async function ouvrirPlanningGeneralVierge() {
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) throw new Error("Emplacement du planning introuvable.");
-    const [fragmentCalendrier, fragmentJour] = await Promise.all([
+    const [fragmentCalendrier, fragmentJour, fragmentLegende] = await Promise.all([
       chargerFragmentObjet("/BOX/04-box-calendrier-mois.html"),
-      chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html")
+      chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html"),
+      chargerFragmentObjet("/BOX/04-box-legende.html").catch(() => null)
     ]);
     const calendrier = fragmentCalendrier.querySelector("[data-lcdp-box-calendrier-mois]");
     const templateJour = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
@@ -548,6 +549,36 @@
     boutonParc.appendChild(document.createTextNode("PARC"));
     actionsFiltres.append(boutonAcces, boutonParc);
     enteteFiltres.appendChild(actionsFiltres);
+    // Légende compacte : quatre carrés, sans les anciens codes d'abonnement.
+    const legende = fragmentLegende?.querySelector("[data-lcdp-box-legende]") || document.createElement("div");
+    legende.className = "lcdp-box-legende lcdp-planifier-legende-autorisations";
+    legende.setAttribute("role", "group");
+    legende.setAttribute("aria-label", "Légende des autorisations d'accès du planning");
+    const contenuLegende = legende.querySelector("[data-lcdp-legende-contenu]") || document.createElement("div");
+    contenuLegende.className = "lcdp-box-legende__contenu";
+    if (!contenuLegende.parentNode) legende.appendChild(contenuLegende);
+    contenuLegende.replaceChildren();
+    const ligneLegende = document.createElement("div");
+    ligneLegende.className = "lcdp-box-legende__ligne";
+    for (const [type, libelle] of [
+      ["duo", "DUO"],
+      ["famille", "+ FAMILLE"],
+      ["coach", "+ COACH"],
+      ["famille-coach", "+ FAMILLE + COACH"]
+    ]) {
+      const item = document.createElement("span");
+      item.className = "lcdp-box-legende__item";
+      const carre = document.createElement("span");
+      carre.className = "lcdp-box-legende__carre lcdp-box-legende__carre--" + type;
+      carre.setAttribute("aria-hidden", "true");
+      const texte = document.createElement("span");
+      texte.className = "lcdp-box-legende__libelle";
+      texte.textContent = libelle;
+      item.append(carre, texte);
+      ligneLegende.appendChild(item);
+    }
+    contenuLegende.appendChild(ligneLegende);
+    grille.before(legende);
     meta.textContent = "";
     meta.hidden = true;
     message.hidden = true;
@@ -3986,15 +4017,13 @@
         return;
       }
 
-      const couleur = normaliserCouleurClasse(
-        plage && plage.ouverte
-          ? plage.couleur
-          : "gris_clair"
-      );
-
-      slot.classList.add(
-        "lcdp-box-card-jour-in-calendrier-mois__slot--" + couleur
-      );
+      if (plage?.ouverte === true) {
+        const autorisation = determinerAutorisationPlage(plage);
+        slot.classList.add("lcdp-planifier-plage--" + autorisation);
+        slot.style.setProperty("background", COULEURS_AUTORISATIONS_PLANIFIER[autorisation], "important");
+      } else {
+        slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--gris-clair");
+      }
     });
   }
 
@@ -4218,7 +4247,7 @@
       nom: nomPlage,
       debut: plage.debut || defaut.debut,
       fin: plage.fin || defaut.fin,
-      couleur: normaliserCouleurClasse(plage.couleur)
+      autorisation: determinerAutorisationPlage(plage)
     });
   }
 
@@ -4261,13 +4290,17 @@
   function creerCardHeure(contexte, heure, plage, reservationPlage) {
     const card = etatPage.templateHeureJour.cloneNode(true);
     const label = card.querySelector("[data-lcdp-card-heure-jour-label]");
-    const couleur = normaliserCouleurClasse(plage.couleur);
+    const autorisation = plage.autorisation || "duo";
     const heureReservee = reservationPlage
       ? extraireHeureFranceReservation(reservationPlage.datebookd)
       : "";
     const estHeureReservee = reservationPlage && heureReservee === heure;
 
-    card.classList.add("lcdp-box-card-heure-in-calendrier-jour--" + couleur);
+    card.classList.add("lcdp-planifier-heure--" + autorisation);
+    if (!reservationPlage) {
+      card.style.setProperty("background", COULEURS_AUTORISATIONS_PLANIFIER[autorisation], "important");
+      card.style.setProperty("color", "#ffffff", "important");
+    }
     card.dataset.idparc = String(contexte.parc.idparc || contexte.parc.id || "");
     card.dataset.date = contexte.dateIso;
     card.dataset.heure = heure;
@@ -5563,92 +5596,37 @@
   }
 
 
+  function determinerAutorisationPlage(plage) {
+    // La présence de DUO n'affecte pas la couleur : seul compte le droit
+    // supplémentaire d'accueillir des invités FAMILLE et/ou COACH.
+    const categories = Array.isArray(plage?.categories)
+      ? plage.categories.map(valeur => String(valeur || "").trim().toUpperCase())
+      : [];
+    const famille = categories.includes("FAMILLE");
+    const coach = categories.includes("COACH");
+    if (famille && coach) return "famille-coach";
+    if (famille) return "famille";
+    if (coach) return "coach";
+    return "duo";
+  }
+
   function appliquerRenduPlageLecture(slot, nomPlage, plage) {
     const plageOuverte = plage && plage.ouverte === true;
-
     if (!plageOuverte) {
       slot.style.visibility = "hidden";
-      slot.title = construireTitrePlagePlanning(
-        nomPlage,
-        null
-      );
+      slot.title = construireTitrePlagePlanning(nomPlage, null);
       return;
     }
-
     slot.style.removeProperty("visibility");
-
-    const couleurs = normaliserListeCouleursPlanning(plage);
-
-    if (couleurs.length > 1) {
-      slot.classList.add(
-        "lcdp-box-card-jour-in-calendrier-mois__slot--multicolore"
-      );
-      slot.style.setProperty(
-        "--lcdp-plage-fond",
-        construireDegradeCouleursPlanning(couleurs)
-      );
-    } else {
-      slot.classList.add(
-        "lcdp-box-card-jour-in-calendrier-mois__slot--" +
-        (couleurs[0] || "bleu-clair")
-      );
-    }
-
+    const autorisation = determinerAutorisationPlage(plage);
+    slot.classList.add("lcdp-planifier-plage--" + autorisation);
+    slot.style.setProperty("background", COULEURS_AUTORISATIONS_PLANIFIER[autorisation], "important");
     const largeurJauge = normaliserLargeurJauge(plage?.jauge);
-
-    if (largeurJauge > 0 && plageOuverte) {
-      slot.classList.add(
-        "lcdp-box-card-jour-in-calendrier-mois__slot--avec-jauge"
-      );
-      slot.style.setProperty(
-        "--lcdp-jauge-largeur",
-        largeurJauge + "%"
-      );
+    if (largeurJauge > 0) {
+      slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--avec-jauge");
+      slot.style.setProperty("--lcdp-jauge-largeur", largeurJauge + "%");
     }
-
-    slot.title = construireTitrePlagePlanning(
-      nomPlage,
-      plageOuverte ? plage : null
-    );
-  }
-
-  function normaliserListeCouleursPlanning(plage) {
-    const valeurs = Array.isArray(plage?.couleurs)
-      ? plage.couleurs
-      : [plage?.couleur];
-
-    const couleursAutorisees = new Set([
-      "bleu-clair",
-      "bleu-fonce",
-      "violet",
-      "orange-clair",
-      "orange-fonce"
-    ]);
-
-    const couleurs = valeurs
-      .map(normaliserCouleurClasse)
-      .filter((couleur) => couleursAutorisees.has(couleur));
-
-    return couleurs.length ? couleurs : ["bleu-clair"];
-  }
-
-  function construireDegradeCouleursPlanning(couleurs) {
-    const nombre = couleurs.length;
-    const segments = [];
-
-    couleurs.forEach((couleur, index) => {
-      const debut = (index * 100) / nombre;
-      const fin = ((index + 1) * 100) / nombre;
-      const valeurCss = COULEURS_CSS_PLANNING[couleur] ||
-        COULEURS_CSS_PLANNING["bleu-clair"];
-
-      segments.push(
-        valeurCss + " " + debut + "%",
-        valeurCss + " " + fin + "%"
-      );
-    });
-
-    return "linear-gradient(to right, " + segments.join(", ") + ")";
+    slot.title = construireTitrePlagePlanning(nomPlage, plage);
   }
 
   function normaliserLargeurJauge(value) {
