@@ -28,9 +28,9 @@
   // Le DUO est accessible par défaut sur toutes les plages ouvertes.
   const COULEURS_AUTORISATIONS_PLANIFIER = Object.freeze({
     duo: "#f2a23a",           // jaune PLANIFIER (charte)
-    famille: "#2f6fb3",       // bleu de la charte
-    coach: "#8660c8",         // violet COACH
-    "famille-coach": "#80583d" // marron partagé
+    famille: "#626262",       // gris moyen FAMILLE
+    coach: "#8660c8",         // violet COACH inchangé
+    "famille-coach": "#287a53" // vert soutenu FAMILLE + COACH
   });
 
   const ENDPOINT_NOUVELLE_DATE_MEMBRE = construireEndpointApi(
@@ -2342,26 +2342,22 @@
   }
 
   async function ouvrirChoixDepartement() {
+    if (typeof window.LCDP_diginum?.ouvrir !== "function") {
+      throw new Error("Objet 07-box-diginum non chargé.");
+    }
+
     let donneesDepartementVerifiees = null;
-    const resultat = await ouvrirDialogueChamp({
+    const codeSaisi = await window.LCDP_diginum.ouvrir({
       titre: "Changer de département",
-      champs: [
-        {
-          id: "departement-recherche-parc",
-          name: "dptmt",
-          label: "Département",
-          type: "text",
-          inputmode: "text",
-          autocomplete: "off",
-          placeholder: "Exemple : 08",
-          required: true
-        }
-      ],
-      // La vérification utilise directement public.dptmt, via le nom
-      // renvoyé par le Worker. Aucun code n'est supposé valide par défaut.
-      verifier: async (saisie) => {
-        const code = nettoyerDepartement(saisie.dptmt);
-        if (!/^(?:0[1-9]|[1-8][0-9]|9[0-5]|2A|2B|97[1-6])$/.test(code)) {
+      placeholder: "exemple 08",
+      longueurMax: 3,
+      // Les départements métropolitains numériques font deux chiffres.
+      // Les départements 971 à 976 nécessitent trois chiffres.
+      autoValider: code => (code.length === 2 && !code.startsWith("97")) ||
+        (code.length === 3 && code.startsWith("97")),
+      verifier: async saisie => {
+        const code = nettoyerDepartement(saisie);
+        if (!/^(?:0[1-9]|[1-8][0-9]|9[0-5]|97[1-6])$/.test(code)) {
           return "Code de département invalide. Exemple : 08.";
         }
         if (!ENDPOINT_NOUVELLE_DATE_MEMBRE) {
@@ -2387,8 +2383,8 @@
       }
     });
 
-    if (!resultat || !donneesDepartementVerifiees) return;
-    await chargerParcsDepartement(nettoyerDepartement(resultat.dptmt), donneesDepartementVerifiees);
+    if (!codeSaisi || !donneesDepartementVerifiees) return;
+    await chargerParcsDepartement(nettoyerDepartement(codeSaisi), donneesDepartementVerifiees);
   }
 
   function creerPictowait(message) {
@@ -5648,7 +5644,8 @@
   function appliquerRenduPlageLecture(slot, nomPlage, plage) {
     const plageOuverte = plage && plage.ouverte === true;
     if (!plageOuverte) {
-      slot.style.visibility = "hidden";
+      // Conserver un contour très léger : les cinq plages restent repérables.
+      slot.classList.add("lcdp-planifier-plage--non-ouverte");
       slot.title = construireTitrePlagePlanning(nomPlage, null);
       return;
     }

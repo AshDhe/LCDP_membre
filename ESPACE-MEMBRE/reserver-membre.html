@@ -116,7 +116,8 @@
         "/BOX/04-box-fiche-parc.css",
         "/BOX/04-box-shift-detail-parc.css",
         "/BOX/04-box-calendrier-mois.css",
-        "/BOX/04-box-legende.css?v=20261029-filtres-interactifs-v4",
+        "/BOX/04-box-legende.css?v=20261029-diginum-palette-v1",
+        "/BOX/07-box-diginum.css",
         "/BOX/04-box-card-jour-in-calendrier-mois.css?v=20260717-0655",
         "/BOX/04-box-calendrier-jour.css",
         "/BOX/04-box-card-heure-in-calendrier-jour.css",
@@ -136,6 +137,9 @@
         '<script src="' +
         window.LCDP_urlObjet("/BOX/03-box-galerie.js") +
         '"><\/script>'
+      );
+      document.write(
+        '<script src="' + window.LCDP_urlObjet("/BOX/07-box-diginum.js") + '"><\/script>'
       );
     })();
     document.write('<script data-lcdp-footer-autonome src="' + window.LCDP_urlObjet('/BOX/02-box-footer.js') + '"><\/script>');
@@ -200,6 +204,7 @@
       height: 17px;
       flex: 0 0 17px;
       object-fit: contain;
+      filter: brightness(0) invert(1); /* pictogramme PARC intégralement blanc */
     }
     .lcdp-page-reserver .lcdp-planifier-filtre:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
     @media (min-width: 768px) {
@@ -210,13 +215,21 @@
     .lcdp-planifier-acces-option { display:inline-flex; align-self:center; align-items:center; gap:9px; width:216px; max-width:100%; min-height:38px; padding:7px 11px; border-radius:var(--lcdp-radius-small); font-size:0.9rem; font-weight:700; color:white; cursor:pointer; }
     .lcdp-planifier-acces-dialogue .lcdp-box-dialogue-champ__content { align-items:center; }
     .lcdp-planifier-acces-option input { width:18px; height:18px; margin:0; flex:none; accent-color:var(--lcdp-color-primary); }
-    .lcdp-planifier-acces-option--famille { background:var(--lcdp-color-blue, #2f6fb3); }
+    .lcdp-planifier-acces-option--famille { background:#626262; }
     .lcdp-planifier-acces-option--coach { background:var(--lcdp-color-coach); }
-    .lcdp-planifier-acces-option--famille-coach { background:#80583d; }
+    .lcdp-planifier-acces-option--famille-coach { background:#287a53; }
     .lcdp-planifier-parcs-card { width:min(calc(100vw - 36px),720px); max-height:calc(100svh - 36px); overflow-y:auto; }
     .lcdp-planifier-parcs-card .lcdp-box-dialogue-champ__content { max-height:none; }
     .lcdp-planifier-parcs-card .lcdp-box-liste-card { text-align:left; }
 
+    /* Cinq plages visibles même fermées : liseré neutre, sans remplissage. */
+    .lcdp-page-reserver [data-lcdp-box-calendrier-mois] .lcdp-planifier-plage--non-ouverte {
+      visibility: visible !important;
+      box-sizing: border-box;
+      border: 1px solid #dce2e5 !important;
+      background: transparent !important;
+      border-radius: 2px;
+    }
     /* Ajustements propres à PLANIFIER : sans changer les styles génériques. */
     @media (max-width: 767px) {
       .lcdp-planifier-acces-dialogue .lcdp-box-dialogue-champ__title { font-size: clamp(1.5rem, 6vw, 2.04rem); }
@@ -355,6 +368,6 @@
 
   </div>
 
-  <script src="./reserver-membre.js?v=20261029-raccordement-planning-parc-v16"></script>
+  <script src="./reserver-membre.js?v=20261029-diginum-palette-v1"></script>
 </body>
 </html>
