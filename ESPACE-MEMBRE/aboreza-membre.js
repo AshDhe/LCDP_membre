@@ -1,196 +1,320 @@
-/* Aboresa — Cas 1, 2 et 3. Le calendrier reste celui de PLANIFIER.
- * Les accès sont des lignes de panier liées à des retenues fluxm temporaires.
+/* Aboresa — K1, K2, K3. Composants visuels exclusivement chargés depuis OBJET/BOX.
+ * Le calendrier de réservation et les droits restent ceux de PLANIFIER/Rezabo.
  */
 (() => {
   'use strict';
-  const cfg=window.SITE_CONFIG||{};
-  const ENDPOINT=String(cfg.workerAboRezaUrl||cfg.WORKER_ABOREZA_URL||
-    (typeof cfg.apiUrl==='function'?cfg.apiUrl('aboreza-api'):'https://aboreza-api.lacleduparc.fr')).replace(/\/+$/,'');
-  const bridge=()=>window.LCDP_PLANIFIER_ABOREZA;
-  const HTML_URL=new URL('./aboreza-membre.html',document.currentScript?.src||location.href).href;
-  let templateBoite=null;
-  async function chargerTemplates(){
-    if(templateBoite)return;
-    const r=await fetch(HTML_URL,{cache:'no-store'});
-    if(!r.ok)throw Error('Interface ABO-RÉZA indisponible.');
-    const doc=new DOMParser().parseFromString(await r.text(),'text/html');
-    const tpl=doc.getElementById('lcdp-aboreza-template-dialogue');
-    if(!tpl?.content)throw Error('Modèle de dialogue ABO-RÉZA manquant.');
-    templateBoite=tpl;
-  }
-  let courant=null;
-  let occupe=false;
-  let bandeau=null;
-  const moisLibelle=cle=>new Intl.DateTimeFormat('fr-FR',{timeZone:'UTC',month:'long',year:'numeric'}).format(new Date(cle+'-01T12:00:00Z'));
-  const dateLibelle=iso=>new Intl.DateTimeFormat('fr-FR',{timeZone:'UTC',day:'numeric',month:'long',year:'numeric'}).format(new Date(iso+'T12:00:00Z'));
-  const nomFormule=f=>({'1J':'1 jour','1M':'1 mois','3M':'3 mois','5M':'5 mois','10M':'10 mois','11M':'11 mois','12M':'1 an'}[f]||f);
+  const cfg = window.SITE_CONFIG || {};
+  const ENDPOINT = String(cfg.workerAboRezaUrl || cfg.WORKER_ABOREZA_URL ||
+    (typeof cfg.apiUrl === 'function' ? cfg.apiUrl('aboreza-api') : 'https://aboreza-api.lacleduparc.fr')).replace(/\/+$/, '');
+  const bridge = () => window.LCDP_PLANIFIER_ABOREZA;
+  let composants = null;
+  let courant = null;
+  let occupe = false;
+  let bandeau = null;
+  const moisLibelle = cle => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(new Date(cle + '-01T12:00:00Z'));
+  const dateLibelle = iso => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso + 'T12:00:00Z'));
+  const nomFormule = f => ({ '1J': '1 jour', '1M': '1 mois', '3M': '3 mois', '5M': '5 mois', '10M': '10 mois', '11M': '11 mois', '12M': '1 an' }[f] || f);
 
-  async function api(path,method='GET',body){
-    const res=await fetch(ENDPOINT+path,{method,credentials:'include',cache:'no-store',headers:{Accept:'application/json',...(body!==undefined?{'Content-Type':'application/json'}:{})},body:body===undefined?undefined:JSON.stringify(body)});
-    const result=await res.json().catch(()=>null);
-    if(!res.ok||result?.ok!==true)throw new Error(result?.message||'Le service ABO-RÉZA est indisponible.');
+  async function api(path, method = 'GET', body) {
+    const res = await fetch(ENDPOINT + path, {
+      method, credentials: 'include', cache: 'no-store',
+      headers: { Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+      body: body === undefined ? undefined : JSON.stringify(body)
+    });
+    const result = await res.json().catch(() => null);
+    if (!res.ok || result?.ok !== true) throw new Error(result?.message || 'Le service ABO-RÉZA est indisponible.');
     return result;
   }
-  function elem(tag,cls,texte){const x=document.createElement(tag);if(cls)x.className=cls;if(texte!==undefined)x.textContent=texte;return x;}
-  function modal(titre,installer){
-    return new Promise(resolve=>{
-      if(!templateBoite)throw Error('Le modèle de boîte ABO-RÉZA n’est pas chargé.');
-      const voile=templateBoite.content.firstElementChild.cloneNode(true);
-      const boite=voile.querySelector('.lcdp-aboreza-dialogue');
-      const x=voile.querySelector('.lcdp-aboreza-fermer');
-      const h=voile.querySelector('[data-aboreza-titre]');
-      h.textContent=titre;boite.setAttribute('aria-label',titre);
-      document.body.append(voile);
-      let clos=false;
-      const finir=v=>{if(clos)return;clos=true;voile.remove();document.removeEventListener('keydown',esc);resolve(v);};
-      const esc=e=>{if(e.key==='Escape')finir(null);};document.addEventListener('keydown',esc);
-      x.addEventListener('click',()=>finir(null));voile.addEventListener('click',e=>{if(e.target===voile)finir(null);});
-      installer(boite,finir);
-      x.focus();
+  function cheminObjet(chemin) {
+    if (typeof window.LCDP_urlObjet === 'function') return window.LCDP_urlObjet(chemin);
+    if (typeof cfg.objetUrl === 'function') return cfg.objetUrl(chemin);
+    const base = String(cfg.objetBaseUrl || cfg.OBJET_BASE || '').replace(/\/+$/, '');
+    if (!base) throw new Error('Adresse des composants OBJET non configurée.');
+    return base + '/' + chemin.replace(/^\/+/, '');
+  }
+  async function lireObjet(chemin, selecteur) {
+    const reponse = await fetch(cheminObjet(chemin), { cache: 'no-store' });
+    if (!reponse.ok) throw new Error('Composant indisponible : ' + chemin);
+    const documentObjet = new DOMParser().parseFromString(await reponse.text(), 'text/html');
+    const racine = documentObjet.querySelector(selecteur);
+    if (!racine) throw new Error('Structure du composant absente : ' + chemin);
+    return racine;
+  }
+  async function chargerTemplates() {
+    if (!composants) {
+      composants = Promise.all([
+        lireObjet('/BOX/04-box-workflow-abonnement.html', '[data-lcdp-box-workflow-abonnement]'),
+        lireObjet('/BOX/02-box-dialogue-bouton.html', '[data-lcdp-box-dialogue-bouton]'),
+        lireObjet('/BOX/04-box-calendrier-an.html', '[data-lcdp-box-calendrier-an]'),
+        lireObjet('/BOX/03-box-champ-formulaire.html', '[data-lcdp-box-champ-formulaire]'),
+        lireObjet('/BOX/04-box-card-abonnement.html', '[data-lcdp-box-card-abonnement]')
+      ]).then(([workflow, dialogue, calendrier, champ, carte]) => {
+        composants = { workflow, dialogue, calendrier, champ, carte };
+        return composants;
+      }).catch(erreur => { composants = null; throw erreur; });
+    }
+    return composants;
+  }
+  function elem(tag, classe, texte) {
+    const x = document.createElement(tag);
+    if (classe) x.className = classe;
+    if (texte !== undefined) x.textContent = texte;
+    return x;
+  }
+  function bouton(libelle, primaire = false) {
+    const b = elem('button', 'lcdp-button ' + (primaire ? 'lcdp-button-primary' : 'lcdp-button-secondary'), libelle);
+    b.type = 'button';
+    return b;
+  }
+  function ligneActions(choix, finir, hote) {
+    for (const c of choix) {
+      const b = bouton(c.texte, Boolean(c.primaire));
+      b.addEventListener('click', () => finir(c.valeur));
+      hote.append(b);
+    }
+  }
+  function monterWorkflow(modele, type, titre) {
+    const workflow = composants.workflow.cloneNode(true);
+    workflow.classList.add('lcdp-box-workflow-abonnement--' + type);
+    workflow.setAttribute('aria-label', titre);
+    workflow.tabIndex = -1;
+    const contenu = workflow.querySelector('[data-lcdp-workflow-abonnement-content]');
+    if (!contenu) throw Error('Emplacement du workflow abonnement manquant.');
+    const objet = modele.cloneNode(true);
+    // Seule la coque commune porte le rôle modal ; l'objet injecté est son contenu.
+    objet.removeAttribute('role');
+    objet.removeAttribute('aria-modal');
+    objet.classList.add('lcdp-workflow-abonnement-box');
+    contenu.append(objet);
+    return { workflow, objet };
+  }
+  function modalComposant(type, titre, installer) {
+    return new Promise(resolve => {
+      const modele = type === 'calendrier' ? composants.calendrier : composants.dialogue;
+      const { workflow, objet } = monterWorkflow(modele, type === 'calendrier' ? 'calendrier-an' : 'confirmation', titre);
+      const titreElement = objet.querySelector(type === 'calendrier' ? '[data-lcdp-calendrier-an-title]' : '[data-lcdp-dialogue-title]');
+      const fermeture = objet.querySelector(type === 'calendrier' ? '[data-lcdp-calendrier-an-close]' : '[data-lcdp-dialogue-close]');
+      if (!titreElement || !fermeture) throw Error('Structure du dialogue générique incomplète.');
+      titreElement.textContent = titre;
+      if (type === 'dialogue') objet.classList.add('lcdp-workflow-abonnement-box--confirmation');
+      let clos = false;
+      const precedent = document.activeElement;
+      const finir = valeur => {
+        if (clos) return;
+        clos = true;
+        workflow.removeEventListener('keydown', esc);
+        workflow.remove();
+        if (precedent?.isConnected && typeof precedent.focus === 'function') precedent.focus();
+        resolve(valeur);
+      };
+      const esc = evenement => { if (evenement.key === 'Escape') { evenement.preventDefault(); finir(null); } };
+      fermeture.addEventListener('click', () => finir(null));
+      workflow.addEventListener('click', evenement => { if (evenement.target === workflow) finir(null); });
+      workflow.addEventListener('keydown', esc);
+      installer(objet, finir);
+      document.body.append(workflow);
+      fermeture.focus();
     });
   }
-  function actions(box,choix,finir){
-    const ligne=elem('div','lcdp-aboreza-actions');
-    for(const c of choix){const b=elem('button',c.primaire?'lcdp-aboreza-primary':'',c.texte);b.type='button';
-      b.addEventListener('click',()=>finir(c.valeur));ligne.append(b);}
-    box.append(ligne);
+  function modal(titre, message, choix) {
+    return modalComposant('dialogue', titre, (objet, finir) => {
+      const texte = objet.querySelector('[data-lcdp-dialogue-text]');
+      const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
+      if (!texte || !actions) throw Error('Zones de dialogue absentes.');
+      texte.textContent = message;
+      ligneActions(choix, finir, actions);
+    });
   }
-  async function choisirFormuleCatalogue(offres){
-    return modal('Choisissez votre abonnement',(boite,finir)=>{
-      boite.append(elem('p','lcdp-aboreza-intro',
-        'Toutes les formules sont présentées. Les abonnements indisponibles dans votre situation apparaissent en gris.'));
-      const liste=elem('div','lcdp-aboreza-formules');
-      for(const offre of offres){
-        const actif=offre.disponible!==false;
-        const bouton=elem('button','lcdp-aboreza-formule'+(actif?'':' lcdp-aboreza-formule--inactive'));
-        bouton.type='button';bouton.setAttribute('aria-disabled',String(!actif));
-        bouton.append(elem('strong','',nomFormule(offre.formule)),
-          elem('span','',actif?'Choisir':'Indisponible'));
-        bouton.onclick=()=>{
-          if(actif)finir(offre.formule);
-          else informerIndisponibilite(offre).catch(e=>console.error(e));
-        };
-        liste.append(bouton);
+  function champGenerique(libelle, controle) {
+    const champ = composants.champ.cloneNode(true);
+    const nom = elem('label', 'lcdp-box-champ-formulaire__label', libelle);
+    const identifiant = 'lcdp-aboreza-' + libelle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    controle.id = identifiant;
+    nom.htmlFor = identifiant;
+    champ.querySelector('[data-lcdp-champ-label-zone]').append(nom);
+    champ.querySelector('[data-lcdp-champ-control]').append(controle);
+    return champ;
+  }
+  async function choisirFormuleCatalogue(offres) {
+    return modalComposant('dialogue', 'Choisissez votre abonnement', (objet, finir) => {
+      objet.querySelector('[data-lcdp-dialogue-text]').textContent =
+        'Toutes les formules sont affichées. Les abonnements indisponibles sont désactivés.';
+      const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
+      const zone = elem('div', 'lcdp-workflow-abonnement__choice-zone');
+      for (const offre of offres) {
+        const actif = offre.disponible !== false;
+        const b = bouton(nomFormule(offre.formule) + (actif ? '' : ' — indisponible'));
+        b.disabled = !actif;
+        b.title = actif ? 'Choisir cette formule' : (offre.motifIndisponibilite || 'Aucune date de démarrage compatible.');
+        if (actif) b.addEventListener('click', () => finir(offre.formule));
+        else b.append(elem('small', '', ' — ' + b.title));
+        zone.append(b);
       }
-      boite.append(liste);
+      actions.append(zone);
     });
   }
-  async function informerIndisponibilite(offre){
-    return modal('Formule indisponible',(boite,finir)=>{
-      boite.append(elem('p','',offre.motifIndisponibilite||
-        'Aucune date de démarrage compatible avec votre situation.'));
-      actions(boite,[{texte:'Fermer',valeur:true,primaire:true}],finir);
-    });
-  }
-  async function choisirDateDemarrage(offre){
-    return modal('Choisissez votre date de démarrage',(boite,finir)=>{
-      boite.append(elem('p','lcdp-aboreza-intro',`Abonnement ${nomFormule(offre.formule)}`));
-      const label=elem('label','','Date de démarrage');
-      let entree;
-      if(offre.formule==='1J'){
-        entree=elem('input');entree.type='date';entree.min=offre.dateMin;
-        entree.max=offre.dateMax;entree.value=offre.dateMin;
-      }else{
-        entree=elem('select');
-        for(const date of offre.debuts){
-          const option=elem('option','',dateLibelle(date));option.value=date;entree.append(option);
-        }
-      }
-      entree.required=true;label.append(entree);boite.append(label);
-      const note=elem('p','lcdp-aboreza-intro',
-        'Aboresa vérifie cette date avec tous vos abonnements actuels.');
-      boite.append(note);
-      const ligne=elem('div','lcdp-aboreza-actions');
-      const retour=elem('button','','Retour aux abonnements');retour.type='button';retour.onclick=()=>finir(null);
-      const suivant=elem('button','lcdp-aboreza-primary','Continuer');suivant.type='button';
-      suivant.onclick=()=>{if(!entree.value)return;finir(entree.value);};
-      ligne.append(retour,suivant);boite.append(ligne);
-    });
-  }
-  async function presenterCompatibilite(verification){
-    const {compatible,inclusions=[],dateDebut,dateFin,message}=verification;
-    if(!compatible){
-      await modal('Date non compatible',(boite,finir)=>{
-        boite.append(elem('p','',message||'Ce début ne permet pas d’inclure les abonnements actuels.'));
-        actions(boite,[{texte:'Fermer',valeur:true,primaire:true}],finir);
+  async function choisirDateDemarrage(offre) {
+    if (offre.formule === '1J') {
+      return modalComposant('dialogue', 'Choisissez votre date de démarrage', (objet, finir) => {
+        objet.querySelector('[data-lcdp-dialogue-text]').textContent = 'Abonnement 1 jour';
+        const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
+        const entree = elem('input');
+        entree.type = 'date'; entree.min = offre.dateMin; entree.max = offre.dateMax; entree.value = offre.dateMin;
+        entree.required = true;
+        actions.append(champGenerique('Date de démarrage', entree));
+        const continuer = bouton('Continuer', true);
+        continuer.addEventListener('click', () => { if (entree.validity.valid) finir(entree.value); else entree.reportValidity(); });
+        actions.append(continuer);
+        const retour = bouton('Retour aux abonnements');
+        retour.addEventListener('click', () => finir(null));
+        actions.append(retour);
       });
+    }
+    return modalComposant('calendrier', 'Début du nouvel abonnement', (objet, finir) => {
+      const meta = objet.querySelector('[data-lcdp-calendrier-an-meta]');
+      const annees = objet.querySelector('[data-lcdp-calendrier-an-years]');
+      const message = objet.querySelector('[data-lcdp-calendrier-an-message]');
+      const precedent = objet.querySelector('[data-lcdp-calendrier-an-back]');
+      const suivant = objet.querySelector('[data-lcdp-calendrier-an-next]');
+      meta.textContent = 'Abonnement ' + nomFormule(offre.formule) + ' — sélectionnez son mois de démarrage.';
+      const dates = Array.isArray(offre.debuts) ? offre.debuts : [];
+      const parAnnee = new Map();
+      for (const date of dates) {
+        const annee = date.slice(0, 4);
+        if (!parAnnee.has(annee)) parAnnee.set(annee, []);
+        parAnnee.get(annee).push(date);
+      }
+      let selection = dates[0] || null;
+      const boutons = [];
+      for (const [annee, debuts] of parAnnee) {
+        const bloc = elem('div');
+        bloc.append(elem('h3', 'lcdp-box-calendrier-an__year-title', annee));
+        const grille = elem('div', 'lcdp-box-calendrier-an__months');
+        for (const date of debuts) {
+          const b = elem('button', 'lcdp-box-calendrier-an__month', moisLibelle(date.slice(0, 7)));
+          b.type = 'button'; b.setAttribute('aria-pressed', String(date === selection));
+          b.addEventListener('click', () => {
+            selection = date;
+            for (const ligne of boutons) ligne.bouton.setAttribute('aria-pressed', String(ligne.date === selection));
+          });
+          boutons.push({ bouton: b, date });
+          grille.append(b);
+        }
+        bloc.append(grille);
+        annees.append(bloc);
+      }
+      if (!dates.length) { message.textContent = 'Aucune date de démarrage disponible.'; message.hidden = false; suivant.disabled = true; }
+      precedent.textContent = 'Retour aux abonnements';
+      suivant.textContent = 'Continuer';
+      precedent.addEventListener('click', () => finir(null));
+      suivant.addEventListener('click', () => { if (selection) finir(selection); });
+    });
+  }
+  async function presenterCompatibilite(verification) {
+    const { compatible, inclusions = [], dateDebut, dateFin, message } = verification;
+    if (!compatible) {
+      await modal('Date non compatible', message || 'Ce début ne permet pas d’inclure les abonnements actuels.', [
+        { texte: 'Fermer', valeur: true, primaire: true }
+      ]);
       return false;
     }
-    if(!inclusions.length)return true;
-    return modal('Inclure vos abonnements',(boite,finir)=>{
-      boite.append(elem('p','',
-        `Débuter l’abonnement le ${dateLibelle(dateDebut)} et inclure les abonnements actuels sur la période (${moisLibelle(dateDebut.slice(0,7))} – ${moisLibelle(dateFin.slice(0,7))}) ?`));
-      actions(boite,[{texte:'Inclure',valeur:true,primaire:true}],finir);
-    });
+    if (!inclusions.length) return true;
+    return modal('Inclure vos abonnements',
+      `Débuter l’abonnement le ${dateLibelle(dateDebut)} et inclure les abonnements actuels sur la période (${moisLibelle(dateDebut.slice(0, 7))} – ${moisLibelle(dateFin.slice(0, 7))}) ?`,
+      [{ texte: 'Inclure', valeur: true, primaire: true }]);
   }
-  // K1 garde son écran de qualification existant.
-  async function choisirOffre(offres,contexte={}){
-    return modal('Choisissez votre abonnement',(boite,finir)=>{
-      const a=elem('label','','Formule');
-      const choix=elem('select');
-      offres.filter(o=>o.disponible!==false).forEach(o=>{
-        const option=elem('option','',nomFormule(o.formule));option.value=o.formule;choix.append(option);
+  // K1 conserve son formulaire de qualification (formule et date dans la même fenêtre).
+  async function choisirOffre(offres) {
+    return modalComposant('dialogue', 'Choisissez votre abonnement', (objet, finir) => {
+      const texte = objet.querySelector('[data-lcdp-dialogue-text]');
+      texte.textContent = 'Choisissez une formule puis sa date de démarrage.';
+      const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
+      const choix = elem('select');
+      offres.filter(o => o.disponible !== false).forEach(o => {
+        const option = elem('option', '', nomFormule(o.formule)); option.value = o.formule; choix.append(option);
       });
-      a.append(choix);boite.append(a);
-      const b=elem('label','','Date de démarrage');
-      const espace=elem('div');b.append(espace);boite.append(b);
-      const note=elem('p');boite.append(note);
-      const reconstruire=()=>{
-        espace.replaceChildren();const o=offres.find(x=>x.formule===choix.value);if(!o)return;
-        let el;
-        if(o.formule==='1J'){
-          el=elem('input');el.type='date';el.min=o.dateMin;el.max=o.dateMax;el.value=o.dateMin;
+      actions.append(champGenerique('Formule', choix));
+      const espace = elem('div');
+      actions.append(espace);
+      const note = elem('p', 'lcdp-box-dialogue-bouton__text');
+      actions.append(note);
+      const reconstruire = () => {
+        espace.replaceChildren();
+        const offre = offres.find(o => o.formule === choix.value);
+        if (!offre) return;
+        let entree;
+        if (offre.formule === '1J') {
+          entree = elem('input'); entree.type = 'date'; entree.min = offre.dateMin; entree.max = offre.dateMax; entree.value = offre.dateMin;
         } else {
-          el=elem('select');o.debuts.forEach(d=>{
-            const op=elem('option','',dateLibelle(d));op.value=d;el.append(op);
-          });
+          entree = elem('select');
+          for (const date of offre.debuts) {
+            const option = elem('option', '', dateLibelle(date)); option.value = date; entree.append(option);
+          }
         }
-        el.id='lcdp-aboreza-date-debut';el.required=true;espace.append(el);
-        note.textContent=o.formule==='1J'
-          ? 'Un accès à sélectionner pour cette journée.'
-          : o.nbAccesRequis+' accès obligatoires : deux par mois pendant '+o.nbMoisGuides+' mois consécutif'+(o.nbMoisGuides>1?'s':'')+'.';
+        entree.required = true;
+        espace.append(champGenerique('Date de démarrage', entree));
+        note.textContent = offre.formule === '1J'
+          ? 'Un accès obligatoire pour cette journée.'
+          : offre.nbAccesRequis + ' accès obligatoires : deux par mois pendant ' + offre.nbMoisGuides + ' mois consécutifs.';
       };
-      choix.addEventListener('change',reconstruire);reconstruire();
-      const ligne=elem('div','lcdp-aboreza-actions');
-      const annuler=elem('button','','Annuler');annuler.type='button';annuler.onclick=()=>finir(null);
-      const continuer=elem('button','lcdp-aboreza-primary','Continuer');continuer.type='button';
-      continuer.onclick=()=>{const date=espace.querySelector('input,select')?.value;
-        if(!date){note.textContent='Choisissez une date.';return;}
-        finir({formule:choix.value,dateDebut:date});};
-      ligne.append(annuler,continuer);boite.append(ligne);
+      choix.addEventListener('change', reconstruire); reconstruire();
+      const continuer = bouton('Continuer', true);
+      continuer.addEventListener('click', () => {
+        const entree = espace.querySelector('input,select');
+        if (!entree || !entree.value || !entree.validity.valid) { entree?.reportValidity(); return; }
+        finir({ formule: choix.value, dateDebut: entree.value });
+      });
+      const annuler = bouton('Annuler');
+      annuler.addEventListener('click', () => finir(null));
+      actions.append(continuer, annuler);
     });
   }
-  async function informerContrainte(p){
-    return modal('Préparez vos accès',(boite,finir)=>{
-      boite.append(elem('p','',`Votre abonnement ${nomFormule(p.formule)} commence le ${dateLibelle(p.dateDebut)}.`));
-      boite.append(elem('p','',p.formule==='1J'
+  async function informerContrainte(p) {
+    const morceaux = [
+      `Votre abonnement ${nomFormule(p.formule)} commence le ${dateLibelle(p.dateDebut)}.`,
+      p.formule === '1J'
         ? 'Vous devez sélectionner un accès pour cette journée avant de poursuivre.'
-        : `Le panier requiert deux accès par mois pendant ${p.nbMoisGuides} mois consécutifs, soit ${p.nbAccesRequis} accès. Les accès déjà réservés sont pris en compte.`));
-      if(p.nbDejaReserves>0)boite.append(elem('p','',
-        `${p.nbSelectionnes} accès obligatoires déjà satisfaits ; il en reste ${Math.max(0,p.nbAccesRequis-p.nbSelectionnes)} à sélectionner.`));
-      boite.append(elem('p','','Vous pourrez changer de parc et de département. Le planning avancera automatiquement lorsque les accès du mois seront sélectionnés. Chaque sélection retient vos accès pendant 15 minutes, renouvelées lors de la sélection suivante.'));
-      actions(boite,[{texte:'Continuer',valeur:true,primaire:true}],finir);
-    });
+        : `Le panier requiert deux accès par mois pendant ${p.nbMoisGuides} mois consécutifs, soit ${p.nbAccesRequis} accès. Les accès déjà réservés sont pris en compte.`
+    ];
+    if (p.nbDejaReserves > 0) morceaux.push(
+      `${p.nbSelectionnes} accès obligatoires déjà satisfaits ; il en reste ${Math.max(0, p.nbAccesRequis - p.nbSelectionnes)} à sélectionner.`);
+    morceaux.push('Vous pourrez changer de parc et de département. Le planning avancera automatiquement lorsque les accès du mois seront sélectionnés. Chaque sélection retient vos accès pendant 15 minutes, renouvelées lors de la sélection suivante.');
+    return modal('Préparez vos accès', morceaux.join('\n\n'), [{ texte: 'Continuer', valeur: true, primaire: true }]);
   }
-  function miseAJourBandeau(){
-    const hote=bridge()?.hoteBandeau?.();
-    if(!hote)return;
-    if(!courant){bandeau?.remove();bandeau=null;return;}
-    if(!bandeau){bandeau=elem('aside','lcdp-aboreza-bandeau');bandeau.setAttribute('aria-live','polite');hote.append(bandeau);}
-    bandeau.replaceChildren();
-    bandeau.append(elem('strong','',`ABO-RÉZA — ${nomFormule(courant.formule)}`));
-    const m=courant.mois.find(x=>x.mois===courant.moisActif);
-    bandeau.append(elem('span','',courant.complet
-      ? `Panier prêt : ${courant.nbSelectionnes} accès sur ${courant.nbAccesRequis}.`
-      : `${moisLibelle(courant.moisActif)} : ${m?.selectionnes||0}/${m?.attendu||2} accès. Il reste ${m?.restants||0} accès sur ce mois.`));
-    const quitter=elem('button','','Quitter ABO-RÉZA sans supprimer le panier');
-    quitter.type='button';quitter.onclick=()=>quitterTunnel().catch(e=>bridge()?.alerter?.(e.message));
-    if(courant.expirationCommande){
-      bandeau.append(elem('small','lcdp-aboreza-echeance','Retenues valides jusqu’à '+new Intl.DateTimeFormat('fr-FR',{
-        timeZone:'Europe/Paris',hour:'2-digit',minute:'2-digit'
-      }).format(new Date(courant.expirationCommande))+'.'));
+  function miseAJourBandeau() {
+    const hote = bridge()?.hoteBandeau?.();
+    if (!hote) return;
+    if (!courant) { bandeau?.remove(); bandeau = null; return; }
+    if (!bandeau) {
+      bandeau = composants.carte.cloneNode(false);
+      bandeau.setAttribute('aria-live', 'polite');
+      hote.append(bandeau);
     }
-    bandeau.append(quitter);
+    bandeau.replaceChildren();
+    const main = elem('div', 'lcdp-box-card-abonnement__row lcdp-box-card-abonnement__row--main');
+    const name = elem('div', 'lcdp-box-card-abonnement__item lcdp-box-card-abonnement__item--name');
+    name.append(elem('span', 'lcdp-box-card-abonnement__label', 'ABO-RÉZA — '));
+    name.append(elem('span', 'lcdp-box-card-abonnement__value', nomFormule(courant.formule)));
+    main.append(name);
+    bandeau.append(main);
+    const prog = elem('div', 'lcdp-box-card-abonnement__row');
+    const mention = elem('div', 'lcdp-box-card-abonnement__item');
+    const m = courant.mois.find(x => x.mois === courant.moisActif);
+    mention.append(elem('span', 'lcdp-box-card-abonnement__mention', courant.complet
+      ? `Panier prêt : ${courant.nbSelectionnes} accès sur ${courant.nbAccesRequis}.`
+      : `${moisLibelle(courant.moisActif)} : ${m?.selectionnes || 0}/${m?.attendu || 2} accès. Il reste ${m?.restants || 0} accès sur ce mois.`));
+    if (courant.expirationCommande) {
+      mention.append(elem('span', 'lcdp-box-card-abonnement__mention',
+        'Retenues valides jusqu’à ' + new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }).format(new Date(courant.expirationCommande)) + '.'));
+    }
+    prog.append(mention);
+    const commandes = elem('div', 'lcdp-box-card-abonnement__actions');
+    const quitter = elem('button', 'lcdp-box-card-abonnement__micro-action', 'Quitter ABO-RÉZA sans supprimer le panier');
+    quitter.type = 'button';
+    quitter.addEventListener('click', () => quitterTunnel().catch(e => bridge()?.alerter?.(e.message)));
+    commandes.append(quitter);
+    prog.append(commandes);
+    bandeau.append(prog);
   }
   async function entrerDansCalendrier(p){
     courant=p;
@@ -205,11 +329,12 @@
     const v=x=>parts.find(p=>p.type===x)?.value;
     await bridge()?.allerMois?.(v('year')+'-'+v('month'));
   }
-  async function reprendreOuRecommencer(p){
-    return modal('Un panier existe déjà',(boite,finir)=>{
-      boite.append(elem('p','',`Abonnement ${nomFormule(p.formule)}, début ${dateLibelle(p.dateDebut)}. ${p.nbSelectionnes} accès sélectionné${p.nbSelectionnes>1?'s':''} sur ${p.nbAccesRequis}.`));
-      actions(boite,[{texte:'Reprendre',valeur:'reprendre',primaire:true},{texte:'Annuler ce panier et recommencer',valeur:'recommencer'}],finir);
-    });
+  async function reprendreOuRecommencer(p) {
+    return modal('Un panier existe déjà',
+      `Abonnement ${nomFormule(p.formule)}, début ${dateLibelle(p.dateDebut)}. ${p.nbSelectionnes} accès sélectionné${p.nbSelectionnes > 1 ? 's' : ''} sur ${p.nbAccesRequis}.`, [
+        { texte: 'Reprendre', valeur: 'reprendre', primaire: true },
+        { texte: 'Annuler ce panier et recommencer', valeur: 'recommencer' }
+      ]);
   }
   async function demarrer(contexte={}){
     if(!['sans_abonnement','jour_hors_couverture','horizon'].includes(contexte.origine)){
@@ -291,20 +416,18 @@
       }
     }finally{occupe=false;}
   }
-  async function afficherRecap(p){
-    await chargerTemplates();
-    await modal('Récapitulatif de votre abonnement',(boite,finir)=>{
-      boite.append(elem('p','',`Formule : ${nomFormule(p.formule)}. Période : du ${dateLibelle(p.dateDebut)} au ${dateLibelle(p.dateFin)}.`));
-      boite.append(elem('p','',`${p.nbSelectionnes} accès pris en compte sur ${p.nbAccesRequis} requis, dont ${p.nbDejaReserves||0} déjà réservés.`));
-      const liste=elem('ol','lcdp-aboreza-recap');
-      p.acces.forEach(a=>liste.append(elem('li','',`${dateLibelle(a.dateacces)} — ${a.nomparc||a.idparc} — ${libellePlage(a.plagebookd)}${a.origine==='existant'?' (déjà réservé)':''}`)));
-      boite.append(liste);
-      boite.append(elem('p','','Vos accès sont retenus provisoirement pendant 15 minutes après la dernière sélection. Le panier doit être payé avant l’expiration des retenues.'));
-      actions(boite,[{texte:'Fermer le récapitulatif',valeur:'fermer',primaire:true}],finir);
-      window.dispatchEvent(new CustomEvent('lcdp:aboreza-panier-pret',{detail:{idpanier:p.idpanier,formule:p.formule}}));
-    });
+  async function afficherRecap(p) {
+    if (typeof window.LCDP_PAIEMENT?.ouvrirBonCommande !== 'function') {
+      await bridge()?.alerter?.('Le bon de commande n’est pas disponible. Votre panier reste récupérable.');
+      return;
+    }
+    try {
+      // La synthèse est exclusivement rendue par les composants génériques du sous-tunnel Paiement.
+      await window.LCDP_PAIEMENT.ouvrirBonCommande(p.idpanier);
+    } catch (e) {
+      await bridge()?.alerter?.(e.message || 'Bon de commande indisponible.');
+    }
   }
-  function libellePlage(p){return {plage1:'6 h – 10 h',plage2:'10 h – 13 h',plage3:'13 h – 17 h',plage4:'17 h – 21 h',plage5:'21 h – 2 h'}[p]||p;}
   function datePossible(d){return Boolean(courant && d.slice(0,7)===courant.moisActif && d>=courant.dateDebut&&d<=courant.dateFin);}
   function accesDejaChoisi(date,plage){return courant?.acces?.some(a=>a.dateacces===date&&a.plagebookd===plage);}
   function marquerAccesProvisoires(card,date){
@@ -313,7 +436,7 @@
     courant.acces.filter(a=>a.dateacces===date&&a.idparc===idparc).forEach(a=>{
       if(a.origine==='existant')return;
       const slot=card.querySelector('[data-lcdp-card-jour-mois-slot="'+a.plagebookd+'"]');
-      if(slot){slot.classList.add('lcdp-planifier-plage--acces-provisoire');slot.title+=' · Accès provisoire ABO-RÉZA';}
+      if(slot){slot.classList.add('lcdp-planifier-plage--acces-personnel');slot.title+=' · Accès provisoire ABO-RÉZA';}
     });
   }
   window.LCDP_ABOREZA={actif:()=>Boolean(courant),panier:()=>courant,demarrer,selectionnerAcces,datePossible,accesDejaChoisi,marquerAccesProvisoires};

@@ -24,14 +24,6 @@
     "plage5"
   ];
 
-  // Couleurs d'autorisation des invités, indépendantes des abonnements.
-  // Le DUO est accessible par défaut sur toutes les plages ouvertes.
-  const COULEURS_AUTORISATIONS_PLANIFIER = Object.freeze({
-    duo: "#f2a23a",           // jaune PLANIFIER (charte)
-    famille: "#626262",       // gris moyen FAMILLE
-    coach: "#8660c8",         // violet COACH inchangé
-    "famille-coach": "#287a53" // vert soutenu FAMILLE + COACH
-  });
 
   const ENDPOINT_NOUVELLE_DATE_MEMBRE = construireEndpointApi(
     "workerNouvelleDateMembreUrl",
@@ -814,8 +806,6 @@
       afficher();
       if (parcSelectionne) actualiserMoisParc();
     });
-    // Éviter la surbrillance tactile bleue sur la croix, sans supprimer le focus clavier.
-    fermer.style.webkitTapHighlightColor = "transparent";
     fermer.addEventListener("click", () => {
       // Libérer le focus de la croix avant que le masque de chargement la recouvre.
       fermer.blur();
@@ -825,13 +815,11 @@
       masque.id = "lcdp-retour-accueil-attente";
       masque.setAttribute("role", "status");
       masque.setAttribute("aria-label", "Retour à l'accueil en cours");
-      masque.style.cssText = "position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:2147483647!important;background:#fff!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:0!important;padding:0!important;";
       const gif = document.createElement("img");
       gif.src = construireUrlObjet(CHEMIN_PICTOWAIT);
       gif.alt = "";
       gif.width = 64;
       gif.height = 64;
-      gif.style.cssText = "display:block!important;width:64px!important;height:64px!important;max-width:none!important;object-fit:contain!important;position:static!important;margin:0!important;";
       masque.appendChild(gif);
       document.body.appendChild(masque);
       // Deux frames laissent le navigateur peindre le GIF avant la navigation.
@@ -1383,7 +1371,7 @@
       const hote = document.createElement("div");
       hote.className = "lcdp-planifier-carte-hote";
       // La carte est mesurable pendant sa construction ; seul le GIF est visible.
-      hote.style.visibility = "hidden";
+      hote.classList.add("lcdp-planifier-carte-hote--masque");
       navigation.zoneCarte.appendChild(hote);
       const controleur = await constructeur.rendreCarteDansConteneur(hote, {
         dptmt: departement,
@@ -1412,7 +1400,7 @@
       }
       attente.remove();
       navigation.zoneCarte.classList.remove("is-loading");
-      hote.style.removeProperty("visibility");
+      hote.classList.remove("lcdp-planifier-carte-hote--masque");
     } catch (error) {
       if (!estCourante()) return;
       navigation.controleur?.detruire();
@@ -2223,7 +2211,6 @@
       slotActionsFooter.hidden = !afficher;
       slotActionsFooter.setAttribute("aria-hidden", afficher ? "false" : "true");
       document.body.classList.toggle("lcdp-reserver-actions-footer-active", afficher);
-      window.requestAnimationFrame(actualiserEspaceFooterReserver);
     }
 
     function actualiserDepuisPositionBoutons() {
@@ -2244,7 +2231,6 @@
     window.addEventListener("scroll", actualiserDepuisPositionBoutons, { passive: true });
     window.addEventListener("resize", () => {
       actualiserDepuisPositionBoutons();
-      actualiserEspaceFooterReserver();
     });
     window.addEventListener("orientationchange", () => {
       window.setTimeout(actualiserDepuisPositionBoutons, 180);
@@ -2258,34 +2244,9 @@
     }
 
     actualiserDepuisPositionBoutons();
-    actualiserEspaceFooterReserver();
     window.setTimeout(() => {
       actualiserDepuisPositionBoutons();
-      actualiserEspaceFooterReserver();
     }, 250);
-  }
-
-  function actualiserEspaceFooterReserver() {
-    const footer = document.querySelector("#lcdp-footer-slot .lcdp-box-footer");
-    const barre = document.getElementById("lcdp-actions-footer-reserver");
-
-    const hauteurFooter = Math.ceil(footer?.getBoundingClientRect?.().height || 56);
-
-    document.documentElement.style.setProperty(
-      "--lcdp-reserver-footer-height",
-      hauteurFooter + "px"
-    );
-
-    if (barre && barre.hidden !== true) {
-      const hauteurActions = Math.ceil(barre.getBoundingClientRect().height || 0);
-
-      if (hauteurActions > 0) {
-        document.documentElement.style.setProperty(
-          "--lcdp-reserver-actions-footer-height",
-          hauteurActions + "px"
-        );
-      }
-    }
   }
 
   function obtenirOuCreerSlotActionsFooterReserver() {
@@ -3270,7 +3231,6 @@
       if (!shift) throw new Error("Template shift détail parc introuvable.");
 
       shift.hidden = true;
-      shift.style.zIndex = "5500";
       shift.classList.add("lcdp-box-shift-detail-parc--preparation");
       hote.appendChild(shift);
       racine = shift;
@@ -4027,7 +3987,7 @@
 
     if (window.LCDP_ABOREZA?.actif() && !window.LCDP_ABOREZA.datePossible(dateIso)) {
       card.disabled = true;
-      card.classList.add("lcdp-aboreza-jour-hors-periode");
+      card.classList.add("lcdp-box-card-jour-in-calendrier-mois--hors-abonnement");
     }
     if (estPasse) {
       card.classList.add("lcdp-box-card-jour-in-calendrier-mois--past");
@@ -4071,7 +4031,6 @@
     if (modeLecture && !ouvert) {
       card.querySelectorAll("[data-lcdp-card-jour-mois-slot]").forEach((slot) => {
         slot.hidden = true;
-        slot.style.setProperty("display", "none", "important");
       });
     }
 
@@ -4140,7 +4099,6 @@
         const autorisation = determinerAutorisationPlage(plage);
         slot.classList.add("lcdp-planifier-plage--" + autorisation);
         slot.dataset.autorisation = autorisation;
-        slot.style.setProperty("background", COULEURS_AUTORISATIONS_PLANIFIER[autorisation], "important");
         appliquerVisibiliteCategorie(slot, autorisation);
       } else {
         slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--gris-clair");
@@ -4327,8 +4285,6 @@
       card.dataset.indisponible = "fermee";
     } else {
       card.classList.add("lcdp-planifier-heure--" + autorisation);
-      card.style.setProperty("background", COULEURS_AUTORISATIONS_PLANIFIER[autorisation], "important");
-      card.style.setProperty("color", "#ffffff", "important");
     }
     const accesProvisoire = window.LCDP_ABOREZA?.actif() &&
       window.LCDP_ABOREZA.accesDejaChoisi(contexte.dateIso, plage.nom);
@@ -5180,8 +5136,6 @@
     const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
     slot.appendChild(footer);
     appliquerRoutesSite(slot);
-    actualiserEspaceFooterReserver();
-    window.setTimeout(actualiserEspaceFooterReserver, 250);
   }
 
   function appliquerRoutesSite(racine = document) {
@@ -5647,7 +5601,7 @@
 
   function appliquerVisibiliteCategorie(slot, autorisation) {
     // Conserver la place du segment dans la grille pour ne pas déplacer les autres plages.
-    slot.style.setProperty("visibility", filtresAccesPlanifier.has(autorisation) ? "visible" : "hidden", "important");
+    slot.classList.toggle("lcdp-planifier-plage--masquee", !filtresAccesPlanifier.has(autorisation));
   }
 
   function appliquerRenduPlageLecture(slot, nomPlage, plage) {
@@ -5658,16 +5612,15 @@
       slot.title = construireTitrePlagePlanning(nomPlage, null);
       return;
     }
-    slot.style.removeProperty("visibility");
+    slot.classList.remove("lcdp-planifier-plage--masquee");
     const autorisation = determinerAutorisationPlage(plage);
     slot.classList.add("lcdp-planifier-plage--" + autorisation);
     slot.dataset.autorisation = autorisation;
-    slot.style.setProperty("background", COULEURS_AUTORISATIONS_PLANIFIER[autorisation], "important");
     appliquerVisibiliteCategorie(slot, autorisation);
     const largeurJauge = normaliserLargeurJauge(plage?.jauge);
     if (largeurJauge > 0) {
       slot.classList.add("lcdp-box-card-jour-in-calendrier-mois__slot--avec-jauge");
-      slot.style.setProperty("--lcdp-jauge-largeur", largeurJauge + "%");
+      slot.classList.add("lcdp-planifier-jauge--" + largeurJauge);
     }
     slot.title = construireTitrePlagePlanning(nomPlage, plage);
   }

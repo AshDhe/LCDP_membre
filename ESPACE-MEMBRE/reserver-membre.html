@@ -8,29 +8,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Choisir un parc et réserver une nouvelle date dans votre espace membre La Clé du Parc.">
 
-  <!-- Affichage critique : disponible avant config.js et les feuilles CSS externes. -->
-  <style>
-    /* La page reste masquée jusqu'à la première grille affichable. */
-    html:not(.lcdp-planifier-pret) .lcdp-site-page { visibility: hidden !important; }
-    html:not(.lcdp-planifier-pret) #lcdp-planifier-attente-initiale { visibility: visible !important; }
-    #lcdp-planifier-attente-initiale {
-      position: fixed;
-      inset: 0;
-      z-index: 2147483646;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #ffffff;
-    }
-    #lcdp-planifier-attente-initiale img {
-      display: block;
-      width: 64px;
-      height: 64px;
-      max-width: none;
-      object-fit: contain;
-    }
-  </style>
-
   <script src="../config.js"></script>
 
   <script>
@@ -102,6 +79,9 @@
         "/BOX/02-box-alerte.css",
         "/BOX/02-box-dialogue-bouton.css",
         "/BOX/04-box-card-abonnement.css",
+        "/BOX/04-box-card-recaporder.css",
+        "/BOX/04-box-workflow-abonnement.css",
+        "/BOX/04-box-calendrier-an.css",
         "/BOX/02-box-footer.css",
         "/BOX/02-box-wraper-footer.css",
         "/BOX/03-box-champ-formulaire.css",
@@ -121,7 +101,7 @@
         "/BOX/04-box-card-jour-in-calendrier-mois.css?v=20260717-0655",
         "/BOX/04-box-calendrier-jour.css",
         "/BOX/04-box-card-heure-in-calendrier-jour.css",
-        "/BOX/04-box-workflow-reservation.css",
+        "/BOX/04-box-workflow-reservation.css?v=20261030-rezabo-composants-v5",
         "/BOX/04-box-listemails.css"
       ];
 
@@ -144,267 +124,7 @@
     })();
     document.write('<script data-lcdp-footer-autonome src="' + window.LCDP_urlObjet('/BOX/02-box-footer.js') + '"><\/script>');
   </script>
-  <style>
-    /* PLANIFIER : cinq plages entières, pas de sélection par demi-heure. */
-    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot .lcdp-box-calendrier-jour__grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 142px), 1fr));
-      gap: 10px;
-    }
-    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot .lcdp-planifier-choix-plage {
-      min-height: 68px;
-      padding: 12px 8px;
-      font-weight: 700;
-      white-space: normal;
-      text-align: center;
-    }
-    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot .lcdp-planifier-choix-plage:disabled {
-      cursor: not-allowed;
-      opacity: .55;
-    }
-    @media (max-width: 480px) {
-      .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot .lcdp-box-calendrier-jour__grid {
-        grid-template-columns: repeat(2, minmax(0,1fr));
-      }
-    }
 
-    /* Plage fermée ou passée : bouton consultable pour expliquer le blocage. */
-    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot .lcdp-planifier-heure--fermee {
-      background: transparent !important;
-      border: 1px solid #dce2e5 !important;
-      color: #616b70 !important;
-    }
-    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot
-    .lcdp-planifier-choix-plage[data-indisponible] { cursor: pointer; }
-    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot
-    .lcdp-planifier-choix-plage[data-indisponible="passee"] { opacity: .55; }
-    /* Marqueurs personnels distincts, sans altérer la couleur des catégories. */
-    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot
-    .lcdp-planifier-heure--reservation { box-shadow: inset 7px 0 #ef6a59; }
-    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot
-    .lcdp-planifier-heure--invitation { box-shadow: inset 7px 0 #f5b1a6; }
-
-    /* PLANIFIER : pas de trait sous les filtres, sur mobile comme sur ordinateur. */
-    .lcdp-page-reserver [data-lcdp-box-calendrier-mois] .lcdp-box-calendrier-mois__header {
-      border-bottom: 0 !important;
-    }
-    /* Toujours rendre le nom et le département lorsqu'un parc a été sélectionné. */
-    .lcdp-page-reserver .lcdp-planifier-nom-parc:not([hidden]),
-    .lcdp-page-reserver .lcdp-planifier-departement-parc:not([hidden]) {
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-    }
-    /* En-tête PLANIFIER : parc, département, changement de parc, filtres directs. */
-    .lcdp-page-reserver .lcdp-planifier-entete-filtres {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 7px;
-      min-width: 0;
-      width: 100%;
-    }
-    .lcdp-page-reserver .lcdp-planifier-entete-filtres [data-lcdp-calendrier-mois-title] {
-      margin: 0;
-      text-align: left;
-    }
-    .lcdp-page-reserver .lcdp-planifier-nom-parc {
-      margin: 2px 0 0;
-      padding: 0;
-      font-size: 1.2em !important; /* +20 % par rapport au nom précédent */
-      line-height: 1.25;
-      font-weight: 800 !important;
-      color: #111111 !important;
-      text-align: left;
-    }
-    .lcdp-page-reserver .lcdp-planifier-departement-parc {
-      margin: 0;
-      color: var(--lcdp-color-text, #343836);
-      font-size: 0.83rem;
-      line-height: 1.25;
-      font-weight: 500;
-    }
-    .lcdp-page-reserver .lcdp-planifier-actions-filtres {
-      display: flex;
-      align-items: center;
-      margin: 5px 0 0;
-    }
-    .lcdp-page-reserver .lcdp-planifier-filtre {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      width: auto;
-      min-width: 86px;
-      min-height: 31px;
-      padding: 5px 11px;
-      border: 0;
-      border-radius: 7px;
-      color: #fff;
-      font: inherit;
-      font-size: 0.73rem;
-      font-weight: 650;
-      line-height: 1.15;
-      cursor: pointer;
-    }
-    .lcdp-page-reserver .lcdp-planifier-filtre--parc { background: var(--lcdp-color-logo-green, #43834a); }
-    .lcdp-page-reserver .lcdp-planifier-filtre--parc img {
-      display: block;
-      width: 17px;
-      height: 17px;
-      flex: 0 0 17px;
-      object-fit: contain;
-      filter: brightness(0) invert(1); /* pictogramme PARC intégralement blanc */
-    }
-    .lcdp-page-reserver .lcdp-planifier-filtre:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
-    @media (min-width: 768px) {
-      .lcdp-page-reserver [data-lcdp-calendrier-mois-current] { zoom: .9; }
-    }
-
-    /* Filtres PLANIFIER : exceptions limitées à ces deux dialogues. */
-    .lcdp-planifier-acces-option { display:inline-flex; align-self:center; align-items:center; gap:9px; width:216px; max-width:100%; min-height:38px; padding:7px 11px; border-radius:var(--lcdp-radius-small); font-size:0.9rem; font-weight:700; color:white; cursor:pointer; }
-    .lcdp-planifier-acces-dialogue .lcdp-box-dialogue-champ__content { align-items:center; }
-    .lcdp-planifier-acces-option input { width:18px; height:18px; margin:0; flex:none; accent-color:var(--lcdp-color-primary); }
-    .lcdp-planifier-acces-option--famille { background:#626262; }
-    .lcdp-planifier-acces-option--coach { background:var(--lcdp-color-coach); }
-    .lcdp-planifier-acces-option--famille-coach { background:#287a53; }
-    .lcdp-planifier-parcs-card { width:min(calc(100vw - 36px),720px); max-height:calc(100svh - 36px); overflow-y:auto; }
-    .lcdp-planifier-parcs-card .lcdp-box-dialogue-champ__content { max-height:none; }
-    .lcdp-planifier-parcs-card .lcdp-box-liste-card { text-align:left; }
-
-    /* Cinq plages visibles même fermées : liseré neutre, sans remplissage. */
-    .lcdp-page-reserver [data-lcdp-box-calendrier-mois] .lcdp-planifier-plage--non-ouverte {
-      visibility: visible !important;
-      box-sizing: border-box;
-      border: 1px solid #dce2e5 !important;
-      background: transparent !important;
-      border-radius: 3px; /* Même arrondi que les plages colorées sur mobile. */
-    }
-    @media (min-width: 768px) {
-      .lcdp-page-reserver [data-lcdp-box-calendrier-mois] .lcdp-planifier-plage--non-ouverte {
-        border-radius: 5px; /* Même arrondi que les plages colorées sur ordinateur. */
-      }
-    }
-    /* Droits PLANIFIER : jours couverts par un abonnement payé. Cette teinte
-       ne remplace ni les couleurs des catégories ni les jauges de fréquentation. */
-    .lcdp-page-reserver [data-lcdp-box-calendrier-mois]
-    .lcdp-planifier-jour--abonnement-paye {
-      background: #e5f4e9 !important;
-      border-color: #b7dac1 !important;
-    }
-    /* Indicateurs personnels, sur les 15 % gauches du trait horaire.
-       Les invitations n'entrent ni dans la jauge ni dans les quotas. */
-    .lcdp-page-reserver [data-lcdp-card-jour-mois-slot].lcdp-planifier-plage--acces-personnel,
-    .lcdp-page-reserver [data-lcdp-card-jour-mois-slot].lcdp-planifier-plage--invitation-recue {
-      position: relative;
-      isolation: isolate;
-    }
-    .lcdp-page-reserver [data-lcdp-card-jour-mois-slot].lcdp-planifier-plage--acces-personnel::before,
-    .lcdp-page-reserver [data-lcdp-card-jour-mois-slot].lcdp-planifier-plage--invitation-recue::before {
-      content: "";
-      position: absolute;
-      z-index: 3;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      width: 15%;
-      pointer-events: none;
-      background: #ef6a59;
-    }
-    .lcdp-page-reserver [data-lcdp-card-jour-mois-slot].lcdp-planifier-plage--invitation-recue::before {
-      background: #f5b1a6;
-    }
-    /* Ajustements propres à PLANIFIER : sans changer les styles génériques. */
-    @media (max-width: 767px) {
-      .lcdp-planifier-acces-dialogue .lcdp-box-dialogue-champ__title { font-size: clamp(1.5rem, 6vw, 2.04rem); }
-      .lcdp-planifier-parcs-card .lcdp-box-commande-bar__actions { flex-direction: column; align-items: stretch; }
-      .lcdp-planifier-parcs-card .lcdp-box-commande-bar__actions > .lcdp-button { width: 100% !important; }
-      .lcdp-planifier-parcs-card .lcdp-box-card-parc__actions--reserver {
-        display: flex; flex-direction: row; flex-wrap: nowrap; gap: 6px; align-items: stretch;
-      }
-      .lcdp-planifier-parcs-card .lcdp-box-card-parc__actions--reserver > .lcdp-button {
-        flex: 1 1 0; width: 0; min-width: 0; max-width: none; min-height: 38px;
-        padding: 6px 5px; font-size: 0.78rem; white-space: nowrap; overflow-wrap: normal; gap: 4px;
-      }
-      .lcdp-planifier-parcs-card .lcdp-box-card-parc__actions--reserver .lcdp-box-card-parc__action-icone {
-        width: 17px; height: 17px; flex: 0 0 17px;
-      }
-    }
-    .lcdp-planifier-parcs-card .lcdp-box-card-parc__actions--reserver > .lcdp-button {
-      min-height: 36px; padding: 6px 9px; font-size: 0.78rem; gap: 5px;
-    }
-    /* Tablette et ordinateur uniquement : réduire les deux actions des parcs.
-       Les dimensions mobiles de la V12 restent inchangées. */
-    @media (min-width: 768px) {
-      .lcdp-planifier-parcs-card .lcdp-box-card-parc__actions--reserver > .lcdp-button {
-        width: auto;
-        min-width: 0;
-        max-width: none;
-        min-height: 34px;
-        padding: 5px 8px;
-        font-size: 0.73rem;
-        gap: 4px;
-      }
-      .lcdp-planifier-parcs-card .lcdp-box-card-parc__actions--reserver .lcdp-box-card-parc__action-icone {
-        width: 17px;
-        height: 17px;
-        flex: 0 0 17px;
-      }
-    }
-    .lcdp-planifier-parcs-card .lcdp-planifier-picto-planning { display:inline-flex; align-items:center; justify-content:center; }
-    .lcdp-planifier-parcs-card .lcdp-planifier-picto-planning svg { width:100%; height:100%; color:inherit; }
-    /* Fiche et planning du parc superposés à la liste, sans la fermer. */
-    body.lcdp-page-reserver #lcdp-lightbox-slot [data-lcdp-box-shift-detail-parc] { z-index: 5500; }
-    .lcdp-planifier-parcs-card .lcdp-box-dialogue-champ__title { margin-bottom:4px; }
-    .lcdp-planifier-parcs-departement { display:block; text-align:center; font-weight:400; margin:0 0 var(--lcdp-space-2); }
-    .lcdp-planifier-parcs-chargement { display:flex; align-items:center; justify-content:center; min-height:110px; }
-    .lcdp-planifier-parcs-chargement .lcdp-pictowait { display:flex; align-items:center; justify-content:center; }
-    .lcdp-planifier-parcs-card #bouton-voir-carte { color:#fff; }
-    .lcdp-planifier-parcs-card #bouton-voir-carte:hover { color:#fff; }
-    /* Attente visible dès l'arrivée sur la page, avant le chargement du JS. */
-    #lcdp-planifier-attente-initiale {
-      position: fixed; inset: 0; z-index: 7000;
-      display: flex; justify-content: center; align-items: center;
-      background: var(--lcdp-color-bg, #fff);
-    }
-    #lcdp-planifier-attente-initiale img { width: 64px; height: 64px; object-fit: contain; }
-    /* Envoi d'une fiche par e-mail : attente visible jusqu'à la réponse du Worker. */
-    .lcdp-planifier-partage-attente { position:fixed; inset:0; z-index:9500; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.88); }
-    .lcdp-planifier-partage-attente .lcdp-pictowait { display:flex; align-items:center; justify-content:center; }
-    .lcdp-planifier-partage-confirmation [data-lcdp-alerte-message] { font-size:1.5rem !important; line-height:1.25; font-weight:700; }
-    .lcdp-planifier-partage-confirmation [data-lcdp-alerte-ok] { background:#55733f !important; border-color:#55733f !important; color:#fff !important; }
-    /* Carte de navigation PLANIFIER : largeur de la liste, surface carrée. */
-    .lcdp-planifier-parcs-carte { position:relative; min-width:0; width:100%; }
-    .lcdp-planifier-parcs-carte[hidden], .lcdp-planifier-carte-cartouche[hidden] { display:none !important; }
-    .lcdp-planifier-parcs-card #lcdp-liste-card-parcs-slot[hidden] { display:none !important; }
-    .lcdp-planifier-carte-attente { position:relative; aspect-ratio:1; min-height:0; }
-    .lcdp-planifier-parcs-carte.is-loading .lcdp-planifier-carte-hote { position:absolute; inset:0; }
-    .lcdp-planifier-parcs-carte .lcdp-carte-dynamique__map-shell {
-      aspect-ratio:1; height:auto; min-height:0; max-height:none; box-sizing:border-box;
-    }
-    .lcdp-planifier-parcs-carte .lcdp-carte-dynamique__map {
-      position:absolute; inset:0; width:100%; height:100%; min-height:0; max-height:none;
-    }
-    .lcdp-planifier-carte-hote:empty { aspect-ratio:1; }
-    .lcdp-planifier-carte-cartouche { display:grid; gap:var(--lcdp-space-2, 10px); margin-top:var(--lcdp-space-3, 16px); text-align:left; }
-    /* Points des parcs : jaune de la charte, contour foncé conservé. */
-    .lcdp-planifier-parcs-carte .lcdp-carte-dynamique__marker {
-      fill:var(--lcdp-color-orange, #f2a23a) !important;
-    }
-    .lcdp-planifier-parcs-carte .lcdp-carte-dynamique__marker:focus-visible { stroke-width:4; }
-  </style>
-<style>
-/* V17 : la coque de la fiche reste de taille stable pendant son chargement. */
-.lcdp-page-reserver .lcdp-box-shift-detail-parc--preparation .lcdp-box-shift-detail-parc__card { min-height:min(76dvh,740px); }
-.lcdp-page-reserver .lcdp-fiche-parc__chargement-plein { min-height:min(68dvh,660px); display:flex; flex-direction:column; align-items:stretch; gap:12px; }
-.lcdp-page-reserver .lcdp-fiche-parc__chargement-plein .lcdp-pictowait { flex:1; display:flex; align-items:center; justify-content:center; }
-.lcdp-page-reserver .lcdp-fiche-parc__chargement-plein .lcdp-pictowait__image { max-width:100%; }
-.lcdp-page-reserver [data-lcdp-box-alerte] [data-lcdp-alerte-message] { font-size:1.3rem; }
-</style>
-<style>
-/* ABO-RÉZA : dialogue de qualification et bandeau de progression, propres à PLANIFIER. */
-</style>
-  <link rel="stylesheet" href="./aboreza-membre.css?v=20261030-k2-couvertures-v5">
 </head>
 
 <body>
@@ -456,7 +176,8 @@
 
   </div>
 
-  <script src="./reserver-membre.js?v=20261030-k2-couvertures-v5"></script>
-  <script src="./aboreza-membre.js?v=20261030-k3-horizon-v1"></script>
+  <script src="./reserver-membre.js?v=20261030-rezabo-composants-v5"></script>
+  <script src="./paiement-membre.js?v=20261030-paiement-cycle-v1"></script>
+  <script src="./aboreza-membre.js?v=20261030-objets-v4"></script>
 </body>
 </html>

@@ -1,0 +1,33 @@
+/* PAIEMENT — écran 1. Styles locaux, sans modification des composants de PLANIFIER. */
+.lcdp-paiement-bon-voile {position:fixed;inset:0;z-index:16000;background:rgba(19,30,24,.58);display:flex;justify-content:center;align-items:center;padding:14px;box-sizing:border-box}
+.lcdp-paiement-bon {width:min(100%,700px);max-height:calc(100dvh - 28px);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;border-radius:13px;background:#fff;color:#263229;box-shadow:0 14px 55px #0003;font:inherit;outline:none}
+.lcdp-paiement-bon-entete {flex:none;display:flex;gap:14px;justify-content:space-between;align-items:flex-start;padding:22px 24px 18px;border-bottom:1px solid #e8ece7}
+.lcdp-paiement-bon-entete h2 {font-size:clamp(1.28rem,3.5vw,1.55rem);line-height:1.25;margin:5px 0 7px;color:#182c20}
+.lcdp-paiement-bon-entete .lcdp-paiement-bon-etape {font-size:.74rem;font-weight:750;letter-spacing:.09em;color:#55755b;margin:0}
+.lcdp-paiement-bon-sous-titre {font-size:.87rem;line-height:1.5;color:#58665c;margin:0}
+.lcdp-paiement-bon-fermer {font:inherit;font-size:1.8rem;border:0;background:transparent;color:#59635a;width:36px;height:36px;line-height:1;cursor:pointer;flex:none}
+.lcdp-paiement-bon-contenu {display:grid;gap:16px;padding:18px 24px 20px;overflow:auto;min-height:0;overscroll-behavior:contain}
+.lcdp-paiement-bon-section {border:1px solid #e2e9e3;border-radius:9px;padding:15px 16px;background:#fff}
+.lcdp-paiement-bon-section h3 {font-size:1.04rem;margin:0 0 12px;color:#254634}
+.lcdp-paiement-bon-lignes {margin:0;display:grid;grid-template-columns:minmax(115px,38%) 1fr;gap:7px 14px;font-size:.91rem}
+.lcdp-paiement-bon-lignes dt {color:#647268}
+.lcdp-paiement-bon-lignes dd {margin:0;font-weight:620;overflow-wrap:anywhere}
+.lcdp-paiement-bon-mois {padding:12px 0 8px;border-top:1px solid #eef0ec}
+.lcdp-paiement-bon-mois:first-of-type {border-top:0;padding-top:0}
+.lcdp-paiement-bon-mois h4 {margin:0 0 7px;font-size:.94rem;color:#2c503b}
+.lcdp-paiement-bon-liste {list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.lcdp-paiement-bon-liste li {display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;font-size:.88rem;line-height:1.4}
+.lcdp-paiement-bon-liste li strong {font-weight:620}
+.lcdp-paiement-bon-etiquette {font-size:.73rem;font-weight:680;white-space:nowrap;color:#2b6546;background:#e9f4ec;border-radius:5px;padding:3px 7px}
+.lcdp-paiement-bon-etiquette--provisoire {color:#8c4d23;background:#fff2e4}
+.lcdp-paiement-bon-inclusion {margin:0 0 10px;font-size:.88rem;line-height:1.45;color:#4e5e52}
+.lcdp-paiement-bon-total {display:flex;justify-content:space-between;gap:12px;border-top:1px solid #e4e9e2;padding-top:11px;margin-top:10px;font-weight:700}
+.lcdp-paiement-bon-note {margin:9px 0 0;color:#657168;font-size:.81rem;line-height:1.48}
+.lcdp-paiement-bon-avertissement {padding:12px 14px;background:#fff8ee;border:1px solid #efd5ac;border-radius:8px;color:#755323;font-size:.85rem;line-height:1.5}
+.lcdp-paiement-bon-actions {flex:none;display:flex;gap:12px;align-items:center;justify-content:flex-end;padding:15px 24px 19px;border-top:1px solid #e8ece7;background:#fbfcfa}
+.lcdp-paiement-bon-actions button {font:inherit;font-weight:680;font-size:.87rem;min-height:42px;padding:10px 15px;border-radius:7px;cursor:pointer}
+.lcdp-paiement-bon-retour {background:#fff;border:1px solid #becbc1;color:#2d4635}
+.lcdp-paiement-bon-valider {background:#df862b;border:1px solid #df862b;color:#fff}
+.lcdp-paiement-bon-valider:disabled {opacity:.52;cursor:not-allowed}
+.lcdp-paiement-bon-actions button:focus-visible,.lcdp-paiement-bon-fermer:focus-visible {outline:2px solid #dc7d22;outline-offset:2px}
+@media (max-width:520px) {.lcdp-paiement-bon-voile{padding:8px}.lcdp-paiement-bon{max-height:calc(100dvh - 16px)}.lcdp-paiement-bon-entete{padding:17px 17px 14px}.lcdp-paiement-bon-contenu{padding:14px 15px;gap:12px}.lcdp-paiement-bon-section{padding:12px}.lcdp-paiement-bon-actions{padding:12px 15px;flex-direction:column-reverse;align-items:stretch}.lcdp-paiement-bon-actions button{width:100%}.lcdp-paiement-bon-lignes{grid-template-columns:minmax(100px,40%) 1fr;gap:6px 10px}}

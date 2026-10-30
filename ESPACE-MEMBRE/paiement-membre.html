@@ -1,0 +1,20 @@
+<!-- Sous-tunnel PAIEMENT : écran 1, synthèse de commande (fragment chargé à la demande). -->
+<template id="lcdp-paiement-bon-template">
+  <div class="lcdp-paiement-bon-voile">
+    <section class="lcdp-paiement-bon" role="dialog" aria-modal="true" aria-labelledby="lcdp-paiement-bon-titre" tabindex="-1">
+      <header class="lcdp-paiement-bon-entete">
+        <div>
+          <p class="lcdp-paiement-bon-etape">PAIEMENT · ÉTAPE 1</p>
+          <h2 id="lcdp-paiement-bon-titre">Synthèse de votre commande</h2>
+          <p class="lcdp-paiement-bon-sous-titre">Vérifiez votre abonnement et vos accès avant la validation de la commande.</p>
+        </div>
+        <button type="button" class="lcdp-paiement-bon-fermer" aria-label="Fermer la synthèse" data-paiement-fermer>×</button>
+      </header>
+      <div class="lcdp-paiement-bon-contenu" data-paiement-contenu></div>
+      <footer class="lcdp-paiement-bon-actions">
+        <button type="button" class="lcdp-paiement-bon-retour" data-paiement-retour>Retour au planning</button>
+        <button type="button" class="lcdp-paiement-bon-valider" data-paiement-valider disabled title="Le calcul tarifaire et le règlement seront raccordés à l'étape suivante">Valider et payer</button>
+      </footer>
+    </section>
+  </div>
+</template>
