@@ -39,6 +39,10 @@
     "nouvelle-date-membre-api"
   );
 
+  const ENDPOINT_REZABO = construireEndpointApi(
+    "workerRezaboUrl", "WORKER_REZABO_URL", "rezabo-api"
+  );
+
   const ENDPOINT_FLUXM = construireEndpointApi(
     "workerFluxmUrl",
     "WORKER_FLUXM_URL",
@@ -109,6 +113,9 @@
   // Le bouton « Abonnement » ouvre la préparation des dates dans PLANIFIER.
   // Le choix d'une date est ensuite permis pour constituer le panier provisoire.
   let preparationAbonnementPlanifier = false;
+  // Maquette uniquement : aucune table Duo Actif ni persistance réseau.
+  const tagsDuoActifMaquette = new Set();
+
 
   const cachePlanningParcLecture = new Map();
   const DUREE_CACHE_PLANNING_LECTURE_MS = 30000;
@@ -126,6 +133,17 @@
     planningParcLectureActif: null,
     droitsPlanningParcActifs: null,
     shiftDetailParc: null
+  };
+
+  window.LCDP_PLANIFIER_ABOREZA = {
+    allerMois: cle => etatPage.allerMoisAboReza?.(cle),
+    actualiser: () => etatPage.actualiserPlanningPrincipal?.(),
+    fermerJour: () => document.getElementById("lcdp-planifier-jour-overlay-slot")?.remove(),
+    hoteBandeau: () => etatPage.hoteBandeauAboReza,
+    alerter: message => afficherAlerteSuperposee(message,"orange",{libelleBouton:"Fermer"}),
+    viderCache: () => cachePlanningParcLecture.clear(),
+    choisirParc: () => ouvrirFiltreParcPlanifier(),
+    changerMode: actif => { preparationAbonnementPlanifier = Boolean(actif); }
   };
 
   let attenteListeParcs = null;
@@ -421,65 +439,106 @@
 
   // Les statuts DA sont distincts du droit de réservation.
   // null = aucune demande ; encours/non = demande non validée ; oui = validée.
-  function statutDaPourPlanning(droits = null) {
-    if (etatMembre.statudaConnue === true) {
-      return normaliserStatudaReservation(etatMembre.statuda);
+  function statutDaPourPlanning(droits = etatPage.droitsPlanningParcActifs) {
+    if (droits && Object.prototype.hasOwnProperty.call(droits, "statuda")) {
+      return normaliserStatudaReservation(droits.statuda);
     }
-    return normaliserStatudaReservation(droits?.statuda);
+    return etatMembre.statudaConnue === true
+      ? normaliserStatudaReservation(etatMembre.statuda) : null;
   }
 
   function membreSansDaValidee() {
-    return etatMembre.statudaConnue === true &&
-      statutDaPourPlanning() !== "oui";
+    return statutDaPourPlanning() !== "oui";
   }
 
-  function membreDaValideeSansAbonnement(droits = etatPage.droitsPlanningParcActifs) {
-    if (statutDaPourPlanning(droits) !== "oui") return false;
-    // Ne pas confondre absence d'abonnement et abonnement suspendu/impayé.
-    if (etatMembre.abonnementSuspendu === true || etatMembre.abonnementAnnuleNonPaye === true) return false;
-    // Le Worker du planning est la référence des abonnements couvrant l'horizon.
-    if (droits && typeof droits.abonnementActif === "boolean") {
-      return droits.abonnementActif === false;
-    }
-    return etatMembre.abonne !== true;
-  }
-
-  async function afficherDialogueAbonnementPlanning(typeClic, droits = null) {
-    const statuda = statutDaPourPlanning(droits);
-    if (statuda === "oui" && !membreDaValideeSansAbonnement(droits)) return false;
-
-    const texte = typeClic === "mois"
-      ? "Un abonnement 3M ou + est nécessaire pour continuer."
-      : "Un abonnement est nécessaire pour continuer.";
+  // Trois situations de sortie de RÉZA-ABO : une DA valide sans abonnement,
+  // une date hors couverture dans l'horizon, et le dépassement de l'horizon.
+  async function afficherDialogueAbonnementPlanning(typeClic, droits = null, contexte = {}) {
+    const droitsActifs = droits || etatPage.droitsPlanningParcActifs;
+    const statuda = statutDaPourPlanning(droitsActifs);
     const sansDa = statuda === null;
     const daValidee = statuda === "oui";
-    const choix = await ouvrirDialogueBoutonsSuperpose({
-      titre: "Abonnement nécessaire",
-      texte,
-      boutons: [sansDa
-        ? { label: "Faire ma DA", valeur: "demande", style: "lcdp-button-primary" }
-        : daValidee
-          ? { label: "Abonnement", valeur: "abonnement", style: "lcdp-button-primary" }
-          : { label: "Être invité(e)", valeur: "invitation", style: "lcdp-button-primary", disabled: true }
-      ]
-    });
+    const dateIso = String(contexte.dateIso || "");
+    const aPaye = Array.isArray(droitsActifs?.abonnements) && droitsActifs.abonnements.length > 0;
+    // K2 : toute journée non couverte dans l'horizon réellement acquis,
+    // y compris lorsque les abonnements futurs le prolongent après M+2.
+    // K3 : clic pour dépasser l'horizon (navigation mensuelle).
+    const horizonCouvert = String(droitsActifs?.moisMaximum||'');
+    const dansHorizon = /^\d{4}-\d{2}$/.test(horizonCouvert)
+      ? dateIso.slice(0,7)<=horizonCouvert : true;
+    const jourHorsCouverture = typeClic === "jour" && aPaye && daValidee && Boolean(dateIso) && dansHorizon;
+    const depassement = typeClic === "mois" || (typeClic === "jour" && aPaye && daValidee && !dansHorizon);
+    let titre = "Abonnement nécessaire";
+    let texte = depassement
+      ? "Pour consulter au-delà de votre horizon actuel, choisissez un abonnement compatible."
+      : "Un abonnement est nécessaire pour continuer.";
+    let boutons;
+
+    if (sansDa) {
+      boutons = [{label:"Faire ma DA",valeur:"demande",style:"lcdp-button-primary"}];
+    } else if (!daValidee) {
+      boutons = [{label:"Être invité(e)",valeur:"invitation",style:"lcdp-button-primary"}];
+    } else if (jourHorsCouverture) {
+      titre = "Nouvel abonnement";
+      texte = "Cette date n'est pas couverte par votre abonnement.";
+      // K2 ouvre le premier écran COMPLET d'Aboresa, personnalisé :
+      // toutes les formules sont visibles ; les impossibles sont désactivées.
+      boutons = [{label:"Abonnement",valeur:"abonnement",style:"lcdp-button-primary"}];
+    } else {
+      if (depassement) titre = "Nouvel abonnement";
+      boutons = [{label:"Abonnement",valeur:"abonnement",style:"lcdp-button-primary"}];
+    }
+    const choix = await ouvrirDialogueBoutonsSuperpose({titre,texte,boutons});
     if (sansDa && choix === "demande") {
       await ouvrirDemandeAbonnementDepuisPlanning();
-    }
-    if (daValidee && choix === "abonnement") {
-      await ouvrirAbonnementDepuisPlanning();
+    } else if (!sansDa && !daValidee && choix === "invitation") {
+      await proposerTagDuoActifMaquette();
+    } else if (daValidee && choix === "abonnement") {
+      await ouvrirAbonnementDepuisPlanning({
+        origine: depassement ? "horizon" : jourHorsCouverture ? "jour_hors_couverture" : "sans_abonnement",
+        formule: null,
+        dureeMinimumMois: depassement ? 3 : null,
+        date: dateIso || null,
+        moisCible: contexte.moisCible || null,
+        idparc: String(etatPage.calendrierMoisActif?.parc?.idparc || etatPage.calendrierMoisActif?.parc?.id || "") || null
+      });
     }
     return true;
   }
 
-  async function ouvrirAbonnementDepuisPlanning() {
-    // Entrée dans le tunnel PLANIFIER déjà présent : constitution d'un panier
-    // de réservations provisoires, puis calcul de l'abonnement correspondant.
-    // Ne jamais rediriger vers la page autonome abonnement-membre.html.
+  async function proposerTagDuoActifMaquette() {
     const parc = etatPage.calendrierMoisActif?.parc;
-    if (!parc) throw new Error("Sélectionnez d'abord un parc dans PLANIFIER.");
-    const suite = await ouvrirVotrePlanning({ parc, retourMois: () => {} });
-    preparationAbonnementPlanifier = suite === "ajouter";
+    if (!parc) {
+      await afficherAlerteSuperposee("Sélectionnez d'abord un parc.");
+      return;
+    }
+    const idparc = String(parc.idparc || parc.id || "");
+    if (!idparc) return;
+    const reponse = await ouvrirDialogueBoutonsSuperpose({
+      titre: "Duo Actif",
+      texte: "Poser un tag Duo Actif sur ce parc ?",
+      boutons: [{label:"Confirmer",valeur:"poser",style:"lcdp-button-orange"}]
+    });
+    // Croix et clic extérieur = annulation. Seul Confirmer crée le tag fictif.
+    if (reponse !== "poser") return;
+    tagsDuoActifMaquette.add(idparc);
+    await afficherAlerteSuperposee(
+      "Le tag est enregistré sur ce parc. (Maquette : aucune écriture en base.)",
+      "orange", {libelleBouton:"Fermer"}
+    );
+  }
+
+  async function ouvrirAbonnementDepuisPlanning(contexte) {
+    // Point de transfert unique. ABO-RÉZA n'existe pas encore : ne pas ouvrir
+    // l'ancien panier et ne pas simuler une souscription.
+    if (typeof window.LCDP_ouvrirAboReza === "function") {
+      await window.LCDP_ouvrirAboReza({...contexte});
+      return;
+    }
+    await afficherAlerteSuperposee(
+      "Le sous-tunnel ABO-RÉZA n'est pas encore raccordé. Aucun abonnement n'a été commandé.",
+      "orange", {libelleBouton:"Fermer"}
+    );
   }
 
   async function ouvrirDemandeAbonnementDepuisPlanning() {
@@ -491,7 +550,16 @@
     }
     await window.LCDP_ouvrirPremiereDaMembre({
       contexte: etatMembre,
-      onStatudaChange: donnees => Object.assign(etatMembre, donnees, { statudaConnue: true })
+      onStatudaChange: donnees => {
+        Object.assign(etatMembre, donnees, { statudaConnue: true });
+        if (etatPage.droitsPlanningParcActifs) {
+          etatPage.droitsPlanningParcActifs.statuda = normaliserStatudaReservation(etatMembre.statuda);
+        }
+        // Une DA validée modifie l'orientation, sans réinitialiser le calendrier.
+        chargerDroitsRezabo().then(droits => {
+          etatPage.droitsPlanningParcActifs = droits;
+        }).catch(error => console.warn("Actualisation des droits DA :", error));
+      }
     });
   }
 
@@ -499,11 +567,13 @@
   async function ouvrirPlanningGeneralVierge() {
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) throw new Error("Emplacement du planning introuvable.");
-    const [fragmentCalendrier, fragmentJour, fragmentLegende] = await Promise.all([
+    const [fragmentCalendrier, fragmentJour, fragmentLegende, droitsInitiaux] = await Promise.all([
       chargerFragmentObjet("/BOX/04-box-calendrier-mois.html"),
       chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html"),
-      chargerFragmentObjet("/BOX/04-box-legende.html").catch(() => null)
+      chargerFragmentObjet("/BOX/04-box-legende.html").catch(() => null),
+      chargerDroitsRezabo()
     ]);
+    etatPage.droitsPlanningParcActifs = droitsInitiaux;
     const calendrier = fragmentCalendrier.querySelector("[data-lcdp-box-calendrier-mois]");
     const templateJour = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
     if (!calendrier || !templateJour) throw new Error("Grille mensuelle indisponible.");
@@ -615,7 +685,7 @@
     const etat = { annee, mois };
     const borne = annee * 12 + mois;
     let parcSelectionne = null;
-    let droitsParc = null;
+    let droitsParc = droitsInitiaux;
     let planningCourant = [];
     let generationPlanning = 0;
 
@@ -629,7 +699,7 @@
       parcSelectionne = parc;
       droitsParc = droits;
       etatPage.droitsPlanningParcActifs = droits;
-      preparationAbonnementPlanifier = false;
+      preparationAbonnementPlanifier = Boolean(window.LCDP_ABOREZA?.actif());
       planningCourant = donnees;
       etatPage.calendrierMoisActif = { ...demande, modePlanning: "lecture", planning: donnees };
       generationPlanning++;
@@ -655,6 +725,19 @@
         message.hidden = false;
       }
     }
+
+    // Actualisation après un accès confirmé : même mois, même parc et mêmes filtres.
+    etatPage.actualiserPlanningPrincipal = actualiserMoisParc;
+    // ABO-RÉZA réutilise la grille permanente, mais pilote seul son mois courant.
+    etatPage.allerMoisAboReza = async (cle) => {
+      if (!/^\d{4}-\d{2}$/.test(String(cle || ""))) throw new Error("Mois ABO-RÉZA invalide.");
+      etat.annee = Number(cle.slice(0,4));
+      etat.mois = Number(cle.slice(5,7));
+      planningCourant = [];
+      afficher();
+      if (parcSelectionne) await actualiserMoisParc();
+    };
+    etatPage.hoteBandeauAboReza = enteteFiltres;
 
     function afficher() {
       courant.textContent = formaterMoisAnnee(etat.annee, etat.mois);
@@ -706,22 +789,25 @@
         meta.hidden = true;
         departementParc.hidden = true;
       }
-      precedent.disabled = etat.annee * 12 + etat.mois <= borne;
-      // Ne pas griser le mois suivant : afficher le message d'horizon au clic.
-      suivant.disabled = false;
+      const modeGuide = Boolean(window.LCDP_ABOREZA?.actif());
+      precedent.disabled = modeGuide || etat.annee * 12 + etat.mois <= borne;
+      // ABO-RÉZA commande automatiquement le mois après 2 accès.
+      suivant.disabled = modeGuide;
     }
     precedent.addEventListener("click", () => {
+      if (window.LCDP_ABOREZA?.actif()) return;
       if (etat.annee * 12 + etat.mois <= borne) return;
       changerMois(etat, -1);
       afficher();
       if (parcSelectionne) actualiserMoisParc();
     });
     suivant.addEventListener("click", () => {
+      if (window.LCDP_ABOREZA?.actif()) return;
       const prochain = { ...etat };
       changerMois(prochain, 1);
       const cle = String(prochain.annee) + "-" + String(prochain.mois).padStart(2, "0");
-      if (parcSelectionne && droitsParc && cle > droitsParc.moisMaximum) {
-        afficherLimiteConsultationPlanning(droitsParc).catch(console.error);
+      if (droitsParc && cle > droitsParc.moisMaximum) {
+        afficherLimiteConsultationPlanning(droitsParc, cle).catch(console.error);
         return;
       }
       changerMois(etat, 1);
@@ -1003,7 +1089,11 @@
   function normaliserStatudaReservation(value) {
     const statut = String(value || "").trim().toLowerCase();
 
-    return ["encours", "oui", "non"].includes(statut) ? statut : null;
+    if (!statut) return null;
+    if (statut === "oui") return "oui";
+    if (["encours", "en_cours", "attente"].includes(statut)) return "encours";
+    // Toute autre valeur non vide signifie qu'une DA existe sans validation.
+    return "non";
   }
 
   function formaterDateDaReservation(value) {
@@ -2955,9 +3045,12 @@
     if (jourCalendrier && !jourCalendrier.disabled) {
       event.preventDefault();
       if (jourCalendrier.closest("#lcdp-lightbox-slot [data-lcdp-box-calendrier-mois]") &&
+          !window.LCDP_ABOREZA?.actif() &&
           !preparationAbonnementPlanifier &&
-          (membreSansDaValidee() || membreDaValideeSansAbonnement())) {
-        await afficherDialogueAbonnementPlanning("jour", etatPage.droitsPlanningParcActifs);
+          (membreSansDaValidee() ||
+            !jourCouvertParAbonnementPayePlanifier(String(jourCalendrier.dataset.date || "")))) {
+        await afficherDialogueAbonnementPlanning("jour", etatPage.droitsPlanningParcActifs,
+          {dateIso:String(jourCalendrier.dataset.date || "")});
         return;
       }
       await ouvrirCalendrierJourDepuisCard(jourCalendrier);
@@ -2966,33 +3059,8 @@
 
   }
 
-  async function afficherLimiteConsultationPlanning(droits) {
-    // Même texte selon le clic ; le bouton dépend du statut DA et de l'abonnement.
-    if (await afficherDialogueAbonnementPlanning("mois", droits)) return;
-    if (droits.abonnementActif) {
-      await afficherAlerteSuperposee("Votre abonnement ne permet pas de consulter le mois suivant.");
-      return;
-    }
-    const daValidee = droits.demandeAbonnementValidee === true;
-    const libelle = daValidee ? "Prendre mon abonnement" : "Faire ma demande d'abonnement";
-    const confirmer = await afficherAlerteSuperposee(
-      "Vous n'avez pas d'abonnement pour voir le mois suivant.", "orange", { libelleBouton: libelle }
-    );
-    if (!confirmer) return;
-    if (daValidee) {
-      window.location.href = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
-      return;
-    }
-    if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
-      await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js");
-    }
-    if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
-      throw new Error("Le formulaire de demande d'abonnement est indisponible.");
-    }
-    await window.LCDP_ouvrirPremiereDaMembre({
-      contexte: etatMembre,
-      onStatudaChange: donnees => Object.assign(etatMembre, donnees, { statudaConnue: true })
-    });
+  async function afficherLimiteConsultationPlanning(droits, moisCible) {
+    await afficherDialogueAbonnementPlanning("mois", droits, {moisCible});
   }
 
   async function autoriserReservationParc(parc) {
@@ -3379,61 +3447,32 @@
     }
   }
 
-  async function chargerDroitsPlanningParcMembre(parc) {
-    if (!ENDPOINT_PLANNING_PARC) {
-      throw new Error(
-        "Le service planning parc n’est pas configuré."
-      );
+  // Les droits d'abonnement sont indépendants du parc. La source est REZABO ;
+  // w-planning-parc ne fournit plus les décisions de navigation à cette page.
+  async function chargerDroitsRezabo() {
+    if (!ENDPOINT_REZABO) {
+      throw new Error("Le service Rézabo n’est pas configuré.");
     }
-
-    const idparc = String(
-      parc?.idparc ||
-      parc?.id ||
-      ""
-    ).trim();
-
-    if (!idparc) {
-      throw new Error("Parc manquant.");
-    }
-
-    const url =
-      ENDPOINT_PLANNING_PARC +
-      "/droits-planning?idparc=" +
-      encodeURIComponent(idparc) +
-      "&contexte=membre";
-    const reponse = await fetch(url, {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-      headers: {
-        "Accept": "application/json"
-      }
+    const reponse = await fetch(ENDPOINT_REZABO + "/droits", {
+      method: "GET", credentials: "include", cache: "no-store",
+      headers: { Accept: "application/json" }
     });
-    const data =
-      await reponse.json().catch(() => null);
-
+    const data = await reponse.json().catch(() => null);
     if (reponse.status === 401) {
       redirigerConnexionMembre("inactive");
-      throw new Error(
-        "Votre session membre a expiré."
-      );
+      throw new Error("Votre session membre a expiré.");
     }
-
-    if (
-      !reponse.ok ||
-      !data ||
-      !reponseApiOk(data) ||
-      !data.droitsPlanning
-    ) {
-      throw new Error(
-        messageErreurApi(
-          data,
-          "Impossible de déterminer la période consultable."
-        )
-      );
+    if (!reponse.ok || !data || !reponseApiOk(data) || !data.droitsPlanning) {
+      throw new Error(messageErreurApi(data, "Impossible de vérifier vos droits de consultation."));
     }
-
     return data.droitsPlanning;
+  }
+
+  async function chargerDroitsPlanningParcMembre(parc) {
+    if (!String(parc?.idparc || parc?.id || "").trim()) {
+      throw new Error("Parc manquant.");
+    }
+    return chargerDroitsRezabo();
   }
 
   async function chargerPlanningParcMoisLecture(etatPlanning) {
@@ -3451,11 +3490,9 @@
       throw new Error("Parc manquant.");
     }
 
+    const idPanierGuide = window.LCDP_ABOREZA?.panier()?.idpanier || "";
     const cleCache = [
-      "membre",
-      idparc,
-      etatPlanning.annee,
-      etatPlanning.mois
+      "membre", idparc, etatPlanning.annee, etatPlanning.mois, idPanierGuide
     ].join(":");
     const cacheExistant = cachePlanningParcLecture.get(
       cleCache
@@ -3477,7 +3514,7 @@
         encodeURIComponent(etatPlanning.annee) +
         "&mois=" +
         encodeURIComponent(etatPlanning.mois) +
-        "&contexte=membre";
+        "&contexte=membre" + (idPanierGuide ? "&idpanier_aboreza=" + encodeURIComponent(idPanierGuide) : "");
 
       const reponse = await fetch(url, {
         method: "GET",
@@ -3982,6 +4019,16 @@
       card.classList.add("lcdp-box-card-jour-in-calendrier-mois--today");
     }
 
+    // Couverture d'une journée : seuls les abonnements « paye » colorent la
+    // carte. Cette information est indépendante des filtres DUO / invités.
+    if (jourCouvertParAbonnementPayePlanifier(dateIso)) {
+      card.classList.add("lcdp-planifier-jour--abonnement-paye");
+    }
+
+    if (window.LCDP_ABOREZA?.actif() && !window.LCDP_ABOREZA.datePossible(dateIso)) {
+      card.disabled = true;
+      card.classList.add("lcdp-aboreza-jour-hors-periode");
+    }
     if (estPasse) {
       card.classList.add("lcdp-box-card-jour-in-calendrier-mois--past");
       card.disabled = true;
@@ -3992,12 +4039,12 @@
       // Sans DA validée ou sans abonnement, une journée future ouvre le dialogue.
       // Pendant la préparation d'un abonnement, seules les journées ouvertes
       // permettront ensuite de sélectionner un créneau provisoire.
-      if (!(membreSansDaValidee() || membreDaValideeSansAbonnement()) || estPasse || preparationAbonnementPlanifier) card.disabled = true;
+      if (estPasse || preparationAbonnementPlanifier) card.disabled = true;
     }
 
     if (modeLecture && !card.disabled) {
       card.title = !preparationAbonnementPlanifier &&
-        (membreSansDaValidee() || membreDaValideeSansAbonnement())
+        (membreSansDaValidee() || !jourCouvertParAbonnementPayePlanifier(dateIso))
         ? "Conditions de réservation"
         : "Afficher le détail horaire de la journée";
       card.removeAttribute("aria-disabled");
@@ -4009,6 +4056,16 @@
       modeLecture ? "lecture" : "reservation"
     );
 
+    // Les flux sont déjà présents dans planningJour.plages.*.planningMembre.
+    // Une marque corail signale un accès PERSONNEL dans ce parc ; un corail
+    // plus clair signale une invitation reçue dans ce même parc.
+    if (modeLecture && ouvert) {
+      marquerAccesPersonnelPlanifier(card, planningJour);
+      if (window.LCDP_ABOREZA?.actif()) {
+        window.LCDP_ABOREZA.marquerAccesProvisoires(card, dateIso);
+      }
+    }
+
     // Jour fermé : aucun emplacement horaire visible, même si une règle CSS
     // impose visibility:visible sur les liserés des plages non ouvertes.
     if (modeLecture && !ouvert) {
@@ -4019,6 +4076,35 @@
     }
 
     return card;
+  }
+
+  function jourCouvertParAbonnementPayePlanifier(dateIso) {
+    const abonnements = etatPage.droitsPlanningParcActifs?.abonnements;
+    return Array.isArray(abonnements) && abonnements.some(abo =>
+      String(abo?.statutabo || "").toLowerCase() === "paye" &&
+      String(abo?.debut || "").slice(0, 10) <= dateIso &&
+      String(abo?.fin || "").slice(0, 10) >= dateIso
+    );
+  }
+
+  function marquerAccesPersonnelPlanifier(card, planningJour) {
+    const idparc = String(card.dataset.idparc || "");
+    for (const nomPlage of CLES_PLAGES_AFFICHAGE) {
+      const slot = card.querySelector(
+        '[data-lcdp-card-jour-mois-slot="' + nomPlage + '"]'
+      );
+      const plage = planningJour?.plages?.[nomPlage];
+      if (!slot || !plage?.ouverte || slot.hidden) continue;
+      const flux = (Array.isArray(plage.planningMembre) ? plage.planningMembre : [])
+        .filter(item => String(item?.idparc || "") === idparc &&
+          String(item?.statut || "").toLowerCase() !== "cancd");
+      if (!flux.length) continue;
+      const reserve = flux.some(item => item.invitation !== true);
+      slot.classList.add(reserve
+        ? "lcdp-planifier-plage--acces-personnel"
+        : "lcdp-planifier-plage--invitation-recue");
+      slot.title += reserve ? " · Accès planifié" : " · Invitation reçue";
+    }
   }
 
   function remplirPlagesJour(card, planningJour, mode) {
@@ -4131,8 +4217,8 @@
     const planningJour = (etatCalendrier.planning || [])
       .find((jour) => String(jour.date || "") === dateIso);
 
-    if (!planningJour || planningJour.ouvert !== true) {
-      await afficherAlerte("Aucun horaire disponible pour cette date.");
+    if (!planningJour) {
+      await afficherAlerte("Planning indisponible pour cette date.");
       return;
     }
 
@@ -4170,7 +4256,7 @@
     const nomParc = String(contexte.parc.nom || contexte.parc.nomparc || "Parc").trim() || "Parc";
     const departement = String(contexte.parc.dptmt || contexte.parc.departement || "").trim();
 
-    titre.textContent = "Votre heure d'arrivée";
+    titre.textContent = "Choisissez une plage horaire";
     meta.textContent = formaterDateFr(contexte.dateIso) + " · " + nomParc + (departement ? " · " + departement : "");
 
     boutonFermer.addEventListener("click", () => {
@@ -4193,171 +4279,91 @@
   }
 
   function remplirGrilleHoraires(grille, message, contexte) {
-    grille.innerHTML = "";
-
+    grille.replaceChildren();
     const plages = construirePlagesJour(contexte.planningJour);
-    const heures = genererHeuresDisponibles();
-    const messagesBlocage = [];
-
-    plages.forEach((plage) => {
-      const reservationPlage = trouverReservationActiveDatePlage(contexte.dateIso, plage.nom);
-
-      if (reservationPlage) {
-        messagesBlocage.push(
-          "Vous avez déjà une réservation à " +
-          formaterHeurePhrase(extraireHeureFranceReservation(reservationPlage.datebookd)) +
-          " sur " +
-          libellePlageReservation(plage.nom) +
-          "."
-        );
-      }
-    });
-
-    heures.forEach((heure) => {
-      const plage = trouverPlagePourHeure(plages, heure);
-
-      if (!plage || !filtresAccesPlanifier.has(plage.autorisation)) return;
-
-      const reservationPlage = trouverReservationActiveDatePlage(contexte.dateIso, plage.nom);
-      grille.appendChild(creerCardHeure(contexte, heure, plage, reservationPlage));
-    });
-
-    if (!grille.children.length) {
-      message.hidden = false;
-      message.textContent = "Aucun horaire d'arrivée n'est disponible pour cette date.";
-      return;
+    for (const plage of plages) {
+      const flux = Array.isArray(contexte.planningJour?.plages?.[plage.nom]?.planningMembre)
+        ? contexte.planningJour.plages[plage.nom].planningMembre : [];
+      const reservation = flux.find(r => r?.statut !== "cancd") ||
+        trouverReservationActiveDatePlage(contexte.dateIso, plage.nom);
+      grille.appendChild(creerCardHeure(contexte, plage.debut, plage, reservation));
     }
-
-    if (messagesBlocage.length) {
-      message.hidden = false;
-      message.textContent = messagesBlocage.join(" ");
-      return;
-    }
-
-    message.hidden = true;
-    message.textContent = "";
+    message.hidden = plages.length > 0;
+    message.textContent = plages.length ? "" : "Le planning de cette journée est indisponible.";
   }
 
   function construirePlagesJour(planningJour) {
-    if (!planningJour || !planningJour.plages) {
-      return [];
-    }
-
-    const plages = [];
-
-    ajouterPlageSiOuverte(plages, "plage1", planningJour.plages.plage1, {
-      debut: "06:00",
-      fin: "10:00"
+    const horaires = [
+      ["plage1","06:00","10:00"], ["plage2","10:00","13:00"],
+      ["plage3","13:00","17:00"], ["plage4","17:00","21:00"],
+      ["plage5","21:00","02:00"]
+    ];
+    return horaires.map(([nom,debut,fin]) => {
+      const data = planningJour?.plages?.[nom];
+      return {nom,debut,fin,ouverte:data?.ouverte === true,
+        autorisation:determinerAutorisationPlage(data),data};
     });
-
-    ajouterPlageSiOuverte(plages, "plage2", planningJour.plages.plage2, {
-      debut: "10:00",
-      fin: "13:00"
-    });
-
-    ajouterPlageSiOuverte(plages, "plage3", planningJour.plages.plage3, {
-      debut: "13:00",
-      fin: "17:00"
-    });
-
-    ajouterPlageSiOuverte(plages, "plage4", planningJour.plages.plage4, {
-      debut: "17:00",
-      fin: "21:00"
-    });
-
-    ajouterPlageSiOuverte(plages, "plage5", planningJour.plages.plage5, {
-      debut: "21:00",
-      fin: "23:59"
-    });
-
-    return plages;
-  }
-
-  function ajouterPlageSiOuverte(plages, nomPlage, plage, defaut) {
-    if (!plage || plage.ouverte !== true) {
-      return;
-    }
-
-    plages.push({
-      nom: nomPlage,
-      debut: plage.debut || defaut.debut,
-      fin: plage.fin || defaut.fin,
-      autorisation: determinerAutorisationPlage(plage)
-    });
-  }
-
-  function genererHeuresDisponibles() {
-    const heures = [];
-
-    for (let totalMinutes = 6 * 60; totalMinutes <= 23 * 60 + 30; totalMinutes += 30) {
-      const heure = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-
-      heures.push(
-        String(heure).padStart(2, "0") + ":" + String(minutes).padStart(2, "0")
-      );
-    }
-
-    return heures;
-  }
-
-  function trouverPlagePourHeure(plages, heure) {
-    const totalMinutes = convertirHeureEnMinutes(heure);
-
-    return plages.find((plage) => {
-      const debut = convertirHeureEnMinutes(plage.debut);
-      const fin = convertirHeureEnMinutes(plage.fin);
-
-      return totalMinutes >= debut && totalMinutes < fin;
-    }) || null;
-  }
-
-  function convertirHeureEnMinutes(heure) {
-    const [heures, minutes] = String(heure || "00:00").split(":").map(Number);
-
-    if (!Number.isFinite(heures) || !Number.isFinite(minutes)) {
-      return 0;
-    }
-
-    return heures * 60 + minutes;
   }
 
   function creerCardHeure(contexte, heure, plage, reservationPlage) {
     const card = etatPage.templateHeureJour.cloneNode(true);
     const label = card.querySelector("[data-lcdp-card-heure-jour-label]");
-    const autorisation = plage.autorisation || "duo";
-    const heureReservee = reservationPlage
-      ? extraireHeureFranceReservation(reservationPlage.datebookd)
-      : "";
-    const estHeureReservee = reservationPlage && heureReservee === heure;
-
-    card.classList.add("lcdp-planifier-heure--" + autorisation);
-    if (!reservationPlage) {
-      card.style.setProperty("background", COULEURS_AUTORISATIONS_PLANIFIER[autorisation], "important");
-      card.style.setProperty("color", "#ffffff", "important");
-    }
-    card.dataset.idparc = String(contexte.parc.idparc || contexte.parc.id || "");
+    const debut = construireDateBookd(contexte.dateIso, heure);
+    const heurePassee = !debut || Date.parse(debut) <= Date.now();
+    const autorisation = plage.autorisation;
+    const idparc = String(contexte.parc.idparc || contexte.parc.id || "");
+    card.classList.add("lcdp-planifier-choix-plage");
+    card.removeAttribute("data-action");
+    card.dataset.idparc = idparc;
     card.dataset.date = contexte.dateIso;
     card.dataset.heure = heure;
     card.dataset.plagebookd = plage.nom;
+    const periode = formaterHeureAffichee(heure) + " – " + formaterHeureAffichee(plage.fin);
+    if (label) label.textContent = periode;
 
-    if (reservationPlage) {
-      card.disabled = true;
-      card.dataset.indisponible = estHeureReservee ? "deja-reserve" : "plage-deja-reservee";
-
-      if (estHeureReservee) {
-        card.classList.add("lcdp-box-card-heure-in-calendrier-jour--deja-reserve");
-        card.setAttribute("aria-label", formaterHeureAffichee(heure) + " déjà réservé");
-      } else {
-        card.classList.add("lcdp-box-card-heure-in-calendrier-jour--plage-bloquee");
-        card.setAttribute("aria-label", formaterHeureAffichee(heure) + " indisponible car une réservation existe déjà sur cette plage");
+    // Identité visuelle du mois : couleurs des autorisations et liseré neutre.
+    if (!plage.ouverte) {
+      card.classList.add("lcdp-planifier-heure--fermee");
+      card.dataset.indisponible = "fermee";
+    } else {
+      card.classList.add("lcdp-planifier-heure--" + autorisation);
+      card.style.setProperty("background", COULEURS_AUTORISATIONS_PLANIFIER[autorisation], "important");
+      card.style.setProperty("color", "#ffffff", "important");
+    }
+    const accesProvisoire = window.LCDP_ABOREZA?.actif() &&
+      window.LCDP_ABOREZA.accesDejaChoisi(contexte.dateIso, plage.nom);
+    if (accesProvisoire) {
+      card.dataset.indisponible = "deja-reserve";
+      card.classList.add("lcdp-planifier-heure--reservation");
+    } else if (reservationPlage && reservationPlage.statut !== "cancd") {
+      const estInvitation = reservationPlage.invitation === true;
+      card.dataset.indisponible = estInvitation ? "invitation" : "deja-reserve";
+      card.classList.add(estInvitation ? "lcdp-planifier-heure--invitation" : "lcdp-planifier-heure--reservation");
+    } else if (heurePassee) {
+      card.dataset.indisponible = "passee";
+    }
+    card.setAttribute("aria-label", "Plage " + periode + (card.dataset.indisponible ? " : " + card.dataset.indisponible : ""));
+    card.addEventListener("click", async () => {
+      if (choixPlanningEnCours) return;
+      try {
+        if (card.dataset.indisponible) {
+          const motifs = {
+            invitation:"Vous avez déjà une invitation pour cette plage.",
+            "deja-reserve":"Il y a déjà un accès planifié sur cette plage.",
+            fermee:"Cette plage est fermée dans ce parc.",
+            passee:"Cette plage a déjà commencé."
+          };
+          await afficherAlerteSuperposee(motifs[card.dataset.indisponible],"orange",{libelleBouton:"Fermer"});
+          return;
+        }
+        await traiterChoixReservationDepuisFicheParc({
+          parc:contexte.parc,dateIso:contexte.dateIso,
+          heure:plage.debut,heureFin:plage.fin,plagebookd:plage.nom,source:"calendrier-jour"
+        });
+      } catch (error) {
+        await afficherAlerteSuperposee(error.message || "Impossible de sélectionner cette plage.");
       }
-    }
-
-    if (label) {
-      label.textContent = formaterHeureAffichee(heure);
-    }
-
+    });
     return card;
   }
 
@@ -4445,14 +4451,15 @@
       }
       return false;
     }
+    // Une plage est indivisible, y compris si l'ancienne fiche parc envoie
+    // encore une demi-heure sélectionnée. C'est le début canonique qui compte.
+    const heuresDebut = {plage1:"06:00",plage2:"10:00",plage3:"13:00",plage4:"17:00",plage5:"21:00"};
+    const heuresFin = {plage1:"10:00",plage2:"13:00",plage3:"17:00",plage4:"21:00",plage5:"02:00"};
+    if (!Object.prototype.hasOwnProperty.call(heuresDebut, choix.plagebookd)) throw new Error("Plage invalide.");
+    choix = {...choix, heure:heuresDebut[choix.plagebookd], heureFin:heuresFin[choix.plagebookd]};
     const debut = construireDateBookd(choix.dateIso, choix.heure);
     if (!debut || Date.parse(debut) <= Date.now()) {
       await afficherAlerteSuperposee("Cette plage a déjà commencé."); return false;
-    }
-    if(panierPlanning.reservations.some(r=>r.dateIso===choix.dateIso && r.plagebookd===choix.plagebookd)){
-      await afficherAlerteSuperposee("Ce créneau est déjà dans votre planning.");
-      await chargerDonneesPanierPlanning();
-      await ouvrirVotrePlanning(choix);return false;
     }
     const contenu = document.createElement("div");
     const date = new Intl.DateTimeFormat("fr-FR", {timeZone:"Europe/Paris",weekday:"long",day:"numeric",month:"long",year:"numeric"})
@@ -4462,36 +4469,36 @@
       const ligne = document.createElement("div"); ligne.textContent = texte; contenu.append(ligne);
     }
     const reponse = await ouvrirDialogueBoutonsSuperpose({
-      titre:"Confirmez votre venue", contenu,
-      boutons:[{label:"Annuler",valeur:"annuler",style:"lcdp-button-secondary"},
-        {label:"Confirmer",valeur:"confirmer",style:"lcdp-button-orange"}]
+      titre:"Confirmez votre accès", contenu,
+      boutons:[{label:"Confirmer",valeur:"confirmer",style:"lcdp-button-orange"}]
     });
     if (reponse !== "confirmer") return false;
-    await chargerDonneesPanierPlanning();
-    if(!panierPlanning.donneesConnues)return false;
-    if(reservationPanierCouverte(choix)===true){
-      try {
-        const reservation=await enregistrerReservation({
-          idparc:String(choix.parc.idparc||choix.parc.id||''),
-          datebookd:debut,plagebookd:choix.plagebookd,modePlanningCouvert:true
-        });
-        if(!reservation?.idflux)throw Error('Le serveur n’a pas confirmé l’enregistrement. Consultez Mon planning avant de réessayer.');
-        etatPage.reservationsMembre.push({...reservation,parc:{...choix.parc}});
-        cachePlanningParcLecture.clear();
-        panierPlanning.derniereAction={enregistree:true,reservation:{...choix}};
-        await ouvrirVotrePlanning(choix);
-      }catch(error){await afficherAlerteSuperposee(error.message||'Impossible d’enregistrer cette réservation.');}
+    if (window.LCDP_ABOREZA?.actif()) {
+      await window.LCDP_ABOREZA.selectionnerAcces(choix);
       return false;
     }
-    const resultat = ajouterReservationPanierPlanning(choix);
-    if(resultat==='ajoute')panierPlanning.derniereAction={enregistree:false,reservation:{...choix}};
-    if (resultat === "doublon") await afficherAlerteSuperposee("Ce créneau est déjà dans votre planning.");
-    if (resultat === "existant") await afficherAlerteSuperposee("Vous avez déjà une réservation ou une invitation pour cette plage dans ce parc.");
-    if (resultat === "limite") await afficherAlerteSuperposee("Votre planning contient déjà douze nouvelles réservations.");
-    if(resultat==="mois")await afficherAlerteSuperposee("Cinq nouvelles réservations maximum par mois, tous parcs confondus.");
-    if(resultat==="horizon")await afficherAlerteSuperposee("Choisissez une date entre M et M+12.");
-    if(resultat==="conflit")await afficherAlerteSuperposee("Cette plage est déjà dans votre planning, dans ce parc ou un autre.");
-    await ouvrirVotrePlanning(choix);
+    if (jourCouvertParAbonnementPayePlanifier(choix.dateIso)) {
+      try {
+        // Le Worker RÉZA-ABO est le seul point d'entrée pour une nouvelle réza.
+        const reservation = await enregistrerReservation({
+          idparc: String(choix.parc.idparc || choix.parc.id || ""),
+          date: choix.dateIso,
+          plagebookd: choix.plagebookd
+        });
+        if (!reservation?.idflux) throw new Error("Enregistrement non confirmé. Consultez votre planning avant de réessayer.");
+        etatPage.reservationsMembre.push({...reservation, parc: {...choix.parc}});
+        cachePlanningParcLecture.clear();
+        // Fermer uniquement la couche JOUR. Le calendrier mensuel est permanent.
+        document.getElementById("lcdp-planifier-jour-overlay-slot")?.remove();
+        await etatPage.actualiserPlanningPrincipal?.();
+        await afficherAlerteSuperposee("Accès planifié", "orange", {libelleBouton:"Fermer"});
+      } catch (error) {
+        await afficherAlerteSuperposee(error.message || "Impossible d'enregistrer cette réservation.");
+      }
+      return false;
+    }
+    await afficherDialogueAbonnementPlanning("jour", etatPage.droitsPlanningParcActifs,
+      {dateIso:choix.dateIso});
     return false;
     } finally {choixPlanningEnCours=false;}
   }
@@ -4775,32 +4782,24 @@
   }
 
   async function enregistrerReservation(payload) {
-    if (!ENDPOINT_FLUXM) {
-      throw new Error("Le service du planning membre n’est pas configuré.");
-    }
-
-    const reponse = await fetch(ENDPOINT_FLUXM + "/creer-reservation", {
-      method: "POST",
-      credentials: "include",
-      cache: "no-store",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
+    if (!ENDPOINT_REZABO) throw new Error("Le service Rézabo n'est pas configuré.");
+    const reponse = await fetch(ENDPOINT_REZABO + "/reserver", {
+      method: "POST", credentials: "include", cache: "no-store",
+      headers: {"Accept":"application/json", "Content-Type":"application/json"},
+      body: JSON.stringify({
+        idparc: payload.idparc,
+        date: payload.date,
+        plagebookd: payload.plagebookd
+      })
     });
-
     const data = await reponse.json().catch(() => null);
-
     if (reponse.status === 401) {
       redirigerConnexionMembre("inactive");
       throw new Error("Session membre inactive.");
     }
-
     if (!reponse.ok || !data || !reponseApiOk(data)) {
       throw new Error(messageErreurApi(data, "Impossible d'enregistrer la réservation."));
     }
-
     return data.reservation || null;
   }
 
@@ -4869,7 +4868,6 @@
         bouton.className = "lcdp-button " + (configuration.style || "lcdp-button-primary");
         bouton.textContent = configuration.label || "Valider";
         bouton.dataset.lcdpDialogueValeur=configuration.valeur || "";
-        // Parcours "Être invité(e)" à définir : visible, sans action trompeuse.
         bouton.disabled = configuration.disabled === true;
 
         bouton.addEventListener("click", () => {
@@ -4881,7 +4879,9 @@
       });
 
       if (typeof options.preparer === "function") options.preparer({fermer,actions,dialogue});
-      boutonFermer.addEventListener("click", () => {if(options.fermetureLibre!==false)fermer(null);});
+      boutonFermer.addEventListener("click", () => {
+        if (options.fermetureLibre !== false) fermer(options.fermetureValeur || null);
+      });
       dialogue.addEventListener("click", (event) => {
         if (event.target === dialogue && options.fermetureLibre!==false) fermer(null);
       });

@@ -1,0 +1,14 @@
+/* ABO-RÉZA : sous-tunnel de préparation des réservations. */
+.lcdp-aboreza-modal{position:fixed;inset:0;z-index:15000;background:rgba(19,30,24,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.lcdp-aboreza-dialogue{position:relative;width:min(100%,520px);max-height:90dvh;overflow:auto;border-radius:12px;background:white;box-shadow:0 14px 50px #0003;padding:26px;display:grid;gap:15px;color:#202723}
+.lcdp-aboreza-dialogue h2{font-size:1.4rem;margin:0;padding-right:36px}.lcdp-aboreza-dialogue p{margin:0;line-height:1.5}
+.lcdp-aboreza-dialogue label{display:grid;gap:7px;font-weight:600}.lcdp-aboreza-dialogue select,.lcdp-aboreza-dialogue input{width:100%;border:1px solid #b7c1b8;border-radius:8px;font:inherit;padding:10px;color:#202723;background:#fff}
+.lcdp-aboreza-fermer{position:absolute;top:12px;right:12px;background:transparent;border:0;font-size:1.75rem;cursor:pointer}
+.lcdp-aboreza-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}.lcdp-aboreza-actions button{min-height:42px;padding:9px 16px;border-radius:7px;border:1px solid #bbb;cursor:pointer;font:inherit}
+.lcdp-aboreza-actions .lcdp-aboreza-primary{background:#e88d24;color:white;border-color:#e88d24;font-weight:700}
+.lcdp-aboreza-bandeau{border:1px solid #e7ad6e;background:#fff8ee;padding:10px 12px;border-radius:8px;font-size:.87rem;line-height:1.4}
+.lcdp-aboreza-bandeau strong{display:block;font-size:.94rem}.lcdp-aboreza-bandeau button{margin-top:8px;font:inherit;background:none;text-decoration:underline;border:0;cursor:pointer;color:#633c15}
+.lcdp-aboreza-jour-hors-periode{opacity:.35}.lcdp-planifier-plage--acces-provisoire{box-shadow:inset 5px 0 #e86d58!important}
+.lcdp-aboreza-recap{max-height:34dvh;overflow:auto;padding:0 0 0 22px}.lcdp-aboreza-recap li{margin-bottom:6px}
+@media(max-width:520px){.lcdp-aboreza-dialogue{padding:20px}.lcdp-aboreza-actions{flex-direction:column}.lcdp-aboreza-actions button{width:100%}}
+.lcdp-aboreza-echeance{display:block;margin:5px 0 0;color:#9a3e26;font-weight:650}

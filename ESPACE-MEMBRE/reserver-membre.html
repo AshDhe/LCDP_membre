@@ -145,6 +145,45 @@
     document.write('<script data-lcdp-footer-autonome src="' + window.LCDP_urlObjet('/BOX/02-box-footer.js') + '"><\/script>');
   </script>
   <style>
+    /* PLANIFIER : cinq plages entières, pas de sélection par demi-heure. */
+    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot .lcdp-box-calendrier-jour__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 142px), 1fr));
+      gap: 10px;
+    }
+    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot .lcdp-planifier-choix-plage {
+      min-height: 68px;
+      padding: 12px 8px;
+      font-weight: 700;
+      white-space: normal;
+      text-align: center;
+    }
+    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot .lcdp-planifier-choix-plage:disabled {
+      cursor: not-allowed;
+      opacity: .55;
+    }
+    @media (max-width: 480px) {
+      .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot .lcdp-box-calendrier-jour__grid {
+        grid-template-columns: repeat(2, minmax(0,1fr));
+      }
+    }
+
+    /* Plage fermée ou passée : bouton consultable pour expliquer le blocage. */
+    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot .lcdp-planifier-heure--fermee {
+      background: transparent !important;
+      border: 1px solid #dce2e5 !important;
+      color: #616b70 !important;
+    }
+    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot
+    .lcdp-planifier-choix-plage[data-indisponible] { cursor: pointer; }
+    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot
+    .lcdp-planifier-choix-plage[data-indisponible="passee"] { opacity: .55; }
+    /* Marqueurs personnels distincts, sans altérer la couleur des catégories. */
+    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot
+    .lcdp-planifier-heure--reservation { box-shadow: inset 7px 0 #ef6a59; }
+    .lcdp-page-reserver #lcdp-planifier-jour-overlay-slot
+    .lcdp-planifier-heure--invitation { box-shadow: inset 7px 0 #f5b1a6; }
+
     /* PLANIFIER : pas de trait sous les filtres, sur mobile comme sur ordinateur. */
     .lcdp-page-reserver [data-lcdp-box-calendrier-mois] .lcdp-box-calendrier-mois__header {
       border-bottom: 0 !important;
@@ -246,6 +285,35 @@
         border-radius: 5px; /* Même arrondi que les plages colorées sur ordinateur. */
       }
     }
+    /* Droits PLANIFIER : jours couverts par un abonnement payé. Cette teinte
+       ne remplace ni les couleurs des catégories ni les jauges de fréquentation. */
+    .lcdp-page-reserver [data-lcdp-box-calendrier-mois]
+    .lcdp-planifier-jour--abonnement-paye {
+      background: #e5f4e9 !important;
+      border-color: #b7dac1 !important;
+    }
+    /* Indicateurs personnels, sur les 15 % gauches du trait horaire.
+       Les invitations n'entrent ni dans la jauge ni dans les quotas. */
+    .lcdp-page-reserver [data-lcdp-card-jour-mois-slot].lcdp-planifier-plage--acces-personnel,
+    .lcdp-page-reserver [data-lcdp-card-jour-mois-slot].lcdp-planifier-plage--invitation-recue {
+      position: relative;
+      isolation: isolate;
+    }
+    .lcdp-page-reserver [data-lcdp-card-jour-mois-slot].lcdp-planifier-plage--acces-personnel::before,
+    .lcdp-page-reserver [data-lcdp-card-jour-mois-slot].lcdp-planifier-plage--invitation-recue::before {
+      content: "";
+      position: absolute;
+      z-index: 3;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 15%;
+      pointer-events: none;
+      background: #ef6a59;
+    }
+    .lcdp-page-reserver [data-lcdp-card-jour-mois-slot].lcdp-planifier-plage--invitation-recue::before {
+      background: #f5b1a6;
+    }
     /* Ajustements propres à PLANIFIER : sans changer les styles génériques. */
     @media (max-width: 767px) {
       .lcdp-planifier-acces-dialogue .lcdp-box-dialogue-champ__title { font-size: clamp(1.5rem, 6vw, 2.04rem); }
@@ -333,6 +401,10 @@
 .lcdp-page-reserver .lcdp-fiche-parc__chargement-plein .lcdp-pictowait__image { max-width:100%; }
 .lcdp-page-reserver [data-lcdp-box-alerte] [data-lcdp-alerte-message] { font-size:1.3rem; }
 </style>
+<style>
+/* ABO-RÉZA : dialogue de qualification et bandeau de progression, propres à PLANIFIER. */
+</style>
+  <link rel="stylesheet" href="./aboreza-membre.css?v=20261030-k2-couvertures-v5">
 </head>
 
 <body>
@@ -384,6 +456,7 @@
 
   </div>
 
-  <script src="./reserver-membre.js?v=20261029-plages-fermees-entete-v3"></script>
+  <script src="./reserver-membre.js?v=20261030-k2-couvertures-v5"></script>
+  <script src="./aboreza-membre.js?v=20261030-k3-horizon-v1"></script>
 </body>
 </html>
