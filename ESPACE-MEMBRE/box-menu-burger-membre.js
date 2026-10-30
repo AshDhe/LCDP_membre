@@ -1125,9 +1125,9 @@
         href: "/ESPACE-PUBLIC/actualite.html"
       },
       {
-        label: "Le club",
+        label: "L’association",
         espace: "public",
-        href: "/ESPACE-PUBLIC/le-club.html"
+        href: "/ESPACE-PUBLIC/association.html"
       },
       {
         label: "FAQ",
