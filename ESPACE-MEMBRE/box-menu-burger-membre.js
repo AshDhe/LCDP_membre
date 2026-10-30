@@ -1132,7 +1132,7 @@
       {
         label: "FAQ",
         espace: "membre",
-        href: "/ESPACE-MEMBRE/FAQ-membre.html"
+        href: "/ESPACE-MEMBRE/FAQ-public.html"
       },
       {
         label: "Changer d'espace connecté",
