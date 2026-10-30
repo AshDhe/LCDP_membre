@@ -103,6 +103,8 @@
   </style>
   <style>
     #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden] { display: none !important; }
+    .lcdp-page-accueil-membre #lcdp-actualite-bandeau { width: 100%; margin-top: 0; }
+    .lcdp-page-accueil-membre #lcdp-actualite-bandeau > .lcdp-page-container { padding-inline: 0; }
   </style>
 </head>
 
@@ -110,14 +112,7 @@
   <div class="lcdp-site-page">
 
     <div id="lcdp-bandeau-slot"></div>
-    <div id="lcdp-actualite-bandeau">
-      <div class="lcdp-page-container">
-        <div class="lcdp-page-content">
-          <!-- Réserver deux lignes avant le chargement des actualités. -->
-          <div class="lcdp-boxtext__text--center lcdp-actu-bandeau-placeholder" aria-hidden="true"></div>
-        </div>
-      </div>
-    </div>
+
 
     <main class="lcdp-site-main">
       <section class="lcdp-page-section">
@@ -143,6 +138,15 @@
             </div>
 
             <div id="lcdp-menu-central-slot" class="lcdp-stack"></div>
+
+            <div id="lcdp-actualite-bandeau">
+              <div class="lcdp-page-container">
+                <div class="lcdp-page-content">
+                  <!-- Réserver deux lignes avant le chargement des actualités. -->
+                  <div class="lcdp-boxtext__text--center lcdp-actu-bandeau-placeholder" aria-hidden="true"></div>
+                </div>
+              </div>
+            </div>
 
           </div>
         </div>
