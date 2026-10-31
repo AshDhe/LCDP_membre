@@ -145,14 +145,15 @@
     const premiereLignePrix = recap.querySelector('[data-lcdp-recaporder-prix-initial]')?.closest('.lcdp-box-card-recaporder__row');
     if (!liste || !premiereLignePrix) throw new Error('Structure de prix du récapitulatif manquante.');
     const lignes = [];
-    lignes.push(ajouterLigne(liste, 'Référence du panier', panier.idpanier));
     lignes.push(ajouterLigne(liste, 'Accès obligatoires',
       `${panier.nbSelectionnes} / ${panier.nbAccesRequis}`));
 
     const inclus = Array.isArray(panier.detailsAbonnementsInclus) ? panier.detailsAbonnementsInclus : [];
     for (const abonnement of inclus) {
-      lignes.push(ajouterLigne(liste, 'Abonnement existant inclus',
-        `${abonnement.typeAbonnement || 'Abonnement'} : du ${dateLisible(abonnement.debut)} au ${dateLisible(abonnement.fin)}`));
+      const ligneIncluse = ajouterLigne(liste, 'Abonnement existant inclus',
+        `${abonnement.typeAbonnement || 'Abonnement'} : du ${dateLisible(abonnement.debut)} au ${dateLisible(abonnement.fin)}`);
+      ligneIncluse.classList.add('lcdp-box-card-recaporder__row--wide');
+      lignes.push(ligneIncluse);
     }
     // Si le serveur fournit uniquement les identifiants, ne pas inventer de dates.
     const nbSansDetail = Math.max(0,
@@ -166,8 +167,10 @@
       const nomParc = accesMembre.nomparc || ('Parc ' + (accesMembre.idparc || 'non renseigné'));
       const periode = plages[accesMembre.plagebookd] || accesMembre.plagebookd || 'plage non renseignée';
       const statut = accesMembre.origine === 'existant' ? 'déjà réservé' : 'provisoire';
-      lignes.push(ajouterLigne(liste, 'Accès ' + (index + 1),
-        `${dateLisible(accesMembre.dateacces)} · ${periode} · ${nomParc} (${statut})`));
+      const ligneAcces = ajouterLigne(liste, 'Accès ' + (index + 1),
+        `${dateLisible(accesMembre.dateacces)} · ${periode} · ${nomParc} (${statut})`);
+      ligneAcces.classList.add('lcdp-box-card-recaporder__row--wide');
+      lignes.push(ligneAcces);
     });
     premiereLignePrix.before(...lignes);
 
@@ -177,7 +180,7 @@
     if (devis.remiseComptantTtc > 0) {
       ligneRemise=ajouterLigne(liste, 'Remise paiement comptant',
         '− '+EURO.format(devis.remiseComptantTtc));
-      premiereLignePrix.before(ligneRemise);
+      premiereLignePrix.after(ligneRemise);
     }
     if (devis.nombreAbonnementsInclus) {
       premiereLignePrix.before(ajouterLigne(liste, 'Engagements des abonnements intégrés',
@@ -190,13 +193,8 @@
     }
     remplir(recap, '[data-lcdp-recaporder-tva-label]', '(TVA ' + devis.tauxTva + ' %)');
     remplir(recap, '[data-lcdp-recaporder-tva-net-label]', '(TVA ' + devis.tauxTva + ' %)');
-    const code = recap.querySelector('[data-lcdp-recaporder-code-remise]');
-    if (code) {
-      code.disabled = true;
-      code.setAttribute('aria-label', 'Code remise — calcul tarifaire non disponible');
-    }
-    const validerCode = recap.querySelector('[data-lcdp-recaporder-valider-code]');
-    if (validerCode) { validerCode.disabled = true; validerCode.setAttribute('aria-disabled', 'true'); }
+    // Aucun code de remise n’est géré par ce cycle : ne pas afficher de champ inactif.
+    recap.querySelector('.lcdp-box-card-recaporder__row--code')?.remove();
     const boutonPayer = recap.querySelector('[data-lcdp-recaporder-pay]');
     if (!boutonPayer) throw new Error('Bouton Payer du récapitulatif manquant.');
     boutonPayer.textContent = devis.totalTtc === 0 ? 'Valider la commande' : 'Payer';
@@ -251,9 +249,11 @@
 
     const boutonAnnuler = recap.querySelector('[data-lcdp-recaporder-cancel]');
     if (boutonAnnuler) boutonAnnuler.textContent = 'Retour au planning';
-    // Le bouton Précédent retourne au panier, sans annuler la commande.
-    const precedent = recap.querySelector('[data-lcdp-recaporder-back]');
-    if (precedent) precedent.textContent = 'Précédent';
+    // Précédent et Retour au planning avaient exactement la même action :
+    // conserver une seule sortie, sans annuler la commande ni les retenues.
+    recap.querySelector('[data-lcdp-recaporder-back]')?.remove();
+    const actions = recap.querySelector('.lcdp-box-card-recaporder__actions');
+    if (actions && boutonAnnuler) actions.replaceChildren(boutonAnnuler, boutonPayer);
 
     const urlPublic = chemin => typeof window.LCDP_urlPublic === 'function'
       ? window.LCDP_urlPublic(chemin)
@@ -263,18 +263,31 @@
     const reglementApp = recap.querySelector('[data-lcdp-recaporder-reglement-application]');
     if (reglementClub) reglementClub.href = urlPublic('/ESPACE-PUBLIC/reglement-club.html');
     if (reglementApp) reglementApp.href = urlPublic('/ESPACE-PUBLIC/reglement-app.html');
+    const cgv = recap.querySelector('[data-lcdp-recaporder-cgv]');
+    const urlCgv = String(config.cgvUrl || config.CGV_URL || '').trim();
+    if (cgv && urlCgv) {
+      // Aucun URL de CGV n’est inventé : seul un lien configuré peut être ouvert.
+      const a = document.createElement('a');
+      a.href = urlCgv;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = cgv.textContent;
+      cgv.replaceWith(a);
+    }
 
     const message = recap.querySelector('[data-lcdp-recaporder-message]');
     if (message) {
-      let note = 'Les droits seront activés après confirmation du règlement.';
+      let note = 'Merci de procéder au paiement. Vos accès seront confirmés après le règlement.';
       if (panier.expirationCommande) {
         const expiration = new Date(panier.expirationCommande);
         if (Number.isFinite(expiration.getTime())) {
-          note = `Les retenues provisoires expirent le ${formatHeure.format(expiration)}. ` + note;
+          note = `Votre commande est valable jusqu’au ${formatHeure.format(expiration)}. Merci de procéder au paiement.`;
         }
       }
       message.textContent = note;
       message.hidden = false;
+      // Afficher la durée de validité AVANT le détail de la commande.
+      liste.before(message);
     }
 
     const emplacement = workflow.querySelector('[data-lcdp-workflow-abonnement-content]');
@@ -346,6 +359,12 @@
     if(q.get('paiement')!=='retour')return;
     const id=q.get('idpanier');
     if(!id)return;
+    if(q.get('retour')==='success') {
+      // Rétrocompatibilité : sessions Stripe créées avant le changement d’URL.
+      window.location.replace(urlMembre('/ESPACE-MEMBRE/accueil-membre.html') +
+        '?paiement=retour&retour=success&idpanier=' + encodeURIComponent(id));
+      return;
+    }
     if(q.get('retour')==='cancel'){
       afficherRetourEnAttente('Le paiement n’a pas été effectué. Vous pouvez reprendre la session de paiement tant qu’elle est valide.', id);
       return;

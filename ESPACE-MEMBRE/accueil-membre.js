@@ -25,6 +25,10 @@
     "deconnexion-membre-api"
   );
 
+  const ENDPOINT_PAIEMENT = construireEndpointApi(
+    "workerPaiementUrl", "WORKER_PAIEMENT_URL", "", "paiement-api"
+  );
+
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
   const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
 
@@ -97,6 +101,11 @@
       const attente = document.getElementById("lcdp-accueil-attente");
       if (attente) attente.style.display = "none";
 
+      // Après Stripe, l'accueil s'affiche immédiatement : confirmation en arrière-plan.
+      traiterRetourPaiementAccueil().catch((error) => {
+        console.warn("Vérification du règlement indisponible :", error);
+      });
+
       // Le burger est initialisé seulement après le chargement de son script.
       // Son indisponibilité ne bloque pas le contenu de l’accueil.
       promesseBandeau.then((bandeauCharge) => {
@@ -112,6 +121,48 @@
       }
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
     }
+  }
+
+  async function traiterRetourPaiementAccueil() {
+    const parametres = new URLSearchParams(window.location.search);
+    if (parametres.get("paiement") !== "retour" || parametres.get("retour") !== "success") return;
+    const idpanier = String(parametres.get("idpanier") || "");
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idpanier)) return;
+
+    // Nettoyer l’URL sans recharger l’accueil : le contrôle ne se rejoue pas au retour.
+    const url = new URL(window.location.href);
+    ["paiement", "retour", "idpanier"].forEach((cle) => url.searchParams.delete(cle));
+    window.history.replaceState(window.history.state, "", url.toString());
+
+    let statut = "";
+    for (let tentative = 0; tentative < 8; tentative += 1) {
+      try {
+        if (!ENDPOINT_PAIEMENT) break;
+        const reponse = await fetch(ENDPOINT_PAIEMENT + "/etat?idpanier=" + encodeURIComponent(idpanier), {
+          method: "GET", credentials: "include", cache: "no-store",
+          headers: { Accept: "application/json" }
+        });
+        const etat = await reponse.json().catch(() => null);
+        if (!reponse.ok || etat?.ok !== true) break;
+        statut = String(etat.commande?.statut || "");
+        if (statut === "paye" || statut === "incident" || statut === "annule") break;
+      } catch (error) {
+        console.warn("État du paiement indisponible :", error);
+        break;
+      }
+      if (tentative < 7) await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+
+    // Ne jamais présenter une réservation comme confirmée avant le Worker.
+    const message = statut === "paye"
+      ? "Paiement confirmé. Vos accès sont réservés."
+      : statut === "incident" || statut === "annule"
+        ? "La confirmation de la commande a rencontré un problème. Votre paiement doit être vérifié avant toute nouvelle tentative."
+        : "Votre paiement est en cours de vérification. Ne recommencez pas le règlement. Votre commande et vos accès seront confirmés après vérification.";
+    // Ne pas recouvrir une autre fenêtre que le membre aurait ouverte entre-temps.
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    if (!slot || slot.childElementCount) return;
+    await afficherAlerte(message);
   }
 
   async function chargerEtatMembre() {
