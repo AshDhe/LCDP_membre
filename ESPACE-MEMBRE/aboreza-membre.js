@@ -11,6 +11,31 @@
   let courant = null;
   let occupe = false;
   let bandeau = null;
+  let attenteFormules = null;
+
+  // Attente : réutilisation du pictowait et du masque générique de PLANIFIER.
+  function afficherAttenteFormules() {
+    if (attenteFormules?.isConnected) return;
+    const masque = elem('div', 'lcdp-planifier-partage-attente');
+    masque.setAttribute('role', 'status');
+    masque.setAttribute('aria-label', 'Chargement des formules d’abonnement');
+    const attente = elem('div', 'lcdp-pictowait');
+    attente.dataset.lcdpPictowait = '';
+    const image = elem('img', 'lcdp-pictowait__image');
+    image.src = cheminObjet('/BOX/pictowait.gif');
+    image.alt = '';
+    image.width = 56;
+    image.height = 56;
+    image.setAttribute('aria-hidden', 'true');
+    attente.append(image);
+    masque.append(attente);
+    document.body.append(masque);
+    attenteFormules = masque;
+  }
+  function masquerAttenteFormules() {
+    attenteFormules?.remove();
+    attenteFormules = null;
+  }
   const moisLibelle = cle => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(new Date(cle + '-01T12:00:00Z'));
   const dateLibelle = iso => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso + 'T12:00:00Z'));
   const nomFormule = f => ({ '1J': '1 jour', '1M': '1 mois', '3M': '3 mois', '5M': '5 mois', '10M': '10 mois', '11M': '11 mois', '12M': '1 an' }[f] || f);
@@ -131,9 +156,20 @@
     const identifiant = 'lcdp-aboreza-' + libelle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     controle.id = identifiant;
     nom.htmlFor = identifiant;
-    champ.querySelector('[data-lcdp-champ-label-zone]').append(nom);
-    champ.querySelector('[data-lcdp-champ-control]').append(controle);
+    const zoneLibelle = champ.querySelector('[data-lcdp-champ-label-zone]');
+    const zoneControle = champ.querySelector('[data-lcdp-champ-control]');
+    if (!zoneLibelle || !zoneControle) throw Error('Structure du champ générique incomplète.');
+    // Uniquement les deux emplacements utiles, sans les nœuds de mise en page du modèle.
+    // Les blancs du HTML cloné seraient interprétés comme des lignes par le dialogue générique.
+    champ.replaceChildren(zoneLibelle, zoneControle);
+    zoneLibelle.replaceChildren(nom);
+    zoneControle.replaceChildren(controle);
     return champ;
+  }
+  function champDialogueCentre(libelle, controle) {
+    const conteneur = elem('div', 'lcdp-box-dialogue-bouton__text');
+    conteneur.append(champGenerique(libelle, controle));
+    return conteneur;
   }
   async function choisirFormuleCatalogue(offres) {
     return modalComposant('dialogue', 'Choisissez votre abonnement', (objet, finir) => {
@@ -161,7 +197,7 @@
         const entree = elem('input');
         entree.type = 'date'; entree.min = offre.dateMin; entree.max = offre.dateMax; entree.value = offre.dateMin;
         entree.required = true;
-        actions.append(champGenerique('Date de démarrage', entree));
+        actions.append(champDialogueCentre('Date de démarrage choisie', entree));
         const continuer = bouton('Continuer', true);
         continuer.addEventListener('click', () => { if (entree.validity.valid) finir(entree.value); else entree.reportValidity(); });
         actions.append(continuer);
@@ -233,8 +269,8 @@
       offres.filter(o => o.disponible !== false).forEach(o => {
         const option = elem('option', '', nomFormule(o.formule)); option.value = o.formule; choix.append(option);
       });
-      actions.append(champGenerique('Formule', choix));
-      const espace = elem('div');
+      actions.append(champDialogueCentre('Formule', choix));
+      const espace = elem('div', 'lcdp-box-dialogue-bouton__actions');
       actions.append(espace);
       const note = elem('p', 'lcdp-box-dialogue-bouton__text');
       actions.append(note);
@@ -252,9 +288,9 @@
           }
         }
         entree.required = true;
-        espace.append(champGenerique('Date de démarrage', entree));
+        espace.append(champDialogueCentre('Date de démarrage choisie', entree));
         note.textContent = offre.formule === '1J'
-          ? 'Un accès obligatoire pour cette journée.'
+          ? 'Vous devez réserver au moins un accès pour cette formule.'
           : offre.nbAccesRequis + ' accès obligatoires : deux par mois pendant ' + offre.nbMoisGuides + ' mois consécutifs.';
       };
       choix.addEventListener('change', reconstruire); reconstruire();
@@ -264,22 +300,44 @@
         if (!entree || !entree.value || !entree.validity.valid) { entree?.reportValidity(); return; }
         finir({ formule: choix.value, dateDebut: entree.value });
       });
-      const annuler = bouton('Annuler');
-      annuler.addEventListener('click', () => finir(null));
-      actions.append(continuer, annuler);
+      actions.append(continuer);
     });
   }
   async function informerContrainte(p) {
-    const morceaux = [
-      `Votre abonnement ${nomFormule(p.formule)} commence le ${dateLibelle(p.dateDebut)}.`,
-      p.formule === '1J'
-        ? 'Vous devez sélectionner un accès pour cette journée avant de poursuivre.'
-        : `Le panier requiert deux accès par mois pendant ${p.nbMoisGuides} mois consécutifs, soit ${p.nbAccesRequis} accès. Les accès déjà réservés sont pris en compte.`
-    ];
-    if (p.nbDejaReserves > 0) morceaux.push(
-      `${p.nbSelectionnes} accès obligatoires déjà satisfaits ; il en reste ${Math.max(0, p.nbAccesRequis - p.nbSelectionnes)} à sélectionner.`);
-    morceaux.push('Vous pourrez changer de parc et de département. Le planning avancera automatiquement lorsque les accès du mois seront sélectionnés. Chaque sélection retient vos accès pendant 15 minutes, renouvelées lors de la sélection suivante.');
-    return modal('Préparez vos accès', morceaux.join('\n\n'), [{ texte: 'Continuer', valeur: true, primaire: true }]);
+    return modalComposant('dialogue', 'Préparez vos accès', (objet, finir) => {
+      const texte = objet.querySelector('[data-lcdp-dialogue-text]');
+      const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
+      if (!texte || !actions) throw Error('Zones du dialogue générique absentes.');
+      texte.hidden = true;
+
+      // La carte de présentation d'abonnement fournie sert de récapitulatif compact.
+      const resume = composants.carte.cloneNode(true);
+      const ligne = resume.querySelector('.lcdp-box-card-abonnement__row--main');
+      const nom = resume.querySelector('[data-lcdp-card-abonnement-type]');
+      const debut = resume.querySelector('[data-lcdp-card-abonnement-debut]');
+      if (!ligne || !nom || !debut) throw Error('Carte d’abonnement générique incomplète.');
+      resume.replaceChildren(ligne);
+      ligne.querySelector('.lcdp-box-card-abonnement__item--name .lcdp-box-card-abonnement__label').textContent = 'Abonnement choisi : ';
+      ligne.querySelector('.lcdp-box-card-abonnement__item--date .lcdp-box-card-abonnement__label').textContent = 'Date de début : ';
+      nom.textContent = nomFormule(p.formule);
+      debut.textContent = dateLibelle(p.dateDebut);
+      actions.append(resume);
+
+      const informations = [
+        'Si vous devez planifier plusieurs accès, vous pouvez changer de parc chaque fois que vous revenez sur le planning.',
+        'Pour les abonnements supérieurs à un jour, vous devez planifier deux accès par mois, chaque mois, dans la limite de cinq mois consécutifs. Le planning évolue de mois en mois pour vous assister dans cette planification.',
+        'À chaque accès planifié, vous disposez de 15 minutes jusqu’à l’étape suivante (nouvel accès ou paiement de l’abonnement).'
+      ];
+      if (p.nbDejaReserves > 0) informations.push(
+        `${p.nbSelectionnes} accès requis déjà couverts ; il reste ${Math.max(0, p.nbAccesRequis - p.nbSelectionnes)} accès à planifier.`
+      );
+      for (const information of informations) {
+        actions.append(elem('p', 'lcdp-box-champ-formulaire__description', information));
+      }
+      const continuer = bouton('Continuer', true);
+      continuer.addEventListener('click', () => finir(true));
+      actions.append(continuer);
+    });
   }
   function miseAJourBandeau() {
     const hote = bridge()?.hoteBandeau?.();
@@ -343,9 +401,11 @@
     if(occupe)return;
     occupe=true;
     try{
+      afficherAttenteFormules();
       await chargerTemplates();
       const enCours=(await api('/panier')).panier;
       if(enCours){
+        masquerAttenteFormules();
         const decision=await reprendreOuRecommencer(enCours);
         if(decision==='reprendre'){
           await entrerDansCalendrier(enCours);
@@ -353,12 +413,14 @@
           return;
         }
         if(decision!=='recommencer')return;
+        afficherAttenteFormules();
         await api('/annuler','POST',{idpanier:enCours.idpanier});
       }
       const parametres=new URLSearchParams({origine:contexte.origine});
       if(contexte.origine==='jour_hors_couverture')parametres.set('dateCible',contexte.date||'');
       if(contexte.origine==='horizon')parametres.set('moisCible',contexte.moisCible||'');
       const offres=(await api('/catalogue?'+parametres.toString())).offres;
+      masquerAttenteFormules();
       let demande=null;
       let inclureExistants=false;
       if(['jour_hors_couverture','horizon'].includes(contexte.origine)){
@@ -392,7 +454,7 @@
       if(!suivant)return; // Le panier reste récupérable.
       await entrerDansCalendrier(nouveau);
     } catch(e){await bridge()?.alerter?.(e.message||'Erreur ABO-RÉZA.');}
-    finally{occupe=false;}
+    finally{masquerAttenteFormules();occupe=false;}
   }
   async function selectionnerAcces(choix){
     if(!courant||occupe)return;
