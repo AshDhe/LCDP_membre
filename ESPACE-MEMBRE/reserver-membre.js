@@ -132,7 +132,7 @@
     actualiser: () => etatPage.actualiserPlanningPrincipal?.(),
     fermerJour: () => document.getElementById("lcdp-planifier-jour-overlay-slot")?.remove(),
     hoteBandeau: () => etatPage.hoteBandeauAboReza,
-    alerter: message => afficherAlerteSuperposee(message,"orange",{libelleBouton:"Fermer"}),
+    alerter: (message, options = {}) => afficherAlerteSuperposee(message, "orange", {libelleBouton: options.libelleBouton || "Fermer"}),
     viderCache: () => cachePlanningParcLecture.clear(),
     choisirParc: () => ouvrirFiltreParcPlanifier(),
     changerMode: actif => { preparationAbonnementPlanifier = Boolean(actif); }

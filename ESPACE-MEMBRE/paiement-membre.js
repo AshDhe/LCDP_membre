@@ -283,17 +283,23 @@
     return workflow;
   }
 
-  async function ouvrirBonCommande(idpanier) {
-    if (ouverture) return ouverture;
+  async function ouvrirBonCommande(idpanier, surOuverture) {
+    if (ouverture) {
+      if (typeof surOuverture === 'function') surOuverture();
+      return ouverture;
+    }
     const traitement = (async () => {
-      const [modeleWorkflow, modeleRecap] = await obtenirComposants();
-      const [panier, devis] = await Promise.all([lirePanier(idpanier),lireDevis(idpanier)]);
+      // Les modèles HTML et les lectures serveur sont indépendants : les charger en parallèle.
+      const [[modeleWorkflow, modeleRecap], [panier, devis]] = await Promise.all([
+        obtenirComposants(), Promise.all([lirePanier(idpanier), lireDevis(idpanier)])
+      ]);
       const paiement = { termine:false };
       const workflow = monterBon(modeleWorkflow, modeleRecap, panier, devis, paiement);
       const boutonRetour = workflow.querySelector('[data-lcdp-recaporder-cancel]');
       const boutonPrecedent = workflow.querySelector('[data-lcdp-recaporder-back]');
       const precedent = document.activeElement;
       document.body.append(workflow);
+      if (typeof surOuverture === 'function') surOuverture();
       await new Promise(resolve => {
         let ferme = false;
         const terminer = () => {

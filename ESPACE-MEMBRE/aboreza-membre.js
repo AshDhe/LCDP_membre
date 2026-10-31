@@ -14,11 +14,14 @@
   let attenteFormules = null;
 
   // Attente : réutilisation du pictowait et du masque générique de PLANIFIER.
-  function afficherAttenteFormules() {
-    if (attenteFormules?.isConnected) return;
+  function afficherAttenteFormules(libelle = 'Chargement des formules d’abonnement') {
+    if (attenteFormules?.isConnected) {
+      attenteFormules.setAttribute('aria-label', libelle);
+      return;
+    }
     const masque = elem('div', 'lcdp-planifier-partage-attente');
     masque.setAttribute('role', 'status');
-    masque.setAttribute('aria-label', 'Chargement des formules d’abonnement');
+    masque.setAttribute('aria-label', libelle);
     const attente = elem('div', 'lcdp-pictowait');
     attente.dataset.lcdpPictowait = '';
     const image = elem('img', 'lcdp-pictowait__image');
@@ -459,35 +462,51 @@
   async function selectionnerAcces(choix){
     if(!courant||occupe)return;
     occupe=true;
+    afficherAttenteFormules('Enregistrement de votre accès…');
     try{
       const avant=courant.moisActif;
       const reponse=await api('/acces','POST',{idpanier:courant.idpanier,
         idparc:String(choix.parc.idparc||choix.parc.id||''),date:choix.dateIso,plagebookd:choix.plagebookd});
       courant=reponse.panier;
       bridge()?.fermerJour?.();bridge()?.viderCache?.();miseAJourBandeau();
-      if(courant.moisActif!==avant)await bridge()?.allerMois?.(courant.moisActif);
-      else await bridge()?.actualiser?.();
+      // L'actualisation peut se faire derrière l'alerte ; elle ne retarde plus le bouton Payer.
+      const miseAJour = Promise.resolve().then(() => courant.moisActif!==avant
+        ? bridge()?.allerMois?.(courant.moisActif)
+        : bridge()?.actualiser?.()
+      ).catch(erreur => console.error('Actualisation du planning ABO-RÉZA :', erreur));
       if(courant.complet){
-        await bridge()?.alerter?.('Les accès obligatoires sont sélectionnés. Votre panier est prêt pour paiement.');
-        await afficherRecap(courant);
+        masquerAttenteFormules();
+        const confirmation = await bridge()?.alerter?.(
+          'Les accès obligatoires sont sélectionnés. Votre panier est prêt pour paiement.',
+          { libelleBouton: 'Payer' }
+        );
+        // La croix ferme le dialogue et conserve le panier, sans lancer Paiement.
+        if(confirmation===true)await afficherRecap(courant);
+        await miseAJour;
       }else{
+        await miseAJour;
+        masquerAttenteFormules();
         const texte=courant.moisActif!==avant
           ? `Les deux accès de ${moisLibelle(avant)} sont sélectionnés. Passage à ${moisLibelle(courant.moisActif)}.`
           : `Accès ajouté. Il vous reste ${courant.restantsMois} accès à réserver pour ${moisLibelle(courant.moisActif)}.`;
         await bridge()?.alerter?.(texte);
       }
-    }finally{occupe=false;}
+    }finally{masquerAttenteFormules();occupe=false;}
   }
   async function afficherRecap(p) {
     if (typeof window.LCDP_PAIEMENT?.ouvrirBonCommande !== 'function') {
       await bridge()?.alerter?.('Le bon de commande n’est pas disponible. Votre panier reste récupérable.');
       return;
     }
+    afficherAttenteFormules('Préparation du bon de commande…');
     try {
-      // La synthèse est exclusivement rendue par les composants génériques du sous-tunnel Paiement.
-      await window.LCDP_PAIEMENT.ouvrirBonCommande(p.idpanier);
+      // Le picto disparaît lorsque le bon de commande est affiché, pas lorsqu'il est fermé.
+      await window.LCDP_PAIEMENT.ouvrirBonCommande(p.idpanier, masquerAttenteFormules);
     } catch (e) {
+      masquerAttenteFormules();
       await bridge()?.alerter?.(e.message || 'Bon de commande indisponible.');
+    } finally {
+      masquerAttenteFormules();
     }
   }
   function datePossible(d){return Boolean(courant && d.slice(0,7)===courant.moisActif && d>=courant.dateDebut&&d<=courant.dateFin);}
