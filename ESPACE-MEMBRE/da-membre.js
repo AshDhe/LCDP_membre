@@ -178,15 +178,19 @@
   }
 
   function obtenirLightboxSlotDa() {
-    let slot = document.getElementById("lcdp-lightbox-slot");
+    let slot = document.getElementById("lcdp-da-membre-overlay-slot");
 
     if (!slot) {
       slot = document.createElement("div");
-      slot.id = "lcdp-lightbox-slot";
+      slot.id = "lcdp-da-membre-overlay-slot";
       document.body.appendChild(slot);
     }
 
     return slot;
+  }
+
+  function fermerWorkflowDa() {
+    document.getElementById("lcdp-da-membre-overlay-slot")?.remove();
   }
 
   async function afficherAlerteDa(message, options = {}) {
@@ -1015,7 +1019,7 @@
           "Votre DA est envoyée. Merci. Nous espérons vous compter prochainement parmi nos membres abonnés !"
         );
 
-      obtenirLightboxSlotDa().innerHTML = "";
+      fermerWorkflowDa();
 
       if (
         typeof options?.onTerminee === "function"
@@ -1174,7 +1178,7 @@
     }
 
     const ok = await afficherAlerteDa("Quitter ma DA ?");
-    if (ok) obtenirLightboxSlotDa().innerHTML = "";
+    if (ok) fermerWorkflowDa();
   }
 
   window.LCDP_ouvrirPremiereDaMembre = ouvrirPremiereDaMembre;
