@@ -830,7 +830,7 @@
       boutons: Object.entries(comptesPublicsBurgerMembre).map(([compte, configuration]) => ({
         label: configuration.label,
         valeur: compte,
-        style: "lcdp-button-primary"
+        style: "lcdp-button-compte lcdp-button-compte--" + compte
       }))
     });
 
