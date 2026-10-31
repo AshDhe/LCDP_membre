@@ -29,6 +29,7 @@
   const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
 
   let pageInitialisee = false;
+  let actionAccueilEnCours = false;
   let etatMembre = {
     prenommembre: "",
     abonne: false,
@@ -55,6 +56,11 @@
     initialiserPage();
   }
 
+  // En cas de retour par l'historique, ne pas conserver un accueil en attente.
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) masquerAttenteNavigationAccueil();
+  });
+
   async function initialiserPage() {
     if (pageInitialisee) return;
     pageInitialisee = true;
@@ -62,15 +68,18 @@
     try {
       // Lancer les opérations indépendantes en parallèle.
       // Le footer et l’initialisation finale du burger ne bloquent pas l’accueil.
-      const promesseBandeau = initialiserBandeau();
+      // Le bandeau et le burger ne doivent pas empêcher l’accueil de s’ouvrir.
+      const promesseBandeau = initialiserBandeau().then(() => true).catch((error) => {
+        console.warn("Bandeau ou burger membre indisponible :", error);
+        return false;
+      });
       const promesseEtat = chargerEtatMembre();
       const promesseMenu = chargerFragmentObjet("/BOX/02-box-menu-bouton.html");
       initialiserFooter().catch((error) => {
         console.warn("Footer indisponible sur l’accueil membre :", error);
       });
 
-      const [, etat, fragmentMenu] = await Promise.all([
-        promesseBandeau,
+      const [etat, fragmentMenu] = await Promise.all([
         promesseEtat,
         promesseMenu
       ]);
@@ -88,8 +97,12 @@
       const attente = document.getElementById("lcdp-accueil-attente");
       if (attente) attente.style.display = "none";
 
-      // Le burger utilise le script déjà chargé avec le bandeau.
-      initialiserBurgerMembre(etatMembre).catch((error) => {
+      // Le burger est initialisé seulement après le chargement de son script.
+      // Son indisponibilité ne bloque pas le contenu de l’accueil.
+      promesseBandeau.then((bandeauCharge) => {
+        if (!bandeauCharge) return;
+        return initialiserBurgerMembre(etatMembre);
+      }).catch((error) => {
         console.warn("Menu burger membre indisponible :", error);
       });
     } catch (error) {
@@ -521,14 +534,48 @@
       libelle.textContent = configuration.label;
       bouton.appendChild(libelle);
 
-      bouton.addEventListener("click", () => {
-        Promise.resolve(configuration.action()).catch((error) => {
+      bouton.addEventListener("click", async () => {
+        if (actionAccueilEnCours) return;
+        actionAccueilEnCours = true;
+        afficherAttenteNavigationAccueil();
+
+        try {
+          const issue = await configuration.action();
+          // La page actuelle reste affichée si l'accès est refusé ou si un dialogue s'ouvre.
+          if (issue !== "ouvert" && issue !== "non_connecte") {
+            masquerAttenteNavigationAccueil();
+          }
+        } catch (error) {
+          masquerAttenteNavigationAccueil();
           console.error(error);
           afficherAlerte(error.message || "Erreur technique. Merci de réessayer.").catch(console.error);
-        });
+        }
       });
 
       liste.appendChild(bouton);
+    });
+  }
+
+  function afficherAttenteNavigationAccueil() {
+    const attente = document.getElementById("lcdp-navigation-attente");
+    const slot = document.getElementById("lcdp-menu-central-slot");
+    if (attente) attente.hidden = false;
+    if (!slot) return;
+    slot.setAttribute("aria-busy", "true");
+    slot.querySelectorAll(".lcdp-accueil-actions > button").forEach((bouton) => {
+      bouton.disabled = true;
+    });
+  }
+
+  function masquerAttenteNavigationAccueil() {
+    actionAccueilEnCours = false;
+    const attente = document.getElementById("lcdp-navigation-attente");
+    const slot = document.getElementById("lcdp-menu-central-slot");
+    if (attente) attente.hidden = true;
+    if (!slot) return;
+    slot.setAttribute("aria-busy", "false");
+    slot.querySelectorAll(".lcdp-accueil-actions > button").forEach((bouton) => {
+      bouton.disabled = false;
     });
   }
 
@@ -538,6 +585,7 @@
       surNavigateurNonProprietaire: proposerTransfertNavigateur
     });
     if (issue === "non_connecte") redirigerConnexionMembre("inactive");
+    return issue;
   }
 
   function preparerIdentiteNavigateurCle() {

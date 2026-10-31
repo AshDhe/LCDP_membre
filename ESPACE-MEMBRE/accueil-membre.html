@@ -81,7 +81,8 @@
         "/BOX/02-box-alerte.css",
         "/BOX/02-box-dialogue-bouton.css",
         "/BOX/04-box-card-abonnement.css",
-        "/BOX/02-box-footer.css"
+        "/BOX/02-box-footer.css",
+        "/BOX/pictowait.css"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -195,6 +196,10 @@
             </div>
 
             <div id="lcdp-menu-central-slot" class="lcdp-stack"></div>
+            <div id="lcdp-navigation-attente" class="lcdp-pictowait" hidden role="status" aria-live="polite">
+              <script>document.write('<img class="lcdp-pictowait__image" src="' + window.LCDP_urlObjet('/BOX/pictowait.svg') + '" alt="">');</script>
+              <p class="lcdp-pictowait__message">Ouverture en cours…</p>
+            </div>
 
           </div>
         </div>
@@ -214,7 +219,7 @@
     };
   </script>
   <script>document.write('<script src="' + window.LCDP_urlPublic("/ESPACE-PUBLIC/controle-acces-accueil.js") + '"><\/script>');</script>
-  <script src="./accueil-membre.js?v=20261028-gif1" onerror="window.LCDP_echecAccueilMembre()"></script>
+  <script src="./accueil-membre.js?v=20261031-nav-attente2" onerror="window.LCDP_echecAccueilMembre()"></script>
   <script>
     // Même composant Actualités et même chargement différé que sur l'accueil public.
     document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/actualite.js') + '"><\/script>');
