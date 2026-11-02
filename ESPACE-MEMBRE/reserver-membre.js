@@ -154,6 +154,8 @@
     reservationsMembre: [],
     templateListeParcs: null,
     templateCardParc: null,
+    templateListeParcsDiaporama: null,
+    templateCardParcDiaporama: null,
     templateJourMois: null,
     templateHeureJour: null,
     templateShiftDetailParc: null,
@@ -271,6 +273,8 @@
   const CHEMINS_FRAGMENTS_LISTE_PARCS = [
     "/BOX/04-box-liste-card.html",
     "/BOX/04-box-card-parc.html",
+    "/BOX/04-box-liste-card-diaporama.html",
+    "/BOX/04-box-card-parc-diaporama.html",
     "/BOX/04-box-shift-detail-parc.html",
     "/BOX/04-box-card-jour-in-calendrier-mois.html",
     "/BOX/04-box-card-heure-in-calendrier-jour.html",
@@ -442,7 +446,12 @@
       zoneCarte.id = "lcdp-planifier-parcs-carte";
       zoneCarte.hidden = true;
       content.appendChild(zoneCarte);
-      navigationParcs = { zoneCarte, carte, liste, active: false, numero: 0, controleur: null };
+      const zoneDiaporama = document.createElement("div");
+      zoneDiaporama.className = "lcdp-planifier-parcs-diaporama";
+      zoneDiaporama.hidden = true;
+      content.appendChild(zoneDiaporama);
+      navigationParcs = { zoneCarte, zoneDiaporama, carte, liste, mode: "diaporama", active: false, numero: 0, controleur: null };
+      actualiserVueParcs();
       let ferme = false;
       const fermer = () => {
         if (ferme) return;
@@ -477,6 +486,7 @@
         } catch(error) {parcInitialise = false; throw error;}
       } else {
         afficherCommandeBarReserver();
+        actualiserVueParcs();
         chargement.remove();
       }
     } catch(error) {
@@ -672,7 +682,6 @@
     iconeParc.setAttribute("aria-hidden", "true");
     boutonParc.append(iconeParc, document.createTextNode("PARC"));
     actionsFiltres.appendChild(boutonParc);
-    enteteFiltres.appendChild(actionsFiltres);
 
     const legende = fragmentLegende?.querySelector("[data-lcdp-box-legende]") || document.createElement("div");
     legende.className = "lcdp-box-legende lcdp-planifier-legende-autorisations";
@@ -721,6 +730,8 @@
     }
     contenuLegende.appendChild(ligneLegende);
     enteteFiltres.appendChild(legende);
+    // Le sélecteur PARC suit la barre des quatre autorisations.
+    enteteFiltres.appendChild(actionsFiltres);
     meta.textContent = "";
     meta.hidden = true;
     message.hidden = true;
@@ -1283,12 +1294,16 @@
     const [
       fragmentListe,
       fragmentCard,
+      fragmentListeDiaporama,
+      fragmentCardDiaporama,
       fragmentShiftDetailParc,
       fragmentJour,
       fragmentHeure
     ] = await Promise.all([
       chargerFragmentListeParcs("/BOX/04-box-liste-card.html"),
       chargerFragmentListeParcs("/BOX/04-box-card-parc.html"),
+      chargerFragmentListeParcs("/BOX/04-box-liste-card-diaporama.html"),
+      chargerFragmentListeParcs("/BOX/04-box-card-parc-diaporama.html"),
       chargerFragmentListeParcs("/BOX/04-box-shift-detail-parc.html"),
       chargerFragmentListeParcs("/BOX/04-box-card-jour-in-calendrier-mois.html"),
       chargerFragmentListeParcs("/BOX/04-box-card-heure-in-calendrier-jour.html")
@@ -1305,6 +1320,18 @@
     etatPage.templateListeParcs = listeCard;
 
     etatPage.templateCardParc = fragmentCard.querySelector("[data-lcdp-box-card-parc]");
+    etatPage.templateListeParcsDiaporama = fragmentListeDiaporama.querySelector("[data-lcdp-liste-card-diaporama]");
+    etatPage.templateCardParcDiaporama = fragmentCardDiaporama.querySelector("[data-lcdp-card-parc-diaporama]");
+    for (const chemin of ["/BOX/04-box-liste-card-diaporama.css", "/BOX/04-box-card-parc-diaporama.css"]) {
+      const href = construireUrlObjet(chemin);
+      if (!document.querySelector(`link[data-lcdp-diaporama-css="${chemin}"]`)) {
+        const lien = document.createElement("link");
+        lien.rel = "stylesheet";
+        lien.href = href;
+        lien.dataset.lcdpDiaporamaCss = chemin;
+        document.head.appendChild(lien);
+      }
+    }
 
     etatPage.templateShiftDetailParc = fragmentShiftDetailParc.querySelector("[data-lcdp-box-shift-detail-parc]");
 
@@ -1315,6 +1342,8 @@
     if (
       !etatPage.templateListeParcs ||
       !etatPage.templateCardParc ||
+      !etatPage.templateListeParcsDiaporama ||
+      !etatPage.templateCardParcDiaporama ||
       !etatPage.templateShiftDetailParc ||
       !etatPage.templateJourMois ||
       !etatPage.templateHeureJour
@@ -1356,13 +1385,23 @@
 
     commandeBar.classList.add("lcdp-box-commande-bar--encadree");
 
-    actions.append(boutonDepartement, boutonCarte);
+    const boutonListe = document.createElement("button");
+    boutonListe.type = "button";
+    boutonListe.id = "bouton-voir-liste-parcs";
+    boutonListe.className = boutonCarte.className;
+    boutonListe.textContent = "Voir en liste";
+    actions.append(boutonCarte, boutonListe, boutonDepartement);
+    commandeBar.classList.add("lcdp-commande-parcs-modes");
+    boutonListe.addEventListener("click", () => {
+      if (!navigationParcs) return;
+      basculerVueParcs(navigationParcs.mode === "liste" ? "diaporama" : "liste");
+    });
     boutonCarte.setAttribute("aria-controls", "lcdp-planifier-parcs-carte");
     boutonCarte.setAttribute("aria-expanded", "false");
     boutonCarte.addEventListener("click", () => {
       if (!navigationParcs) return;
-      if (navigationParcs.active) quitterCarteParcs();
-      else afficherCarteParcs();
+      if (navigationParcs.mode === "carte") basculerVueParcs("diaporama");
+      else basculerVueParcs("carte");
     });
 
     slot.replaceChildren(commandeBar);
@@ -1370,6 +1409,78 @@
     slot.setAttribute("aria-hidden", "true");
   }
 
+
+  function basculerVueParcs(mode) {
+    const navigation = navigationParcs;
+    if (!navigation) return;
+    if (navigation.active && mode !== "carte") quitterCarteParcs();
+    navigation.mode = mode;
+    actualiserVueParcs();
+    if (mode === "carte") afficherCarteParcs();
+  }
+
+  function actualiserVueParcs() {
+    const navigation = navigationParcs;
+    if (!navigation) return;
+    navigation.liste.hidden = navigation.mode !== "liste";
+    navigation.zoneDiaporama.hidden = navigation.mode !== "diaporama";
+    navigation.zoneCarte.hidden = navigation.mode !== "carte";
+    const boutonCarte = document.getElementById("bouton-voir-carte");
+    if (boutonCarte) ajouterPictoCommandeBar(boutonCarte, "/IMAG/PICTO/picto-localiser.svg", navigation.mode === "carte" ? "Voir en diaporama" : "Voir sur la carte");
+    const boutonListe = document.getElementById("bouton-voir-liste-parcs");
+    if (boutonListe) boutonListe.textContent = navigation.mode === "liste" ? "Voir en diaporama" : "Voir en liste";
+    if (navigation.mode === "diaporama") afficherDiaporamaParcs();
+  }
+
+  function afficherDiaporamaParcs() {
+    const navigation = navigationParcs;
+    if (!navigation || !etatPage.templateListeParcsDiaporama || !etatPage.templateCardParcDiaporama) return;
+    const liste = etatPage.templateListeParcsDiaporama.cloneNode(true);
+    const zone = liste.querySelector("[data-lcdp-liste-card-diaporama-list]");
+    if (!zone) return;
+    for (const parc of etatPage.parcs) zone.appendChild(creerCardParcDiaporama(parc));
+    navigation.zoneDiaporama.replaceChildren(liste);
+  }
+
+  function creerCardParcDiaporama(parc) {
+    const card = etatPage.templateCardParcDiaporama.cloneNode(true);
+    const idparc = String(parc.idparc || parc.id || "");
+    const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
+    const image = card.querySelector("[data-lcdp-diaporama-image]");
+    const nomElement = card.querySelector("[data-lcdp-diaporama-nom]");
+    const description = card.querySelector("[data-lcdp-diaporama-description]");
+    const retourner = card.querySelector("[data-lcdp-diaporama-retourner]");
+    const fermer = card.querySelector("[data-lcdp-diaporama-fermer]");
+    const actions = card.querySelector("[data-lcdp-diaporama-actions]");
+    card.dataset.idparc = idparc;
+    if (image) {
+      image.src = construireUrlImageParc(parc);
+      image.alt = "";
+      image.addEventListener("error", () => { image.src = construireUrlObjet(DOSSIER_IMAGES_PARC_OBJET + "/cardlogo.webp"); }, { once: true });
+    }
+    if (nomElement) nomElement.textContent = nom;
+    if (description) {
+      description.textContent = nettoyerTexteDescription(parc.prez || parc.presentation || "");
+      description.hidden = !description.textContent;
+    }
+    const nomDos = card.querySelector("[data-lcdp-diaporama-nom-dos]");
+    if (nomDos) nomDos.textContent = nom;
+    if (actions) actions.replaceChildren(
+      creerBoutonActionCardParc({ action: "ouvrir-fiche-parc", libelle: "Le parc", ariaLabel: "Ouvrir la présentation du parc " + nom, icone: "presentation", variante: "vert-plein", idparc }),
+      creerBoutonActionCardParc({ action: "voir-planning-parc", libelle: "Planning", ariaLabel: "Afficher le planning du parc " + nom, icone: "planning", variante: "orange-plein", idparc })
+    );
+    const mettreAJour = ouvert => {
+      card.classList.toggle("is-retourne", ouvert);
+      retourner?.setAttribute("aria-expanded", String(ouvert));
+      card.querySelector("[data-lcdp-diaporama-dos]")?.setAttribute("aria-hidden", String(!ouvert));
+      if (fermer) fermer.tabIndex = ouvert ? 0 : -1;
+      actions?.querySelectorAll("button").forEach(bouton => { bouton.tabIndex = ouvert ? 0 : -1; });
+    };
+    retourner?.addEventListener("click", () => mettreAJour(true));
+    fermer?.addEventListener("click", () => { mettreAJour(false); retourner?.focus(); });
+    mettreAJour(false);
+    return card;
+  }
 
   function quitterCarteParcs() {
     const navigation = navigationParcs;
@@ -1381,7 +1492,7 @@
     navigation.zoneCarte.replaceChildren();
     navigation.zoneCarte.classList.remove("is-loading");
     navigation.zoneCarte.hidden = true;
-    navigation.liste.hidden = false;
+    navigation.liste.hidden = navigation.mode !== "liste";
     const bouton = document.getElementById("bouton-voir-carte");
     ajouterPictoCommandeBar(bouton, "/IMAG/PICTO/picto-localiser.svg", "Voir sur la carte");
     bouton?.setAttribute("aria-expanded", "false");
@@ -1396,6 +1507,7 @@
     navigation.controleur?.detruire();
     navigation.controleur = null;
     navigation.liste.hidden = true;
+    navigation.zoneDiaporama.hidden = true;
     navigation.zoneCarte.hidden = false;
     navigation.zoneCarte.classList.add("is-loading");
     const bouton = document.getElementById("bouton-voir-carte");
@@ -2665,7 +2777,10 @@
 
     afficherCommandeBarReserver();
     planifierPrechargementDetailsParcs();
-    if (navigationParcs?.active) afficherCarteParcs();
+    if (navigationParcs) {
+      if (navigationParcs.mode === "carte") afficherCarteParcs();
+      else actualiserVueParcs();
+    }
   }
 
   function listeParcsDejaVisible() {
