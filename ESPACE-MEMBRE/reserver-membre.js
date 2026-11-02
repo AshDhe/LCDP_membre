@@ -190,6 +190,7 @@
   async function initialiserPage() {
     if (pageInitialisee) return;
     pageInitialisee = true;
+    document.addEventListener("click", gererClicDocument);
     document.body.classList.add("lcdp-page-reserver");
     const titrePage = document.querySelector(".lcdp-title-page-center");
     if (titrePage) titrePage.textContent = "PLANIFIER";
@@ -479,7 +480,6 @@
             assurerReservationsListeParcs()
           ]);
           initialiserBoutonDepartementPrincipal();
-          document.addEventListener("click", gererClicDocument);
           await chargerParcsDepartementMembre();
           chargement.remove();
           nomDepartement.textContent = libelleDepartementListeParcs();
@@ -3123,6 +3123,23 @@
     return bouton;
   }
 
+  let clicJourPlanifierEnCours = false;
+
+  function afficherAttenteClicJourPlanifier() {
+    // Superposition autonome : ne remplace jamais le calendrier ni ses fenêtres.
+    const masque = document.createElement("div");
+    masque.setAttribute("role", "status");
+    masque.setAttribute("aria-label", "Analyse de la journée en cours");
+    Object.assign(masque.style, {
+      position: "fixed", inset: "0", zIndex: "6000",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      background: "rgba(255,255,255,0.88)", pointerEvents: "auto"
+    });
+    masque.appendChild(creerPictowait("Analyse de la journée en cours"));
+    document.body.appendChild(masque);
+    return () => masque.remove();
+  }
+
   async function gererClicDocument(event) {
     const boutonFiche = event.target.closest("[data-action='ouvrir-fiche-parc']");
     const boutonPartager = event.target.closest("[data-action='partager-parc']");
@@ -3192,18 +3209,43 @@
       return;
     }
 
-    if (jourCalendrier && !jourCalendrier.disabled) {
+    if (jourCalendrier && !jourCalendrier.disabled &&
+        jourCalendrier.closest("#lcdp-lightbox-slot [data-lcdp-box-calendrier-mois]")) {
       event.preventDefault();
-      if (jourCalendrier.closest("#lcdp-lightbox-slot [data-lcdp-box-calendrier-mois]") &&
-          !window.LCDP_ABOREZA?.actif() &&
-          !preparationAbonnementPlanifier &&
-          (membreSansDaValidee() ||
-            !jourCouvertParAbonnementPayePlanifier(String(jourCalendrier.dataset.date || "")))) {
-        await afficherDialogueAbonnementPlanning("jour", etatPage.droitsPlanningParcActifs,
-          {dateIso:String(jourCalendrier.dataset.date || "")});
-        return;
+      if (clicJourPlanifierEnCours) return;
+      clicJourPlanifierEnCours = true;
+      const masquerAttente = afficherAttenteClicJourPlanifier();
+      try {
+        // Sans parc, aucun contrôle de DA ni d'abonnement ne doit être lancé.
+        if (!etatPage.calendrierMoisActif?.parc) {
+          masquerAttente();
+          const choix = await ouvrirDialogueBoutonsSuperpose({
+            titre: "Choisir un parc",
+            texte: "Vous n'avez pas de parc sélectionné.",
+            boutons: [{label: "Choisir un parc", valeur: "choisir", style: "lcdp-button-primary"}]
+          });
+          if (choix === "choisir") await ouvrirFiltreParcPlanifier();
+          return;
+        }
+        if (!window.LCDP_ABOREZA?.actif() &&
+            !preparationAbonnementPlanifier &&
+            (membreSansDaValidee() ||
+              !jourCouvertParAbonnementPayePlanifier(String(jourCalendrier.dataset.date || "")))) {
+          // Le dialogue attend une décision : retirer l'attente AVANT de l'ouvrir.
+          masquerAttente();
+          await afficherDialogueAbonnementPlanning("jour", etatPage.droitsPlanningParcActifs,
+            {dateIso:String(jourCalendrier.dataset.date || "")});
+          return;
+        }
+        await ouvrirCalendrierJourDepuisCard(jourCalendrier);
+      } catch (erreur) {
+        masquerAttente();
+        console.error("Erreur au clic sur une journée PLANIFIER :", erreur);
+        await afficherAlerteSuperposee(erreur?.message || "Impossible d'ouvrir cette journée.");
+      } finally {
+        masquerAttente();
+        clicJourPlanifierEnCours = false;
       }
-      await ouvrirCalendrierJourDepuisCard(jourCalendrier);
       return;
     }
 
