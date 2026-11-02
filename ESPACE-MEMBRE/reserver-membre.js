@@ -418,6 +418,12 @@
     chargement.setAttribute("role", "status");
     chargement.setAttribute("aria-label", "Chargement des parcs");
     chargement.appendChild(creerPictowait("Chargement des parcs…"));
+    // Masque autonome et centré : jamais dans le flux de la page ou de la box.
+    Object.assign(chargement.style, {
+      position: "fixed", inset: "0", display: "flex", alignItems: "center",
+      justifyContent: "center", minHeight: "0", zIndex: "10000",
+      background: "rgba(255,255,255,0.92)"
+    });
     enveloppe.appendChild(chargement);
     const barre = document.getElementById("lcdp-commande-bar-reserver-slot");
     const liste = document.getElementById("lcdp-liste-card-parcs-slot");
@@ -432,7 +438,10 @@
       const close = enveloppe.querySelector("[data-lcdp-dialogue-champ-close]");
       if (![dialogue,carte,titre,form,content,close,barre,liste].every(Boolean)) throw new Error("Box Parc incomplète.");
       carte.classList.add("lcdp-planifier-parcs-card");
-      dialogue.style.visibility = "hidden";
+      // Aucun rendu intermédiaire de la box : elle reste hors affichage
+      // pendant le montage des fragments, CSS et cartes.
+      dialogue.style.display = "none";
+      dialogue.style.opacity = "0";
       titre.textContent = "Parcs du département";
       const nomDepartement = document.createElement("p");
       nomDepartement.className = "lcdp-planifier-parcs-departement";
@@ -484,14 +493,12 @@
           initialiserBoutonDepartementPrincipal();
           await chargerParcsDepartementMembre();
           nomDepartement.textContent = libelleDepartementListeParcs();
-          dialogue.style.visibility = "";
-          chargement.remove();
+          await revelerDialogueParcs(dialogue, chargement);
         } catch(error) {parcInitialise = false; throw error;}
       } else {
         afficherCommandeBarReserver();
         actualiserVueParcs();
-        dialogue.style.visibility = "";
-        chargement.remove();
+        await revelerDialogueParcs(dialogue, chargement);
       }
     } catch(error) {
       const pageContent = document.querySelector(".lcdp-page-reserver .lcdp-page-content--avec-entete");
@@ -499,6 +506,14 @@
       enveloppe.remove(); filtreParcOuvert = false;
       throw error;
     }
+  }
+
+  async function revelerDialogueParcs(dialogue, chargement) {
+    // Laisser finir le calcul de mise en page avant d'exposer la box.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    dialogue.style.display = "";
+    dialogue.style.opacity = "1";
+    chargement.remove();
   }
 
   // Les statuts DA sont distincts du droit de réservation.
@@ -1337,16 +1352,24 @@
     etatPage.templateCardParc = fragmentCard.querySelector("[data-lcdp-box-card-parc]");
     etatPage.templateListeParcsDiaporama = fragmentListeDiaporama.querySelector("[data-lcdp-liste-card-diaporama]");
     etatPage.templateCardParcDiaporama = fragmentCardDiaporama.querySelector("[data-lcdp-card-parc-diaporama]");
-    for (const chemin of ["/BOX/04-box-liste-card-diaporama.css", "/BOX/04-box-card-parc-diaporama.css"]) {
+    // Attendre les deux CSS avant de montrer la box : évite le flash de
+    // contenu non stylé et son redimensionnement sur PC/tablette.
+    await Promise.all(["/BOX/04-box-liste-card-diaporama.css", "/BOX/04-box-card-parc-diaporama.css"].map(chemin => {
       const href = construireUrlObjet(chemin);
-      if (!document.querySelector(`link[data-lcdp-diaporama-css="${chemin}"]`)) {
-        const lien = document.createElement("link");
+      const existant = document.querySelector(`link[data-lcdp-diaporama-css="${chemin}"]`);
+      if (existant?.sheet) return Promise.resolve();
+      const lien = existant || document.createElement("link");
+      if (!existant) {
         lien.rel = "stylesheet";
         lien.href = href;
         lien.dataset.lcdpDiaporamaCss = chemin;
-        document.head.appendChild(lien);
       }
-    }
+      return new Promise((resolve, reject) => {
+        lien.addEventListener("load", resolve, { once: true });
+        lien.addEventListener("error", () => reject(new Error("CSS diaporama indisponible : " + chemin)), { once: true });
+        if (!existant) document.head.appendChild(lien);
+      });
+    }));
 
     etatPage.templateShiftDetailParc = fragmentShiftDetailParc.querySelector("[data-lcdp-box-shift-detail-parc]");
 
