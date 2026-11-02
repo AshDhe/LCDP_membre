@@ -1448,39 +1448,36 @@
 
   function creerCardParcDiaporama(parc) {
     const card = etatPage.templateCardParcDiaporama.cloneNode(true);
-    // Reprendre les styles des deux boutons de la carte Parc classique.
-    card.classList.add("lcdp-box-card-parc--reserver");
+    const cardListe = creerCardParc(parc);
     const idparc = String(parc.idparc || parc.id || "");
     const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
     const image = card.querySelector("[data-lcdp-diaporama-image]");
     const nomElement = card.querySelector("[data-lcdp-diaporama-nom]");
-    const description = card.querySelector("[data-lcdp-diaporama-description]");
     const retourner = card.querySelector("[data-lcdp-diaporama-retourner]");
     const fermer = card.querySelector("[data-lcdp-diaporama-fermer]");
-    const actions = card.querySelector("[data-lcdp-diaporama-actions]");
+    const contenuVerso = card.querySelector("[data-lcdp-diaporama-dos-contenu]");
+    const corpsListe = cardListe.querySelector(".lcdp-box-card-parc__body");
     card.dataset.idparc = idparc;
     if (image) {
       image.src = construireUrlImageParc(parc);
       image.alt = "";
-      image.addEventListener("error", () => { image.src = construireUrlObjet(DOSSIER_IMAGES_PARC_OBJET + "/cardlogo.webp"); }, { once: true });
+      image.addEventListener("error", () => {
+        image.src = construireUrlObjet(DOSSIER_IMAGES_PARC_OBJET + "/cardlogo.webp");
+      }, { once: true });
     }
     if (nomElement) nomElement.textContent = nom;
-    if (description) {
-      description.textContent = nettoyerTexteCourt(parc.prez || parc.presentation || "", longueurDescriptionCardParc());
-      description.hidden = !description.textContent;
-    }
-    const nomDos = card.querySelector("[data-lcdp-diaporama-nom-dos]");
-    if (nomDos) nomDos.textContent = nom;
-    if (actions) actions.replaceChildren(
-      creerBoutonActionCardParc({ action: "ouvrir-fiche-parc", libelle: "Le parc", ariaLabel: "Ouvrir la présentation du parc " + nom, icone: "presentation", variante: "vert-plein", idparc }),
-      creerBoutonActionCardParc({ action: "voir-planning-parc", libelle: "Planning", ariaLabel: "Afficher le planning du parc " + nom, icone: "planning", variante: "orange-plein", idparc })
-    );
+    // Exactement les composants de la carte en liste : titre, deux boutons et
+    // description cliquable avec pictogramme de présentation et texte abrégé.
+    // Les tailles et comportements proviennent de 04-box-card-parc.css/JS.
+    if (contenuVerso && corpsListe) contenuVerso.replaceChildren(corpsListe);
     const mettreAJour = ouvert => {
       card.classList.toggle("is-retourne", ouvert);
       retourner?.setAttribute("aria-expanded", String(ouvert));
       card.querySelector("[data-lcdp-diaporama-dos]")?.setAttribute("aria-hidden", String(!ouvert));
       if (fermer) fermer.tabIndex = ouvert ? 0 : -1;
-      actions?.querySelectorAll("button").forEach(bouton => { bouton.tabIndex = ouvert ? 0 : -1; });
+      contenuVerso?.querySelectorAll("button").forEach(bouton => {
+        bouton.tabIndex = ouvert ? 0 : -1;
+      });
     };
     retourner?.addEventListener("click", () => mettreAJour(true));
     fermer?.addEventListener("click", () => { mettreAJour(false); retourner?.focus(); });
