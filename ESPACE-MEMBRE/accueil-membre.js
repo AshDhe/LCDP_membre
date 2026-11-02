@@ -640,7 +640,10 @@
     actionAccueilEnCours = false;
     const attente = document.getElementById("lcdp-navigation-attente");
     const slot = document.getElementById("lcdp-menu-central-slot");
-    if (attente) attente.hidden = true;
+    if (attente) {
+      attente.hidden = true;
+      attente.style.removeProperty("display");
+    }
     if (!slot) return;
     slot.setAttribute("aria-busy", "false");
     slot.querySelectorAll(".lcdp-accueil-actions > button").forEach((bouton) => {
