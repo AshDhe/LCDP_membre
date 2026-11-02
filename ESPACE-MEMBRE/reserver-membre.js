@@ -1492,6 +1492,16 @@
     // L'extrait est volontairement bref : la fiche contient le texte complet.
     if (contenuVerso && corpsListe) {
       contenuVerso.replaceChildren(corpsListe);
+      // Libellé spécifique au diaporama ; la Card Parc classique reste inchangée.
+      const boutonPlanifier = contenuVerso.querySelector('[data-action="voir-planning-parc"]');
+      if (boutonPlanifier) {
+        const libellePlanifier = boutonPlanifier.querySelector(".lcdp-box-card-parc__action-libelle");
+        if (libellePlanifier) libellePlanifier.textContent = "Planifier";
+        boutonPlanifier.setAttribute("aria-label", "Planifier une visite au parc " + nom);
+        if (!boutonPlanifier.classList.contains("lcdp-box-card-parc__action--projet")) {
+          boutonPlanifier.title = "Planifier une visite au parc " + nom;
+        }
+      }
       const descriptionVerso = contenuVerso.querySelector("[data-lcdp-card-parc-description]");
       if (descriptionVerso) {
         descriptionVerso.dataset.lcdpDiaporamaExtrait = "true";
