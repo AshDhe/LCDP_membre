@@ -1488,9 +1488,19 @@
     // Le recto reçoit le média COMPLET de la carte en liste : image,
     // remplacement en cas d’erreur et bandeau PREPA déjà initialisé.
     if (retourner && mediaListe) retourner.appendChild(mediaListe);
-    // Le verso reçoit le corps COMPLET de la même carte en liste :
-    // titre, boutons, description et événements délégués, sans duplication.
-    if (contenuVerso && corpsListe) contenuVerso.replaceChildren(corpsListe);
+    // Le verso réutilise les boutons et le lien de la Card Parc classique.
+    // L'extrait est volontairement bref : la fiche contient le texte complet.
+    if (contenuVerso && corpsListe) {
+      contenuVerso.replaceChildren(corpsListe);
+      const descriptionVerso = contenuVerso.querySelector("[data-lcdp-card-parc-description]");
+      if (descriptionVerso) {
+        descriptionVerso.dataset.lcdpDiaporamaExtrait = "true";
+        rendreDescriptionCardParc(
+          descriptionVerso,
+          nettoyerTexteCourt(descriptionVerso.dataset.lcdpDescriptionComplete || "", 75)
+        );
+      }
+    }
     const mettreAJour = ouvert => {
       card.classList.toggle("is-retourne", ouvert);
       retourner?.setAttribute("aria-expanded", String(ouvert));
@@ -5798,7 +5808,10 @@
 
         rendreDescriptionCardParc(
           texte,
-          nettoyerTexteCourt(descriptionComplete, longueurMax)
+          nettoyerTexteCourt(
+            descriptionComplete,
+            texte.dataset.lcdpDiaporamaExtrait === "true" ? 75 : longueurMax
+          )
         );
         texte.hidden = !descriptionComplete;
       });
