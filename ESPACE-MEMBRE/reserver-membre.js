@@ -567,7 +567,7 @@
       if (depassement) titre = "Nouvel abonnement";
       boutons = [{label:"Abonnement",valeur:"abonnement",style:"lcdp-button-primary"}];
     }
-    const choix = await ouvrirDialogueBoutonsSuperpose({titre,texte,boutons});
+    const choix = await ouvrirDialogueBoutonsSuperpose({titre,texte,boutons,onAffiche: contexte.onAffiche});
     if (sansDa && choix === "demande") {
       await ouvrirDemandeAbonnementDepuisPlanning();
     } else if (!sansDa && !daValidee && choix === "invitation") {
@@ -3333,11 +3333,11 @@
       try {
         // Sans parc, aucun contrôle de DA ni d'abonnement ne doit être lancé.
         if (!etatPage.calendrierMoisActif?.parc) {
-          await masquerAttente();
           const choix = await ouvrirDialogueBoutonsSuperpose({
             titre: "Choisir un parc",
             texte: "Vous n'avez pas de parc sélectionné.",
-            boutons: [{label: "Choisir un parc", valeur: "choisir", style: "lcdp-button-primary"}]
+            boutons: [{label: "Choisir un parc", valeur: "choisir", style: "lcdp-button-primary"}],
+            onAffiche: masquerAttente
           });
           if (choix === "choisir") await ouvrirFiltreParcPlanifier();
           return;
@@ -3346,17 +3346,15 @@
             !preparationAbonnementPlanifier &&
             (membreSansDaValidee() ||
               !jourCouvertParAbonnementPayePlanifier(String(jourCalendrier.dataset.date || "")))) {
-          // Le dialogue attend une décision : retirer l'attente AVANT de l'ouvrir.
-          await masquerAttente();
+          // L'attente disparaît uniquement une fois le dialogue effectivement monté.
           await afficherDialogueAbonnementPlanning("jour", etatPage.droitsPlanningParcActifs,
-            {dateIso:String(jourCalendrier.dataset.date || "")});
+            {dateIso:String(jourCalendrier.dataset.date || ""), onAffiche: masquerAttente});
           return;
         }
         await ouvrirCalendrierJourDepuisCard(jourCalendrier);
       } catch (erreur) {
-        await masquerAttente();
         console.error("Erreur au clic sur une journée PLANIFIER :", erreur);
-        await afficherAlerteSuperposee(erreur?.message || "Impossible d'ouvrir cette journée.");
+        await afficherAlerteSuperposee(erreur?.message || "Impossible d'ouvrir cette journée.", "orange", {onAffiche: masquerAttente});
       } finally {
         await masquerAttente();
         clicJourPlanifierEnCours = false;
@@ -5162,6 +5160,11 @@
     if (options.contenu) texte.replaceChildren(options.contenu);
     actions.innerHTML = "";
 
+    // Le dialogue est monté : libérer l'attente sans attendre la décision de l'utilisateur.
+    if (typeof options.onAffiche === "function") {
+      window.requestAnimationFrame(() => { Promise.resolve(options.onAffiche()).catch(console.error); });
+    }
+
     return new Promise((resolve) => {
       let resolu = false;
 
@@ -5236,6 +5239,10 @@
           ? "lcdp-button-secondary"
           : "lcdp-button-orange"
     );
+
+    if (typeof options.onAffiche === "function") {
+      window.requestAnimationFrame(() => { Promise.resolve(options.onAffiche()).catch(console.error); });
+    }
 
     return new Promise((resolve) => {
       let resolu = false;
