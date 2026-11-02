@@ -5692,8 +5692,13 @@
 
   function normaliserNomParcPourChemin(valeur) {
     return String(valeur || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       .trim()
-      .replace(/[ -]/g, "_");
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .replace(/_+/g, "_");
   }
 
   function redirigerConnexionMembre(motif) {
