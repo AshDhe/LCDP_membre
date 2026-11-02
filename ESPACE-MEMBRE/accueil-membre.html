@@ -104,6 +104,23 @@
   </style>
   <style>
     #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden] { display: none !important; }
+    /* Attente de navigation : superposition centrée, sans déplacer les boutons. */
+    #lcdp-navigation-attente:not([hidden]) {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 16px;
+      box-sizing: border-box;
+      background: var(--lcdp-color-surface, #fff);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
   </style>
   <style id="lcdp-pictos-accueil-membre">
     .lcdp-page-accueil-membre #lcdp-menu-central-slot,
