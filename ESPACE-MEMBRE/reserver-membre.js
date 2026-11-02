@@ -109,6 +109,42 @@
   const tagsDuoActifMaquette = new Set();
 
 
+  // Reprise courte du contexte de lecture après expiration automatique de session.
+  // Aucune réservation, aucun panier et aucune donnée d’authentification n’est stocké.
+  const CLE_REPRISE_PLANIFIER = "lcdp_planifier_reprise_expiration_v1";
+  const MAX_AGE_REPRISE_PLANIFIER_MS = 2 * 60 * 60 * 1000;
+  let enregistrerContextePlanning = () => {};
+
+  function memoriserContextePlanifier(parc, annee, mois) {
+    try {
+      const idparc = String(parc?.idparc || parc?.id || "").trim();
+      sessionStorage.setItem(CLE_REPRISE_PLANIFIER, JSON.stringify({
+        date: Date.now(), idparc,
+        nom: idparc ? String(parc.nom || parc.nomparc || "").slice(0, 160) : "",
+        departement: idparc ? String(parc.dptmt || parc.departement || "").slice(0, 4) : "",
+        annee, mois
+      }));
+    } catch (_) { /* Stockage indisponible : navigation normale. */ }
+  }
+
+  function lireReprisePlanifier() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reprise") !== "expiration") return null;
+    // Consommer le signal pour ne pas rejouer la reprise lors d’un rechargement.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("reprise");
+    window.history.replaceState(window.history.state, "", url.href);
+    try {
+      const brut = sessionStorage.getItem(CLE_REPRISE_PLANIFIER);
+      sessionStorage.removeItem(CLE_REPRISE_PLANIFIER);
+      if (!brut) return null;
+      const donnees = JSON.parse(brut);
+      if (!donnees || Date.now() - donnees.date > MAX_AGE_REPRISE_PLANIFIER_MS || donnees.date > Date.now()) return null;
+      if (!Number.isInteger(donnees.annee) || !Number.isInteger(donnees.mois) || donnees.mois < 1 || donnees.mois > 12) return null;
+      return donnees;
+    } catch (_) { return null; }
+  }
+
   const cachePlanningParcLecture = new Map();
   const DUREE_CACHE_PLANNING_LECTURE_MS = 30000;
 
@@ -179,11 +215,33 @@
         .catch(erreur => console.warn("Menu burger indisponible.", erreur));
       // Préparer les parcs en arrière-plan, sans retarder le planning général.
       prechargerListeParcsPlanifier();
+      const contexteAReprendre = lireReprisePlanifier();
+      if (contexteAReprendre) {
+        reprendreContextePlanifier(contexteAReprendre).catch(error => {
+          console.warn("Reprise du parc indisponible ; calendrier conservé.", error);
+        });
+      }
     } catch (erreur) {
       console.error("Erreur ouverture du planning général :", erreur);
       masquerAttenteInitialePlanifier();
       await afficherAlerte(erreur.message || "Impossible d’ouvrir le planning.");
     }
+  }
+
+  async function reprendreContextePlanifier(contexte) {
+    if (!contexte.idparc || !contexte.departement || !ENDPOINT_NOUVELLE_DATE_MEMBRE) return;
+    const url = ENDPOINT_NOUVELLE_DATE_MEMBRE + "/departement?dptmt=" + encodeURIComponent(contexte.departement);
+    const reponse = await fetch(url, {
+      method: "GET", credentials: "include", cache: "no-store", headers: { Accept: "application/json" }
+    });
+    if (reponse.status === 401) { redirigerConnexionMembre("inactive"); return; }
+    const data = await reponse.json().catch(() => null);
+    if (!reponse.ok || !data || !reponseApiOk(data)) return;
+    const parc = (Array.isArray(data.parcs) ? data.parcs : []).find(
+      element => String(element.idparc || element.id || "") === contexte.idparc
+    );
+    if (!parc) return;
+    await etatPage.reprendrePlanning?.(contexte, parc);
   }
 
   function masquerAttenteInitialePlanifier() {
@@ -680,6 +738,18 @@
     let droitsParc = droitsInitiaux;
     let planningCourant = [];
     let generationPlanning = 0;
+    enregistrerContextePlanning = () => memoriserContextePlanifier(parcSelectionne, etat.annee, etat.mois);
+    etatPage.reprendrePlanning = async (contexte, parc) => {
+      const cible = Number(contexte.annee) * 12 + Number(contexte.mois);
+      // Ne pas revenir sur les mois passés ni dépasser l’horizon de consultation.
+      const droits = await chargerDroitsPlanningParcMembre(parc);
+      if (cible >= borne && (!droits?.moisMaximum ||
+          `${contexte.annee}-${String(contexte.mois).padStart(2, "0")}` <= droits.moisMaximum)) {
+        etat.annee = contexte.annee;
+        etat.mois = contexte.mois;
+      }
+      await selectionnerParcPlanningPrincipal(parc);
+    };
 
     // Seule cette fonction change le parc du calendrier permanent.
     selectionnerParcPlanningPrincipal = async (parc) => {
@@ -696,6 +766,7 @@
       etatPage.calendrierMoisActif = { ...demande, modePlanning: "lecture", planning: donnees };
       generationPlanning++;
       afficher();
+      enregistrerContextePlanning();
       // La liste/carte est un filtre en superposition, jamais une autre page.
       navigationParcs?.fermer?.();
       fermerShiftDetailParc();
@@ -725,6 +796,7 @@
       if (!/^\d{4}-\d{2}$/.test(String(cle || ""))) throw new Error("Mois ABO-RÉZA invalide.");
       etat.annee = Number(cle.slice(0,4));
       etat.mois = Number(cle.slice(5,7));
+      enregistrerContextePlanning();
       planningCourant = [];
       afficher();
       if (parcSelectionne) await actualiserMoisParc();
@@ -790,6 +862,7 @@
       if (window.LCDP_ABOREZA?.actif()) return;
       if (etat.annee * 12 + etat.mois <= borne) return;
       changerMois(etat, -1);
+      enregistrerContextePlanning();
       afficher();
       if (parcSelectionne) actualiserMoisParc();
     });
@@ -803,6 +876,7 @@
         return;
       }
       changerMois(etat, 1);
+      enregistrerContextePlanning();
       afficher();
       if (parcSelectionne) actualiserMoisParc();
     });

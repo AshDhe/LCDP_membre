@@ -794,6 +794,7 @@
       throw new Error(messageErreurApi(resultat, "Impossible de fermer la session membre."));
     }
 
+    try { sessionStorage.removeItem("lcdp_planifier_reprise_expiration_v1"); } catch (_) {}
     redirigerPublic("/ESPACE-PUBLIC/accueil-public.html");
   }
 
