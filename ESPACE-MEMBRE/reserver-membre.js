@@ -929,6 +929,17 @@
       gif.alt = "";
       gif.width = 64;
       gif.height = 64;
+      // Centrage autonome : ne dépend pas du chargement du CSS du workflow.
+      Object.assign(masque.style, {
+        position: "fixed", inset: "0", width: "100vw", height: "100dvh",
+        zIndex: "2147483647", display: "flex", alignItems: "center",
+        justifyContent: "center", margin: "0", padding: "0",
+        background: "rgba(255,255,255,0.94)"
+      });
+      Object.assign(gif.style, {
+        display: "block", width: "64px", height: "64px",
+        objectFit: "contain", margin: "0", flex: "none"
+      });
       masque.appendChild(gif);
       document.body.appendChild(masque);
       // Peindre l'attente, sans dépendre exclusivement de requestAnimationFrame
