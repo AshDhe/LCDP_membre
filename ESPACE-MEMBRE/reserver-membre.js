@@ -240,7 +240,7 @@
     if (reponse.status === 401) { redirigerConnexionMembre("inactive"); return; }
     const data = await reponse.json().catch(() => null);
     if (!reponse.ok || !data || !reponseApiOk(data)) return;
-    const parc = (Array.isArray(data.parcs) ? data.parcs : []).find(
+    const parc = normaliserParcsPlanifier(data.parcs).find(
       element => String(element.idparc || element.id || "") === contexte.idparc
     );
     if (!parc) return;
@@ -765,6 +765,10 @@
     // Seule cette fonction change le parc du calendrier permanent.
     selectionnerParcPlanningPrincipal = async (parc) => {
       if (!parc) throw new Error("Parc introuvable.");
+      if (estParcProjet(parc)) {
+        await informerParcProjet();
+        return;
+      }
       // Ne pas perdre le parc précédent lorsque le chargement échoue.
       const droits = await chargerDroitsPlanningParcMembre(parc);
       const demande = { parc, annee: etat.annee, mois: etat.mois };
@@ -1448,27 +1452,20 @@
 
   function creerCardParcDiaporama(parc) {
     const card = etatPage.templateCardParcDiaporama.cloneNode(true);
-    const cardListe = creerCardParc(parc);
+    const cardListe = creerCardParc(parc, { afficherTitreTexte: true });
     const idparc = String(parc.idparc || parc.id || "");
     const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
-    const image = card.querySelector("[data-lcdp-diaporama-image]");
-    const nomElement = card.querySelector("[data-lcdp-diaporama-nom]");
     const retourner = card.querySelector("[data-lcdp-diaporama-retourner]");
     const fermer = card.querySelector("[data-lcdp-diaporama-fermer]");
     const contenuVerso = card.querySelector("[data-lcdp-diaporama-dos-contenu]");
+    const mediaListe = cardListe.querySelector(".lcdp-box-card-parc__media");
     const corpsListe = cardListe.querySelector(".lcdp-box-card-parc__body");
     card.dataset.idparc = idparc;
-    if (image) {
-      image.src = construireUrlImageParc(parc);
-      image.alt = "";
-      image.addEventListener("error", () => {
-        image.src = construireUrlObjet(DOSSIER_IMAGES_PARC_OBJET + "/cardlogo.webp");
-      }, { once: true });
-    }
-    if (nomElement) nomElement.textContent = nom;
-    // Exactement les composants de la carte en liste : titre, deux boutons et
-    // description cliquable avec pictogramme de présentation et texte abrégé.
-    // Les tailles et comportements proviennent de 04-box-card-parc.css/JS.
+    // Le recto reçoit le média COMPLET de la carte en liste : image,
+    // remplacement en cas d’erreur et bandeau PREPA déjà initialisé.
+    if (retourner && mediaListe) retourner.appendChild(mediaListe);
+    // Le verso reçoit le corps COMPLET de la même carte en liste :
+    // titre, boutons, description et événements délégués, sans duplication.
     if (contenuVerso && corpsListe) contenuVerso.replaceChildren(corpsListe);
     const mettreAJour = ouvert => {
       card.classList.toggle("is-retourne", ouvert);
@@ -2817,7 +2814,7 @@
       }
 
       const departement = String(data.departement || "");
-      const parcs = Array.isArray(data.parcs) ? data.parcs : [];
+      const parcs = normaliserParcsPlanifier(data.parcs);
       etatPage.nomDepartement = String(data.nomDepartement || data.nomdepartement || data.libelleDepartement || data.departementNom || "").trim();
       const listePreparee = construireListeParcsPreparee(
         parcs,
@@ -2877,7 +2874,7 @@
       const departementRecu = String(
         data.departement || departement
       );
-      const parcs = Array.isArray(data.parcs) ? data.parcs : [];
+      const parcs = normaliserParcsPlanifier(data.parcs);
       etatPage.nomDepartement = String(data.nomDepartement || data.nomdepartement || data.libelleDepartement || data.departementNom || "").trim();
       const listePreparee = construireListeParcsPreparee(
         parcs,
@@ -2951,7 +2948,42 @@
     });
   }
 
-  function creerCardParc(parc) {
+  function statutParcPlanifier(parc) {
+    return String(parc?.statut || "").trim().toLowerCase();
+  }
+
+  function estParcProjet(parc) {
+    return statutParcPlanifier(parc) === "prepa";
+  }
+
+  function estParcNouveau(parc) {
+    if (statutParcPlanifier(parc) !== "enligne" || !parc?.datestatut) return false;
+    const debut = new Date(parc.datestatut);
+    if (!Number.isFinite(debut.getTime())) return false;
+    const fin = new Date(debut.getTime());
+    // Deux mois calendaires, y compris en fin de mois (31 janvier -> 31 mars).
+    const jour = debut.getUTCDate();
+    fin.setUTCDate(1);
+    fin.setUTCMonth(fin.getUTCMonth() + 2);
+    const dernierJour = new Date(Date.UTC(fin.getUTCFullYear(), fin.getUTCMonth() + 1, 0)).getUTCDate();
+    fin.setUTCDate(Math.min(jour, dernierJour));
+    return Date.now() >= debut.getTime() && Date.now() < fin.getTime();
+  }
+
+  function normaliserParcsPlanifier(parcs) {
+    return (Array.isArray(parcs) ? parcs : [])
+      .filter(parc => ["enligne", "prepa"].includes(statutParcPlanifier(parc)))
+      .sort((a, b) => {
+        const rang = parc => statutParcPlanifier(parc) === "enligne" ? 0 : 1;
+        return rang(a) - rang(b) || String(a.nom || "").localeCompare(String(b.nom || ""), "fr");
+      });
+  }
+
+  async function informerParcProjet() {
+    await afficherAlerteSuperposee("Ce parc n'est pas encore accessible.", "orange", { libelleBouton: "Fermer" });
+  }
+
+  function creerCardParc(parc, options = {}) {
     const card = etatPage.templateCardParc.cloneNode(true);
 
     const idparc = String(parc.idparc || parc.id || "");
@@ -2965,6 +2997,11 @@
       longueurDescriptionCardParc()
     );
 
+    const media = card.querySelector(".lcdp-box-card-parc__media");
+    const nomImage = card.querySelector("[data-lcdp-card-parc-nom-image]");
+    const nomCourt = nom.replace(/^(?:parc\s+(?:de\s+|d[’\']\s*|du\s+|des\s+)?)+/i, "").trim() || nom;
+    if (nomImage) nomImage.textContent = nomCourt;
+    if (media) media.classList.add("lcdp-box-card-parc__media--avec-nom");
     const image = card.querySelector("[data-lcdp-card-parc-image]");
     const badgePrepa = card.querySelector("[data-lcdp-card-parc-badge-prepa]");
     const titre = card.querySelector("[data-lcdp-card-parc-title]");
@@ -2986,11 +3023,19 @@
     }
 
     if (badgePrepa) {
-      badgePrepa.hidden = String(parc.statut || "").trim().toLowerCase() !== "prepa";
+      const projet = estParcProjet(parc);
+      const nouveau = estParcNouveau(parc);
+      badgePrepa.hidden = !projet && !nouveau;
+      badgePrepa.textContent = projet ? "PROJET" : "NOUVEAU";
+      badgePrepa.classList.toggle("lcdp-box-card-parc__badge--nouveau", nouveau);
     }
 
     if (titre) {
-      titre.textContent = nom.replace(/^parc\s+/i, "");
+      if (options.afficherTitreTexte === true) {
+        titre.textContent = nomParcAfficheMembre(nom);
+      } else {
+        titre.closest(".lcdp-box-card-parc__title")?.remove();
+      }
     }
 
     if (meta) {
@@ -3032,6 +3077,13 @@
           idparc
         })
       );
+
+      const boutonPlanning = actions.querySelector('[data-action="voir-planning-parc"]');
+      if (boutonPlanning && estParcProjet(parc)) {
+        boutonPlanning.classList.add("lcdp-box-card-parc__action--projet");
+        boutonPlanning.setAttribute("aria-disabled", "true");
+        boutonPlanning.title = "Ce parc n'est pas encore accessible.";
+      }
 
       if (texte && texte.parentNode) {
         texte.parentNode.insertBefore(actions, texte);
@@ -3100,7 +3152,7 @@
           return;
         }
 
-        prechargerPlanningParcLecture(parc);
+        if (!estParcProjet(parc)) prechargerPlanningParcLecture(parc);
       };
 
       bouton.addEventListener(
@@ -3194,6 +3246,10 @@
         return;
       }
 
+      if (estParcProjet(parc)) {
+        await informerParcProjet();
+        return;
+      }
       await ouvrirPlanningMoisParc(parc);
       return;
     }
@@ -3253,6 +3309,10 @@
   }
 
   async function autoriserReservationParc(parc) {
+    if (estParcProjet(parc)) {
+      await informerParcProjet();
+      return false;
+    }
     if (!parc) {
       await afficherAlerteDetailParcOuPage("Parc introuvable.");
       return false;
@@ -3625,6 +3685,10 @@
   }
 
   async function ouvrirPlanningMoisParc(parc) {
+    if (estParcProjet(parc)) {
+      await informerParcProjet();
+      return;
+    }
     if (typeof selectionnerParcPlanningPrincipal !== "function") {
       throw new Error("Le planning principal n'est pas initialisé.");
     }
