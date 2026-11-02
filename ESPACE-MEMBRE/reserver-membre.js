@@ -1485,6 +1485,10 @@
     retourner?.addEventListener("click", () => mettreAJour(true));
     fermer?.addEventListener("click", () => { mettreAJour(false); retourner?.focus(); });
     mettreAJour(false);
+    // N’activer la transition 3D qu’après le premier rendu du recto.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (card.isConnected) card.classList.add("is-ready");
+    }));
     return card;
   }
 
