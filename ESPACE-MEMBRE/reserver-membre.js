@@ -911,10 +911,16 @@
       gif.height = 64;
       masque.appendChild(gif);
       document.body.appendChild(masque);
-      // Deux frames laissent le navigateur peindre le GIF avant la navigation.
-      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
-        window.location.href = construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html");
-      }));
+      // Peindre l'attente, sans dépendre exclusivement de requestAnimationFrame
+      // (susceptible d'être suspendu sur certains navigateurs/onglets).
+      let navigationLancee = false;
+      const retournerAccueil = () => {
+        if (navigationLancee) return;
+        navigationLancee = true;
+        window.location.replace(construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html"));
+      };
+      window.setTimeout(retournerAccueil, 250);
+      window.requestAnimationFrame(() => window.requestAnimationFrame(retournerAccueil));
     });
     slot.replaceChildren(calendrier);
     afficher();

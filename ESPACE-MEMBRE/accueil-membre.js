@@ -98,6 +98,9 @@
         contenu.hidden = false;
         contenu.setAttribute("aria-busy", "false");
       }
+      if (window.LCDP_delaiAccueilMembre) window.clearTimeout(window.LCDP_delaiAccueilMembre);
+      const erreurAccueil = document.getElementById("lcdp-accueil-erreur");
+      if (erreurAccueil) erreurAccueil.hidden = true;
       const attente = document.getElementById("lcdp-accueil-attente");
       if (attente) attente.style.display = "none";
 
@@ -794,7 +797,6 @@
       throw new Error(messageErreurApi(resultat, "Impossible de fermer la session membre."));
     }
 
-    try { sessionStorage.removeItem("lcdp_planifier_reprise_expiration_v1"); } catch (_) {}
     redirigerPublic("/ESPACE-PUBLIC/accueil-public.html");
   }
 
