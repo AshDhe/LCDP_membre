@@ -432,6 +432,7 @@
       const close = enveloppe.querySelector("[data-lcdp-dialogue-champ-close]");
       if (![dialogue,carte,titre,form,content,close,barre,liste].every(Boolean)) throw new Error("Box Parc incomplète.");
       carte.classList.add("lcdp-planifier-parcs-card");
+      dialogue.style.visibility = "hidden";
       titre.textContent = "Parcs du département";
       const nomDepartement = document.createElement("p");
       nomDepartement.className = "lcdp-planifier-parcs-departement";
@@ -439,7 +440,8 @@
       titre.insertAdjacentElement("afterend", nomDepartement);
       form.querySelector(".lcdp-box-dialogue-champ__actions")?.remove();
       content.append(barre,liste);
-      content.prepend(chargement);
+      // Garder le pictogramme hors de la box jusqu’à la fin du chargement.
+      // Évite le changement visible de dimensions de la box.
       barre.hidden = false;
       liste.hidden = false;
       const zoneCarte = document.createElement("div");
@@ -481,12 +483,14 @@
           ]);
           initialiserBoutonDepartementPrincipal();
           await chargerParcsDepartementMembre();
-          chargement.remove();
           nomDepartement.textContent = libelleDepartementListeParcs();
+          dialogue.style.visibility = "";
+          chargement.remove();
         } catch(error) {parcInitialise = false; throw error;}
       } else {
         afficherCommandeBarReserver();
         actualiserVueParcs();
+        dialogue.style.visibility = "";
         chargement.remove();
       }
     } catch(error) {
