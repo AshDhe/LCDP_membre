@@ -104,6 +104,29 @@
   </style>
   <style>
     #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden] { display: none !important; }
+    /* Attente initiale : couvre la fenêtre dès le premier affichage. */
+    #lcdp-accueil-attente {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 10000;
+      box-sizing: border-box;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      margin: 0 !important;
+      padding: 0 !important;
+      align-items: center;
+      justify-content: center;
+      background: var(--lcdp-color-surface, #fff);
+    }
+    #lcdp-accueil-attente > img {
+      display: block;
+      flex: 0 0 64px;
+      width: 64px;
+      height: 64px;
+      margin: 0;
+    }
+
     /* Attente de navigation : superposition centrée, sans déplacer les boutons. */
     #lcdp-navigation-attente:not([hidden]) {
       position: fixed;
@@ -196,6 +219,9 @@
 </head>
 
 <body class="lcdp-page-accueil-membre">
+  <div id="lcdp-accueil-attente" role="status" aria-label="Chargement de votre espace membre" style="display:flex">
+            <script>document.write('<img src="' + window.LCDP_urlObjet('/BOX/pictowait.gif') + '" alt="" width="64" height="64">');</script>
+          </div>
   <div class="lcdp-site-page">
 
     <div id="lcdp-bandeau-slot"></div>
@@ -204,9 +230,7 @@
     <main class="lcdp-site-main">
       <section class="lcdp-page-section">
         <div class="lcdp-page-container">
-          <div id="lcdp-accueil-attente" role="status" aria-label="Chargement de votre espace membre" style="display:flex;align-items:center;justify-content:center;min-height:240px">
-            <script>document.write('<img src="' + window.LCDP_urlObjet('/BOX/pictowait.gif') + '" alt="" width="64" height="64">');</script>
-          </div>
+
           <div id="lcdp-accueil-erreur" hidden role="alert">
             <p>Impossible de charger votre espace membre.</p>
             <button type="button" class="lcdp-button lcdp-button-primary" onclick="window.location.reload()">Réessayer</button>
