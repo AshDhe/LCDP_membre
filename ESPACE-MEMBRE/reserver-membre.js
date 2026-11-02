@@ -3027,8 +3027,8 @@
 
     const media = card.querySelector(".lcdp-box-card-parc__media");
     const nomImage = card.querySelector("[data-lcdp-card-parc-nom-image]");
-    const nomCourt = nom.replace(/^(?:parc\s+(?:de\s+|d[’\']\s*|du\s+|des\s+)?)+/i, "").trim() || nom;
-    if (nomImage) nomImage.textContent = nomCourt;
+    const nomCourt = nom.replace(/^(?:parc\s+(?:(?:de|du|des)\s+|d[’\']\s*)?)+/i, "").trim() || nom;
+    if (nomImage) nomImage.textContent = nomCourt.toLocaleUpperCase("fr-FR");
     if (media) media.classList.add("lcdp-box-card-parc__media--avec-nom");
     const image = card.querySelector("[data-lcdp-card-parc-image]");
     const badgePrepa = card.querySelector("[data-lcdp-card-parc-badge-prepa]");
@@ -5711,8 +5711,11 @@
   // Normalisation des titres visibles, sans toucher aux identifiants ni aux chemins d'images.
   function nomParcAfficheMembre(valeur) {
     const brut = String(valeur || "").trim();
-    const sansPrefixe = brut.replace(/^(?:(?:parc\s+(?:de\s+|d[’\']\s*))|(?:parc\s+))+/i, "").trim();
-    return "Parc de " + (sansPrefixe || brut || "nom inconnu");
+    const sansPrefixe = brut.replace(/^(?:parc\s+(?:(?:de|du|des)\s+|d[’\']\s*)?)+/i, "").trim();
+    const prefixe = /^parc\s+(du|des)\s+/i.test(brut)
+      ? "Parc " + brut.match(/^parc\s+(du|des)\s+/i)[1].toLowerCase() + " "
+      : /^parc\s+d[’']/i.test(brut) ? "Parc d’" : "Parc de ";
+    return (prefixe + (sansPrefixe || brut || "nom inconnu")).toLocaleUpperCase("fr-FR");
   }
 
   function normaliserNomParcPourChemin(valeur) {
