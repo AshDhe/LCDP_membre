@@ -72,6 +72,13 @@
         return buildUrl(objetBase, path);
       };
 
+      // Précharger le SVG utilisé dès le clic sur PLANIFIER.
+      const preloadAttentePlanifier = document.createElement("link");
+      preloadAttentePlanifier.rel = "preload";
+      preloadAttentePlanifier.as = "image";
+      preloadAttentePlanifier.href = window.LCDP_urlObjet("/BOX/pictowait.svg");
+      document.head.appendChild(preloadAttentePlanifier);
+
       const feuillesCssObjet = [
         "/CSSBASE/cssbase.css",
         "/BOX/02-box-bandeau-nav.css",
@@ -101,7 +108,7 @@
         "/BOX/04-box-card-jour-in-calendrier-mois.css?v=20260717-0655",
         "/BOX/04-box-calendrier-jour.css",
         "/BOX/04-box-card-heure-in-calendrier-jour.css",
-        "/BOX/04-box-workflow-reservation.css?v=20261030-rezabo-composants-v5",
+        "/BOX/04-box-workflow-reservation.css?v=20261102-croix-focus-v1",
         "/BOX/04-box-listemails.css"
       ];
 
@@ -129,7 +136,17 @@
 
 <body>
   <div id="lcdp-planifier-attente-initiale" role="status" aria-label="Chargement du planning mensuel">
-    <script>document.write('<img src="' + window.LCDP_urlObjet('/BOX/pictowait.gif') + '" alt="" width="64" height="64">');</script>
+    <script>
+      (() => {
+        const image = new Image(64, 64);
+        image.alt = "";
+        image.style.visibility = "hidden";
+        image.onload = () => { image.style.visibility = "visible"; };
+        image.onerror = () => { image.style.display = "none"; };
+        image.src = window.LCDP_urlObjet('/BOX/pictowait.svg');
+        document.currentScript.parentNode.insertBefore(image, document.currentScript);
+      })();
+    </script>
   </div>
   <div class="lcdp-site-page">
 

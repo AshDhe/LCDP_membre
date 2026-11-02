@@ -9,8 +9,8 @@
   let numero = 0;
   const MINIMUM_MS = 500;
   const chemin = () => {
-    if (typeof window.LCDP_urlObjet === 'function') return window.LCDP_urlObjet('/BOX/pictowait.gif');
-    return '/OBJET/BOX/pictowait.gif';
+    if (typeof window.LCDP_urlObjet === 'function') return window.LCDP_urlObjet('/BOX/pictowait.svg');
+    return '/OBJET/BOX/pictowait.svg';
   };
   function actualiser() {
     if (!operations.size) { masque?.remove(); masque = null; return; }

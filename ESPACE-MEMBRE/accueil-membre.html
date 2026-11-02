@@ -72,6 +72,13 @@
         return buildUrl(objetBase, path);
       };
 
+      // Précharger le SVG utilisé dès le clic sur PLANIFIER.
+      const preloadAttentePlanifier = document.createElement("link");
+      preloadAttentePlanifier.rel = "preload";
+      preloadAttentePlanifier.as = "image";
+      preloadAttentePlanifier.href = window.LCDP_urlObjet("/BOX/pictowait.svg");
+      document.head.appendChild(preloadAttentePlanifier);
+
       const feuillesCssObjet = [
         "/CSSBASE/cssbase.css",
         "/BOX/02-box-bandeau-nav.css",
@@ -193,7 +200,7 @@
       <section class="lcdp-page-section">
         <div class="lcdp-page-container">
           <div id="lcdp-accueil-attente" role="status" aria-label="Chargement de votre espace membre" style="display:flex;align-items:center;justify-content:center;min-height:240px">
-            <script>document.write('<img src="' + window.LCDP_urlObjet('/BOX/pictowait.gif') + '" alt="" width="64" height="64">');</script>
+            <script>document.write('<img src="' + window.LCDP_urlObjet('/BOX/pictowait.svg') + '" alt="" width="64" height="64">');</script>
           </div>
           <div id="lcdp-accueil-erreur" hidden role="alert">
             <p>Impossible de charger votre espace membre.</p>

@@ -5,7 +5,7 @@
   const SOURCE_PAGE = "reserver-membre";
   const DOSSIER_IMAGES_PARC_OBJET = "/IMAG/PARC";
   const NOM_IMAGE_CARD_PARC = "card1.webp";
-  const CHEMIN_PICTOWAIT = "/BOX/pictowait.gif";
+  const CHEMIN_PICTOWAIT = "/BOX/pictowait.svg";
   const MEDIA_DESCRIPTION_CARD_PARC_TABLETTE_DESKTOP = window.matchMedia("(min-width: 768px)");
 
   const CLES_PLAGES_AFFICHAGE = [
