@@ -1395,17 +1395,9 @@
 
     commandeBar.classList.add("lcdp-box-commande-bar--encadree");
 
-    const boutonListe = document.createElement("button");
-    boutonListe.type = "button";
-    boutonListe.id = "bouton-voir-liste-parcs";
-    boutonListe.className = boutonCarte.className;
-    ajouterPictoCommandeBar(boutonListe, "/IMAG/PICTO/picto-presentation.svg", "Voir la liste");
-    actions.append(boutonCarte, boutonListe, boutonDepartement);
+    // Navigation limitée au diaporama et à la carte ; la liste n'est plus proposée.
+    actions.append(boutonCarte, boutonDepartement);
     commandeBar.classList.add("lcdp-commande-parcs-modes");
-    boutonListe.addEventListener("click", () => {
-      if (!navigationParcs) return;
-      basculerVueParcs(navigationParcs.mode === "liste" ? "diaporama" : "liste");
-    });
     boutonCarte.setAttribute("aria-controls", "lcdp-planifier-parcs-carte");
     boutonCarte.setAttribute("aria-expanded", "false");
     boutonCarte.addEventListener("click", () => {
@@ -1439,10 +1431,6 @@
     if (boutonCarte) ajouterPictoCommandeBar(boutonCarte,
       navigation.mode === "carte" ? "/IMAG/PICTO/picto-galerie-cadre.svg" : "/IMAG/PICTO/picto-localiser.svg",
       navigation.mode === "carte" ? "Voir le diaporama" : "Voir la carte");
-    const boutonListe = document.getElementById("bouton-voir-liste-parcs");
-    if (boutonListe) ajouterPictoCommandeBar(boutonListe,
-      navigation.mode === "liste" ? "/IMAG/PICTO/picto-galerie-cadre.svg" : "/IMAG/PICTO/picto-presentation.svg",
-      navigation.mode === "liste" ? "Voir le diaporama" : "Voir la liste");
     if (navigation.mode === "diaporama") afficherDiaporamaParcs();
   }
 
@@ -1579,7 +1567,7 @@
         carteNavigation: true,
         creerCardParcCarte: parc => {
           const original = parcs.find(item => String(item.idparc || item.id || "") === String(parc.idparc || parc.id || ""));
-          return original ? creerCardParc(original) : null;
+          return original ? creerCardParcDiaporama(original) : null;
         }
       });
       if (!estCourante()) { controleur?.detruire(); return; }
@@ -3042,7 +3030,10 @@
 
     if (titre) {
       if (options.afficherTitreTexte === true) {
-        titre.textContent = nomParcAfficheMembre(nom);
+        // Remplacer le titre entier : le template peut déjà contenir « Parc de ».
+        const titreComplet = titre.closest(".lcdp-box-card-parc__title");
+        if (titreComplet) titreComplet.textContent = nomParcAfficheMembre(nom);
+        else titre.textContent = nomParcAfficheMembre(nom);
       } else {
         titre.closest(".lcdp-box-card-parc__title")?.remove();
       }
