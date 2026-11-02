@@ -104,6 +104,23 @@
   </style>
   <style>
     #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden] { display: none !important; }
+    /* Attente de navigation : superposition centrée, sans déplacer les boutons. */
+    #lcdp-navigation-attente:not([hidden]) {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 16px;
+      box-sizing: border-box;
+      background: var(--lcdp-color-surface, #fff);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
   </style>
   <style id="lcdp-pictos-accueil-membre">
     .lcdp-page-accueil-membre #lcdp-menu-central-slot,
@@ -176,8 +193,7 @@
       <section class="lcdp-page-section">
         <div class="lcdp-page-container">
           <div id="lcdp-accueil-attente" role="status" aria-label="Chargement de votre espace membre" style="display:flex;align-items:center;justify-content:center;min-height:240px">
-            <script>document.write('<img src="' + window.LCDP_urlObjet('/BOX/pictowait.svg') + '" alt="" width="64" height="64" onerror="this.style.display='none';document.getElementById('lcdp-accueil-attente-texte').hidden=false">');</script>
-            <span id="lcdp-accueil-attente-texte" hidden>Chargement de votre espace membre…</span>
+            <script>document.write('<img src="' + window.LCDP_urlObjet('/BOX/pictowait.gif') + '" alt="" width="64" height="64">');</script>
           </div>
           <div id="lcdp-accueil-erreur" hidden role="alert">
             <p>Impossible de charger votre espace membre.</p>
@@ -214,16 +230,13 @@
 
   <script>
     window.LCDP_echecAccueilMembre = function () {
-      if (!document.getElementById("lcdp-accueil-contenu").hidden) return;
       document.getElementById("lcdp-accueil-attente").style.display = "none";
       document.getElementById("lcdp-accueil-contenu").hidden = true;
       document.getElementById("lcdp-accueil-erreur").hidden = false;
     };
-    // L'accueil ne peut rester indéfiniment invisible si l'initialisation bloque.
-    window.LCDP_delaiAccueilMembre = window.setTimeout(window.LCDP_echecAccueilMembre, 20000);
   </script>
   <script>document.write('<script src="' + window.LCDP_urlPublic("/ESPACE-PUBLIC/controle-acces-accueil.js") + '"><\/script>');</script>
-  <script src="./accueil-membre.js?v=20261031-paiement-retour-v2" onerror="window.LCDP_echecAccueilMembre()"></script>
+  <script src="./accueil-membre.js?v=20261102-pictowait-centre-v3" onerror="window.LCDP_echecAccueilMembre()"></script>
   <script>
     // Même composant Actualités et même chargement différé que sur l'accueil public.
     document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/actualite.js') + '"><\/script>');
