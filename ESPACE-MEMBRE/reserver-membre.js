@@ -734,8 +734,9 @@
     }
     contenuLegende.appendChild(ligneLegende);
     enteteFiltres.appendChild(legende);
-    // Le sélecteur PARC suit la barre des quatre autorisations.
-    enteteFiltres.appendChild(actionsFiltres);
+    // Placer PARC au-dessus de la navigation mensuelle, hors de l’en-tête.
+    const navigationMois = calendrier.querySelector(".lcdp-box-calendrier-mois__navigation");
+    if (navigationMois) navigationMois.before(actionsFiltres);
     meta.textContent = "";
     meta.hidden = true;
     message.hidden = true;
@@ -1450,6 +1451,8 @@
 
   function creerCardParcDiaporama(parc) {
     const card = etatPage.templateCardParcDiaporama.cloneNode(true);
+    // Les boutons du verso utilisent exactement le format de la Card Parc Réserver.
+    card.classList.add("lcdp-box-card-parc--reserver");
     const cardListe = creerCardParc(parc, { afficherTitreTexte: true });
     const idparc = String(parc.idparc || parc.id || "");
     const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
