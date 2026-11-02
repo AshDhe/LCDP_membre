@@ -613,7 +613,22 @@
   function afficherAttenteNavigationAccueil() {
     const attente = document.getElementById("lcdp-navigation-attente");
     const slot = document.getElementById("lcdp-menu-central-slot");
-    if (attente) attente.hidden = false;
+    if (attente) {
+      // L'attente doit couvrir le viewport, jamais rester dans la grille de l'accueil.
+      // Le déplacement hors du conteneur protège aussi des parents transformés.
+      if (attente.parentElement !== document.body) document.body.appendChild(attente);
+      const styles = {
+        position: "fixed", inset: "0", width: "100%", height: "100dvh",
+        minHeight: "100vh", zIndex: "2147483647", boxSizing: "border-box",
+        display: "flex", flexDirection: "column", alignItems: "center",
+        justifyContent: "center", background: "var(--lcdp-color-surface, #fff)",
+        padding: "16px"
+      };
+      for (const [propriete, valeur] of Object.entries(styles)) {
+        attente.style.setProperty(propriete.replace(/[A-Z]/g, lettre => "-" + lettre.toLowerCase()), valeur, "important");
+      }
+      attente.hidden = false;
+    }
     if (!slot) return;
     slot.setAttribute("aria-busy", "true");
     slot.querySelectorAll(".lcdp-accueil-actions > button").forEach((bouton) => {
