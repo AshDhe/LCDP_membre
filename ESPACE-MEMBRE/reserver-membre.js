@@ -1372,7 +1372,7 @@
     ajouterPictoCommandeBar(
       boutonCarte,
       "/IMAG/PICTO/picto-localiser.svg",
-      "Voir sur la carte"
+      "Voir la carte"
     );
 
     const fragment = await chargerFragmentListeParcs("/BOX/04-box-commande-bar.html");
@@ -1389,7 +1389,7 @@
     boutonListe.type = "button";
     boutonListe.id = "bouton-voir-liste-parcs";
     boutonListe.className = boutonCarte.className;
-    boutonListe.textContent = "Voir en liste";
+    ajouterPictoCommandeBar(boutonListe, "/IMAG/PICTO/picto-presentation.svg", "Voir la liste");
     actions.append(boutonCarte, boutonListe, boutonDepartement);
     commandeBar.classList.add("lcdp-commande-parcs-modes");
     boutonListe.addEventListener("click", () => {
@@ -1426,9 +1426,13 @@
     navigation.zoneDiaporama.hidden = navigation.mode !== "diaporama";
     navigation.zoneCarte.hidden = navigation.mode !== "carte";
     const boutonCarte = document.getElementById("bouton-voir-carte");
-    if (boutonCarte) ajouterPictoCommandeBar(boutonCarte, "/IMAG/PICTO/picto-localiser.svg", navigation.mode === "carte" ? "Voir en diaporama" : "Voir sur la carte");
+    if (boutonCarte) ajouterPictoCommandeBar(boutonCarte,
+      navigation.mode === "carte" ? "/IMAG/PICTO/picto-galerie-cadre.svg" : "/IMAG/PICTO/picto-localiser.svg",
+      navigation.mode === "carte" ? "Voir le diaporama" : "Voir la carte");
     const boutonListe = document.getElementById("bouton-voir-liste-parcs");
-    if (boutonListe) boutonListe.textContent = navigation.mode === "liste" ? "Voir en diaporama" : "Voir en liste";
+    if (boutonListe) ajouterPictoCommandeBar(boutonListe,
+      navigation.mode === "liste" ? "/IMAG/PICTO/picto-galerie-cadre.svg" : "/IMAG/PICTO/picto-presentation.svg",
+      navigation.mode === "liste" ? "Voir le diaporama" : "Voir la liste");
     if (navigation.mode === "diaporama") afficherDiaporamaParcs();
   }
 
@@ -1444,6 +1448,8 @@
 
   function creerCardParcDiaporama(parc) {
     const card = etatPage.templateCardParcDiaporama.cloneNode(true);
+    // Reprendre les styles des deux boutons de la carte Parc classique.
+    card.classList.add("lcdp-box-card-parc--reserver");
     const idparc = String(parc.idparc || parc.id || "");
     const nom = String(parc.nom || parc.nomparc || "Parc").trim() || "Parc";
     const image = card.querySelector("[data-lcdp-diaporama-image]");
@@ -1460,7 +1466,7 @@
     }
     if (nomElement) nomElement.textContent = nom;
     if (description) {
-      description.textContent = nettoyerTexteDescription(parc.prez || parc.presentation || "");
+      description.textContent = nettoyerTexteCourt(parc.prez || parc.presentation || "", longueurDescriptionCardParc());
       description.hidden = !description.textContent;
     }
     const nomDos = card.querySelector("[data-lcdp-diaporama-nom-dos]");
@@ -1494,7 +1500,7 @@
     navigation.zoneCarte.hidden = true;
     navigation.liste.hidden = navigation.mode !== "liste";
     const bouton = document.getElementById("bouton-voir-carte");
-    ajouterPictoCommandeBar(bouton, "/IMAG/PICTO/picto-localiser.svg", "Voir sur la carte");
+    ajouterPictoCommandeBar(bouton, "/IMAG/PICTO/picto-localiser.svg", "Voir la carte");
     bouton?.setAttribute("aria-expanded", "false");
   }
 
@@ -1511,7 +1517,7 @@
     navigation.zoneCarte.hidden = false;
     navigation.zoneCarte.classList.add("is-loading");
     const bouton = document.getElementById("bouton-voir-carte");
-    ajouterPictoCommandeBar(bouton, "/IMAG/PICTO/picto-localiser.svg", "Voir la liste");
+    ajouterPictoCommandeBar(bouton, "/IMAG/PICTO/picto-galerie-cadre.svg", "Voir le diaporama");
     bouton?.setAttribute("aria-expanded", "true");
     const attente = document.createElement("div");
     attente.className = "lcdp-planifier-parcs-chargement lcdp-planifier-carte-attente";
@@ -3126,18 +3132,12 @@
   let clicJourPlanifierEnCours = false;
 
   function afficherAttenteClicJourPlanifier() {
-    // Superposition autonome : ne remplace jamais le calendrier ni ses fenêtres.
-    const masque = document.createElement("div");
-    masque.setAttribute("role", "status");
-    masque.setAttribute("aria-label", "Analyse de la journée en cours");
-    Object.assign(masque.style, {
-      position: "fixed", inset: "0", zIndex: "6000",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      background: "rgba(255,255,255,0.88)", pointerEvents: "auto"
-    });
-    masque.appendChild(creerPictowait("Analyse de la journée en cours"));
-    document.body.appendChild(masque);
-    return () => masque.remove();
+    // Le gestionnaire commun impose 500 ms, même pour une réponse immédiate.
+    if (window.LCDP_ATTENTE_PLANIFIER) {
+      return window.LCDP_ATTENTE_PLANIFIER.commencer('Analyse de la journée en cours');
+    }
+    // Repli si le script commun n'a pas pu être chargé : aucun blocage du clic.
+    return async () => {};
   }
 
   async function gererClicDocument(event) {
@@ -3218,7 +3218,7 @@
       try {
         // Sans parc, aucun contrôle de DA ni d'abonnement ne doit être lancé.
         if (!etatPage.calendrierMoisActif?.parc) {
-          masquerAttente();
+          await masquerAttente();
           const choix = await ouvrirDialogueBoutonsSuperpose({
             titre: "Choisir un parc",
             texte: "Vous n'avez pas de parc sélectionné.",
@@ -3232,18 +3232,18 @@
             (membreSansDaValidee() ||
               !jourCouvertParAbonnementPayePlanifier(String(jourCalendrier.dataset.date || "")))) {
           // Le dialogue attend une décision : retirer l'attente AVANT de l'ouvrir.
-          masquerAttente();
+          await masquerAttente();
           await afficherDialogueAbonnementPlanning("jour", etatPage.droitsPlanningParcActifs,
             {dateIso:String(jourCalendrier.dataset.date || "")});
           return;
         }
         await ouvrirCalendrierJourDepuisCard(jourCalendrier);
       } catch (erreur) {
-        masquerAttente();
+        await masquerAttente();
         console.error("Erreur au clic sur une journée PLANIFIER :", erreur);
         await afficherAlerteSuperposee(erreur?.message || "Impossible d'ouvrir cette journée.");
       } finally {
-        masquerAttente();
+        await masquerAttente();
         clicJourPlanifierEnCours = false;
       }
       return;

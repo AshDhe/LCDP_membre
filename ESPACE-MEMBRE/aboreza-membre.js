@@ -13,31 +13,15 @@
   let bandeau = null;
   let attenteFormules = null;
 
-  // Attente : réutilisation du pictowait et du masque générique de PLANIFIER.
+  // Attente partagée avec PLANIFIER. La fermeture est asynchrone et idempotente.
   function afficherAttenteFormules(libelle = 'Chargement des formules d’abonnement') {
-    if (attenteFormules?.isConnected) {
-      attenteFormules.setAttribute('aria-label', libelle);
-      return;
-    }
-    const masque = elem('div', 'lcdp-planifier-partage-attente');
-    masque.setAttribute('role', 'status');
-    masque.setAttribute('aria-label', libelle);
-    const attente = elem('div', 'lcdp-pictowait');
-    attente.dataset.lcdpPictowait = '';
-    const image = elem('img', 'lcdp-pictowait__image');
-    image.src = cheminObjet('/BOX/pictowait.gif');
-    image.alt = '';
-    image.width = 56;
-    image.height = 56;
-    image.setAttribute('aria-hidden', 'true');
-    attente.append(image);
-    masque.append(attente);
-    document.body.append(masque);
-    attenteFormules = masque;
+    if (attenteFormules) return;
+    attenteFormules = window.LCDP_ATTENTE_PLANIFIER?.commencer(libelle) || null;
   }
   function masquerAttenteFormules() {
-    attenteFormules?.remove();
+    const terminer = attenteFormules;
     attenteFormules = null;
+    return terminer ? terminer() : Promise.resolve();
   }
   const moisLibelle = cle => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(new Date(cle + '-01T12:00:00Z'));
   const dateLibelle = iso => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso + 'T12:00:00Z'));
@@ -408,7 +392,7 @@
       await chargerTemplates();
       const enCours=(await api('/panier')).panier;
       if(enCours){
-        masquerAttenteFormules();
+        await masquerAttenteFormules();
         const decision=await reprendreOuRecommencer(enCours);
         if(decision==='reprendre'){
           await entrerDansCalendrier(enCours);
@@ -423,7 +407,7 @@
       if(contexte.origine==='jour_hors_couverture')parametres.set('dateCible',contexte.date||'');
       if(contexte.origine==='horizon')parametres.set('moisCible',contexte.moisCible||'');
       const offres=(await api('/catalogue?'+parametres.toString())).offres;
-      masquerAttenteFormules();
+      await masquerAttenteFormules();
       let demande=null;
       let inclureExistants=false;
       if(['jour_hors_couverture','horizon'].includes(contexte.origine)){
@@ -475,7 +459,7 @@
         : bridge()?.actualiser?.()
       ).catch(erreur => console.error('Actualisation du planning ABO-RÉZA :', erreur));
       if(courant.complet){
-        masquerAttenteFormules();
+        await masquerAttenteFormules();
         const confirmation = await bridge()?.alerter?.(
           'Les accès obligatoires sont sélectionnés. Votre panier est prêt pour paiement.',
           { libelleBouton: 'Payer' }
@@ -485,7 +469,7 @@
         await miseAJour;
       }else{
         await miseAJour;
-        masquerAttenteFormules();
+        await masquerAttenteFormules();
         const texte=courant.moisActif!==avant
           ? `Les deux accès de ${moisLibelle(avant)} sont sélectionnés. Passage à ${moisLibelle(courant.moisActif)}.`
           : `Accès ajouté. Il vous reste ${courant.restantsMois} accès à réserver pour ${moisLibelle(courant.moisActif)}.`;

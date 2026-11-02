@@ -301,6 +301,8 @@
       if (typeof surOuverture === 'function') surOuverture();
       return ouverture;
     }
+    const terminerAttentePaiement = typeof surOuverture === 'function'
+      ? null : window.LCDP_ATTENTE_PLANIFIER?.commencer('Préparation du bon de commande');
     const traitement = (async () => {
       // Les modèles HTML et les lectures serveur sont indépendants : les charger en parallèle.
       const [[modeleWorkflow, modeleRecap], [panier, devis]] = await Promise.all([
@@ -313,6 +315,7 @@
       const precedent = document.activeElement;
       document.body.append(workflow);
       if (typeof surOuverture === 'function') surOuverture();
+      if (terminerAttentePaiement) await terminerAttentePaiement();
       await new Promise(resolve => {
         let ferme = false;
         const terminer = () => {
@@ -342,7 +345,8 @@
       });
     })();
     ouverture = traitement;
-    try { return await traitement; } finally { ouverture = null; }
+    try { return await traitement; }
+    finally { if (terminerAttentePaiement) await terminerAttentePaiement(); ouverture = null; }
   }
 
   function urlMembre(chemin) {
