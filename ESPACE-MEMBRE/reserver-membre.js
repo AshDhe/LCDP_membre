@@ -2985,7 +2985,7 @@
   }
 
   function estParcNouveau(parc) {
-    if (statutParcPlanifier(parc) !== "enligne" || !parc?.datestatut) return false;
+    if (!["oui", "enligne"].includes(statutParcPlanifier(parc)) || !parc?.datestatut) return false;
     const debut = new Date(parc.datestatut);
     if (!Number.isFinite(debut.getTime())) return false;
     const fin = new Date(debut.getTime());
@@ -3000,9 +3000,9 @@
 
   function normaliserParcsPlanifier(parcs) {
     return (Array.isArray(parcs) ? parcs : [])
-      .filter(parc => ["enligne", "prepa"].includes(statutParcPlanifier(parc)))
+      .filter(parc => ["oui", "enligne", "prepa"].includes(statutParcPlanifier(parc)))
       .sort((a, b) => {
-        const rang = parc => statutParcPlanifier(parc) === "enligne" ? 0 : 1;
+        const rang = parc => ["oui", "enligne"].includes(statutParcPlanifier(parc)) ? 0 : 1;
         return rang(a) - rang(b) || String(a.nom || "").localeCompare(String(b.nom || ""), "fr");
       });
   }
