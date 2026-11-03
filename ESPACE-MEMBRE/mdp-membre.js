@@ -83,7 +83,9 @@
     }
 
     if (texteModeMdp) {
-      texteModeMdp.textContent = "Mise à jour du mot de passe";
+      texteModeMdp.textContent = mode === "create" ? "Créer votre mot de passe" : "Mise à jour du mot de passe";
+      const introduction = document.getElementById("texte-introduction-mdp");
+      if (introduction && mode === "create") introduction.textContent = "Définissez votre mot de passe pour poursuivre la sécurisation de votre compte : Code A, Code R, puis géolocalisation.";
     }
 
     appliquerSourcesObjet(document);
@@ -236,7 +238,8 @@
         champMotDePasse.value = "";
         if (mode === "create") {
           if (!data.nextUrl) throw new Error("Suite du tunnel absente.");
-          await afficherInformation("Votre mot de passe est enregistré, merci.", data.nextUrl);
+          window.location.replace(data.nextUrl);
+          return;
         } else {
           await afficherInformation("Votre mot de passe est enregistré. Vous pouvez maintenant vous connecter à votre compte membre.", urlConnexionMembre);
         }
