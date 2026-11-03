@@ -2674,6 +2674,9 @@
         if (!String(data.nomDepartement || "").trim()) {
           return "Code de département invalide. Exemple : 08.";
         }
+        if (!Array.isArray(data.parcs) || data.parcs.length === 0) {
+          return "Aucun parc disponible dans ce département.";
+        }
         donneesDepartementVerifiees = data;
         return null;
       }
