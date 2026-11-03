@@ -163,9 +163,17 @@
           marker.style.setProperty("r", rayon + "px", "important");
         });
 
+      // Taille et couleurs volontairement identiques sur la carte du diaporama
+      // et sur la fiche parc, sans dépendre des règles CSS contextuelles.
       coucheLocalites
         .querySelectorAll(".lcdp-carte-dynamique__localite-marker")
-        .forEach((marker) => marker.setAttribute("r", String(rayonLocalite)));
+        .forEach((marker) => {
+          marker.setAttribute("r", String(rayonLocalite));
+          marker.style.setProperty("r", rayonLocalite + "px", "important");
+          marker.style.setProperty("fill", "#202020", "important");
+          marker.style.setProperty("stroke", "#202020", "important");
+          marker.style.setProperty("stroke-width", (uniteEcran * 2) + "px", "important");
+        });
 
       coucheLocalites
         .querySelectorAll(".lcdp-carte-dynamique__localite-label")
@@ -174,6 +182,7 @@
           const y = Number(libelle.dataset.pointY);
 
           libelle.setAttribute("font-size", String(tailleLibelle));
+          libelle.style.setProperty("fill", "#202020", "important");
 
           if (carteMobile) {
             libelle.setAttribute("x", String(x));
