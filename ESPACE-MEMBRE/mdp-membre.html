@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-lcdp-css="c085 c034 c033 c037 c041 c040 c036 c038 pfe5923668e95">
 <head>
   <meta charset="utf-8">
 
@@ -60,40 +60,13 @@
         document.write('<link rel="stylesheet" href="' + href.replace(/"/g, "&quot;") + '">');
       }
 
-      chargerCssObjet("/CSSBASE/cssbase.css");
-      chargerCssObjet("/BOX/02-box-alerte.css");
-      chargerCssObjet("/BOX/03-box-formulaire.css");
-      chargerCssObjet("/BOX/03-box-champ-formulaire.css");
+      chargerCssObjet("/CSSBASE/lcdp-central-mobile-first.css");
     })();
   </script>
-
-
-  <style>
-    .lcdp-box-formulaire-page--compact .lcdp-box-formulaire-page__inner {
-      max-width: 440px;
-    }
-
-    @media (min-width: 768px) {
-      .lcdp-box-formulaire-page--compact .lcdp-box-formulaire-page__inner {
-        max-width: 440px;
-      }
-
-    }
-
-    #formulaire-confirmation-mdp[hidden], #formulaire-mdp-membre[hidden] { display: none !important; }
-    .lcdp-coda-cases { display: flex; justify-content: center; gap: 12px; margin: 18px 0; }
-    .lcdp-coda-cases input { box-sizing: border-box; width: 52px; min-width: 0; height: 60px;
-      border: 1px solid var(--lcdp-color-border, #bac1b9); border-radius: 12px;
-      background: var(--lcdp-color-surface, #fff); color: var(--lcdp-color-text, #1f2a24);
-      font: inherit; font-size: 1.6rem; text-align: center; }
-    .lcdp-coda-cases input:focus { outline: 2px solid var(--lcdp-color-primary, #55733f); outline-offset: 3px; }
-    .lcdp-coda-mention { text-align: center; }
-    @media (max-width: 360px) { .lcdp-coda-cases { gap: 8px; } .lcdp-coda-cases input { width: 44px; height: 54px; } }
-  </style>
 </head>
 
-<body>
-  <div class="lcdp-site-page">
+<body class="lcdp-app-page">
+  <div class="lcdp-site-page lcdp-app-wrapper">
 
     <main class="lcdp-site-main">
       <section
@@ -127,7 +100,7 @@
                   </p>
 
                   <div class="lcdp-box-formulaire__intro">
-                    <p id="texte-introduction-mdp">
+                    <p>
                       Renseignez votre mot de passe, puis validez avec le bouton La Clé du Parc.
                       Vous pourrez ensuite vous connecter depuis "connexion espace membre".
                     </p>
@@ -219,7 +192,6 @@
                   <button type="submit" id="bouton-confirmer-mdp" class="lcdp-button lcdp-button-primary">Confirmer</button>
                 </div>
               </form>
-
 
             </div>
           </section>

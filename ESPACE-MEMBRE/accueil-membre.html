@@ -1,15 +1,12 @@
-<!doctype html>
-<html lang="fr">
+<!DOCTYPE html>
+<html lang="fr" data-lcdp-css="c085 c029 c034 c037 c038">
 <head>
-  <meta charset="utf-8">
-
-  <title>Menu membre - La Clé du Parc</title>
-
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Choisir une action dans votre espace membre La Clé du Parc.">
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Accueil de votre espace membre La Clé du Parc.">
+  <title>La Clé du Parc - Accueil membre</title>
+  <link rel="stylesheet" href="/OBJET/CSSBASE/lcdp-central-mobile-first.css">
   <script src="../config.js"></script>
-
   <script>
     (() => {
       "use strict";
@@ -72,208 +69,161 @@
         return buildUrl(objetBase, path);
       };
 
-      const feuillesCssObjet = [
-        "/CSSBASE/cssbase.css",
-        "/BOX/02-box-bandeau-nav.css",
-        "/BOX/01-box-text.css",
-        "/BOX/01-box-actualite.css",
-        "/BOX/02-box-menu-burger.css",
-        "/BOX/02-box-alerte.css",
-        "/BOX/02-box-dialogue-bouton.css",
-        "/BOX/04-box-card-abonnement.css",
-        "/BOX/02-box-footer.css",
-        "/BOX/pictowait.css"
-      ];
-
-      feuillesCssObjet.forEach((chemin) => {
-        document.write(
-          '<link rel="stylesheet" href="' +
-          window.LCDP_urlObjet(chemin) +
-          '">'
-        );
-      });
     })();
   </script>
+  <script src="/OBJET/BOX/02-box-footer.js" data-lcdp-footer-autonome defer></script>
   <style>
+    /* Styles de secours nécessaires aux fonctions conservées du membre. */
+    #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden],
+    #lcdp-navigation-attente[hidden] { display: none !important; }
+    #lcdp-accueil-attente {
+      position: fixed; inset: 0; z-index: 10000;
+      box-sizing: border-box; display: flex; align-items: center;
+      justify-content: center; min-height: 100vh; min-height: 100dvh;
+    }
+    .public-home__member-intro {
+      box-sizing: border-box; width: 100%; padding: 0 16px;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 8px; text-align: center;
+    }
+    .public-home__member-intro > p { margin: 0; }
+    #lcdp-accueil-erreur { margin: 24px auto; padding: 16px; text-align: center; }
+    #lcdp-navigation-attente:not([hidden]) {
+      position: fixed; inset: 0; z-index: 2147483647;
+      box-sizing: border-box; display: flex; align-items: center;
+      justify-content: center; background: var(--lcdp-color-surface, #fff);
+    }
     .lcdp-transfert-coda-cases { display: flex; justify-content: center; gap: 10px; margin: 18px 0; }
-    .lcdp-transfert-coda-cases input { box-sizing: border-box; width: 48px; min-width: 0; height: 56px;
+    .lcdp-transfert-coda-cases input {
+      box-sizing: border-box; width: 48px; min-width: 0; height: 56px;
       border: 1px solid var(--lcdp-color-border, #bac1b9); border-radius: 12px;
       background: var(--lcdp-color-surface, #fff); color: var(--lcdp-color-text, #1f2a24);
-      font: inherit; font-size: 1.6rem; text-align: center; }
-    .lcdp-transfert-coda-cases input:focus { outline: 2px solid var(--lcdp-color-primary, #55733f); outline-offset: 3px; }
-  </style>
-  <style>
-    #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden] { display: none !important; }
-    /* Attente initiale : couvre la fenêtre dès le premier affichage. */
-    #lcdp-accueil-attente {
-      position: fixed !important;
-      inset: 0 !important;
-      z-index: 10000;
-      box-sizing: border-box;
-      width: 100%;
-      height: 100vh;
-      height: 100dvh;
-      margin: 0 !important;
-      padding: 0 !important;
-      align-items: center;
-      justify-content: center;
-      background: var(--lcdp-color-surface, #fff);
+      font: inherit; font-size: 1.6rem; text-align: center;
     }
-    #lcdp-accueil-attente > img {
-      display: block;
-      flex: 0 0 64px;
-      width: 64px;
-      height: 64px;
-      margin: 0;
+    .lcdp-transfert-coda-cases input:focus {
+      outline: 2px solid var(--lcdp-color-primary, #55733f); outline-offset: 3px;
     }
-
-    /* Attente de navigation : superposition centrée, sans déplacer les boutons. */
-    #lcdp-navigation-attente:not([hidden]) {
-      position: fixed;
-      inset: 0;
-      z-index: 10000;
-      width: 100%;
-      min-height: 100vh;
-      min-height: 100dvh;
-      padding: 16px;
-      box-sizing: border-box;
-      background: var(--lcdp-color-surface, #fff);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-
-    /* L'indicateur est toujours au centre du viewport, pas du contenu de page. */
-    #lcdp-navigation-attente .lcdp-pictowait__image {
-      position: fixed !important;
-      top: 50% !important;
-      left: 50% !important;
-      transform: translate(-50%, -50%) !important;
-      margin: 0 !important;
-      max-width: none;
-    }
-    #lcdp-navigation-attente[hidden] {
-      display: none !important;
-    }
-  </style>
-  <style id="lcdp-pictos-accueil-membre">
-    .lcdp-page-accueil-membre #lcdp-menu-central-slot,
-    .lcdp-page-accueil-membre #lcdp-menu-central-slot > *,
-    .lcdp-page-accueil-membre #lcdp-menu-central-slot .lcdp-accueil-actions {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .lcdp-page-accueil-membre .lcdp-accueil-actions > button.lcdp-accueil-picto {
-      box-sizing: border-box;
-      width: 148.68px;
-      max-width: 100%;
-      flex-shrink: 0;
-      height: 112px;
-      min-height: 112px;
-      margin-inline: auto;
-      padding: 8px 16px;
-      flex-direction: column;
-      gap: 4px;
-      color: #ffffff;
-    }
-    .lcdp-accueil-picto > svg,
-    .lcdp-accueil-picto > img {
-      display: block;
-      max-width: none;
-      min-width: 71.68px;
-      width: 71.68px;
-      height: 71.68px;
-      flex: 0 0 71.68px;
-      object-fit: contain;
-    }
-    .lcdp-accueil-picto > img {
-      filter: brightness(0) invert(1);
-      transform: scale(1.15);
-    }
-    .lcdp-accueil-picto > span {
-      font-size: clamp(11.95488px, 3.6064vw, 16.4864px);
-      transform: scaleX(0.95);
-      line-height: 1.05;
-      white-space: nowrap;
-    }
-    @media (min-width: 768px) {
-      .lcdp-page-accueil-membre .lcdp-accueil-actions > button.lcdp-accueil-picto {
-        width: 194.88px;
-        height: 120px;
-        min-height: 120px;
-      }
-      .lcdp-accueil-picto > svg,
-      .lcdp-accueil-picto > img {
-        min-width: 76.16px;
-        width: 76.16px;
-        height: 76.16px;
-        flex-basis: 76.16px;
-      }
-      .lcdp-accueil-picto > span {
-        font-size: 15.088px;
-      }
+    @media (max-width: 350px) {
+      .lcdp-transfert-coda-cases { gap: 6px; }
+      .lcdp-transfert-coda-cases input { width: 42px; }
     }
   </style>
 </head>
-
-<body class="lcdp-page-accueil-membre">
-  <div id="lcdp-accueil-attente" role="status" aria-label="Chargement de votre espace membre" style="display:flex">
-            <script>document.write('<img src="' + window.LCDP_urlObjet('/BOX/pictowait.gif') + '" alt="" width="64" height="64">');</script>
-          </div>
-  <div class="lcdp-site-page">
-
+<body class="public-home public-home--loading lcdp-app-page lcdp-page-accueil-membre">
+  <div id="lcdp-accueil-attente" class="public-home__loading" role="status" aria-live="polite" aria-label="Chargement de votre espace membre">
+    <div class="public-home__loading-inner">
+      <div class="lcdp-loading-spinner" aria-hidden="true">
+        <svg viewBox="0 0 36 36" class="lcdp-loading-spinner__track"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+        <svg viewBox="0 0 36 36" class="lcdp-loading-spinner__arc"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75" /></svg>
+        <span class="lcdp-loading-spinner__dot"></span>
+      </div>
+      <div class="public-home__loading-copy">
+        <p class="public-home__loading-title">Vérification de vos accès</p>
+        <p class="public-home__loading-subtitle">Un instant, nous ouvrons la barrière...</p>
+      </div>
+    </div>
+  </div>
+  <div class="public-home__app lcdp-app-wrapper">
+    <!-- Bandeau et burger MEMBRE, différents des composants publics. -->
     <div id="lcdp-bandeau-slot"></div>
 
-
-    <main class="lcdp-site-main">
-      <section class="lcdp-page-section">
+    <main id="lcdp-accueil-contenu" class="public-home__main" hidden aria-busy="true">
+      <!-- Actualités : même présentation et même script que l'accueil public. -->
+      <section id="lcdp-actualite-bandeau" class="public-home__actualite" aria-label="Actualités">
         <div class="lcdp-page-container">
-
-          <div id="lcdp-accueil-erreur" hidden role="alert">
-            <p>Impossible de charger votre espace membre.</p>
-            <button type="button" class="lcdp-button lcdp-button-primary" onclick="window.location.reload()">Réessayer</button>
-          </div>
-          <noscript>Activez JavaScript pour accéder à votre espace membre.</noscript>
-          <div id="lcdp-accueil-contenu" class="lcdp-page-content lcdp-stack-large" hidden aria-busy="true">
-
-            <div class="lcdp-accueil-intro">
-              <p class="lcdp-text-strong-lead lcdp-accueil-mention" id="message-accueil-membre" aria-live="polite">
-                Bonjour, c’est à vous.
-              </p>
-
-              <p class="lcdp-mention-connexion" id="mention-statut-membre" aria-live="polite">
-                
-              </p>
-            </div>
-
-            <div id="lcdp-menu-central-slot" class="lcdp-stack"></div>
-            <div id="lcdp-navigation-attente" class="lcdp-pictowait" hidden role="status" aria-live="polite">
-              <script>document.write('<img class="lcdp-pictowait__image" src="' + window.LCDP_urlObjet('/BOX/pictowait.svg') + '" alt="">');</script>
-            </div>
-
+          <div class="lcdp-page-content">
+            <div class="lcdp-boxtext__text--center lcdp-actu-bandeau-placeholder" aria-hidden="true"></div>
           </div>
         </div>
       </section>
+
+      <!-- Informations membre conservées : prénom, statut et abonnement. -->
+      <div class="public-home__member-intro lcdp-accueil-intro">
+        <p class="lcdp-accueil-mention" id="message-accueil-membre" aria-live="polite">Bonjour, c’est à vous.</p>
+        <p class="lcdp-mention-connexion" id="mention-statut-membre" aria-live="polite"></p>
+      </div>
+
+      <!-- Exactement les trois boutons visuels de l'accueil public. -->
+      <div id="lcdp-menu-central-slot" class="public-home__actions">
+        <button class="public-home__action public-home__action--plan" type="button" data-lcdp-member-action="planifier">
+          <span class="public-home__action-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+          </span>
+          <span class="public-home__action-label">Planifier</span>
+        </button>
+
+        <button class="public-home__action public-home__action--access" type="button" data-lcdp-member-action="mes_acces">
+          <span class="public-home__action-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+            </svg>
+          </span>
+          <span class="public-home__action-label">Mes accès</span>
+        </button>
+
+        <button class="public-home__action public-home__action--key" type="button" data-lcdp-member-action="ma_cle">
+          <span class="public-home__brand-icon">
+            <img src="data:image/webp;base64,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" width="36" height="36" alt="" aria-hidden="true">
+          </span>
+          <span class="public-home__action-label">Ma clé</span>
+        </button>
+      </div>
     </main>
 
-    <div id="lcdp-footer-slot"></div>
-    <div id="lcdp-lightbox-slot"></div>
+    <div id="lcdp-accueil-erreur" hidden role="alert">
+      <p>Impossible de charger votre espace membre.</p>
+      <button type="button" class="lcdp-button lcdp-button-primary" onclick="window.location.reload()">Réessayer</button>
+    </div>
+    <noscript>Activez JavaScript pour accéder à votre espace membre.</noscript>
 
+    <!-- Même footer commun et même secours que l'accueil public. -->
+    <div id="lcdp-footer-slot">
+    <footer class="public-home__footer" data-lcdp-box-footer>
+      <a href="/ESPACE-PUBLIC/mentions-legales.html"
+         data-site-href="/ESPACE-PUBLIC/mentions-legales.html"
+         data-lcdp-footer-mentions-legales>Mentions légales - Données</a>
+      <span class="public-home__footer-separator" aria-hidden="true">•</span>
+      <button type="button" popovertarget="lcdp-footer-verification-info">Vérification</button>
+      <div id="lcdp-footer-verification-info" class="public-home__verification-info"
+           popover="auto" role="dialog" aria-label="Vérification">
+        <button type="button" class="public-home__verification-close"
+                popovertarget="lcdp-footer-verification-info"
+                popovertargetaction="hide" aria-label="Fermer">×</button>
+        <div data-verification-slot
+             data-verification-url="https://script.google.com/macros/s/AKfycbz4PBr97qQBPrXcBc8jGE5560b3LBhmEwGXBw5H3YIqiGvExilaUK-ORCLK3NV2hZu3xA/exec"></div>
+      </div>
+    </footer>
+    </div>
   </div>
+  <div id="lcdp-navigation-attente" class="public-home__loading" hidden role="status" aria-live="polite" aria-label="Ouverture de la fonctionnalité">
+    <div class="public-home__loading-inner">
+      <div class="lcdp-loading-spinner" aria-hidden="true">
+        <svg viewBox="0 0 36 36" class="lcdp-loading-spinner__track"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+        <svg viewBox="0 0 36 36" class="lcdp-loading-spinner__arc"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75" /></svg>
+        <span class="lcdp-loading-spinner__dot"></span>
+      </div>
+      <div class="public-home__loading-copy">
+        <p class="public-home__loading-title">Vérification de vos accès</p>
+        <p class="public-home__loading-subtitle">Un instant, nous ouvrons la barrière...</p>
+      </div>
+    </div>
+  </div>
+  <div id="lcdp-lightbox-slot"></div>
 
   <script>
     window.LCDP_echecAccueilMembre = function () {
-      document.getElementById("lcdp-accueil-attente").style.display = "none";
+      const attente = document.getElementById("lcdp-accueil-attente");
+      if (attente) attente.style.display = "none";
+      document.body.classList.remove("public-home--loading");
       document.getElementById("lcdp-accueil-contenu").hidden = true;
       document.getElementById("lcdp-accueil-erreur").hidden = false;
     };
   </script>
   <script>document.write('<script src="' + window.LCDP_urlPublic("/ESPACE-PUBLIC/controle-acces-accueil.js") + '"><\/script>');</script>
-  <script src="./accueil-membre.js?v=20261102-pictowait-centre-v4" onerror="window.LCDP_echecAccueilMembre()"></script>
+  <script src="./accueil-membre.js?v=20261104-design-public-v1" onerror="window.LCDP_echecAccueilMembre()"></script>
   <script>
-    // Même composant Actualités et même chargement différé que sur l'accueil public.
     document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/actualite.js') + '"><\/script>');
   </script>
 </body>
