@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-lcdp-css="c085 c034 c038 c033 c036 c047 c062 c076 c043 c037 c039 c040 c042 c066 c073 c084 c064 c059 c055 c078 c070 c075 c046 c071 c082 c052 c044 c051 c077 c074 c058 c072">
 <head>
   <meta charset="utf-8">
 
@@ -79,47 +79,12 @@
       preloadAttentePlanifier.href = window.LCDP_urlObjet("/BOX/pictowait.svg");
       document.head.appendChild(preloadAttentePlanifier);
 
-      const feuillesCssObjet = [
-        "/CSSBASE/cssbase.css",
-        "/BOX/02-box-bandeau-nav.css",
-        "/BOX/02-box-menu-burger.css",
-        "/BOX/02-box-alerte.css",
-        "/BOX/02-box-dialogue-bouton.css",
-        "/BOX/04-box-card-abonnement.css",
-        "/BOX/04-box-card-recaporder.css?v=20261031-recapi-v2",
-        "/BOX/04-box-workflow-abonnement.css",
-        "/BOX/04-box-calendrier-an.css",
-        "/BOX/02-box-footer.css",
-        "/BOX/02-box-wraper-footer.css",
-        "/BOX/03-box-champ-formulaire.css",
-        "/BOX/03-box-galerie.css",
-        "/BOX/04-box-dialogue-champ.css",
-        "/BOX/04-box-liste-card.css",
-        "/BOX/pictowait.css?v=20260717-0712",
-        "/BOX/04-box-commande-bar.css",
-        "/BOX/04-box-card-parc.css",
-        "/BOX/04-box-card-map-parc.css",
-        "/BOX/04-carte-dynamique.css",
-        "/BOX/04-box-fiche-parc.css",
-        "/BOX/04-box-shift-detail-parc.css",
-        "/BOX/04-box-calendrier-mois.css",
-        "/BOX/04-box-legende.css?v=20261029-sans-trait-v3",
-        "/BOX/07-box-diginum.css?v=20261029-compact-sans-logo-v3",
-        "/BOX/04-box-card-jour-in-calendrier-mois.css?v=20260717-0655",
-        "/BOX/04-box-calendrier-jour.css",
-        "/BOX/04-box-card-heure-in-calendrier-jour.css",
-        "/BOX/04-box-workflow-reservation.css?v=20261102-croix-focus-v1",
-        "/BOX/04-box-listemails.css",
-        "/CSSBASE/lcdp-planifier.css?v=20261104-planifier-cache-v6"
-      ];
-
-      feuillesCssObjet.forEach((chemin) => {
-        document.write(
-          '<link rel="stylesheet" href="' +
-          window.LCDP_urlObjet(chemin) +
-          '">'
-        );
-      });
+      // CSS central unique : les modules actifs sont déclarés sur <html>.
+      document.write(
+        '<link rel="stylesheet" href="' +
+        window.LCDP_urlObjet("/CSSBASE/lcdp-central-mobile-first.css") +
+        '">'
+      );
 
       document.write(
         '<script src="' +
@@ -132,7 +97,6 @@
     })();
     document.write('<script data-lcdp-footer-autonome src="' + window.LCDP_urlObjet('/BOX/02-box-footer.js') + '"><\/script>');
   </script>
-
 
 </head>
 
@@ -196,7 +160,7 @@
   </div>
 
   <script src="./attente-planifier.js?v=20261102-1"></script>
-  <script src="./reserver-membre.js?v=20261104-planifier-cache-v5"></script>
+  <script src="./reserver-membre.js?v=20261030-rezabo-composants-v5"></script>
   <script src="./paiement-membre.js?v=20261031-paiement-ux-v2"></script>
   <script src="./aboreza-membre.js?v=20261031-formulaire-informations-v2"></script>
 </body>
