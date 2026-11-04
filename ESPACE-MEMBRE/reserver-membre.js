@@ -623,25 +623,36 @@
   }
 
   async function ouvrirDemandeAbonnementDepuisPlanning() {
-    if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
-      await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js");
-    }
-    if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
-      throw new Error("Le formulaire de demande d'abonnement est indisponible.");
-    }
-    await window.LCDP_ouvrirPremiereDaMembre({
-      contexte: etatMembre,
-      onStatudaChange: donnees => {
-        Object.assign(etatMembre, donnees, { statudaConnue: true });
-        if (etatPage.droitsPlanningParcActifs) {
-          etatPage.droitsPlanningParcActifs.statuda = normaliserStatudaReservation(etatMembre.statuda);
-        }
-        // Une DA validée modifie l'orientation, sans réinitialiser le calendrier.
-        chargerDroitsRezabo().then(droits => {
-          etatPage.droitsPlanningParcActifs = droits;
-        }).catch(error => console.warn("Actualisation des droits DA :", error));
+    // Dès la confirmation de la DA : couvre le chargement du script, du
+    // contexte serveur, des fragments HTML et de leurs CSS.
+    const masqueDa = afficherMasqueAttenteSvgPlanifier("Préparation de votre demande d'abonnement");
+    const terminerAttenteDa = () => masqueDa.remove();
+    try {
+      if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
+        await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js?v=20261104-da-questionnaire-v1");
       }
-    });
+      if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
+        throw new Error("Le formulaire de demande d'abonnement est indisponible.");
+      }
+      await window.LCDP_ouvrirPremiereDaMembre({
+        contexte: etatMembre,
+        // L'alerte d'une DA déjà en cours doit être cliquable : elle libère
+        // le spinner AVANT d'attendre une réponse de l'utilisateur.
+        onAffiche: terminerAttenteDa,
+        onStatudaChange: donnees => {
+          Object.assign(etatMembre, donnees, { statudaConnue: true });
+          if (etatPage.droitsPlanningParcActifs) {
+            etatPage.droitsPlanningParcActifs.statuda = normaliserStatudaReservation(etatMembre.statuda);
+          }
+          // Une DA validée modifie l'orientation, sans réinitialiser le calendrier.
+          chargerDroitsRezabo().then(droits => {
+            etatPage.droitsPlanningParcActifs = droits;
+          }).catch(error => console.warn("Actualisation des droits DA :", error));
+        }
+      });
+    } finally {
+      terminerAttenteDa();
+    }
   }
 
   // Un calendrier général reste affiché, avant et après sélection d'un parc.
@@ -1718,12 +1729,17 @@
       const message = document.createElement("p");
       message.setAttribute("role", "alert");
       message.textContent = error.message || "Impossible de charger la carte.";
-      const reessayer = document.createElement("button");
-      reessayer.type = "button";
-      reessayer.className = "lcdp-button lcdp-button-secondary";
-      reessayer.textContent = "Réessayer";
-      reessayer.addEventListener("click", afficherCarteParcs);
-      navigation.zoneCarte.replaceChildren(message, reessayer);
+      // Un département sans parc n'est pas une erreur technique :
+      // le bouton « Réessayer » n'a aucune utilité dans ce cas.
+      navigation.zoneCarte.replaceChildren(message);
+      if (parcs.length > 0) {
+        const reessayer = document.createElement("button");
+        reessayer.type = "button";
+        reessayer.className = "lcdp-button lcdp-button-secondary";
+        reessayer.textContent = "Réessayer";
+        reessayer.addEventListener("click", afficherCarteParcs);
+        navigation.zoneCarte.appendChild(reessayer);
+      }
     }
   }
 
