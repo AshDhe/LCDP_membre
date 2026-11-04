@@ -592,7 +592,7 @@
   function creerBoutonActionMenu(label, action, options = {}) {
     const bouton = document.createElement("button");
     bouton.type = "button";
-    bouton.className = "lcdp-box-menu-burger__button-link";
+    bouton.className = "lcdp-box-menu-burger__link";
     bouton.textContent = label;
 
     if (options.italique === true) {
@@ -1097,16 +1097,19 @@
 
     const liens = [
       {
-        label: "Accueil La Clé du Parc",
+        label: "Accueil membre",
         espace: "membre",
         href: "/ESPACE-MEMBRE/accueil-membre.html"
       }
     ];
 
-    const itemInviter = creerItemInviterBurger(contexte);
-
-    if (itemInviter) {
-      liens.push(itemInviter);
+    // En l'absence d'abonnement, le membre peut demander à être invité.
+    // L'action existante vérifie la présence d'un parrain et affiche l'alerte métier.
+    if (!contexte.abonne) {
+      liens.push({ label: "Être invité(e)", action: "etre-invite" });
+    } else {
+      const itemInviter = creerItemInviterBurger(contexte);
+      if (itemInviter) liens.push(itemInviter);
     }
 
     liens.push(
@@ -1125,9 +1128,9 @@
         href: "/ESPACE-PUBLIC/actualite.html"
       },
       {
-        label: "L’association",
+        label: "Le club",
         espace: "public",
-        href: "/ESPACE-PUBLIC/association.html"
+        href: "/ESPACE-PUBLIC/le-club.html"
       },
       {
         label: "FAQ",

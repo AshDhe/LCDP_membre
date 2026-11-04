@@ -111,16 +111,17 @@
     <!-- Bandeau MEMBRE : même slot et même gabarit que l'accueil public. -->
     <div id="lcdp-bandeau-slot"></div>
 
-    <main class="public-home__main" id="lcdp-accueil-contenu" hidden aria-busy="true">
-      <!-- Actualités : composant et script communs avec l'accueil public. -->
-      <section id="lcdp-actualite-bandeau" class="public-home__actualite" aria-label="Actualités">
-        <div class="lcdp-page-container">
-          <div class="lcdp-page-content">
-            <div class="lcdp-boxtext__text--center lcdp-actu-bandeau-placeholder" aria-hidden="true"></div>
-          </div>
+    <!-- Actualités : hors du main masqué pendant le contrôle de session, comme sur
+         l'accueil public. Le module commun actualite.js garde le contrôle du contenu. -->
+    <section id="lcdp-actualite-bandeau" class="public-home__actualite" aria-label="Actualités">
+      <div class="lcdp-page-container">
+        <div class="lcdp-page-content">
+          <div class="lcdp-boxtext__text--center lcdp-actu-bandeau-placeholder" aria-hidden="true"></div>
         </div>
-      </section>
+      </div>
+    </section>
 
+    <main class="public-home__main" id="lcdp-accueil-contenu" hidden aria-busy="true">
       <!-- Seule addition éditoriale membre : identité, statut et éventuelle suspension. -->
       <div aria-label="Votre compte membre" class="public-home__intro lcdp-accueil-intro">
       <p aria-live="polite" class="lcdp-accueil-mention" id="message-accueil-membre">Bonjour, c’est à vous.</p>
