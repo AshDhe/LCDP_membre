@@ -78,7 +78,6 @@
       const href = window.LCDP_urlObjet("/CSSBASE/lcdp-central-mobile-first.css");
       document.write('<link rel="stylesheet" href="' + href.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">');
       document.write('<script src="' + window.LCDP_urlObjet("/BOX/02-box-footer.js") + '" data-lcdp-footer-autonome defer><\/script>');
-      document.write('<script src="' + window.LCDP_urlPublic("/ESPACE-PUBLIC/actualite.js") + '" defer><\/script>');
     })();
   </script>
   <style>
@@ -110,16 +109,6 @@
   <div class="public-home__app lcdp-app-wrapper">
     <!-- Bandeau MEMBRE : même slot et même gabarit que l'accueil public. -->
     <div id="lcdp-bandeau-slot"></div>
-
-    <!-- Actualités : hors du main masqué pendant le contrôle de session, comme sur
-         l'accueil public. Le module commun actualite.js garde le contrôle du contenu. -->
-    <section id="lcdp-actualite-bandeau" class="public-home__actualite" aria-label="Actualités">
-      <div class="lcdp-page-container">
-        <div class="lcdp-page-content">
-          <div class="lcdp-boxtext__text--center lcdp-actu-bandeau-placeholder" aria-hidden="true"></div>
-        </div>
-      </div>
-    </section>
 
     <main class="public-home__main" id="lcdp-accueil-contenu" hidden aria-busy="true">
       <!-- Seule addition éditoriale membre : identité, statut et éventuelle suspension. -->
