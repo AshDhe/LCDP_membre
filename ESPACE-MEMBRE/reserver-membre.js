@@ -555,24 +555,53 @@
       : "Un abonnement est nécessaire pour continuer.";
     let boutons;
 
-    if (sansDa) {
+    if (typeClic === "jour") {
+      // L'invitation (Duo Actif) est proposée pour tous les états DA.
+      // Une DA seulement transmise ne donne jamais le droit de s'abonner.
+      const boutonInvitation = {label:"Être invité(e)",valeur:"invitation",style:"lcdp-button-secondary"};
+      if (daValidee) {
+        if (jourHorsCouverture) {
+          titre = "Nouvel abonnement";
+          texte = "Cette date n'est pas couverte par votre abonnement.";
+        } else if (depassement) {
+          titre = "Nouvel abonnement";
+        }
+        boutons = [
+          {label:"M'abonner",valeur:"abonnement",style:"lcdp-button-primary"},
+          boutonInvitation
+        ];
+      } else if (statuda === "encours") {
+        // Demande en cours d'étude : aucune nouvelle DA cliquable.
+        boutons = [boutonInvitation];
+      } else {
+        // Après refus, le Worker DA n'accepte une nouvelle demande qu'à
+        // l'échéance datenext. Ne pas proposer une action qu'il rejetterait.
+        const datenext = String(droitsActifs?.datenext || etatMembre.datenext || "").trim();
+        const dateReprise = datenext ? Date.parse(datenext) : NaN;
+        const peutFaireDa = sansDa ||
+          (statuda === "non" && Number.isFinite(dateReprise) && dateReprise <= Date.now());
+        boutons = peutFaireDa
+          ? [{label:"Faire ma DA",valeur:"demande",style:"lcdp-button-primary"}, boutonInvitation]
+          : [boutonInvitation];
+      }
+    } else if (sansDa) {
+      // Navigation mensuelle : comportement antérieur préservé.
       boutons = [{label:"Faire ma DA",valeur:"demande",style:"lcdp-button-primary"}];
     } else if (!daValidee) {
       boutons = [{label:"Être invité(e)",valeur:"invitation",style:"lcdp-button-primary"}];
     } else if (jourHorsCouverture) {
       titre = "Nouvel abonnement";
       texte = "Cette date n'est pas couverte par votre abonnement.";
-      // K2 ouvre le premier écran COMPLET d'Aboresa, personnalisé :
-      // toutes les formules sont visibles ; les impossibles sont désactivées.
       boutons = [{label:"Abonnement",valeur:"abonnement",style:"lcdp-button-primary"}];
     } else {
       if (depassement) titre = "Nouvel abonnement";
       boutons = [{label:"Abonnement",valeur:"abonnement",style:"lcdp-button-primary"}];
     }
     const choix = await ouvrirDialogueBoutonsSuperpose({titre,texte,boutons,onAffiche: contexte.onAffiche});
-    if (sansDa && choix === "demande") {
+    if (choix === "demande") {
       await ouvrirDemandeAbonnementDepuisPlanning();
-    } else if (!sansDa && !daValidee && choix === "invitation") {
+    } else if (choix === "invitation") {
+      // Le tag Duo Actif porte sur le parc actuellement sélectionné.
       await proposerTagDuoActifMaquette();
     } else if (daValidee && choix === "abonnement") {
       await ouvrirAbonnementDepuisPlanning({
