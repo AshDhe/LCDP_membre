@@ -5,7 +5,6 @@
   const SOURCE_PAGE = "reserver-membre";
   const DOSSIER_IMAGES_PARC_OBJET = "/IMAG/PARC";
   const NOM_IMAGE_CARD_PARC = "card1.webp";
-  const CHEMIN_PICTOWAIT = "/BOX/pictowait.svg";
   const MEDIA_DESCRIPTION_CARD_PARC_TABLETTE_DESKTOP = window.matchMedia("(min-width: 768px)");
 
   const CLES_PLAGES_AFFICHAGE = [
@@ -74,6 +73,8 @@
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
 
+  const DEBUT_ATTENTE_INITIALE_PLANIFIER = performance.now();
+  const DUREE_MIN_ATTENTE_INITIALE_MS = 300;
   let pageInitialisee = false;
   let etatMembre = { abonne: false, abonnementSuspendu: false, abonnementAnnuleNonPaye: false, paiementSuspension: null, statudaConnue: false, statuda: null, datenext: null };
   let promessePrechargementConstructeurFicheParc = null;
@@ -257,12 +258,13 @@
       attente?.remove();
       return;
     }
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
+    const restant = Math.max(0, DUREE_MIN_ATTENTE_INITIALE_MS - (performance.now() - DEBUT_ATTENTE_INITIALE_PLANIFIER));
+    window.setTimeout(() => {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
         document.documentElement.classList.add("lcdp-planifier-pret");
         attente?.remove();
-      });
-    });
+      }));
+    }, restant);
   }
 
   // Filtres d'affichage : les catégories ne valent pas autorisation de réserver.
@@ -417,7 +419,7 @@
     chargement.className = "lcdp-planifier-parcs-chargement";
     chargement.setAttribute("role", "status");
     chargement.setAttribute("aria-label", "Chargement des parcs");
-    chargement.appendChild(creerPictowait("Chargement des parcs…"));
+    chargement.appendChild(creerSpinnerPlanifier("Chargement des parcs…"));
     // Masque autonome et centré : jamais dans le flux de la page ou de la box.
     Object.assign(chargement.style, {
       position: "fixed", inset: "0", display: "flex", alignItems: "center",
@@ -785,9 +787,10 @@
         masque = document.createElement("div");
         masque.className = "lcdp-planifier-attente-mois";
         masque.dataset.lcdpPlanifierAttenteMois = "";
+        masque.dataset.lcdpAttenteDebut = String(performance.now());
         masque.setAttribute("role", "status");
         masque.setAttribute("aria-label", "Chargement du calendrier mensuel");
-        masque.appendChild(creerPictowait("Chargement du calendrier mensuel…"));
+        masque.appendChild(creerSpinnerPlanifier("Chargement du calendrier mensuel…"));
         carte.appendChild(masque);
       }
       calendrier.setAttribute("aria-busy", "true");
@@ -797,12 +800,15 @@
         termine = true;
         chargementsCalendrierEnCours = Math.max(0, chargementsCalendrierEnCours - 1);
         if (chargementsCalendrierEnCours !== 0) return;
-        // Retirer l'attente après la peinture de la nouvelle grille.
-        requestAnimationFrame(() => requestAnimationFrame(() => {
+        // Une attente très brève serait imperceptible : 300 ms maximum de maintien minimal.
+        const affichage = carte.querySelector("[data-lcdp-planifier-attente-mois]");
+        const debut = Number(affichage?.dataset.lcdpAttenteDebut || performance.now());
+        const restant = Math.max(0, 300 - (performance.now() - debut));
+        window.setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => {
           if (chargementsCalendrierEnCours !== 0) return;
           carte.querySelector("[data-lcdp-planifier-attente-mois]")?.remove();
           calendrier.removeAttribute("aria-busy");
-        }));
+        })), restant);
       };
     }
 
@@ -970,11 +976,7 @@
       masque.id = "lcdp-retour-accueil-attente";
       masque.setAttribute("role", "status");
       masque.setAttribute("aria-label", "Retour à l'accueil en cours");
-      const gif = document.createElement("img");
-      gif.src = construireUrlObjet(CHEMIN_PICTOWAIT);
-      gif.alt = "";
-      gif.width = 64;
-      gif.height = 64;
+      const gif = creerSpinnerPlanifier("Retour à l’accueil en cours");
       // Centrage autonome : ne dépend pas du chargement du CSS du workflow.
       Object.assign(masque.style, {
         position: "fixed", inset: "0", width: "100vw", height: "100dvh",
@@ -982,10 +984,7 @@
         justifyContent: "center", margin: "0", padding: "0",
         background: "rgba(255,255,255,0.94)"
       });
-      Object.assign(gif.style, {
-        display: "block", width: "64px", height: "64px",
-        objectFit: "contain", margin: "0", flex: "none"
-      });
+      Object.assign(gif.style, { margin: "0", flex: "none" });
       masque.appendChild(gif);
       document.body.appendChild(masque);
       // Peindre l'attente, sans dépendre exclusivement de requestAnimationFrame
@@ -1622,7 +1621,7 @@
     attente.className = "lcdp-planifier-parcs-chargement lcdp-planifier-carte-attente";
     attente.setAttribute("role", "status");
     attente.setAttribute("aria-label", "Chargement de la carte des parcs");
-    attente.appendChild(creerPictowait("Chargement de la carte…"));
+    attente.appendChild(creerSpinnerPlanifier("Chargement de la carte…"));
     navigation.zoneCarte.replaceChildren(attente);
     const parcs = [...etatPage.parcs];
     const departement = etatPage.departement;
@@ -2751,27 +2750,40 @@
     await chargerParcsDepartement(nettoyerDepartement(codeSaisi), donneesDepartementVerifiees);
   }
 
-  function creerPictowait(message) {
+  function creerSpinnerPlanifier(message) {
     const attente = document.createElement("div");
-    attente.className = "lcdp-pictowait";
-    attente.dataset.lcdpPictowait = "";
+    attente.className = "lcdp-planifier-spinner";
     attente.setAttribute("role", "status");
     attente.setAttribute("aria-live", "polite");
-    attente.setAttribute(
-      "aria-label",
-      message || "Chargement en cours"
-    );
-
-    const image = document.createElement("img");
-    image.className = "lcdp-pictowait__image";
-    image.src = construireUrlObjet(CHEMIN_PICTOWAIT);
-    image.alt = "";
-    image.width = 56;
-    image.height = 56;
-    image.decoding = "async";
-    image.setAttribute("aria-hidden", "true");
-
-    attente.appendChild(image);
+    attente.setAttribute("aria-label", message || "Chargement en cours");
+    const roue = document.createElement("div");
+    roue.className = "lcdp-loading-spinner";
+    roue.setAttribute("aria-hidden", "true");
+    const NS = "http://www.w3.org/2000/svg";
+    for (const [classe, partiel] of [
+      ["lcdp-loading-spinner__track", false],
+      ["lcdp-loading-spinner__arc", true]
+    ]) {
+      const svg = document.createElementNS(NS, "svg");
+      svg.setAttribute("class", classe);
+      svg.setAttribute("viewBox", "0 0 36 36");
+      svg.setAttribute("aria-hidden", "true");
+      const cercle = document.createElementNS(NS, "circle");
+      for (const [nom, valeur] of Object.entries({
+        cx: "18", cy: "18", r: "16", fill: "none", stroke: "currentColor",
+        "stroke-width": "3", "stroke-linecap": "round"
+      })) cercle.setAttribute(nom, valeur);
+      if (partiel) {
+        cercle.setAttribute("stroke-dasharray", "100");
+        cercle.setAttribute("stroke-dashoffset", "75");
+      }
+      svg.appendChild(cercle);
+      roue.appendChild(svg);
+    }
+    const point = document.createElement("span");
+    point.className = "lcdp-loading-spinner__dot";
+    roue.appendChild(point);
+    attente.appendChild(roue);
     return attente;
   }
 
@@ -2781,7 +2793,7 @@
     masque.className = "lcdp-planifier-attente-svg";
     masque.setAttribute("role", "status");
     masque.setAttribute("aria-label", message || "Chargement en cours");
-    masque.appendChild(creerPictowait(message));
+    masque.appendChild(creerSpinnerPlanifier(message));
     Object.assign(masque.style, {
       position: "fixed", inset: "0", display: "flex", alignItems: "center",
       justifyContent: "center", zIndex: "2147483645",
@@ -2808,7 +2820,7 @@
     masque.dataset.lcdpFicheAttente = "";
     masque.setAttribute("role", "status");
     masque.setAttribute("aria-label", message || "Chargement de la fiche du parc");
-    masque.appendChild(creerPictowait(message || "Chargement de la fiche du parc"));
+    masque.appendChild(creerSpinnerPlanifier(message || "Chargement de la fiche du parc"));
     detail.racine.appendChild(masque);
     detail.racine.setAttribute("aria-busy", "true");
     detail.racine.hidden = false;
@@ -3981,7 +3993,7 @@
 
     const attente = document.createElement("div");
     attente.className = "lcdp-planifier-partage-attente";
-    attente.appendChild(creerPictowait("Envoi du partage en cours…"));
+    attente.appendChild(creerSpinnerPlanifier("Envoi du partage en cours…"));
     document.body.appendChild(attente);
     let messageResultat = "";
     let succes = false;
