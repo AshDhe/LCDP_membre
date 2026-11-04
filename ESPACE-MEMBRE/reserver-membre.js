@@ -2775,9 +2775,25 @@
     return attente;
   }
 
+  // Attente autonome de PLANIFIER : utilise le SVG commun, jamais l'ancien GIF.
+  function afficherMasqueAttenteSvgPlanifier(message) {
+    const masque = document.createElement("div");
+    masque.className = "lcdp-planifier-attente-svg";
+    masque.setAttribute("role", "status");
+    masque.setAttribute("aria-label", message || "Chargement en cours");
+    masque.appendChild(creerPictowait(message));
+    Object.assign(masque.style, {
+      position: "fixed", inset: "0", display: "flex", alignItems: "center",
+      justifyContent: "center", zIndex: "2147483645",
+      background: "rgba(255,255,255,0.94)", pointerEvents: "auto"
+    });
+    document.body.appendChild(masque);
+    return masque;
+  }
+
   function afficherPictowaitListeParcs() {
-    if (!attenteListeParcs && window.LCDP_chargement) {
-      attenteListeParcs = window.LCDP_chargement.afficher();
+    if (!attenteListeParcs) {
+      attenteListeParcs = afficherMasqueAttenteSvgPlanifier("Chargement des parcs");
     }
   }
 
@@ -2808,7 +2824,7 @@
 
   function masquerPictowaitListeParcs() {
     if (attenteListeParcs) {
-      window.LCDP_chargement?.masquer(attenteListeParcs);
+      attenteListeParcs.remove();
       attenteListeParcs = null;
     }
   }
@@ -3311,12 +3327,27 @@
   let clicJourPlanifierEnCours = false;
 
   function afficherAttenteClicJourPlanifier() {
-    // Le gestionnaire commun impose 500 ms, même pour une réponse immédiate.
-    if (window.LCDP_ATTENTE_PLANIFIER) {
-      return window.LCDP_ATTENTE_PLANIFIER.commencer('Analyse de la journée en cours');
-    }
-    // Repli si le script commun n'a pas pu être chargé : aucun blocage du clic.
-    return async () => {};
+    // Même durée minimale qu'avant, sans dépendre d'un ancien gestionnaire GIF.
+    const masque = afficherMasqueAttenteSvgPlanifier("Analyse de la journée en cours");
+    const debut = performance.now();
+    let fermeture = null;
+    return () => {
+      if (!fermeture) {
+        fermeture = (async () => {
+          const restant = Math.max(0, 500 - (performance.now() - debut));
+          if (restant > 0) await new Promise(resolve => setTimeout(resolve, restant));
+          // Laisser peindre la vue suivante sans rester bloqué si l’onglet est masqué.
+          if (document.visibilityState !== "hidden") {
+            await Promise.race([
+              new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+              new Promise(resolve => setTimeout(resolve, 100))
+            ]);
+          }
+          masque.remove();
+        })();
+      }
+      return fermeture;
+    };
   }
 
   async function gererClicDocument(event) {
@@ -4854,6 +4885,9 @@
       return false;
     }
     if (jourCouvertParAbonnementPayePlanifier(choix.dateIso)) {
+      // L'attente commence avant l'appel à RÉZABO et se termine après
+      // l'actualisation du calendrier, sans modifier la requête métier.
+      const masqueReservation = afficherMasqueAttenteSvgPlanifier("Enregistrement de votre réservation");
       try {
         // Le Worker RÉZA-ABO est le seul point d'entrée pour une nouvelle réza.
         const reservation = await enregistrerReservation({
@@ -4867,9 +4901,13 @@
         // Fermer uniquement la couche JOUR. Le calendrier mensuel est permanent.
         document.getElementById("lcdp-planifier-jour-overlay-slot")?.remove();
         await etatPage.actualiserPlanningPrincipal?.();
+        masqueReservation.remove();
         await afficherAlerteSuperposee("Accès planifié", "orange", {libelleBouton:"Fermer"});
       } catch (error) {
+        masqueReservation.remove();
         await afficherAlerteSuperposee(error.message || "Impossible d'enregistrer cette réservation.");
+      } finally {
+        masqueReservation.remove();
       }
       return false;
     }
