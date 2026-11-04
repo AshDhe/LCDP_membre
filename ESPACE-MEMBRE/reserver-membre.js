@@ -675,14 +675,19 @@
     const enteteFiltres = document.createElement("div");
     enteteFiltres.className = "lcdp-planifier-entete-filtres";
     titre.replaceWith(enteteFiltres);
-    enteteFiltres.appendChild(titre);
-
+    // Identité et localisation du parc restent liées aux données du calendrier.
+    const ligneIdentite = document.createElement("div");
+    ligneIdentite.className = "lcdp-planifier-entete-identite";
+    const informationsParc = document.createElement("div");
+    informationsParc.className = "lcdp-planifier-entete-parc";
+    informationsParc.appendChild(titre);
     meta.classList.add("lcdp-planifier-nom-parc");
-    enteteFiltres.appendChild(meta);
+    informationsParc.appendChild(meta);
     const departementParc = document.createElement("p");
     departementParc.className = "lcdp-planifier-departement-parc";
     departementParc.hidden = true;
-    enteteFiltres.appendChild(departementParc);
+    ligneIdentite.append(informationsParc, departementParc);
+    enteteFiltres.appendChild(ligneIdentite);
 
     const actionsFiltres = document.createElement("div");
     actionsFiltres.className = "lcdp-planifier-actions-filtres";
@@ -769,6 +774,38 @@
     let droitsParc = droitsInitiaux;
     let planningCourant = [];
     let generationPlanning = 0;
+    let chargementsCalendrierEnCours = 0;
+
+    function commencerAttenteCalendrierMois() {
+      const carte = calendrier.querySelector(".lcdp-box-calendrier-mois__card");
+      if (!carte) return () => {};
+      chargementsCalendrierEnCours += 1;
+      let masque = carte.querySelector("[data-lcdp-planifier-attente-mois]");
+      if (!masque) {
+        masque = document.createElement("div");
+        masque.className = "lcdp-planifier-attente-mois";
+        masque.dataset.lcdpPlanifierAttenteMois = "";
+        masque.setAttribute("role", "status");
+        masque.setAttribute("aria-label", "Chargement du calendrier mensuel");
+        masque.appendChild(creerPictowait("Chargement du calendrier mensuel…"));
+        carte.appendChild(masque);
+      }
+      calendrier.setAttribute("aria-busy", "true");
+      let termine = false;
+      return () => {
+        if (termine) return;
+        termine = true;
+        chargementsCalendrierEnCours = Math.max(0, chargementsCalendrierEnCours - 1);
+        if (chargementsCalendrierEnCours !== 0) return;
+        // Retirer l'attente après la peinture de la nouvelle grille.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (chargementsCalendrierEnCours !== 0) return;
+          carte.querySelector("[data-lcdp-planifier-attente-mois]")?.remove();
+          calendrier.removeAttribute("aria-busy");
+        }));
+      };
+    }
+
     enregistrerContextePlanning = () => memoriserContextePlanifier(parcSelectionne, etat.annee, etat.mois);
     etatPage.reprendrePlanning = async (contexte, parc) => {
       const cible = Number(contexte.annee) * 12 + Number(contexte.mois);
@@ -790,27 +827,33 @@
         return;
       }
       // Ne pas perdre le parc précédent lorsque le chargement échoue.
-      const droits = await chargerDroitsPlanningParcMembre(parc);
-      const demande = { parc, annee: etat.annee, mois: etat.mois };
-      const donnees = await chargerPlanningParcMoisLecture(demande);
-      parcSelectionne = parc;
-      droitsParc = droits;
-      etatPage.droitsPlanningParcActifs = droits;
-      preparationAbonnementPlanifier = Boolean(window.LCDP_ABOREZA?.actif());
-      planningCourant = donnees;
-      etatPage.calendrierMoisActif = { ...demande, modePlanning: "lecture", planning: donnees };
-      generationPlanning++;
-      afficher();
-      enregistrerContextePlanning();
-      // La liste/carte est un filtre en superposition, jamais une autre page.
-      navigationParcs?.fermer?.();
-      fermerShiftDetailParc();
+      const terminerAttente = commencerAttenteCalendrierMois();
+      try {
+        const droits = await chargerDroitsPlanningParcMembre(parc);
+        const demande = { parc, annee: etat.annee, mois: etat.mois };
+        const donnees = await chargerPlanningParcMoisLecture(demande);
+        parcSelectionne = parc;
+        droitsParc = droits;
+        etatPage.droitsPlanningParcActifs = droits;
+        preparationAbonnementPlanifier = Boolean(window.LCDP_ABOREZA?.actif());
+        planningCourant = donnees;
+        etatPage.calendrierMoisActif = { ...demande, modePlanning: "lecture", planning: donnees };
+        generationPlanning++;
+        afficher();
+        enregistrerContextePlanning();
+        // La liste/carte est un filtre en superposition, jamais une autre page.
+        navigationParcs?.fermer?.();
+        fermerShiftDetailParc();
+      } finally {
+        terminerAttente();
+      }
     };
 
     async function actualiserMoisParc() {
       if (!parcSelectionne) return;
       const generation = ++generationPlanning;
       const demande = { parc: parcSelectionne, annee: etat.annee, mois: etat.mois };
+      const terminerAttente = commencerAttenteCalendrierMois();
       try {
         const donnees = await chargerPlanningParcMoisLecture(demande);
         if (generation !== generationPlanning) return;
@@ -821,6 +864,8 @@
         if (generation !== generationPlanning) return;
         message.textContent = error.message || "Impossible de charger le planning du parc.";
         message.hidden = false;
+      } finally {
+        terminerAttente();
       }
     }
 
@@ -839,6 +884,7 @@
     etatPage.hoteBandeauAboReza = enteteFiltres;
 
     function afficher() {
+      enteteFiltres.classList.toggle("lcdp-planifier-entete-avec-parc", Boolean(parcSelectionne));
       courant.textContent = formaterMoisAnnee(etat.annee, etat.mois);
       grille.replaceChildren();
       const premierJour = new Date(etat.annee, etat.mois - 1, 1);
