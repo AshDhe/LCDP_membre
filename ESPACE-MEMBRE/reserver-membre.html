@@ -105,8 +105,7 @@
         "/BOX/04-box-card-heure-in-calendrier-jour.css",
         "/BOX/04-box-workflow-reservation.css?v=20261102-croix-focus-v1",
         "/BOX/04-box-listemails.css",
-        "/CSSBASE/lcdp-planifier.css?v=20261105-aboreza-fixe-v13",
-        "/CSSBASE/lcdp-planifier-compact.css"
+        "/CSSBASE/lcdp-planifier.css?v=20261105-fusion-aboreza-compact-v16"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -223,42 +222,6 @@
   <script src="./attente-planifier.js?v=20261102-1"></script>
   <script src="./reserver-membre.js?v=20261105-aboreza-planning-v4"></script>
   <script src="./paiement-membre.js?v=20261105-sortie-protegee-v3"></script>
-  <script src="./aboreza-membre.js?v=20261105-cgv-lcdp-v5"></script>
-  <script>
-    /* ABO-RÉZA, étape 2 : informations défilantes, action Planifier permanente.
-       Le bouton et son écouteur d'événement restent dans leur parent d'origine. */
-    (() => {
-      "use strict";
-      const reorganiser = () => {
-        document.querySelectorAll('.lcdp-box-workflow-abonnement').forEach((workflow) => {
-          const titre = workflow.querySelector('.lcdp-box-dialogue-bouton__title');
-          if (!titre || !/planifiez\s+à\s+la\s+commande/i.test(titre.textContent || '')) return;
-          const actions = workflow.querySelector('.lcdp-box-dialogue-bouton__actions');
-          if (!actions || actions.classList.contains('lcdp-aboreza-etape2-actions')) return;
-          const bouton = Array.from(actions.children).find((el) =>
-            el.tagName === 'BUTTON' && /planifier/i.test(el.textContent || '')
-          );
-          if (!bouton) return;
-          const informations = document.createElement('div');
-          informations.className = 'lcdp-aboreza-etape2-informations';
-          Array.from(actions.childNodes).forEach((noeud) => {
-            if (noeud !== bouton) informations.appendChild(noeud);
-          });
-          actions.insertBefore(informations, bouton);
-          actions.classList.add('lcdp-aboreza-etape2-actions');
-          workflow.classList.add('lcdp-aboreza-etape2');
-        });
-      };
-      const demarrer = () => {
-        reorganiser();
-        new MutationObserver(reorganiser).observe(document.body, { childList: true, subtree: true });
-      };
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', demarrer, { once: true });
-      } else {
-        demarrer();
-      }
-    })();
-  </script>
+  <script src="./aboreza-membre.js?v=20261105-plage-integree-v6"></script>
 </body>
 </html>
