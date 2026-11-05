@@ -301,29 +301,31 @@
       if (typeof surOuverture === 'function') surOuverture();
       return ouverture;
     }
-    const terminerAttentePaiement = typeof surOuverture === 'function'
-      ? null : window.LCDP_ATTENTE_PLANIFIER?.commencer('Préparation du bon de commande');
     const traitement = (async () => {
       // Les modèles HTML et les lectures serveur sont indépendants : les charger en parallèle.
       const [[modeleWorkflow, modeleRecap], [panier, devis]] = await Promise.all([
         obtenirComposants(), Promise.all([lirePanier(idpanier), lireDevis(idpanier)])
       ]);
       const paiement = { termine:false };
-      const workflow = monterBon(modeleWorkflow, modeleRecap, panier, devis, paiement);
+      const bonPrepare = monterBon(modeleWorkflow, modeleRecap, panier, devis, paiement);
+      // ABO-RÉZA peut déjà porter sa coque persistante : réutiliser cette même
+      // BOX générique plutôt que superposer une nouvelle fenêtre de paiement.
+      const workflow = window.LCDP_ABOREZA_UI?.adopterPaiement?.(bonPrepare) || bonPrepare;
+      const reutilise = workflow !== bonPrepare;
       const boutonRetour = workflow.querySelector('[data-lcdp-recaporder-cancel]');
       const boutonPrecedent = workflow.querySelector('[data-lcdp-recaporder-back]');
       const precedent = document.activeElement;
-      document.body.append(workflow);
+      if (!workflow.isConnected) document.body.append(workflow);
       if (typeof surOuverture === 'function') surOuverture();
-      if (terminerAttentePaiement) await terminerAttentePaiement();
       await new Promise(resolve => {
         let ferme = false;
         const terminer = () => {
           if (ferme) return;
           ferme = true;
           workflow.removeEventListener('keydown', touche);
-          workflow.remove();
-          if (precedent?.isConnected && typeof precedent.focus === 'function') precedent.focus();
+          if (reutilise) window.LCDP_ABOREZA_UI?.fermer?.();
+          else workflow.remove();
+          if (!reutilise && precedent?.isConnected && typeof precedent.focus === 'function') precedent.focus();
           resolve();
         };
         const touche = event => {
@@ -345,8 +347,7 @@
       });
     })();
     ouverture = traitement;
-    try { return await traitement; }
-    finally { if (terminerAttentePaiement) await terminerAttentePaiement(); ouverture = null; }
+    try { return await traitement; } finally { ouverture = null; }
   }
 
   function urlMembre(chemin) {

@@ -626,14 +626,18 @@
     if (!idparc) return;
     const reponse = await ouvrirDialogueBoutonsSuperpose({
       titre: "Duo Actif",
-      texte: "Poser un tag Duo Actif sur ce parc ?",
-      boutons: [{label:"Confirmer",valeur:"poser",style:"lcdp-button-orange"}]
+      texte: "Souhaitez-vous faire une déclaration Duo Actif pour ce parc ?",
+      boutons: [
+        {label:"Oui",valeur:"oui",style:"lcdp-button-primary"},
+        {label:"Non",valeur:"non",style:"lcdp-button-secondary"}
+      ]
     });
-    // Croix et clic extérieur = annulation. Seul Confirmer crée le tag fictif.
-    if (reponse !== "poser") return;
+    // Non, fermeture ou clic extérieur = aucune action.
+    // ATTENTION : le stockage reste une maquette tant que le Worker n'est pas raccordé.
+    if (reponse !== "oui") return;
     tagsDuoActifMaquette.add(idparc);
     await afficherAlerteSuperposee(
-      "Le tag est enregistré sur ce parc. (Maquette : aucune écriture en base.)",
+      "Mode maquette : votre intérêt pour ce parc est mémorisé temporairement. Il n'est pas encore enregistré dans Mes accès.",
       "orange", {libelleBouton:"Fermer"}
     );
   }

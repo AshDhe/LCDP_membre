@@ -12,16 +12,94 @@
   let occupe = false;
   let bandeau = null;
   let attenteFormules = null;
+  let conteneurAboreza = null;
 
-  // Attente partagée avec PLANIFIER. La fermeture est asynchrone et idempotente.
-  function afficherAttenteFormules(libelle = 'Chargement des formules d’abonnement') {
-    if (attenteFormules) return;
-    attenteFormules = window.LCDP_ATTENTE_PLANIFIER?.commencer(libelle) || null;
+  // Coque persistante commune à toutes les étapes d'ABO-RÉZA.
+  // Elle reprend la structure du composant générique 04-box-workflow-abonnement.
+  // Aucun écran intermédiaire ne recrée le fond de la fenêtre.
+  function obtenirConteneurAboreza() {
+    if (conteneurAboreza?.workflow?.isConnected) return conteneurAboreza;
+    const workflow = composants?.workflow?.cloneNode(true) || elem('div', 'lcdp-box-workflow-abonnement');
+    let carte = workflow.querySelector('[data-lcdp-workflow-abonnement-card]');
+    let contenu = workflow.querySelector('[data-lcdp-workflow-abonnement-content]');
+    if (!carte || !contenu) {
+      // Même structure et mêmes classes que le fragment générique, y compris
+      // pendant le tout premier chargement du fragment lui-même.
+      workflow.replaceChildren();
+      carte = elem('section', 'lcdp-box-workflow-abonnement__card');
+      contenu = elem('div', 'lcdp-box-workflow-abonnement__content');
+      carte.dataset.lcdpWorkflowAbonnementCard = '';
+      contenu.dataset.lcdpWorkflowAbonnementContent = '';
+      carte.append(contenu);
+      workflow.append(carte);
+    }
+    workflow.id = 'lcdp-aboreza-workflow-continue';
+    workflow.classList.add('lcdp-box-workflow-abonnement--aboreza-continu');
+    workflow.setAttribute('role', 'dialog');
+    workflow.setAttribute('aria-modal', 'true');
+    workflow.setAttribute('aria-label', 'Abonnement La Clé du Parc');
+    workflow.tabIndex = -1;
+    const focusAvant = document.activeElement;
+    document.body.append(workflow);
+    conteneurAboreza = { workflow, carte, contenu, focusAvant };
+    return conteneurAboreza;
   }
+
+  function fermerConteneurAboreza() {
+    masquerAttenteFormules();
+    const etape = conteneurAboreza;
+    if (!etape) return;
+    etape.workflow.remove();
+    conteneurAboreza = null;
+    if (etape.focusAvant?.isConnected && typeof etape.focusAvant.focus === 'function') {
+      etape.focusAvant.focus({ preventScroll: true });
+    }
+  }
+
+  // Spinner HTML commun à PLANIFIER : aucun fichier GIF/SVG d'attente externe.
+  function creerSpinnerAboReza() {
+    const roue = elem('div', 'lcdp-loading-spinner');
+    roue.setAttribute('aria-hidden', 'true');
+    roue.innerHTML = `
+      <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
+      <svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg>
+      <span class="lcdp-loading-spinner__dot"></span>`;
+    return roue;
+  }
+  function afficherAttenteFormules(libelle = 'Chargement des formules d’abonnement') {
+    const { workflow, carte } = obtenirConteneurAboreza();
+    workflow.setAttribute('aria-busy', 'true');
+    if (attenteFormules?.isConnected) {
+      attenteFormules.setAttribute('aria-label', libelle);
+      return;
+    }
+    const masque = elem('div', 'lcdp-box-workflow-abonnement__attente');
+    masque.setAttribute('role', 'status');
+    masque.setAttribute('aria-live', 'polite');
+    masque.setAttribute('aria-label', libelle);
+    masque.append(creerSpinnerAboReza());
+    carte.append(masque);
+    attenteFormules = masque;
+  }
+
   function masquerAttenteFormules() {
-    const terminer = attenteFormules;
+    attenteFormules?.remove();
     attenteFormules = null;
-    return terminer ? terminer() : Promise.resolve();
+    conteneurAboreza?.workflow?.removeAttribute('aria-busy');
+  }
+
+  function adopterBonCommandeDansConteneur(workflowPret) {
+    const source = workflowPret?.querySelector('[data-lcdp-workflow-abonnement-content]');
+    if (!source) return null;
+    const { workflow, contenu, carte } = obtenirConteneurAboreza();
+    workflow.classList.remove('lcdp-box-workflow-abonnement--calendrier-an', 'lcdp-box-workflow-abonnement--confirmation');
+    workflow.classList.add('lcdp-box-workflow-abonnement--recapitulatif');
+    workflow.removeAttribute('aria-label');
+    workflow.setAttribute('aria-labelledby', 'lcdp-paiement-recap-titre');
+    contenu.replaceChildren(...Array.from(source.children));
+    carte.scrollTop = 0;
+    masquerAttenteFormules();
+    return workflow;
   }
   const moisLibelle = cle => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(new Date(cle + '-01T12:00:00Z'));
   const dateLibelle = iso => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso + 'T12:00:00Z'));
@@ -86,18 +164,19 @@
     }
   }
   function monterWorkflow(modele, type, titre) {
-    const workflow = composants.workflow.cloneNode(true);
+    const { workflow, contenu, carte } = obtenirConteneurAboreza();
+    workflow.classList.remove('lcdp-box-workflow-abonnement--calendrier-an', 'lcdp-box-workflow-abonnement--confirmation', 'lcdp-box-workflow-abonnement--recapitulatif');
     workflow.classList.add('lcdp-box-workflow-abonnement--' + type);
+    workflow.removeAttribute('aria-labelledby');
     workflow.setAttribute('aria-label', titre);
-    workflow.tabIndex = -1;
-    const contenu = workflow.querySelector('[data-lcdp-workflow-abonnement-content]');
-    if (!contenu) throw Error('Emplacement du workflow abonnement manquant.');
     const objet = modele.cloneNode(true);
-    // Seule la coque commune porte le rôle modal ; l'objet injecté est son contenu.
+    // Un seul rôle modal, celui de la coque ; les écrans utilisent les BOX génériques.
     objet.removeAttribute('role');
     objet.removeAttribute('aria-modal');
     objet.classList.add('lcdp-workflow-abonnement-box');
-    contenu.append(objet);
+    contenu.replaceChildren(objet);
+    carte.scrollTop = 0;
+    masquerAttenteFormules();
     return { workflow, objet };
   }
   function modalComposant(type, titre, installer) {
@@ -110,22 +189,23 @@
       titreElement.textContent = titre;
       if (type === 'dialogue') objet.classList.add('lcdp-workflow-abonnement-box--confirmation');
       let clos = false;
-      const precedent = document.activeElement;
       const finir = valeur => {
         if (clos) return;
         clos = true;
         workflow.removeEventListener('keydown', esc);
-        workflow.remove();
-        if (precedent?.isConnected && typeof precedent.focus === 'function') precedent.focus();
+        workflow.removeEventListener('click', clicFond);
+        // Le contenu reste en place, masqué par le spinner pendant l'étape
+        // réseau suivante : pas de disparition/réapparition de la boîte.
+        afficherAttenteFormules('Préparation de l’étape suivante…');
         resolve(valeur);
       };
       const esc = evenement => { if (evenement.key === 'Escape') { evenement.preventDefault(); finir(null); } };
+      const clicFond = evenement => { if (evenement.target === workflow) finir(null); };
       fermeture.addEventListener('click', () => finir(null));
-      workflow.addEventListener('click', evenement => { if (evenement.target === workflow) finir(null); });
+      workflow.addEventListener('click', clicFond);
       workflow.addEventListener('keydown', esc);
       installer(objet, finir);
-      document.body.append(workflow);
-      fermeture.focus();
+      fermeture.focus({ preventScroll: true });
     });
   }
   function modal(titre, message, choix) {
@@ -361,12 +441,15 @@
     prog.append(commandes);
     bandeau.append(prog);
   }
-  async function entrerDansCalendrier(p){
+  async function entrerDansCalendrier(p, garderConteneurPourRecap = false){
     courant=p;
     bridge()?.changerMode?.(true);
     miseAJourBandeau();
     bridge()?.viderCache?.();
     await bridge()?.allerMois?.(p.moisActif);
+    // Quand le panier est complet, le récapitulatif reprend la même coque.
+    // Sinon, révéler le calendrier permanent de PLANIFIER.
+    if (!garderConteneurPourRecap) fermerConteneurAboreza();
   }
   async function quitterTunnel(){
     courant=null;bridge()?.changerMode?.(false);miseAJourBandeau();bridge()?.viderCache?.();
@@ -392,10 +475,10 @@
       await chargerTemplates();
       const enCours=(await api('/panier')).panier;
       if(enCours){
-        await masquerAttenteFormules();
+        masquerAttenteFormules();
         const decision=await reprendreOuRecommencer(enCours);
         if(decision==='reprendre'){
-          await entrerDansCalendrier(enCours);
+          await entrerDansCalendrier(enCours, Boolean(enCours.complet));
           if(enCours.complet)await afficherRecap(enCours);
           return;
         }
@@ -407,7 +490,7 @@
       if(contexte.origine==='jour_hors_couverture')parametres.set('dateCible',contexte.date||'');
       if(contexte.origine==='horizon')parametres.set('moisCible',contexte.moisCible||'');
       const offres=(await api('/catalogue?'+parametres.toString())).offres;
-      await masquerAttenteFormules();
+      masquerAttenteFormules();
       let demande=null;
       let inclureExistants=false;
       if(['jour_hors_couverture','horizon'].includes(contexte.origine)){
@@ -440,8 +523,18 @@
       const suivant=await informerContrainte(nouveau);
       if(!suivant)return; // Le panier reste récupérable.
       await entrerDansCalendrier(nouveau);
-    } catch(e){await bridge()?.alerter?.(e.message||'Erreur ABO-RÉZA.');}
-    finally{masquerAttenteFormules();occupe=false;}
+    } catch(e){
+      masquerAttenteFormules();
+      if (composants?.workflow) {
+        await modal('ABO-RÉZA', e.message || 'Erreur ABO-RÉZA.', [
+          { texte: 'Fermer', valeur: true, primaire: true }
+        ]);
+      } else {
+        fermerConteneurAboreza();
+        await bridge()?.alerter?.(e.message || 'Erreur ABO-RÉZA.');
+      }
+    }
+    finally{fermerConteneurAboreza();occupe=false;}
   }
   async function selectionnerAcces(choix){
     if(!courant||occupe)return;
@@ -459,23 +552,29 @@
         : bridge()?.actualiser?.()
       ).catch(erreur => console.error('Actualisation du planning ABO-RÉZA :', erreur));
       if(courant.complet){
-        await masquerAttenteFormules();
-        const confirmation = await bridge()?.alerter?.(
-          'Les accès obligatoires sont sélectionnés. Votre panier est prêt pour paiement.',
-          { libelleBouton: 'Payer' }
-        );
-        // La croix ferme le dialogue et conserve le panier, sans lancer Paiement.
+        masquerAttenteFormules();
+        const confirmation = await modal('Panier prêt',
+          'Les accès obligatoires sont sélectionnés. Votre panier est prêt pour paiement.', [
+            { texte: 'Payer', valeur: true, primaire: true },
+            { texte: 'Plus tard', valeur: false }
+          ]);
+        // La croix, « Plus tard » et le clic extérieur conservent le panier.
         if(confirmation===true)await afficherRecap(courant);
         await miseAJour;
       }else{
         await miseAJour;
-        await masquerAttenteFormules();
+        masquerAttenteFormules();
         const texte=courant.moisActif!==avant
           ? `Les deux accès de ${moisLibelle(avant)} sont sélectionnés. Passage à ${moisLibelle(courant.moisActif)}.`
           : `Accès ajouté. Il vous reste ${courant.restantsMois} accès à réserver pour ${moisLibelle(courant.moisActif)}.`;
-        await bridge()?.alerter?.(texte);
+        await modal('Accès ajouté', texte, [{ texte: 'Continuer', valeur: true, primaire: true }]);
       }
-    }finally{masquerAttenteFormules();occupe=false;}
+    }catch(e){
+      masquerAttenteFormules();
+      await modal('ABO-RÉZA', e.message || 'Impossible d’enregistrer cet accès.', [
+        { texte: 'Fermer', valeur: true, primaire: true }
+      ]);
+    }finally{fermerConteneurAboreza();occupe=false;}
   }
   async function afficherRecap(p) {
     if (typeof window.LCDP_PAIEMENT?.ouvrirBonCommande !== 'function') {
@@ -504,6 +603,7 @@
       if(slot){slot.classList.add('lcdp-planifier-plage--acces-personnel');slot.title+=' · Accès provisoire ABO-RÉZA';}
     });
   }
+  window.LCDP_ABOREZA_UI=Object.freeze({ adopterPaiement: adopterBonCommandeDansConteneur, fermer: fermerConteneurAboreza });
   window.LCDP_ABOREZA={actif:()=>Boolean(courant),panier:()=>courant,demarrer,selectionnerAcces,datePossible,accesDejaChoisi,marquerAccesProvisoires};
   window.LCDP_ouvrirAboReza=demarrer;
 })();
