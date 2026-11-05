@@ -504,12 +504,10 @@
   }
   async function monter(){
     if(demarrage)return;demarrage=true;
-    if(listeHistoriquePrete())return;
     try{
       const rep=await fetch(urlObjet('/BOX/04-box-card-reservation-membre.html'),{cache:'no-cache'});
       if(rep.ok){const tpl=document.createElement('template');tpl.innerHTML=(await rep.text()).trim();fichierCard=tpl.content.querySelector('[data-lcdp-box-card-reservation-membre]');}
     }catch(e){console.warn('[MES ACCÈS] Card historique indisponible',e)}
-    if(listeHistoriquePrete())return;
     // Priorité absolue aux fragments BOX communs déjà déployés.
     async function fragmentBox(nom,selecteur){
       try{
@@ -558,11 +556,80 @@
     await charger();
   }
   function lancement(){
-    // L'ancien module reste prioritaire s'il initialise correctement la vue liste.
-    // Une initialisation interrompue laisse parfois le wrapper DOM vide.
-    // Vérification sur les données réellement affichées, pas sur le wrapper.
-    window.setTimeout(()=>{if(!listeHistoriquePrete())void monter()},3500);
+    // MES ACCÈS est une vue liste autonome : aucun calendrier à initialiser.
+    void monter().catch(error => {
+      console.error('[MES ACCÈS] Initialisation de la liste impossible :', error);
+      const message = racine.querySelector('[data-lcdp-liste-card-message]');
+      if (message) {
+        message.hidden = false;
+        message.textContent = 'Impossible de préparer la liste des accès. Veuillez réessayer.';
+        message.dataset.lcdpMessageType = 'erreur';
+      }
+    });
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',lancement,{once:true});
   else lancement();
+})();
+
+
+/* Bandeau et footer : composants de l'espace membre, indépendants de la liste. */
+(() => {
+  'use strict';
+  const cfg = window.SITE_CONFIG || {};
+  const urlMembre = chemin => typeof window.LCDP_urlMembre === 'function'
+    ? window.LCDP_urlMembre(chemin)
+    : String(cfg.membreBaseUrl || cfg.MEMBRE_BASE || cfg.siteBase || '').replace(/\/+$/, '') + '/' + chemin.replace(/^\/+/, '');
+  const urlPublic = chemin => typeof window.LCDP_urlPublic === 'function'
+    ? window.LCDP_urlPublic(chemin)
+    : String(cfg.publicBaseUrl || cfg.PUBLIC_BASE || '').replace(/\/+$/, '') + '/' + chemin.replace(/^\/+/, '');
+  const urlObjet = chemin => typeof window.LCDP_urlObjet === 'function'
+    ? window.LCDP_urlObjet(chemin)
+    : String(cfg.objetBaseUrl || cfg.OBJET_BASE || '').replace(/\/+$/, '') + '/' + chemin.replace(/^\/+/, '');
+  async function fragment(url) {
+    const response = await fetch(url, {credentials:'omit',cache:'no-cache'});
+    if(!response.ok) throw new Error('Composant indisponible : ' + url);
+    const tpl=document.createElement('template');tpl.innerHTML=(await response.text()).trim();
+    return tpl.content.cloneNode(true);
+  }
+  function routes(root) {
+    root.querySelectorAll('[data-site-href]').forEach(el => {
+      const chemin=el.dataset.siteHref || '';
+      el.setAttribute('href', el.dataset.space==='membre' ? urlMembre(chemin) : urlPublic(chemin));
+    });
+    root.querySelectorAll('[data-site-src]').forEach(el => {
+      el.setAttribute('src', urlObjet((el.dataset.siteSrc || '').replace(/^\/?OBJET\/?/,'/')));
+    });
+  }
+  async function menu() {
+    const slot=document.getElementById('lcdp-bandeau-slot');if(!slot)return;
+    slot.replaceChildren(await fragment(urlMembre('/ESPACE-MEMBRE/box-bandeau-nav-membre.html')));
+    routes(slot);
+    await new Promise((resolve,reject)=>{
+      if(typeof window.LCDP_initialiserMenuBurgerMembre==='function'){resolve();return;}
+      const script=document.createElement('script');script.src=urlMembre('/ESPACE-MEMBRE/box-menu-burger-membre.js');
+      script.onload=resolve;script.onerror=()=>reject(new Error('Menu membre indisponible'));document.body.append(script);
+    });
+    if(typeof window.LCDP_initialiserMenuBurgerMembre==='function'){
+      let abonne=false;
+      const api=String(cfg.workerIndexMembreUrl || cfg.WORKER_INDEX_MEMBRE_URL ||
+        (typeof cfg.apiUrl==='function' ? cfg.apiUrl('index-membre-api') : '') || '').replace(/\/+$/,'');
+      if(api) {
+        try { const res=await fetch(api+'/index',{credentials:'include',cache:'no-store',headers:{Accept:'application/json'}});
+          const data=await res.json();if(res.ok&&(data.ok===true||data.success===true))abonne=data.abonne===true||data.abonne==='true'; }
+        catch(error){console.warn('[MES ACCÈS] Statut du menu indisponible',error);}
+      }
+      await window.LCDP_initialiserMenuBurgerMembre({etatMembre:{abonne}});
+    }
+  }
+  async function footer() {
+    const slot=document.getElementById('lcdp-footer-slot');if(!slot)return;
+    slot.replaceChildren(await fragment(urlObjet('/BOX/02-box-footer.html')));
+    routes(slot);
+  }
+  function lancer() {
+    void menu().catch(e=>console.error('[MES ACCÈS] Bandeau :',e));
+    void footer().catch(e=>console.error('[MES ACCÈS] Footer :',e));
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',lancer,{once:true});
+  else lancer();
 })();

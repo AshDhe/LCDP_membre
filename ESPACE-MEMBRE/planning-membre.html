@@ -56,8 +56,6 @@
         "/BOX/02-box-footer.css",
         "/BOX/03-box-galerie.css",
         "/BOX/04-box-workflow-reservation.css",
-        "/BOX/04-box-calendrier-mois.css",
-        "/BOX/04-box-card-jour-in-calendrier-mois.css",
         "/BOX/04-box-card-reservation-membre.css",
         "/BOX/04-box-liste-card.css",
         "/BOX/04-box-commande-bar.css",
@@ -86,7 +84,23 @@
               </p>
             </header>
             <div id="lcdp-planning-calendrier-slot" aria-live="off">
-              <p class="lcdp-box-liste-card__message" role="status">Chargement de vos accès…</p>
+              <section class="lcdp-box-liste-card lcdp-box-liste-card--planning-membre lcdp-box-liste-card--mode-liste lcdp-box-liste-card--encadree" aria-label="Liste de mes accès" data-lcdp-box-liste-card>
+                <div class="lcdp-box-liste-card__header">
+                  <div class="lcdp-box-liste-card__commande" data-lcdp-liste-card-commande>
+                    <div class="lcdp-box-commande-bar" data-lcdp-box-commande-bar>
+                      <div class="lcdp-box-commande-bar__actions" data-lcdp-commande-bar-actions>
+                        <div class="lcdp-planning-membre-periode-tabs" role="group" aria-label="Période des accès">
+                          <button type="button" class="lcdp-button lcdp-button-primary lcdp-button-mini lcdp-planning-membre-periode-button" data-lcdp-planning-periode="avenir" aria-pressed="true">À venir</button>
+                          <button type="button" class="lcdp-button lcdp-button-secondary lcdp-button-mini lcdp-planning-membre-periode-button" data-lcdp-planning-periode="passe" aria-pressed="false">Passés</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="lcdp-box-liste-card__tools" data-lcdp-liste-card-tools hidden></div>
+                <p class="lcdp-box-liste-card__message" data-lcdp-liste-card-message role="status">Chargement de vos accès…</p>
+                <div class="lcdp-box-liste-card__list" data-lcdp-liste-card-list></div>
+              </section>
             </div>
           </div>
         </div>
@@ -96,9 +110,7 @@
     <div id="lcdp-lightbox-slot"></div>
   </div>
 
-  <!-- Le moteur historique conserve les actions de réservation et d'invitation. -->
-  <script src="./planning-membre.js"></script>
-  <!-- Extension additive : liste exclusivement, filtres contextuels. -->
-  <script src="./mes-acces-membre.js"></script>
+  <!-- Interface MES ACCÈS autonome ; utilise les composants BOX déjà déployés. -->
+  <script src="./mes-acces-membre.js?v=20261105-mes-acces-liste-v2"></script>
 </body>
 </html>

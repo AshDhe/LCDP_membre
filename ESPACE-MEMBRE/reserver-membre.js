@@ -1396,7 +1396,9 @@
     if (!value) return "Non renseignée";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return date.toLocaleDateString("fr-FR", {
+      timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric"
+    });
   }
 
   function formaterMontantPaiementSuspension(value) {
@@ -3829,12 +3831,13 @@
       return;
     }
 
-    const maintenant = new Date();
+    const [anneeParis, moisParis] = extraireDateFranceReservation(new Date().toISOString())
+      .slice(0, 7).split("-").map(Number);
 
     chargerPlanningParcMoisLecture({
       parc,
-      annee: maintenant.getFullYear(),
-      mois: maintenant.getMonth() + 1
+      annee: anneeParis,
+      mois: moisParis
     }).catch((error) => {
       console.warn(
         "Préchargement du planning du parc indisponible.",
@@ -4323,11 +4326,12 @@
     titre.textContent = "Planning du parc";
     meta.textContent = nomParc + (departement ? " · " + departement : "");
 
-    const maintenant = new Date();
+    const [anneeParis, moisParis] = extraireDateFranceReservation(new Date().toISOString())
+      .slice(0, 7).split("-").map(Number);
     const etatCalendrier = {
       parc,
-      annee: maintenant.getFullYear(),
-      mois: maintenant.getMonth() + 1,
+      annee: anneeParis,
+      mois: moisParis,
       planning: [],
       modePlanning: "reservation"
     };
@@ -6132,18 +6136,14 @@
   }
 
   function dateAujourdhuiIso() {
-    const maintenant = new Date();
-    return construireDateIso(
-      maintenant.getFullYear(),
-      maintenant.getMonth() + 1,
-      maintenant.getDate()
-    );
+    return extraireDateFranceReservation(new Date().toISOString());
   }
 
   function formaterMoisAnnee(annee, mois) {
-    const date = new Date(annee, mois - 1, 1);
+    const date = new Date(Date.UTC(annee, mois - 1, 1, 12));
 
     return date.toLocaleDateString("fr-FR", {
+      timeZone: "Europe/Paris",
       month: "long",
       year: "numeric"
     });
@@ -6152,11 +6152,12 @@
   function formaterDateFr(dateIso) {
     if (!dateIso) return "";
 
-    const date = new Date(dateIso + "T12:00:00");
+    const date = new Date(dateIso + "T12:00:00Z");
 
     if (Number.isNaN(date.getTime())) return dateIso;
 
     return date.toLocaleDateString("fr-FR", {
+      timeZone: "Europe/Paris",
       weekday: "long",
       day: "numeric",
       month: "long",
@@ -6169,10 +6170,11 @@
   }
 
   function construireLibelleJour(dateIso, ouvert) {
-    const date = new Date(dateIso + "T00:00:00");
+    const date = new Date(dateIso + "T12:00:00Z");
     const libelleDate = Number.isNaN(date.getTime())
       ? dateIso
       : date.toLocaleDateString("fr-FR", {
+          timeZone: "Europe/Paris",
           weekday: "long",
           day: "numeric",
           month: "long",
