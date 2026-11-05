@@ -251,10 +251,8 @@
     if (!liste || !commandes) return false;
     verrouillerVueListe(parent);
 
-    if (!etat.filtres) {
-      etat.filtres = creerFiltres();
-      commandes.appendChild(etat.filtres);
-    }
+    if (!etat.filtres) etat.filtres = creerFiltres();
+    if (etat.filtres.parentElement !== commandes) commandes.appendChild(etat.filtres);
     if (etat.liste !== liste) {
       etat.liste = liste;
       if (etat.observateurListe) etat.observateurListe.disconnect();
@@ -299,6 +297,13 @@
     document.addEventListener('click', (event) => {
       if (event.target.closest(selecteurs.onglet)) demanderRendu();
     });
+    // Le moteur historique peut remplacer sa liste pendant le chargement.
+    // Retrouver alors les mêmes filtres sur la nouvelle liste.
+    const observateurRacine = new MutationObserver(() => {
+      const suivante = racine.querySelector(selecteurs.liste);
+      if (suivante && suivante !== etat.liste) installer();
+    });
+    observateurRacine.observe(racine, {childList:true,subtree:true});
     void actualiserStatsInvitations();
   }
 
@@ -307,4 +312,257 @@
   } else {
     demarrer();
   }
+})();
+
+/* Affichage de secours autonome : le moteur historique peut s'arrêter
+   si un de ses anciens fragments calendrier est absent. La consultation
+   en liste ne doit pas dépendre du calendrier. */
+(() => {
+  'use strict';
+  const cfg = window.SITE_CONFIG || {};
+  const racine = document.getElementById('lcdp-planning-calendrier-slot');
+  if (!racine) return;
+  let secours = null;
+  let demarrage = false;
+  let period = 'avenir';
+  let reservations = [];
+  let statsParFlux = new Map();
+  let fichierCard = null;
+  const formatDate = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const formatHeure = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
+
+  function endpoint(cle, ancien, defaut) {
+    return String(cfg[cle] || cfg[ancien] || (typeof cfg.apiUrl === 'function' ? cfg.apiUrl(defaut) : '') || '').replace(/\/+$/, '');
+  }
+  const planningApi = endpoint('workerPlanningMembreUrl','WORKER_PLANNING_MEMBRE_URL','planning-membre-api');
+  const invitationsApi = endpoint('workerInviterMembreUrl','WORKER_INVITER_MEMBRE_URL','inviter-membre-api');
+  const indexApi = endpoint('workerIndexMembreUrl','WORKER_INDEX_MEMBRE_URL','index-membre-api');
+  function urlObjet(chemin) {
+    if (typeof window.LCDP_urlObjet === 'function') return window.LCDP_urlObjet(chemin);
+    const b = cfg.objetBaseUrl || cfg.OBJET_BASE || (String(cfg.publicBaseUrl || cfg.PUBLIC_BASE || '').replace(/\/+$/, '') + '/OBJET');
+    return String(b).replace(/\/+$/, '') + '/' + chemin.replace(/^\/+/, '');
+  }
+  function vrai(x) { return x === true || x === 'true' || x === 1 || x === '1'; }
+  function dateDebut(r) { const n = Date.parse(String(r.datebookd || '')); return Number.isFinite(n) ? n : NaN; }
+  function estAnnulee(r) { return String(r.statut || '').toLowerCase() === 'cancd'; }
+  function parmiPeriode(r) {
+    const debut = dateDebut(r);
+    if (!Number.isFinite(debut)) return false;
+    return period === 'avenir' ? !estAnnulee(r) && debut >= Date.now() : estAnnulee(r) || debut < Date.now();
+  }
+  function requete(api, route, options) {
+    if (!api) return Promise.reject(new Error('Service non configuré.'));
+    return fetch(api + route, {credentials:'include',cache:'no-store',headers:{Accept:'application/json', ...(options?.body ? {'Content-Type':'application/json'} : {})}, ...options}).then(async (r) => {
+      if (r.status === 401) {
+        const url = typeof window.LCDP_urlPublic === 'function' ? window.LCDP_urlPublic('/ESPACE-PUBLIC/connexion-membre.html') : '/ESPACE-PUBLIC/connexion-membre.html';
+        window.location.assign(url);
+        throw new Error('Session expirée.');
+      }
+      const data = await r.json().catch(() => null);
+      if (!r.ok || !data || (data.ok !== true && data.success !== true)) throw new Error(String(data?.message || data?.error || 'Erreur de chargement.'));
+      return data;
+    });
+  }
+  function faire(n, cls, contenu) {
+    const e = document.createElement(n);
+    if (cls) e.className = cls;
+    if (contenu !== undefined) e.textContent = contenu;
+    return e;
+  }
+  function bouton(label, active, change) {
+    const b = faire('button','lcdp-button lcdp-button-mini ' + (active ? 'lcdp-button-primary' : 'lcdp-button-secondary'), label);
+    b.type = 'button'; b.setAttribute('aria-pressed', String(active)); b.addEventListener('click',e=>{e.stopPropagation();change(e)}); return b;
+  }
+  function parcInfo(r) {
+    const p = r.parc || {};
+    return {nom:String(p.nom || p.nomparc || r.nomparc || '').trim(),dptmt:String(p.dptmt || p.departement || r.dptmt || '').trim(),id:String(p.idparc || r.idparc || '').trim(),p};
+  }
+  function imageParc(info) {
+    const n = info.nom.replace(/^parc\s+(?:de|du|des)\s+/i,'').trim().replace(/[ -]/g,'_');
+    let dep = info.dptmt.toUpperCase().match(/(?:2A|2B|\d{1,3})/);
+    dep = dep ? dep[0] : '';
+    if (/^\d$/.test(dep)) dep = '0' + dep;
+    return n && dep ? urlObjet('/IMAG/PARC/' + encodeURIComponent(dep) + '/' + encodeURIComponent(n) + '/card1.webp') : '';
+  }
+  function montrer(message, titre) {
+    const slot = document.getElementById('lcdp-lightbox-slot');
+    if (!slot) { window.alert(message); return; }
+    const fond = faire('div','lcdp-box-workflow-reservation lcdp-workflow-reservation-box');
+    fond.setAttribute('role','dialog');fond.setAttribute('aria-modal','true');fond.setAttribute('aria-label',titre || 'Informations');
+    const bloc = faire('div','lcdp-box-liste-card lcdp-box-liste-card--encadree');
+    bloc.append(faire('h2','lcdp-box-liste-card__title',titre || 'Informations'),faire('p','lcdp-box-liste-card__message',message));
+    const fermer = bouton('Fermer',false,() => slot.replaceChildren());
+    bloc.append(fermer);fond.append(bloc);slot.replaceChildren(fond);fermer.focus();
+    fond.addEventListener('click',e=>{if(e.target===fond)slot.replaceChildren()});
+    const echap = (e)=>{if(e.key==='Escape'){slot.replaceChildren();document.removeEventListener('keydown',echap)}};
+    document.addEventListener('keydown',echap);
+  }
+  function carte(r) {
+    const info = parcInfo(r);
+    const card = fichierCard ? fichierCard.cloneNode(true) : faire('article','lcdp-box-card-reservation-membre');
+    card.dataset.idflux = String(r.idflux || '');
+    card.dataset.lcdpBoxCardReservationMembre = '';
+    card.classList.add('lcdp-box-card-reservation-membre--liste');
+    if (!fichierCard) {
+      const media=faire('div','lcdp-box-card-reservation-membre__media');media.dataset.lcdpCardReservationMedia='';
+      const img=document.createElement('img');img.className='lcdp-box-card-reservation-membre__image';img.dataset.lcdpCardReservationImage='';img.alt='';media.append(img);
+      const corps=faire('div','lcdp-box-card-reservation-membre__body');
+      const detail=faire('div','lcdp-box-card-reservation-membre__content');
+      const ligneDate=faire('div','lcdp-box-card-reservation-membre__date');
+      const d=faire('span','lcdp-box-card-reservation-membre__date-label');d.dataset.lcdpCardReservationDate='';
+      const h=faire('span','lcdp-box-card-reservation-membre__hour');h.dataset.lcdpCardReservationHeure='';ligneDate.append(d,h);
+      const lineParc=faire('div','lcdp-box-card-reservation-membre__place-line');
+      const p=faire('span','lcdp-box-card-reservation-membre__park');p.dataset.lcdpCardReservationParc='';
+      const dep=faire('span','lcdp-box-card-reservation-membre__department');dep.dataset.lcdpCardReservationDepartement='';lineParc.append(p,dep);
+      const actions=faire('div','lcdp-box-card-reservation-membre__actions');
+      detail.append(ligneDate,lineParc);corps.append(detail,actions);card.append(media,corps);
+    }
+    const q = s => card.querySelector(s);
+    const nom = info.nom || 'Parc';
+    const date = new Date(dateDebut(r));
+    if(q('[data-lcdp-card-reservation-date]')) q('[data-lcdp-card-reservation-date]').textContent = formatDate.format(date);
+    if(q('[data-lcdp-card-reservation-heure]')) q('[data-lcdp-card-reservation-heure]').textContent = formatHeure.format(date);
+    if(q('[data-lcdp-card-reservation-parc]')) q('[data-lcdp-card-reservation-parc]').textContent = 'Parc de ' + nom;
+    if(q('[data-lcdp-card-reservation-departement]')) q('[data-lcdp-card-reservation-departement]').textContent=info.dptmt ? '('+info.dptmt+')' : '';
+    const url=imageParc(info), img=q('[data-lcdp-card-reservation-image]'), media=q('[data-lcdp-card-reservation-media]');
+    if(img && media){if(url){img.src=url;img.alt='Parc de '+nom;media.hidden=false;card.classList.add('lcdp-box-card-reservation-membre--avec-image');img.onerror=()=>{media.hidden=true;card.classList.remove('lcdp-box-card-reservation-membre--avec-image')};}else{media.hidden=true;}}
+    if(vrai(r.invitation))card.classList.add('lcdp-box-card-reservation-membre--invitation');
+    if(period==='passe')card.classList.add('lcdp-box-card-reservation-membre--passe');
+    const actions=q('.lcdp-box-card-reservation-membre__actions') || card;
+    actions.replaceChildren();
+    const boutonAcces = bouton('Accès',true,()=>{
+      const p=info.p, adresse=[p.adresse1,p.adresse2,p.adresse3,p.entreeparc].map(x=>String(x||'').trim()).filter(Boolean).join('\n');
+      montrer(adresse || 'Adresse du parc non renseignée.','Accès — parc de '+nom);
+    });
+    boutonAcces.dataset.action='adresse';actions.append(boutonAcces);
+    const indic = vrai(r.invitation) ? 'Invit’' : (Number(statsParFlux.get(String(r.idflux||'')) || 0)>0 ? 'Invité(s)' : 'Inviter');
+    const boutonInvit = bouton(indic,false,()=>invitation(r).catch(e=>montrer(e.message)));
+    boutonInvit.dataset.action='invitation';actions.append(boutonInvit);
+    if(period==='avenir'){
+      const a = bouton(vrai(r.invitation)?'Annuler l’invite':'Annuler la réservation',false,()=>annuler(r).catch(e=>montrer(e.message)));
+      a.dataset.action='annuler';actions.append(a);
+    }else if(estAnnulee(r)){
+      actions.append(faire('span','lcdp-box-card-reservation-membre__invitation-badge','Annulée'));
+    }
+    return card;
+  }
+  async function charger() {
+    const msg=secours.querySelector('[data-lcdp-liste-card-message]');
+    msg.hidden=false;msg.textContent='Chargement de vos accès…';
+    try{
+      const d=await requete(planningApi,'/mes-reservations');
+      if(!Array.isArray(d.reservations))throw new Error('Liste de réservations absente.');
+      reservations=d.reservations;
+      if(invitationsApi){
+        try{const i=await requete(invitationsApi,'/reservations-invitables');statsParFlux=new Map((i.reservations||[]).map(r=>[String(r.idflux||''), Number(r.invitationStats?.in||0)]));}
+        catch(e){console.warn('[MES ACCÈS] Statuts des invités indisponibles',e)}
+      }
+      if (!secours?.isConnected) return;
+      msg.hidden=true;
+      render();
+    }catch(e){if(!secours?.isConnected)return;msg.textContent=e.message||'Impossible de charger vos accès.';msg.dataset.lcdpMessageType='erreur';}
+  }
+  function render(){
+    if(!secours?.isConnected)return;
+    const boutons=secours.querySelectorAll('[data-lcdp-planning-periode]');
+    boutons.forEach(b=>{const selected=b.dataset.lcdpPlanningPeriode===period;b.classList.toggle('lcdp-button-primary',selected);b.classList.toggle('lcdp-button-secondary',!selected);b.setAttribute('aria-pressed',String(selected))});
+    const filtered=reservations.filter(parmiPeriode).sort((a,b)=>period==='avenir'?dateDebut(a)-dateDebut(b):dateDebut(b)-dateDebut(a));
+    const liste=secours.querySelector('[data-lcdp-liste-card-list]');
+    if(!liste)return;
+    if(!filtered.length){const m=faire('p','lcdp-box-liste-card__message',period==='avenir'?'Vous n’avez aucun accès à venir.':'Vous n’avez aucun accès passé.');liste.replaceChildren(m)}
+    else{liste.replaceChildren(...filtered.map(carte))}
+  }
+  async function annuler(r){
+    if(!window.confirm(vrai(r.invitation)?'Voulez-vous vraiment annuler cette invite ?':'Voulez-vous vraiment annuler cette réservation ?'))return;
+    await requete(planningApi,'/annuler-reservation',{method:'POST',body:JSON.stringify({idflux:r.idflux})});
+    await charger();montrer(vrai(r.invitation)?'Votre invite est annulée.':'Votre réservation est annulée.','Annulation');
+  }
+  async function invitation(r){
+    if(vrai(r.invitation)){
+      const parrain=r.parrainInvitation || r.parrain || {};
+      montrer('Invitation par : '+String(parrain.affichage||parrain.alias||parrain.prenom||parrain.prenommembre||'Parrain non renseigné'),'Invitation reçue');return;
+    }
+    const n=Number(statsParFlux.get(String(r.idflux||''))||0);
+    if(n>0){
+      const i=await requete(invitationsApi,'/invites?idflux='+encodeURIComponent(r.idflux));
+      const liste=Array.isArray(i.invites)?i.invites:[];
+      montrer(liste.length ? liste.map(p=>String(p.alias||p.email||p.prenom||'Invité')).join('\n') : 'Aucun invité actif.', 'Mes invités');return;
+    }
+    const email=window.prompt('Adresse e-mail de la personne à inviter :');
+    if(email===null)return;
+    const adresse=String(email).trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adresse)){montrer('Adresse e-mail invalide.','Invitation');return;}
+    await requete(invitationsApi,'/inviter-reservation',{method:'POST',body:JSON.stringify({idflux:r.idflux,emails:[adresse]})});
+    await charger();montrer('Invitation envoyée.','Invitation');
+  }
+  function listeHistoriquePrete(){
+    const liste=racine.querySelector('[data-lcdp-liste-card-list]');
+    // La structure seule ne suffit pas : l'ancien moteur peut avoir échoué
+    // après avoir créé une liste vide.
+    return Boolean(liste && Array.from(liste.children).some(enfant =>
+      enfant.matches('[data-lcdp-box-card-reservation-membre], .lcdp-box-liste-card__message')));
+  }
+  async function monter(){
+    if(demarrage)return;demarrage=true;
+    if(listeHistoriquePrete())return;
+    try{
+      const rep=await fetch(urlObjet('/BOX/04-box-card-reservation-membre.html'),{cache:'no-cache'});
+      if(rep.ok){const tpl=document.createElement('template');tpl.innerHTML=(await rep.text()).trim();fichierCard=tpl.content.querySelector('[data-lcdp-box-card-reservation-membre]');}
+    }catch(e){console.warn('[MES ACCÈS] Card historique indisponible',e)}
+    if(listeHistoriquePrete())return;
+    // Priorité absolue aux fragments BOX communs déjà déployés.
+    async function fragmentBox(nom,selecteur){
+      try{
+        const reponse=await fetch(urlObjet('/BOX/'+nom),{cache:'no-cache'});
+        if(!reponse.ok)return null;
+        const fragment=document.createElement('template');fragment.innerHTML=(await reponse.text()).trim();
+        return fragment.content.querySelector(selecteur);
+      }catch{return null;}
+    }
+    const wrap=(await fragmentBox('04-box-liste-card.html','[data-lcdp-box-liste-card]')) ||
+      faire('section','lcdp-box-liste-card');
+    wrap.classList.add('lcdp-box-liste-card--planning-membre','lcdp-box-liste-card--mode-liste','lcdp-box-liste-card--encadree');
+    wrap.dataset.lcdpBoxListeCard='';
+    let header=wrap.querySelector('.lcdp-box-liste-card__header');
+    if(!header){header=faire('div','lcdp-box-liste-card__header');wrap.prepend(header);}
+    const heading=wrap.querySelector('[data-lcdp-liste-card-title]');
+    if(heading){heading.textContent='';heading.hidden=true;heading.parentElement.hidden=true;}
+    let commande=wrap.querySelector('[data-lcdp-liste-card-commande]');
+    if(!commande){commande=faire('div','lcdp-box-liste-card__commande');commande.dataset.lcdpListeCardCommande='';header.append(commande);}
+    const bar=(await fragmentBox('04-box-commande-bar.html','[data-lcdp-box-commande-bar]')) ||
+      faire('div','lcdp-box-commande-bar');
+    bar.dataset.lcdpBoxCommandeBar='';
+    let actions=bar.querySelector('[data-lcdp-commande-bar-actions]');
+    if(!actions){actions=faire('div','lcdp-box-commande-bar__actions');actions.dataset.lcdpCommandeBarActions='';bar.append(actions);}
+    const tabs=faire('div','lcdp-planning-membre-periode-tabs');tabs.setAttribute('role','group');tabs.setAttribute('aria-label','Période des accès');
+    for(const [id,label] of [['avenir','À venir'],['passe','Passés']]){
+      const b=bouton(label,id===period,()=>{period=id;render()});b.classList.add('lcdp-planning-membre-periode-button');b.dataset.lcdpPlanningPeriode=id;tabs.append(b);
+    }
+    actions.replaceChildren(tabs);commande.replaceChildren(bar);
+    let message=wrap.querySelector('[data-lcdp-liste-card-message]');
+    if(!message){message=faire('p','lcdp-box-liste-card__message');message.dataset.lcdpListeCardMessage='';wrap.append(message);}
+    message.textContent='Chargement de vos accès…';message.hidden=false;
+    let liste=wrap.querySelector('[data-lcdp-liste-card-list]');
+    if(!liste){liste=faire('div','lcdp-box-liste-card__list');liste.dataset.lcdpListeCardList='';wrap.append(liste);}
+    racine.replaceChildren(wrap);secours=wrap;
+    // Vérifier le statut auprès du Worker, sans s'appuyer sur un cookie.
+    if(indexApi){
+      requete(indexApi,'/index').then(data=>{
+        const element=document.getElementById('mention-statut-membre');
+        if(element)element.textContent=vrai(data.abonne)?'MEMBRE ABONNÉ':'MEMBRE INVITÉ';
+      }).catch(()=>{
+        const element=document.getElementById('mention-statut-membre');
+        if(element && element.textContent.includes('Chargement'))element.textContent='Statut membre indisponible';
+      });
+    }
+    await charger();
+  }
+  function lancement(){
+    // L'ancien module reste prioritaire s'il initialise correctement la vue liste.
+    // Une initialisation interrompue laisse parfois le wrapper DOM vide.
+    // Vérification sur les données réellement affichées, pas sur le wrapper.
+    window.setTimeout(()=>{if(!listeHistoriquePrete())void monter()},3500);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',lancement,{once:true});
+  else lancement();
 })();
