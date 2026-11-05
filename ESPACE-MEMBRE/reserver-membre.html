@@ -105,7 +105,8 @@
         "/BOX/04-box-card-heure-in-calendrier-jour.css",
         "/BOX/04-box-workflow-reservation.css?v=20261102-croix-focus-v1",
         "/BOX/04-box-listemails.css",
-        "/CSSBASE/lcdp-planifier.css?v=20261105-fusion-aboreza-compact-v16"
+        "/CSSBASE/lcdp-planifier.css?v=20261105-aboreza-plages-v14",
+        "/CSSBASE/lcdp-planifier-compact.css"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -184,7 +185,10 @@
           <div class="lcdp-page-content lcdp-page-content--avec-entete lcdp-stack-large">
 
             <header class="lcdp-page-header">
-              <h1 class="lcdp-title-page-center">PLANIFIER</h1>
+              <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
+                <h1 class="lcdp-title-page-center" style="margin:0;">PLANIFIER</h1>
+                <button type="button" id="bouton-coach-planifier" data-lcdp-coach-formules-eligibles="10M 11M 12M" disabled title="Réservé aux abonnements de 10, 11 ou 12 mois — activation à venir">Coach</button>
+              </div>
 
               <p class="lcdp-mention-connexion" id="mention-statut-membre" aria-live="polite"></p>
             </header>

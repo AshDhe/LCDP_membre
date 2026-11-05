@@ -30,7 +30,8 @@
         "/BOX/02-box-bandeau-nav.css",
         "/BOX/02-box-menu-burger.css",
         "/BOX/02-box-alerte.css",
-        "/BOX/02-box-footer.css"
+        "/BOX/02-box-footer.css",
+        "/BOX/04-box-liste-card.css"
       ].forEach(path => {
         const link = document.createElement("link");
         link.rel = "stylesheet";
@@ -67,7 +68,11 @@
     <main class="lcdp-site-main" aria-label="Mes accès">
       <section class="lcdp-page-section" aria-label="Contenu de Mes accès">
         <div class="lcdp-page-container">
-          <div class="lcdp-page-content lcdp-page-content--avec-entete lcdp-stack-large"></div>
+          <div class="lcdp-page-content lcdp-page-content--avec-entete lcdp-stack-large">
+            <section class="lcdp-box-liste-card lcdp-box-liste-card--encadree"
+                     id="lcdp-mes-acces-conteneur"
+                     aria-label="Mes accès"></section>
+          </div>
         </div>
       </section>
     </main>
