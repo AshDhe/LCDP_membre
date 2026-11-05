@@ -105,7 +105,8 @@
         "/BOX/04-box-card-heure-in-calendrier-jour.css",
         "/BOX/04-box-workflow-reservation.css?v=20261102-croix-focus-v1",
         "/BOX/04-box-listemails.css",
-        "/CSSBASE/lcdp-planifier.css?v=20261105-fusion-fiche-parc-v14"
+        "/CSSBASE/lcdp-planifier.css?v=20261105-aboreza-fixe-v13",
+        "/CSSBASE/lcdp-planifier-compact.css"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -129,6 +130,41 @@
   </script>
 
 
+  <style>
+    /* Amorçage du spinner avant disponibilité des feuilles CSS distantes. */
+    #lcdp-planifier-attente-initiale { position: fixed; inset: 0; z-index: 2147483646; display: flex; align-items: center; justify-content: center; background: #fff; }
+    #lcdp-planifier-attente-initiale .lcdp-loading-spinner { position: relative; display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; box-sizing: border-box; }
+    #lcdp-planifier-attente-initiale .lcdp-loading-spinner > svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+    #lcdp-planifier-attente-initiale .lcdp-loading-spinner__track { color: rgba(6,95,70,.10); }
+    #lcdp-planifier-attente-initiale .lcdp-loading-spinner__arc { color: #e59834; animation: lcdp-planifier-spinner-tourne .8s linear infinite; }
+    #lcdp-planifier-attente-initiale .lcdp-loading-spinner__dot { width: 8px; height: 8px; border-radius: 50%; background: #4e6838; }
+    @keyframes lcdp-planifier-spinner-tourne { to { transform: rotate(360deg); } }
+    /* Attente ABO-RÉZA : même spinner HTML que PLANIFIER, sans GIF externe. */
+    body > .lcdp-planifier-partage-attente:has(> .lcdp-loading-spinner) {
+      position: fixed; inset: 0; z-index: 2147483000;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.92);
+    }
+    .lcdp-planifier-partage-attente > .lcdp-loading-spinner {
+      position: relative; box-sizing: border-box; display: flex;
+      flex: 0 0 auto; align-items: center; justify-content: center;
+      width: 64px; height: 64px;
+    }
+    .lcdp-planifier-partage-attente > .lcdp-loading-spinner > svg {
+      position: absolute; inset: 0; display: block; width: 100%; height: 100%;
+    }
+    .lcdp-planifier-partage-attente .lcdp-loading-spinner__track { color: rgba(6,95,70,.10); }
+    .lcdp-planifier-partage-attente .lcdp-loading-spinner__arc {
+      color: #e59834; animation: lcdp-planifier-spinner-tourne .8s linear infinite;
+    }
+    .lcdp-planifier-partage-attente .lcdp-loading-spinner__dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #4e6838;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #lcdp-planifier-attente-initiale .lcdp-loading-spinner__arc,
+      .lcdp-planifier-partage-attente .lcdp-loading-spinner__arc { animation: none; }
+    }
+  </style>
 </head>
 
 <body>
@@ -188,5 +224,41 @@
   <script src="./reserver-membre.js?v=20261105-aboreza-planning-v4"></script>
   <script src="./paiement-membre.js?v=20261105-sortie-protegee-v3"></script>
   <script src="./aboreza-membre.js?v=20261105-cgv-lcdp-v5"></script>
+  <script>
+    /* ABO-RÉZA, étape 2 : informations défilantes, action Planifier permanente.
+       Le bouton et son écouteur d'événement restent dans leur parent d'origine. */
+    (() => {
+      "use strict";
+      const reorganiser = () => {
+        document.querySelectorAll('.lcdp-box-workflow-abonnement').forEach((workflow) => {
+          const titre = workflow.querySelector('.lcdp-box-dialogue-bouton__title');
+          if (!titre || !/planifiez\s+à\s+la\s+commande/i.test(titre.textContent || '')) return;
+          const actions = workflow.querySelector('.lcdp-box-dialogue-bouton__actions');
+          if (!actions || actions.classList.contains('lcdp-aboreza-etape2-actions')) return;
+          const bouton = Array.from(actions.children).find((el) =>
+            el.tagName === 'BUTTON' && /planifier/i.test(el.textContent || '')
+          );
+          if (!bouton) return;
+          const informations = document.createElement('div');
+          informations.className = 'lcdp-aboreza-etape2-informations';
+          Array.from(actions.childNodes).forEach((noeud) => {
+            if (noeud !== bouton) informations.appendChild(noeud);
+          });
+          actions.insertBefore(informations, bouton);
+          actions.classList.add('lcdp-aboreza-etape2-actions');
+          workflow.classList.add('lcdp-aboreza-etape2');
+        });
+      };
+      const demarrer = () => {
+        reorganiser();
+        new MutationObserver(reorganiser).observe(document.body, { childList: true, subtree: true });
+      };
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', demarrer, { once: true });
+      } else {
+        demarrer();
+      }
+    })();
+  </script>
 </body>
 </html>
