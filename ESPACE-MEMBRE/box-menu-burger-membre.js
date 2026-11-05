@@ -656,6 +656,11 @@
 
     const lien = document.createElement("a");
     lien.className = "lcdp-box-menu-burger__link";
+    if (item.label === "Mon compte") {
+      lien.setAttribute("data-lcdp-menu-compte", "");
+    } else if (item.label === "FAQ") {
+      lien.setAttribute("data-lcdp-menu-faq", "");
+    }
     lien.textContent = item.label;
     lien.href = item.espace === "membre"
       ? construireUrlMembre(item.href)
@@ -1095,11 +1100,25 @@
 
     fermerMenu(boutonBurger, navBurger);
 
+    // Le thème c038 est celui du burger public ; il ne porte que sur ce composant.
+    const codesCss = new Set((document.documentElement.getAttribute("data-lcdp-css") || "").split(/\s+/).filter(Boolean));
+    if (!codesCss.has("c038")) {
+      codesCss.add("c038");
+      document.documentElement.setAttribute("data-lcdp-css", Array.from(codesCss).join(" "));
+    }
+    const racineBurger = navBurger.closest(".lcdp-box-menu-burger");
+    if (racineBurger) racineBurger.classList.add("lcdp-box-menu-burger--membre");
+
     const liens = [
       {
         label: "Accueil membre",
         espace: "membre",
         href: "/ESPACE-MEMBRE/accueil-membre.html"
+      },
+      {
+        label: "Mon compte",
+        espace: "membre",
+        href: "/ESPACE-MEMBRE/mes-informations.html"
       }
     ];
 
@@ -1113,11 +1132,6 @@
     }
 
     liens.push(
-      {
-        label: "Mon compte",
-        espace: "membre",
-        href: "/ESPACE-MEMBRE/mes-informations.html"
-      },
       {
         label: "Abonnement",
         action: "abonnement"
