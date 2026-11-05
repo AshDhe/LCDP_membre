@@ -959,7 +959,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -1675,7 +1675,7 @@
       const slot=document.getElementById("lcdp-lightbox-slot");
       if(!slot)throw new Error("Dialogue indisponible.");
       slot.innerHTML="";
-      slot.appendChild(await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html"));
+      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html"));
       slot.querySelector("[data-lcdp-dialogue-title]").textContent="Mettre à jour votre autorisation de géolocalisation ?";
       slot.querySelector("[data-lcdp-dialogue-text]").textContent="Cette opération vous déconnectera.";
       const actions=slot.querySelector("[data-lcdp-dialogue-actions]");
@@ -1708,7 +1708,7 @@
       const slot=document.getElementById("lcdp-lightbox-slot");
       if (!slot) throw new Error("Dialogue indisponible");
       slot.innerHTML="";
-      slot.appendChild(await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html"));
+      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html"));
       slot.querySelector("[data-lcdp-dialogue-title]").textContent="Modifier votre CODR";
       slot.querySelector("[data-lcdp-dialogue-text]").textContent="Souhaitez-vous transmettre une demande de modification de votre CODR à l’administrateur de l’application ?";
       const actions=slot.querySelector("[data-lcdp-dialogue-actions]");
@@ -1735,7 +1735,7 @@
     const conteneur=document.createElement("div");
     document.body.appendChild(conteneur);
     try {
-      conteneur.appendChild(await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html"));
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html"));
       conteneur.querySelector("[data-lcdp-dialogue-title]").textContent="Sécurité du compte";
       conteneur.querySelector("[data-lcdp-dialogue-text]").textContent=message;
       const actions=conteneur.querySelector("[data-lcdp-dialogue-actions]");
@@ -2060,7 +2060,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-dialogue-champ.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-champ]");
@@ -2198,7 +2198,7 @@
   }
 
   async function creerChampDialogue(configurationChamp) {
-    const fragment = await chargerFragmentObjet("/BOX/03-box-champ-formulaire.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/03-champ-formulaire.html");
 
     const champ = fragment.querySelector("[data-lcdp-box-champ-formulaire]");
     const zoneLabel = fragment.querySelector("[data-lcdp-champ-label-zone]");
@@ -2297,7 +2297,7 @@
     document.body.appendChild(conteneur);
 
     try {
-      const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+      const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
       conteneur.appendChild(fragment);
 
       const alerte = conteneur.querySelector("[data-lcdp-box-alerte]");
@@ -2341,7 +2341,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     slot.appendChild(fragment);
 
     const alerte = slot.querySelector("[data-lcdp-box-alerte]");
@@ -2396,7 +2396,7 @@
 
     slot.innerHTML = "";
 
-    const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
+    const footer = await chargerFragmentObjet("/HTMLBASE/02-footer.html");
     slot.appendChild(footer);
     appliquerRoutesSite(slot);
   }

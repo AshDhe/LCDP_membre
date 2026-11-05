@@ -110,10 +110,19 @@
 
   function chargerCssObjetUneFois(chemin) {
     const href = construireUrlObjet(chemin);
-
-    if (document.querySelector(`link[data-lcdp-css-objet="${chemin}"]`)) {
-      return Promise.resolve();
-    }
+    const cssCible = new URL(href, document.baseURI);
+    // Une page peut déjà charger le central par un <link> classique, sans attribut data.
+    // Les paramètres ?v= sont du cache busting et non un fichier CSS différent.
+    const dejaPresent = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
+      .some((element) => {
+        try {
+          const actuel = new URL(element.href, document.baseURI);
+          return actuel.origin === cssCible.origin && actuel.pathname === cssCible.pathname;
+        } catch (_) {
+          return false;
+        }
+      });
+    if (dejaPresent) return Promise.resolve();
 
     return new Promise((resolve, reject) => {
       const lien = document.createElement("link");
@@ -206,7 +215,7 @@
 
     let fragment;
     try {
-      fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+      fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     } catch (error) {
       console.error("Fragment alerte DA :", error);
       container.remove();
@@ -273,30 +282,24 @@
     });
   }
 
+  // Aucun CSS /BOX n’est chargé pour la DA : présentation des objets dans le central,
+  // particularités du parcours dans lcdp-da-membre.css.
+  async function chargerFondationsDa() {
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-central-mobile-first.css?v=20261105-objets-integres-v2");
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261105-da-v1");
+  }
+
   async function chargerDependancesAlerteDa() {
-    await Promise.all([
-      chargerCssObjetUneFois("/BOX/02-box-alerte.css"),
-      chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261105-da-v1")
-    ]);
+    await chargerFondationsDa();
   }
 
   async function chargerDependancesWorkflowDa() {
-    await Promise.all([
-      chargerCssObjetUneFois("/BOX/02-box-dialogue-bouton.css"),
-      chargerCssObjetUneFois("/BOX/04-box-workflow-abonnement.css"),
-      chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261105-da-v1")
-    ]);
+    await chargerFondationsDa();
   }
 
   async function chargerDependancesFormulaireDa() {
-    await Promise.all([
-      chargerCssObjetUneFois("/BOX/03-box-formulaire.css"),
-      chargerCssObjetUneFois("/BOX/03-box-champ-formulaire.css"),
-      chargerCssObjetUneFois("/BOX/04-box-dialogue-champ.css"),
-      chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261105-da-v1"),
-      chargerScriptObjetUneFois("/BOX/03-box-formulaire.js")
-    ]);
-
+    await chargerFondationsDa();
+    await chargerScriptObjetUneFois("/JSBASE/03-formulaire.js");
     if (typeof window.LCDP_creerFormulaire !== "function") {
       throw new Error("Composant formulaire introuvable.");
     }
@@ -431,7 +434,7 @@
     const slot = obtenirLightboxSlotDa();
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-workflow-abonnement.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-workflow-abonnement.html");
     slot.appendChild(fragment);
 
     const workflow = slot.querySelector("[data-lcdp-box-workflow-abonnement]");
@@ -823,7 +826,7 @@
     document.body.appendChild(conteneur);
 
     try {
-      const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ.html");
+      const fragment = await chargerFragmentObjet("/HTMLBASE/04-dialogue-champ.html");
       conteneur.appendChild(fragment);
 
       const dialogue = conteneur.querySelector("[data-lcdp-box-dialogue-champ]");
@@ -840,7 +843,7 @@
 
       titre.textContent = "Modifier " + options.label.toLowerCase();
 
-      const champFragment = await chargerFragmentObjet("/BOX/03-box-champ-formulaire.html");
+      const champFragment = await chargerFragmentObjet("/HTMLBASE/03-champ-formulaire.html");
       const champ = champFragment.querySelector("[data-lcdp-box-champ-formulaire]");
       const zoneLabel = champFragment.querySelector("[data-lcdp-champ-label-zone]");
       const zoneControl = champFragment.querySelector("[data-lcdp-champ-control]");

@@ -76,36 +76,7 @@
 
       const feuillesCssObjet = [
         "/CSSBASE/cssbase.css",
-        "/BOX/02-box-bandeau-nav.css",
-        "/BOX/02-box-menu-burger.css",
-        "/BOX/02-box-alerte.css",
-        "/BOX/02-box-dialogue-bouton.css",
-        "/BOX/04-box-card-abonnement.css",
-        "/BOX/04-box-card-recaporder.css?v=20261031-recapi-v2",
-        "/BOX/04-box-workflow-abonnement.css?v=20261105-aboreza-suite-v4",
-        "/BOX/04-box-calendrier-an.css",
-        "/BOX/02-box-footer.css",
-        "/BOX/02-box-wraper-footer.css",
-        "/BOX/03-box-champ-formulaire.css",
-        "/BOX/03-box-galerie.css",
-        "/BOX/04-box-dialogue-champ.css",
-        "/BOX/04-box-liste-card.css",
-        "/BOX/pictowait.css?v=20260717-0712",
-        "/BOX/04-box-commande-bar.css",
-        "/BOX/04-box-card-parc.css",
-        "/BOX/04-box-card-map-parc.css",
-        "/BOX/04-carte-dynamique.css",
-        "/BOX/04-box-fiche-parc.css",
-        "/BOX/04-box-shift-detail-parc.css",
-        "/BOX/04-box-calendrier-mois.css",
-        "/BOX/04-box-legende.css?v=20261029-sans-trait-v3",
-        "/BOX/07-box-diginum.css?v=20261029-compact-sans-logo-v3",
-        "/BOX/04-box-card-jour-in-calendrier-mois.css?v=20260717-0655",
-        "/BOX/04-box-calendrier-jour.css",
-        "/BOX/04-box-card-heure-in-calendrier-jour.css",
-        "/BOX/04-box-workflow-reservation.css?v=20261102-croix-focus-v1",
-        "/BOX/04-box-listemails.css",
-        "/CSSBASE/lcdp-central-mobile-first.css?v=20261105-ui-normalisee-v1",
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261105-objets-integres-v2",
         "/CSSBASE/lcdp-planifier.css?v=20261105-fusion-aboreza-compact-v16"
       ];
 
@@ -119,14 +90,14 @@
 
       document.write(
         '<script src="' +
-        window.LCDP_urlObjet("/BOX/03-box-galerie.js") +
+        window.LCDP_urlObjet("/JSBASE/03-galerie.js") +
         '"><\/script>'
       );
       document.write(
-        '<script src="' + window.LCDP_urlObjet("/BOX/07-box-diginum.js?v=20261029-compact-sans-logo-v3") + '"><\/script>'
+        '<script src="' + window.LCDP_urlObjet("/JSBASE/07-diginum.js?v=20261029-compact-sans-logo-v3") + '"><\/script>'
       );
     })();
-    document.write('<script data-lcdp-footer-autonome src="' + window.LCDP_urlObjet('/BOX/02-box-footer.js') + '"><\/script>');
+    document.write('<script data-lcdp-footer-autonome src="' + window.LCDP_urlObjet('/JSBASE/02-footer.js') + '"><\/script>');
   </script>
 
 

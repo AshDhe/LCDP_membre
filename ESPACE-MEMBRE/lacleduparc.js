@@ -2,7 +2,7 @@
   "use strict";
 
   const CONFIG_PAGE = window.SITE_CONFIG || {};
-  const CHEMIN_PICTOWAIT = "/BOX/pictowait.gif";
+  const CHEMIN_PICTOWAIT = "/IMAG/PICTO/pictowait.gif";
 
   const ENDPOINT_LA_CLE_DU_PARC = construireEndpointApi(
     "workerLaCleDuParcUrl",
@@ -622,7 +622,7 @@
     if (!slot) return null;
 
     slot.innerHTML = "";
-    const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-dialogue-champ.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-champ]");
@@ -797,7 +797,7 @@
     if (!slot) return false;
 
     slot.innerHTML = "";
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     slot.appendChild(fragment);
 
     const alerte = slot.querySelector("[data-lcdp-box-alerte]");
@@ -1134,7 +1134,7 @@
 
     slot.innerHTML = "";
 
-    const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
+    const footer = await chargerFragmentObjet("/HTMLBASE/02-footer.html");
     slot.appendChild(footer);
     appliquerRoutesSite(slot);
   }

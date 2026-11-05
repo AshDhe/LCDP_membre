@@ -11,7 +11,7 @@
     (() => {
       const cfg=window.SITE_CONFIG||{};
       const base=String(cfg.objetBaseUrl||cfg.OBJET_BASE||(cfg.publicBaseUrl||'')+'/OBJET').replace(/\/+$/,'');
-      ['/CSSBASE/cssbase.css','/BOX/01-box-text.css'].forEach(path=>{
+      ["/CSSBASE/cssbase.css", "/CSSBASE/lcdp-central-mobile-first.css?v=20261105-css-objets-complets-v1"].forEach(path=>{
         const link=document.createElement('link');link.rel='stylesheet';link.href=base+path;document.head.appendChild(link);
       });
     })();

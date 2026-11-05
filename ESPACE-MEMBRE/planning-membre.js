@@ -376,7 +376,7 @@
 
     slot.innerHTML = "";
 
-    const fragmentWorkflow = await chargerFragmentObjet("/BOX/04-box-workflow-reservation.html");
+    const fragmentWorkflow = await chargerFragmentObjet("/HTMLBASE/04-workflow-reservation.html");
     slot.appendChild(fragmentWorkflow);
 
     const workflow = slot.querySelector("[data-lcdp-box-workflow-reservation]");
@@ -393,10 +393,7 @@
       "lcdp-box-workflow-reservation--calendrier-mois",
       "lcdp-workflow-reservation-box"
     );
-
-    await chargerCssObjetUneFois("/BOX/04-box-liste-card.css");
-
-    const fragmentWrapper = await chargerFragmentObjet("/BOX/04-box-liste-card.html");
+    const fragmentWrapper = await chargerFragmentObjet("/HTMLBASE/04-liste-card.html");
     contenu.appendChild(fragmentWrapper);
 
     const wrapperPlanning = contenu.querySelector("[data-lcdp-box-liste-card]");
@@ -414,11 +411,7 @@
       titreWrapper.textContent = "";
       titreWrapper.hidden = true;
     }
-
-    await chargerCssObjetUneFois("/BOX/04-box-commande-bar.css");
-    await chargerCssObjetUneFois("/BOX/04-box-calendrier-mois.css");
-
-    const fragmentCalendrier = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
+    const fragmentCalendrier = await chargerFragmentObjet("/HTMLBASE/04-calendrier-mois.html");
     slotPlanning.appendChild(fragmentCalendrier);
 
     const calendrier = slotPlanning.querySelector("[data-lcdp-box-calendrier-mois]");
@@ -435,7 +428,7 @@
       throw new Error("Slot commande du calendrier mensuel introuvable.");
     }
 
-    const fragmentCommande = await chargerFragmentObjet("/BOX/04-box-commande-bar.html");
+    const fragmentCommande = await chargerFragmentObjet("/HTMLBASE/04-commande-bar.html");
     slotCommandeAgenda.appendChild(fragmentCommande);
 
     const commandeBar = slotCommandeAgenda.querySelector("[data-lcdp-box-commande-bar]");
@@ -518,14 +511,14 @@
       );
     }
 
-    const fragmentJour = await chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html");
+    const fragmentJour = await chargerFragmentObjet("/HTMLBASE/04-card-jour-in-calendrier-mois.html");
     etat.templateJour = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
 
     if (!etat.templateJour) {
       throw new Error("Template jour calendrier mois introuvable.");
     }
 
-    const fragmentReservation = await chargerFragmentObjet("/BOX/04-box-card-reservation-membre.html");
+    const fragmentReservation = await chargerFragmentObjet("/HTMLBASE/04-card-reservation-membre.html");
     etat.templateReservation = fragmentReservation.querySelector("[data-lcdp-box-card-reservation-membre]");
 
     if (!etat.templateReservation) {
@@ -547,13 +540,8 @@
 
   async function installerLegendeAgendaMembre(meta) {
     if (!meta) return;
-
-    await chargerCssObjetUneFois(
-      "/BOX/04-box-legende.css"
-    );
-
     const fragment = await chargerFragmentObjet(
-      "/BOX/04-box-legende.html"
+      "/HTMLBASE/04-legende.html"
     );
     const legende = fragment.querySelector(
       "[data-lcdp-box-legende]"
@@ -1392,7 +1380,7 @@
 
     slot.innerHTML = "";
 
-    const fragmentWorkflow = await chargerFragmentObjet("/BOX/04-box-workflow-reservation.html");
+    const fragmentWorkflow = await chargerFragmentObjet("/HTMLBASE/04-workflow-reservation.html");
     slot.appendChild(fragmentWorkflow);
 
     const workflow = slot.querySelector("[data-lcdp-box-workflow-reservation]");
@@ -1762,7 +1750,7 @@
       vueAcces.dataset.lcdpPlanningVue = "acces";
       vueAcces.hidden = true;
 
-      const fragmentAcces = await chargerFragmentObjet("/BOX/04-box-card-acces-parc.html");
+      const fragmentAcces = await chargerFragmentObjet("/HTMLBASE/04-card-acces-parc.html");
       vueAcces.appendChild(fragmentAcces);
       vues.appendChild(vueAcces);
 
@@ -1906,7 +1894,7 @@
   async function remplirMapParc(slotMap, parc) {
     slotMap.innerHTML = "";
 
-    const fragmentMap = await chargerFragmentObjet("/BOX/04-box-card-map-parc.html");
+    const fragmentMap = await chargerFragmentObjet("/HTMLBASE/04-card-map-parc.html");
     slotMap.appendChild(fragmentMap);
 
     const coords = slotMap.querySelector("[data-lcdp-card-map-parc-coords]");
@@ -2302,8 +2290,6 @@
   }
 
   async function ouvrirBoxListeInvitesLectureSeule(idflux, invites, declencheur) {
-    await chargerCssObjetUneFois("/BOX/04-box-card-listinvites-oui-non.css");
-
     const conteneur = document.createElement("div");
     conteneur.className = "lcdp-box-card-listinvites-oui-non lcdp-box-card-listinvites-oui-non--lecture";
     conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
@@ -2375,15 +2361,12 @@
 
   async function ouvrirBoxListeInvitesModifiable(idflux, invites, declencheur) {
     const idReservation = String(idflux || "").trim();
-
-    await chargerCssObjetUneFois("/BOX/04-box-card-listinvites-oui-non.css");
-
     const conteneur = document.createElement("div");
     conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
 
     document.body.appendChild(conteneur);
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-listinvites-oui-non.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html");
     conteneur.appendChild(fragment);
 
     const box = conteneur.querySelector("[data-lcdp-box-card-listinvites-oui-non]");
@@ -2811,9 +2794,6 @@
       await afficherAlerteInvitationReservation("Réservation manquante.", declencheur);
       return null;
     }
-
-    await chargerCssObjetUneFois("/BOX/04-box-listemails.css");
-
     const conteneur = document.createElement("div");
     conteneur.dataset.lcdpInvitationEmailsOverlay = "true";
     conteneur.style.position = "relative";
@@ -2821,7 +2801,7 @@
 
     document.body.appendChild(conteneur);
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-listemails.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-listemails.html");
     conteneur.appendChild(fragment);
 
     const box = conteneur.querySelector("[data-lcdp-box-card-listemails]");
@@ -3711,7 +3691,7 @@
 
     slot.innerHTML = "";
 
-    const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
+    const footer = await chargerFragmentObjet("/HTMLBASE/02-footer.html");
     slot.appendChild(footer);
     appliquerRoutesSite(slot);
   }
@@ -3723,7 +3703,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     slot.appendChild(fragment);
 
     const alerte = slot.querySelector("[data-lcdp-box-alerte]");
@@ -3770,7 +3750,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     slot.appendChild(fragment);
 
     const alerte = slot.querySelector("[data-lcdp-box-alerte]");
@@ -3811,7 +3791,7 @@
     couche.style.pointerEvents = "auto";
     document.body.appendChild(couche);
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     couche.appendChild(fragment);
 
     const alerte = couche.querySelector("[data-lcdp-box-alerte]");
@@ -3864,7 +3844,7 @@
     couche.dataset.lcdpDialogueBoutonOverlay = "true";
     slot.appendChild(couche);
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     couche.appendChild(fragment);
 
     const dialogue = couche.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -3926,7 +3906,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");

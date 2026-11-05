@@ -459,7 +459,7 @@
     container.className = "lcdp-burger-alerte";
     document.body.appendChild(container);
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     container.appendChild(fragment);
 
     const alerte = container.querySelector("[data-lcdp-box-alerte]");
@@ -722,7 +722,7 @@
     const slot = obtenirLightboxSlotBurger();
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -1082,7 +1082,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-menu-burger.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-menu-burger.html");
     slot.appendChild(fragment);
 
     const boutonBurger = slot.querySelector("[data-lcdp-burger-button]");

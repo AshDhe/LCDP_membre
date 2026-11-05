@@ -310,7 +310,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -624,7 +624,7 @@
     if (choix !== "transferer") return;
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) return;
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     slot.innerHTML = "";
     slot.appendChild(fragment);
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -779,7 +779,7 @@
     if (!slot) return false;
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     slot.appendChild(fragment);
     const alerte = slot.querySelector("[data-lcdp-box-alerte]");
     const texte = slot.querySelector("[data-lcdp-alerte-message]");
@@ -836,7 +836,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -899,7 +899,7 @@
 
     slot.innerHTML = "";
 
-    const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
+    const footer = await chargerFragmentObjet("/HTMLBASE/02-footer.html");
     slot.appendChild(footer);
     appliquerRoutesSite(slot);
     window.LCDP_initialiserFooterMentionsLegales?.();

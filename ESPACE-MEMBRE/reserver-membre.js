@@ -283,14 +283,14 @@
   // Les fragments d'une liste sont préparés une seule fois et clonés à l'utilisation.
   const cacheFragmentsListeParcs = new Map();
   const CHEMINS_FRAGMENTS_LISTE_PARCS = [
-    "/BOX/04-box-liste-card.html",
-    "/BOX/04-box-card-parc.html",
-    "/BOX/04-box-liste-card-diaporama.html",
-    "/BOX/04-box-card-parc-diaporama.html",
-    "/BOX/04-box-shift-detail-parc.html",
-    "/BOX/04-box-card-jour-in-calendrier-mois.html",
-    "/BOX/04-box-card-heure-in-calendrier-jour.html",
-    "/BOX/04-box-commande-bar.html"
+    "/HTMLBASE/04-liste-card.html",
+    "/HTMLBASE/04-card-parc.html",
+    "/HTMLBASE/04-liste-card-diaporama.html",
+    "/HTMLBASE/04-card-parc-diaporama.html",
+    "/HTMLBASE/04-shift-detail-parc.html",
+    "/HTMLBASE/04-card-jour-in-calendrier-mois.html",
+    "/HTMLBASE/04-card-heure-in-calendrier-jour.html",
+    "/HTMLBASE/04-commande-bar.html"
   ];
   let promesseDonneesParcsMembre = null;
   let promesseReservationsListeParcs = null;
@@ -350,7 +350,7 @@
   let promesseDialogueFiltre = null;
   function chargerDialogueFiltrePlanifier() {
     if (!promesseDialogueFiltre) {
-      promesseDialogueFiltre = chargerFragmentObjet("/BOX/04-box-dialogue-champ.html")
+      promesseDialogueFiltre = chargerFragmentObjet("/HTMLBASE/04-dialogue-champ.html")
         .catch(erreur => { promesseDialogueFiltre = null; throw erreur; });
     }
     return promesseDialogueFiltre.then(fragment => fragment.cloneNode(true));
@@ -702,9 +702,9 @@
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) throw new Error("Emplacement du planning introuvable.");
     const [fragmentCalendrier, fragmentJour, fragmentLegende, droitsInitiaux] = await Promise.all([
-      chargerFragmentObjet("/BOX/04-box-calendrier-mois.html"),
-      chargerFragmentObjet("/BOX/04-box-card-jour-in-calendrier-mois.html"),
-      chargerFragmentObjet("/BOX/04-box-legende.html").catch(() => null),
+      chargerFragmentObjet("/HTMLBASE/04-calendrier-mois.html"),
+      chargerFragmentObjet("/HTMLBASE/04-card-jour-in-calendrier-mois.html"),
+      chargerFragmentObjet("/HTMLBASE/04-legende.html").catch(() => null),
       chargerDroitsRezabo()
     ]);
     etatPage.droitsPlanningParcActifs = droitsInitiaux;
@@ -1173,7 +1173,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -1442,13 +1442,13 @@
       fragmentJour,
       fragmentHeure
     ] = await Promise.all([
-      chargerFragmentListeParcs("/BOX/04-box-liste-card.html"),
-      chargerFragmentListeParcs("/BOX/04-box-card-parc.html"),
-      chargerFragmentListeParcs("/BOX/04-box-liste-card-diaporama.html"),
-      chargerFragmentListeParcs("/BOX/04-box-card-parc-diaporama.html"),
-      chargerFragmentListeParcs("/BOX/04-box-shift-detail-parc.html"),
-      chargerFragmentListeParcs("/BOX/04-box-card-jour-in-calendrier-mois.html"),
-      chargerFragmentListeParcs("/BOX/04-box-card-heure-in-calendrier-jour.html")
+      chargerFragmentListeParcs("/HTMLBASE/04-liste-card.html"),
+      chargerFragmentListeParcs("/HTMLBASE/04-card-parc.html"),
+      chargerFragmentListeParcs("/HTMLBASE/04-liste-card-diaporama.html"),
+      chargerFragmentListeParcs("/HTMLBASE/04-card-parc-diaporama.html"),
+      chargerFragmentListeParcs("/HTMLBASE/04-shift-detail-parc.html"),
+      chargerFragmentListeParcs("/HTMLBASE/04-card-jour-in-calendrier-mois.html"),
+      chargerFragmentListeParcs("/HTMLBASE/04-card-heure-in-calendrier-jour.html")
     ]);
     const listeCard = fragmentListe.querySelector(
       "[data-lcdp-box-liste-card]"
@@ -1464,25 +1464,8 @@
     etatPage.templateCardParc = fragmentCard.querySelector("[data-lcdp-box-card-parc]");
     etatPage.templateListeParcsDiaporama = fragmentListeDiaporama.querySelector("[data-lcdp-liste-card-diaporama]");
     etatPage.templateCardParcDiaporama = fragmentCardDiaporama.querySelector("[data-lcdp-card-parc-diaporama]");
-    // Attendre les deux CSS avant de montrer la box : évite le flash de
-    // contenu non stylé et son redimensionnement sur PC/tablette.
-    await Promise.all(["/BOX/04-box-liste-card-diaporama.css", "/BOX/04-box-card-parc-diaporama.css"].map(chemin => {
-      const href = construireUrlObjet(chemin);
-      const existant = document.querySelector(`link[data-lcdp-diaporama-css="${chemin}"]`);
-      if (existant?.sheet) return Promise.resolve();
-      const lien = existant || document.createElement("link");
-      if (!existant) {
-        lien.rel = "stylesheet";
-        lien.href = href;
-        lien.dataset.lcdpDiaporamaCss = chemin;
-      }
-      return new Promise((resolve, reject) => {
-        lien.addEventListener("load", resolve, { once: true });
-        lien.addEventListener("error", () => reject(new Error("CSS diaporama indisponible : " + chemin)), { once: true });
-        if (!existant) document.head.appendChild(lien);
-      });
-    }));
 
+    // Styles du diaporama chargés directement par le CSS central.
     etatPage.templateShiftDetailParc = fragmentShiftDetailParc.querySelector("[data-lcdp-box-shift-detail-parc]");
 
     etatPage.templateJourMois = fragmentJour.querySelector("[data-lcdp-card-jour-mois]");
@@ -1525,7 +1508,7 @@
       "Voir la carte"
     );
 
-    const fragment = await chargerFragmentListeParcs("/BOX/04-box-commande-bar.html");
+    const fragment = await chargerFragmentListeParcs("/HTMLBASE/04-commande-bar.html");
     const commandeBar = fragment.querySelector("[data-lcdp-box-commande-bar]");
     const actions = fragment.querySelector("[data-lcdp-commande-bar-actions]");
 
@@ -2053,7 +2036,7 @@
     slot.innerHTML = "";
 
     const fragment = await chargerFragmentObjet(
-      "/BOX/04-box-calendrier-jour.html"
+      "/HTMLBASE/04-calendrier-jour.html"
     );
     slot.appendChild(fragment);
 
@@ -3750,7 +3733,7 @@
     if (!racine) {
       const shift = etatPage.templateShiftDetailParc
         ? etatPage.templateShiftDetailParc.cloneNode(true)
-        : (await chargerFragmentObjet("/BOX/04-box-shift-detail-parc.html"))
+        : (await chargerFragmentObjet("/HTMLBASE/04-shift-detail-parc.html"))
             .querySelector("[data-lcdp-box-shift-detail-parc]");
       if (!shift) throw new Error("Template shift détail parc introuvable.");
 
@@ -4079,7 +4062,7 @@
     const conteneur = document.createElement("div");
     document.body.appendChild(conteneur);
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-listemails.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-listemails.html");
     conteneur.appendChild(fragment);
 
     const box = conteneur.querySelector("[data-lcdp-box-card-listemails]");
@@ -4302,7 +4285,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-calendrier-mois.html");
     slot.appendChild(fragment);
 
     const calendrier = slot.querySelector("[data-lcdp-box-calendrier-mois]");
@@ -4727,7 +4710,7 @@
     }
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-jour.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-calendrier-jour.html");
     slot.appendChild(fragment);
 
     const calendrier = slot.querySelector("[data-lcdp-box-calendrier-jour]");
@@ -5362,7 +5345,7 @@
     const conteneur = document.createElement("div");
     document.body.appendChild(conteneur);
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     conteneur.appendChild(fragment);
 
     const dialogue = conteneur.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -5432,7 +5415,7 @@
     const conteneur = document.createElement("div");
     document.body.appendChild(conteneur);
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     conteneur.appendChild(fragment);
 
     const alerte = conteneur.querySelector("[data-lcdp-box-alerte]");
@@ -5512,7 +5495,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     slot.appendChild(fragment);
 
     const alerte = slot.querySelector("[data-lcdp-box-alerte]");
@@ -5652,7 +5635,7 @@
   }
 
   async function creerChampDialogue(configurationChamp) {
-    const fragment = await chargerFragmentObjet("/BOX/03-box-champ-formulaire.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/03-champ-formulaire.html");
 
     const champ = fragment.querySelector("[data-lcdp-box-champ-formulaire]");
     const zoneLabel = fragment.querySelector("[data-lcdp-champ-label-zone]");
@@ -5718,7 +5701,7 @@
 
     slot.innerHTML = "";
 
-    const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
+    const footer = await chargerFragmentObjet("/HTMLBASE/02-footer.html");
     slot.appendChild(footer);
     appliquerRoutesSite(slot);
   }

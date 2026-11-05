@@ -82,7 +82,7 @@
   async function afficherFactureA4(racine, facture) {
     racine.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-facture-a4.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-facture-a4.html");
     racine.appendChild(fragment);
 
     const box = racine.querySelector("[data-lcdp-box-facture-a4]");
@@ -120,7 +120,7 @@
   }
 
   async function creerCardCoordonneesFacture(titreCard, donnees) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-coordonnees-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-coordonnees-facture.html");
     const card = fragment.querySelector("[data-lcdp-card-coordonnees-facture]");
     const titre = fragment.querySelector("[data-lcdp-coordonnees-facture-title]");
     const nom = fragment.querySelector("[data-lcdp-coordonnees-facture-nom]");
@@ -147,7 +147,7 @@
   }
 
   async function creerCardDetailFacture(facture) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-facture.html");
     const card = fragment.querySelector("[data-lcdp-card-facture]");
     const slotProduit = fragment.querySelector("[data-lcdp-facture-produit-slot]");
     const slotPrix = fragment.querySelector("[data-lcdp-facture-prix-slot]");
@@ -165,7 +165,7 @@
   }
 
   async function creerCardProduitFacture(produit) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-produit-in-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-produit-in-facture.html");
     remplirTexte(fragment, "[data-lcdp-facture-produit-orderid]", produit.orderid || "Non renseigné");
     remplirTexte(fragment, "[data-lcdp-facture-produit-type]", produit.libelle || produit.typabo || "Non renseigné");
     remplirTexte(fragment, "[data-lcdp-facture-produit-debut]", formaterDate(produit.debut));
@@ -184,7 +184,7 @@
   }
 
   async function creerCardPrixFacture(prix) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-prix-in-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-prix-in-facture.html");
     const listeRemises = fragment.querySelector("[data-lcdp-facture-prix-remises]");
 
     remplirTexte(fragment, "[data-lcdp-facture-prix-brut-label]", "Prix TTC (TVA " + formaterTaux(prix.tva1) + "%) €");
@@ -223,7 +223,7 @@
   }
 
   async function creerCardPaiementFacture(paiement) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-paiement-in-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-paiement-in-facture.html");
     const echeances = fragment.querySelector("[data-lcdp-facture-paiement-echeances]");
     const ribRow = fragment.querySelector("[data-lcdp-facture-paiement-rib-row]");
     const rib = fragment.querySelector("[data-lcdp-facture-paiement-rib]");
@@ -271,7 +271,7 @@
   }
 
   async function creerCardMentionsFacture(facture) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-mentions-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-mentions-facture.html");
 
     if (facture && facture.mentions) {
       remplirTexte(fragment, "[data-lcdp-facture-mentions]", facture.mentions);

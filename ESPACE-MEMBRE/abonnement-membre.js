@@ -215,7 +215,7 @@
 
     slot.innerHTML = "";
 
-    const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
+    const footer = await chargerFragmentObjet("/HTMLBASE/02-footer.html");
     slot.appendChild(footer);
     appliquerRoutesSite(slot);
   }
@@ -227,11 +227,11 @@
       throw new Error("Slot liste des abonnements introuvable.");
     }
 
-    const fragmentListe = await chargerFragmentObjet("/BOX/04-box-liste-card.html");
+    const fragmentListe = await chargerFragmentObjet("/HTMLBASE/04-liste-card.html");
     slot.innerHTML = "";
     slot.appendChild(fragmentListe);
 
-    const fragmentCard = await chargerFragmentObjet("/BOX/04-box-card-abonnement.html");
+    const fragmentCard = await chargerFragmentObjet("/HTMLBASE/04-card-abonnement.html");
     etat.templateAbonnement = fragmentCard.querySelector("[data-lcdp-box-card-abonnement]");
 
     if (!etat.templateAbonnement) {
@@ -767,7 +767,7 @@
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ-inviter.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-dialogue-champ-inviter.html");
     slot.appendChild(fragment);
 
     const box = slot.querySelector("[data-lcdp-box-dialogue-champ-inviter]");
@@ -835,7 +835,7 @@
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-listemails.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-listemails.html");
     slot.appendChild(fragment);
 
     const box = slot.querySelector("[data-lcdp-box-card-listemails]");
@@ -918,7 +918,7 @@
   }
 
   async function creerCardEmail(index, modeExistant) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-listemails.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-listemails.html");
     const card = fragment.querySelector("[data-lcdp-box-card-listemails-item]");
     const input = fragment.querySelector("[data-lcdp-card-listemails-email]");
     const boutonModifier = fragment.querySelector("[data-lcdp-card-listemails-modifier]");
@@ -1008,7 +1008,7 @@
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-dialogue-champ.html");
     container.appendChild(fragment);
 
     const dialogue = container.querySelector("[data-lcdp-box-dialogue-champ]");
@@ -1135,7 +1135,7 @@
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-an.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-calendrier-an.html");
     slot.appendChild(fragment);
 
     const box = slot.querySelector("[data-lcdp-box-calendrier-an]");
@@ -1371,7 +1371,7 @@
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-calendrier-mois.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-calendrier-mois.html");
     slot.appendChild(fragment);
 
     const box = slot.querySelector("[data-lcdp-box-calendrier-mois]");
@@ -1592,7 +1592,7 @@
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-recaporder.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-recaporder.html");
     slot.appendChild(fragment);
 
     const box = slot.querySelector("[data-lcdp-box-card-recaporder]");
@@ -1919,7 +1919,7 @@
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -2191,7 +2191,7 @@
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -2346,7 +2346,7 @@
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -2489,7 +2489,7 @@
     const slot = obtenirLightboxSlot();
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -2731,7 +2731,7 @@
     const slot = obtenirLightboxSlot();
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-facture.html");
     slot.appendChild(fragment);
 
     const box = slot.querySelector("[data-lcdp-box-facture]");
@@ -2831,7 +2831,7 @@
     const slot = obtenirLightboxSlot();
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-facture.html");
     slot.appendChild(fragment);
 
     const box = slot.querySelector("[data-lcdp-box-facture]");
@@ -2895,7 +2895,7 @@
   }
 
   async function creerCardCoordonneesFacture(titreCard, donnees) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-coordonnees-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-coordonnees-facture.html");
     const card = fragment.querySelector("[data-lcdp-card-coordonnees-facture]");
     const titre = fragment.querySelector("[data-lcdp-coordonnees-facture-title]");
     const nom = fragment.querySelector("[data-lcdp-coordonnees-facture-nom]");
@@ -2922,7 +2922,7 @@
   }
 
   async function creerCardDetailFacture(facture) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-facture.html");
     const card = fragment.querySelector("[data-lcdp-card-facture]");
     const slotProduit = fragment.querySelector("[data-lcdp-facture-produit-slot]");
     const slotPrix = fragment.querySelector("[data-lcdp-facture-prix-slot]");
@@ -2949,7 +2949,7 @@
   }
 
   async function creerCardProduitFacture(produit) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-produit-in-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-produit-in-facture.html");
     remplirTexte(fragment, "[data-lcdp-facture-produit-orderid]", produit.orderid || "Non renseigné");
     remplirTexte(fragment, "[data-lcdp-facture-produit-type]", produit.libelle || produit.typabo || "Non renseigné");
     remplirTexte(fragment, "[data-lcdp-facture-produit-debut]", formaterDate(produit.debut));
@@ -2968,7 +2968,7 @@
   }
 
   async function creerCardPrixFacture(prix) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-prix-in-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-prix-in-facture.html");
     const listeRemises = fragment.querySelector("[data-lcdp-facture-prix-remises]");
     const estAvoir = String(prix.type || "").trim().toLowerCase() === "avoir";
 
@@ -3085,7 +3085,7 @@
   }
 
   async function creerCardPaiementFacture(paiement) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-paiement-in-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-paiement-in-facture.html");
     if (String(paiement?.type || "").trim().toLowerCase() === "avoir") {
       remplacerTexteExact(fragment, "Paiement", paiement.titre || "Remboursement");
     }
@@ -3139,7 +3139,7 @@
   }
 
   async function creerCardMentionsFacture(facture) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-mentions-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-mentions-facture.html");
 
     if (facture && facture.mentions) {
       remplirTexte(fragment, "[data-lcdp-facture-mentions]", facture.mentions);
@@ -3628,7 +3628,7 @@
     container.className = "lcdp-workflow-abonnement-alerte";
     document.body.appendChild(container);
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     container.appendChild(fragment);
 
     const alerte = container.querySelector("[data-lcdp-box-alerte]");
@@ -3675,7 +3675,7 @@
     const slot = obtenirLightboxSlot();
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     slot.appendChild(fragment);
 
     const alerte = slot.querySelector("[data-lcdp-box-alerte]");
@@ -3913,7 +3913,7 @@
     if (!workflow) {
       slot.innerHTML = "";
 
-      const fragment = await chargerFragmentObjet("/BOX/04-box-workflow-abonnement.html");
+      const fragment = await chargerFragmentObjet("/HTMLBASE/04-workflow-abonnement.html");
       slot.appendChild(fragment);
 
       workflow = slot.querySelector("[data-lcdp-box-workflow-abonnement]");

@@ -71,11 +71,11 @@
   async function chargerTemplates() {
     if (!composants) {
       composants = Promise.all([
-        lireObjet('/BOX/04-box-workflow-abonnement.html', '[data-lcdp-box-workflow-abonnement]'),
-        lireObjet('/BOX/02-box-dialogue-bouton.html', '[data-lcdp-box-dialogue-bouton]'),
-        lireObjet('/BOX/04-box-calendrier-an.html', '[data-lcdp-box-calendrier-an]'),
-        lireObjet('/BOX/03-box-champ-formulaire.html', '[data-lcdp-box-champ-formulaire]'),
-        lireObjet('/BOX/04-box-card-abonnement.html', '[data-lcdp-box-card-abonnement]')
+        lireObjet('/HTMLBASE/04-workflow-abonnement.html', '[data-lcdp-box-workflow-abonnement]'),
+        lireObjet('/HTMLBASE/02-dialogue-bouton.html', '[data-lcdp-box-dialogue-bouton]'),
+        lireObjet('/HTMLBASE/04-calendrier-an.html', '[data-lcdp-box-calendrier-an]'),
+        lireObjet('/HTMLBASE/03-champ-formulaire.html', '[data-lcdp-box-champ-formulaire]'),
+        lireObjet('/HTMLBASE/04-card-abonnement.html', '[data-lcdp-box-card-abonnement]')
       ]).then(([workflow, dialogue, calendrier, champ, carte]) => {
         composants = { workflow, dialogue, calendrier, champ, carte };
         return composants;

@@ -46,8 +46,8 @@
   async function obtenirComposants() {
     if (!composants) {
       composants = Promise.all([
-        chargerObjet('/BOX/04-box-workflow-abonnement.html', '[data-lcdp-box-workflow-abonnement]'),
-        chargerObjet('/BOX/04-box-card-recaporder.html', '[data-lcdp-box-card-recaporder]')
+        chargerObjet('/HTMLBASE/04-workflow-abonnement.html', '[data-lcdp-box-workflow-abonnement]'),
+        chargerObjet('/HTMLBASE/04-card-recaporder.html', '[data-lcdp-box-card-recaporder]')
       ]).catch(erreur => { composants = null; throw erreur; });
     }
     return composants;
@@ -387,7 +387,7 @@
   }
   async function afficherRetourEnAttente(message, panierAReprendre=null){
     try {
-      const racine=await chargerObjet('/BOX/02-box-alerte.html','[data-lcdp-box-alerte]');
+      const racine=await chargerObjet('/HTMLBASE/02-alerte.html','[data-lcdp-box-alerte]');
       racine.querySelector('[data-lcdp-alerte-message]').textContent=message;
       const fermer=()=>{racine.remove();window.location.replace(urlMembre('/ESPACE-MEMBRE/accueil-membre.html'));};
       const bouton=racine.querySelector('[data-lcdp-alerte-ok]');

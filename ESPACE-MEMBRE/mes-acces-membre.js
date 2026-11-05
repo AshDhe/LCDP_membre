@@ -239,7 +239,7 @@
     img.alt = '';
   }
 
-  // Les mêmes balises que BOX/04-box-card-parc-diaporama.html et son CSS.
+  // Les mêmes balises que HTMLBASE/04-card-parc-diaporama.html et son CSS.
   function creerCarte(r) {
     const article = etat.cardModele.cloneNode(true);
     const recto = article.querySelector('[data-lcdp-diaporama-retourner]');
@@ -374,7 +374,7 @@
     } finally { etat.annulationEnCours = false; }
   }
 
-  // Structure reprenant BOX/04-box-card-parc-diaporama.html.
+  // Structure reprenant HTMLBASE/04-card-parc-diaporama.html.
   // Une panne de téléchargement de fragment ne doit jamais empêcher le chargement des réservations.
   function creerModeleCarte() {
     const template = document.createElement('template');

@@ -27,15 +27,7 @@
 
       [
         "/CSSBASE/cssbase.css",
-        "/BOX/02-box-bandeau-nav.css",
-        "/BOX/02-box-menu-burger.css",
-        "/BOX/02-box-alerte.css",
-        "/BOX/02-box-footer.css",
-        "/BOX/04-box-liste-card.css",
-        "/BOX/04-box-commande-bar.css",
-        "/BOX/03-box-champ-formulaire.css",
-        "/BOX/04-box-liste-card-diaporama.css",
-        "/BOX/04-box-card-parc-diaporama.css"
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261105-css-objets-complets-v1",
       ].forEach(path => {
         const link = document.createElement("link");
         link.rel = "stylesheet";
@@ -196,7 +188,7 @@
         const slot = document.getElementById("lcdp-footer-slot");
         routes(slot);
         try {
-          await chargerFragment(slot, window.LCDP_urlObjet("/BOX/02-box-footer.html"));
+          await chargerFragment(slot, window.LCDP_urlObjet("/HTMLBASE/02-footer.html"));
         } catch (erreur) {
           console.warn("[MES ACCÈS] Footer de secours conservé :", erreur);
         }

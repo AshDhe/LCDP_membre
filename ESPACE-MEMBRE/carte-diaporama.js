@@ -11,8 +11,8 @@
     slot.innerHTML = "";
 
     const [fragment, reponseGeojson] = await Promise.all([
-      options.chargerFragmentObjet("/BOX/04-carte-dynamique.html"),
-      fetch(options.construireUrlObjet("/BOX/04-carte-dynamique.geojson"), {
+      options.chargerFragmentObjet("/HTMLBASE/04-carte-dynamique.html"),
+      fetch(options.construireUrlObjet("/DATA/04-carte-dynamique.geojson"), {
         method: "GET",
         credentials: "omit",
         cache: "no-cache",

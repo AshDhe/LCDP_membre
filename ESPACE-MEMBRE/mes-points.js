@@ -42,7 +42,7 @@
 
     slot.innerHTML = "";
     slot.appendChild(
-      await chargerFragmentObjet("/BOX/05-wraper-onglets.html?v=20260803-0838")
+      await chargerFragmentObjet("/HTMLBASE/05-wraper-onglets.html?v=20260803-0838")
     );
 
     const racine = slot.querySelector("[data-lcdp-wraper-onglets]");
@@ -298,7 +298,7 @@
   async function installerTable(zone) {
     zone.innerHTML = "";
     zone.appendChild(
-      await chargerFragmentObjet("/BOX/05-table-lecture.html")
+      await chargerFragmentObjet("/HTMLBASE/05-table-lecture.html")
     );
   }
 
@@ -457,7 +457,7 @@
     if (!slot) return;
 
     slot.innerHTML = "";
-    slot.appendChild(await chargerFragmentObjet("/BOX/02-box-footer.html"));
+    slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-footer.html"));
     appliquerRoutesSite(slot);
   }
 
@@ -488,7 +488,7 @@
 
     try {
       slot.innerHTML = "";
-      slot.appendChild(await chargerFragmentObjet("/BOX/02-box-alerte.html"));
+      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-alerte.html"));
 
       const alerte = slot.querySelector("[data-lcdp-box-alerte]");
       const texte = slot.querySelector("[data-lcdp-alerte-message]");

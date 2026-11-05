@@ -50,7 +50,7 @@
 
     slot.innerHTML = "";
     slot.appendChild(
-      await chargerFragmentObjet("/BOX/05-wraper-onglets.html?v=20260803-1650")
+      await chargerFragmentObjet("/HTMLBASE/05-wraper-onglets.html?v=20260803-1650")
     );
 
     const racine = slot.querySelector("[data-lcdp-wraper-onglets]");
@@ -80,7 +80,7 @@
 
     slot.innerHTML = "";
     slot.appendChild(
-      await chargerFragmentObjet("/BOX/05-wraper-onglets.html?v=20260803-1650")
+      await chargerFragmentObjet("/HTMLBASE/05-wraper-onglets.html?v=20260803-1650")
     );
 
     const racine = slot.querySelector("[data-lcdp-wraper-onglets]");
@@ -158,7 +158,7 @@
     }
 
     zone.innerHTML = "";
-    zone.appendChild(await chargerFragmentObjet("/BOX/05-table-lecture.html"));
+    zone.appendChild(await chargerFragmentObjet("/HTMLBASE/05-table-lecture.html"));
 
     return window.LCDP_TABLE_LECTURE.initialiser({
       slot: zone,
@@ -339,7 +339,7 @@
     if (!slot) throw new Error("Zone d'affichage du document introuvable.");
 
     slot.innerHTML = "";
-    slot.appendChild(await chargerFragmentObjet("/BOX/04-box-facture.html"));
+    slot.appendChild(await chargerFragmentObjet("/HTMLBASE/04-facture.html"));
 
     const box = slot.querySelector("[data-lcdp-box-facture]");
     const boutonFermer = slot.querySelector("[data-lcdp-facture-close]");
@@ -395,7 +395,7 @@
   }
 
   async function creerCardCoordonneesFacture(titreCard, donnees) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-coordonnees-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-coordonnees-facture.html");
     const card = fragment.querySelector("[data-lcdp-card-coordonnees-facture]");
     const titre = fragment.querySelector("[data-lcdp-coordonnees-facture-title]");
     const nom = fragment.querySelector("[data-lcdp-coordonnees-facture-nom]");
@@ -421,7 +421,7 @@
   }
 
   async function creerCardDetailFacture(facture) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-facture.html");
     const card = fragment.querySelector("[data-lcdp-card-facture]");
     const slotProduit = fragment.querySelector("[data-lcdp-facture-produit-slot]");
     const slotPrix = fragment.querySelector("[data-lcdp-facture-prix-slot]");
@@ -442,7 +442,7 @@
   }
 
   async function creerCardProduitFacture(produit) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-produit-in-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-produit-in-facture.html");
     remplirTexte(fragment, "[data-lcdp-facture-produit-orderid]", produit.orderid || "Non renseigné");
     remplirTexte(fragment, "[data-lcdp-facture-produit-type]", produit.libelle || produit.typabo || "Non renseigné");
     remplirTexte(fragment, "[data-lcdp-facture-produit-debut]", formaterDate(produit.debut));
@@ -461,7 +461,7 @@
   }
 
   async function creerCardPrixFacture(prix) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-prix-in-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-prix-in-facture.html");
     const listeRemises = fragment.querySelector("[data-lcdp-facture-prix-remises]");
     const estAvoir = String(prix.type || "").trim().toLowerCase() === "avoir";
 
@@ -530,7 +530,7 @@
   }
 
   async function creerCardPaiementFacture(paiement) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-paiement-in-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-paiement-in-facture.html");
     if (String(paiement?.type || "").trim().toLowerCase() === "avoir") {
       remplacerTexteExact(fragment, "Paiement", paiement.titre || "Remboursement");
     }
@@ -575,7 +575,7 @@
   }
 
   async function creerCardMentionsFacture(facture) {
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-mentions-facture.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-mentions-facture.html");
     if (facture && facture.mentions) {
       remplirTexte(fragment, "[data-lcdp-facture-mentions]", facture.mentions);
     }
@@ -626,7 +626,7 @@
     const slot = document.getElementById("lcdp-footer-slot");
     if (!slot) return;
     slot.innerHTML = "";
-    slot.appendChild(await chargerFragmentObjet("/BOX/02-box-footer.html"));
+    slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-footer.html"));
     appliquerRoutesSite(slot);
   }
 
@@ -652,7 +652,7 @@
 
     try {
       slot.innerHTML = "";
-      slot.appendChild(await chargerFragmentObjet("/BOX/02-box-alerte.html"));
+      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-alerte.html"));
       const alerte = slot.querySelector("[data-lcdp-box-alerte]");
       const texte = slot.querySelector("[data-lcdp-alerte-message]");
       const fermer = slot.querySelector("[data-lcdp-alerte-close]");

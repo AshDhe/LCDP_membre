@@ -187,7 +187,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/02-box-dialogue-bouton.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
@@ -469,7 +469,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-card-listemails.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-listemails.html");
     slot.appendChild(fragment);
 
     const box = slot.querySelector("[data-lcdp-box-card-listemails]");
@@ -631,7 +631,7 @@
     if (!slot) return;
 
     slot.innerHTML = "";
-    const bandeau = await chargerFragmentObjet("/BOX/02-box-bandeau-nav.html");
+    const bandeau = await chargerFragmentObjet("/HTMLBASE/02-bandeau-nav.html");
     slot.appendChild(bandeau);
     appliquerRoutesSite(slot);
 
@@ -651,7 +651,7 @@
     if (!slot) return;
 
     slot.innerHTML = "";
-    const footer = await chargerFragmentObjet("/BOX/02-box-footer.html");
+    const footer = await chargerFragmentObjet("/HTMLBASE/02-footer.html");
     slot.appendChild(footer);
     appliquerRoutesSite(slot);
   }
@@ -695,7 +695,7 @@
     if (!slot) return null;
 
     slot.innerHTML = "";
-    const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     slot.appendChild(fragment);
 
     const alerte = slot.querySelector("[data-lcdp-box-alerte]");
@@ -744,11 +744,11 @@
       throw new Error("Slot liste des réservations introuvable.");
     }
 
-    const fragmentListe = await chargerFragmentObjet("/BOX/04-box-liste-card.html");
+    const fragmentListe = await chargerFragmentObjet("/HTMLBASE/04-liste-card.html");
     slot.innerHTML = "";
     slot.appendChild(fragmentListe);
 
-    const fragmentCard = await chargerFragmentObjet("/BOX/04-box-card-reservation-membre.html");
+    const fragmentCard = await chargerFragmentObjet("/HTMLBASE/04-card-reservation-membre.html");
     etat.templateReservation = fragmentCard.querySelector("[data-lcdp-box-card-reservation-membre]");
 
     if (!etat.templateReservation) {
@@ -971,7 +971,7 @@
 
     slot.innerHTML = "";
 
-    const fragment = await chargerFragmentObjet("/BOX/04-box-dialogue-champ-inviter.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-dialogue-champ-inviter.html");
     slot.appendChild(fragment);
 
     const dialogue = slot.querySelector("[data-lcdp-box-dialogue-champ-inviter]");

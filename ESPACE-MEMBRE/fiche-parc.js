@@ -221,8 +221,8 @@
     slot.innerHTML = "";
 
     const [fragmentShift, fragmentFiche] = await Promise.all([
-      chargerFragment("/OBJET/BOX/04-box-shift-detail-parc.html"),
-      chargerFragment("/OBJET/BOX/04-box-fiche-parc.html")
+      chargerFragment("/OBJET/HTMLBASE/04-shift-detail-parc.html"),
+      chargerFragment("/OBJET/HTMLBASE/04-fiche-parc.html")
     ]);
 
     const shift = fragmentShift.querySelector(
@@ -341,7 +341,7 @@
     section.appendChild(titreSection);
 
     const fragment = await chargerFragment(
-      "/OBJET/BOX/01-box-text.html"
+      "/OBJET/HTMLBASE/01-text.html"
     );
 
     const box = fragment.querySelector(
@@ -443,8 +443,8 @@
     slot.innerHTML = "";
 
     const [fragment, reponseGeojson] = await Promise.all([
-      chargerFragment("/OBJET/BOX/04-carte-dynamique.html"),
-      fetch(construireUrlSite("/OBJET/BOX/04-carte-dynamique.geojson"), {
+      chargerFragment("/OBJET/HTMLBASE/04-carte-dynamique.html"),
+      fetch(construireUrlSite("/OBJET/DATA/04-carte-dynamique.geojson"), {
         method: "GET",
         credentials: "same-origin",
         cache: "no-cache",
@@ -1214,10 +1214,10 @@
 
   async function initialiserObjetsInteraction() {
     const [fragmentShift, fragmentJour, fragmentHeure, fragmentCardParc] = await Promise.all([
-      chargerFragment("/OBJET/BOX/04-box-shift-detail-parc.html"),
-      chargerFragment("/OBJET/BOX/04-box-card-jour-in-calendrier-mois.html"),
-      chargerFragment("/OBJET/BOX/04-box-card-heure-in-calendrier-jour.html"),
-      chargerFragment("/OBJET/BOX/04-box-card-parc.html")
+      chargerFragment("/OBJET/HTMLBASE/04-shift-detail-parc.html"),
+      chargerFragment("/OBJET/HTMLBASE/04-card-jour-in-calendrier-mois.html"),
+      chargerFragment("/OBJET/HTMLBASE/04-card-heure-in-calendrier-jour.html"),
+      chargerFragment("/OBJET/HTMLBASE/04-card-parc.html")
     ]);
 
     etatInteraction.templateShiftDetail = fragmentShift.querySelector(
@@ -1384,7 +1384,7 @@
     contenu.style.minHeight = "";
   }
   async function afficherCalendrierMoisParcDansShift(contenu, parc, mode) {
-    const fragment = await chargerFragment("/OBJET/BOX/04-box-calendrier-mois.html");
+    const fragment = await chargerFragment("/OBJET/HTMLBASE/04-calendrier-mois.html");
     contenu.appendChild(fragment);
 
     const calendrier = contenu.querySelector("[data-lcdp-box-calendrier-mois]");
@@ -1657,7 +1657,7 @@
     const contenu = etat.contenu;
     contenu.innerHTML = "";
 
-    const fragment = await chargerFragment("/OBJET/BOX/04-box-calendrier-jour.html");
+    const fragment = await chargerFragment("/OBJET/HTMLBASE/04-calendrier-jour.html");
     contenu.appendChild(fragment);
 
     const calendrier = contenu.querySelector("[data-lcdp-box-calendrier-jour]");
@@ -2355,7 +2355,7 @@
     slot.innerHTML = "";
 
     const footer = await chargerFragment(
-      "/OBJET/BOX/02-box-footer.html"
+      "/OBJET/HTMLBASE/02-footer.html"
     );
 
     slot.appendChild(footer);
