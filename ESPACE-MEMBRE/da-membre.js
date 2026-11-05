@@ -204,61 +204,71 @@
     container.className = "lcdp-da-membre-alerte";
     document.body.appendChild(container);
 
-    let fragment = null;
-
+    let fragment;
     try {
       fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
     } catch (error) {
       console.error("Fragment alerte DA :", error);
       container.remove();
-      alert(message || "");
+      if (options.mode === "confirmation") return window.confirm(message || "");
+      window.alert(message || "");
       return true;
     }
 
     container.appendChild(fragment);
-
     const alerte = container.querySelector("[data-lcdp-box-alerte]");
     const texte = container.querySelector("[data-lcdp-alerte-message]");
     const boutonFermer = container.querySelector("[data-lcdp-alerte-close]");
     const boutonOk = container.querySelector("[data-lcdp-alerte-ok]");
-
     if (!alerte || !texte || !boutonFermer || !boutonOk) {
       container.remove();
-      alert(message || "");
+      if (options.mode === "confirmation") return window.confirm(message || "");
+      window.alert(message || "");
       return true;
     }
 
+    const confirmation = options.mode === "confirmation";
     texte.textContent = message || "";
-    boutonOk.textContent = options.boutonOk || "OK";
-    if (options.sansCroix === true) {
-      boutonFermer.hidden = true;
-      container.classList.add("lcdp-da-membre-alerte--confirmation");
+    boutonOk.textContent = options.boutonOk || (confirmation ? "Confirmer" : "Fermer");
+    boutonFermer.hidden = !confirmation || options.sansCroix === true;
+    alerte.dataset.lcdpDialogueType = confirmation ? "confirmation" : "information";
+
+    // Le bouton original garde son identité et son écouteur. Seule la zone
+    // d'actions est commune aux deux présentations.
+    const actions = document.createElement("div");
+    actions.className = "lcdp-dialogue-actions";
+    boutonOk.before(actions);
+    actions.appendChild(boutonOk);
+    let boutonAnnuler = null;
+    if (confirmation) {
+      boutonAnnuler = document.createElement("button");
+      boutonAnnuler.type = "button";
+      boutonAnnuler.className = "lcdp-button lcdp-button-secondary";
+      boutonAnnuler.textContent = "Annuler";
+      actions.prepend(boutonAnnuler);
     }
-    boutonOk.classList.add("lcdp-confirmation-action");
 
     return new Promise((resolve) => {
       let resolu = false;
-
-      function fermer(valeur) {
+      const fermer = (valeur) => {
         if (resolu) return;
         resolu = true;
         container.remove();
         resolve(valeur);
-      }
-
+      };
       boutonFermer.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         fermer(false);
       });
+      boutonAnnuler?.addEventListener("click", () => fermer(false));
       boutonOk.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         fermer(true);
       });
       alerte.addEventListener("click", (event) => {
-        event.stopPropagation();
-        if (event.target === alerte) fermer(false);
+        if (event.target === alerte && confirmation && !boutonFermer.hidden) fermer(false);
       });
     });
   }
@@ -1036,7 +1046,7 @@
       return;
     }
 
-    const confirmation = await afficherAlerteDa("Votre DA est terminée ?", { boutonOk: "Confirmer", sansCroix: true });
+    const confirmation = await afficherAlerteDa("Votre DA est terminée ?", { mode: "confirmation", boutonOk: "Confirmer", sansCroix: true });
     if (!confirmation) return;
 
     const bouton =
@@ -1247,7 +1257,7 @@ form.dataset.lcdpTransmissionDaEnCours =
       event.stopPropagation();
     }
 
-    const ok = await afficherAlerteDa("Quitter ma DA ?");
+    const ok = await afficherAlerteDa("Quitter ma DA ?", { mode: "confirmation" });
     if (ok) fermerWorkflowDa();
   }
 

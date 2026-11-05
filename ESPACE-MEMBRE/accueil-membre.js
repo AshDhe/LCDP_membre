@@ -278,7 +278,7 @@
   }
 
   async function redirigerVersAbonnementPourRegularisation() {
-    const ok = await afficherAlerte("Votre abonnement est suspendu (non payé). Vous allez être redirigé vers la page d’abonnement.");
+    const ok = await afficherAlerte("Votre abonnement est suspendu (non payé). Vous allez être redirigé vers la page d’abonnement.", { mode: "confirmation" });
     if (!ok) return;
 
     window.location.href = PAGE_ABONNEMENT_MEMBRE;
@@ -409,7 +409,7 @@
       return;
     }
 
-    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
+    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.", { mode: "confirmation" });
     if (!ok) return;
 
     const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
@@ -731,7 +731,8 @@
           label: "Confirmer",
           valeur: "confirmer",
           style: "lcdp-button-primary"
-        }
+        },
+        { label: "Annuler", valeur: "annuler", style: "lcdp-button-secondary" }
       ]
     });
 
@@ -775,50 +776,56 @@
 
   async function afficherAlerte(message, options = {}) {
     const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return;
-
+    if (!slot) return false;
     slot.innerHTML = "";
 
     const fragment = await chargerFragmentObjet("/BOX/02-box-alerte.html");
     slot.appendChild(fragment);
-
     const alerte = slot.querySelector("[data-lcdp-box-alerte]");
     const texte = slot.querySelector("[data-lcdp-alerte-message]");
     const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
     const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
-
     if (!alerte || !texte || !boutonFermer || !boutonOk) {
       throw new Error("Structure de l’alerte incomplète.");
     }
 
+    const confirmation = options.mode === "confirmation";
     texte.textContent = normaliserPonctuationAlerte(message);
-    appliquerVarianteAlerteAccueilMembre(alerte, options.variante);
+    alerte.dataset.lcdpDialogueType = confirmation ? "confirmation" : "information";
+    boutonOk.textContent = confirmation ? "Confirmer" : "Fermer";
+    // Information = une seule action « Fermer », sans croix.
+    boutonFermer.hidden = !confirmation || options.sansCroix === true;
+    const actions = document.createElement("div");
+    actions.className = "lcdp-dialogue-actions";
+    boutonOk.before(actions);
+    actions.appendChild(boutonOk);
+
+    if (confirmation) {
+      const annuler = document.createElement("button");
+      annuler.type = "button";
+      annuler.className = "lcdp-button lcdp-button-secondary";
+      annuler.textContent = "Annuler";
+      actions.prepend(annuler);
+      annuler.dataset.lcdpActionAnnuler = "true";
+    }
 
     return new Promise((resolve) => {
       let resolu = false;
-
       function fermer(valeur) {
         if (resolu) return;
         resolu = true;
         slot.innerHTML = "";
         resolve(valeur);
       }
-
+      actions.querySelector('[data-lcdp-action-annuler="true"]')?.addEventListener("click", () => fermer(false));
       boutonFermer.addEventListener("click", () => fermer(false));
       boutonOk.addEventListener("click", () => fermer(true));
-
       alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) fermer(false);
+        if (event.target === alerte && confirmation && !boutonFermer.hidden) fermer(false);
       });
-
-      document.addEventListener(
-        "keydown",
-        (event) => {
-          if (event.key === "Escape") fermer(false);
-        },
-        { once: true }
-      );
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && confirmation && !boutonFermer.hidden) fermer(false);
+      }, { once: true });
     });
   }
 
