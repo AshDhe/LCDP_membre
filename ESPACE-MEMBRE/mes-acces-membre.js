@@ -31,6 +31,7 @@
     disponibiliteStats: false,
     erreurStats: false,
     cardModele: null,
+    reservationsChargees: false,
     annulationEnCours: false
   };
 
@@ -97,7 +98,16 @@
     return !estRecue(r) && statsActifs(r) > 0;
   }
   function nomDossier(nom) {
-    return String(nom || '').trim().replace(/[ -]/g, '_');
+    // La convention image du planning V5 : sans « Parc de », sans accents, en majuscules.
+    return String(nom || '')
+      .trim()
+      .replace(/^parc\s+d[’']\s*/i, '')
+      .replace(/^parc\s+(?:de|du|des)\s+/i, '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
   }
   function codeDepartement(raw) {
     const s = String(raw || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
@@ -220,7 +230,9 @@
 
   function imageErreur(img) {
     img.hidden = true;
-    // Le nom du parc est toujours affiché, même si le fichier photo est absent.
+    // Une règle CSS de classe peut contredire display:none du seul attribut hidden.
+    img.style.display = 'none';
+    // Le nom, la date et le verso restent visibles quand le parc n'a pas d'image.
     img.alt = '';
   }
 
@@ -236,15 +248,18 @@
     const description = article.querySelector('[data-lcdp-diaporama-description]');
     const verso = article.querySelector('[data-lcdp-diaporama-dos]');
     article.dataset.idflux = String(r.idflux || '');
-    const lieu = 'Parc de ' + nomParc(r);
+    // Le nom est déjà celui enregistré dans public.parcs : ne pas ajouter « Parc de ».
+    const lieu = nomParc(r);
     const dat = formatDate(r);
     const h = formatHeure(r);
     const dept = departement(r);
     const labelType = statutAnnule(r) ? 'Accès annulé' : estRecue(r) ? 'Invitation reçue' : estEnvoyee(r) ? 'Avec invités' : 'Réservation';
 
-    img.src = photoParc(r);
     img.alt = lieu;
     img.addEventListener('error', () => imageErreur(img), {once: true});
+    const photo = photoParc(r);
+    if (photo) img.src = photo;
+    else imageErreur(img);
     nom.replaceChildren(textEl('span', '', lieu), textEl('span', '', ' — ' + dat + (h ? ' à ' + h : '')));
     titre.textContent = lieu;
     recto.setAttribute('aria-label', 'Détails de votre accès au ' + lieu + ', le ' + dat);
@@ -356,32 +371,77 @@
     } finally { etat.annulationEnCours = false; }
   }
 
+  function completerModeleCarte(article) {
+    if (!article) throw new Error('Composant diaporama absent.');
+    const ouvrir = article.querySelector('[data-lcdp-diaporama-retourner]');
+    const verso = article.querySelector('[data-lcdp-diaporama-dos]');
+    const fermer = article.querySelector('[data-lcdp-diaporama-fermer]');
+    if (!ouvrir || !verso || !fermer) {
+      throw new Error('Composant diaporama incomplet : structure recto-verso absente.');
+    }
+
+    // L'ancien composant contient déjà ces champs ; la version compacte expose
+    // seulement les surfaces recto et verso. Compléter sans changer son CSS.
+    if (!ouvrir.querySelector('[data-lcdp-diaporama-image]')) {
+      const img = document.createElement('img');
+      img.className = 'lcdp-box-card-parc-diaporama__image';
+      img.dataset.lcdpDiaporamaImage = '';
+      img.alt = '';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      ouvrir.prepend(img);
+    }
+    if (!ouvrir.querySelector('[data-lcdp-diaporama-nom]')) {
+      const nom = document.createElement('span');
+      nom.className = 'lcdp-box-card-parc-diaporama__nom';
+      nom.dataset.lcdpDiaporamaNom = '';
+      ouvrir.append(nom);
+    }
+
+    // Sur la variante compacte, utiliser le conteneur intérieur prévu au verso.
+    const contenuDos = verso.querySelector('[data-lcdp-diaporama-dos-contenu]') || verso;
+    if (!contenuDos.querySelector('[data-lcdp-diaporama-nom-dos]')) {
+      const titre = document.createElement('h3');
+      titre.className = 'lcdp-box-card-parc-diaporama__nom-dos';
+      titre.dataset.lcdpDiaporamaNomDos = '';
+      contenuDos.prepend(titre);
+    }
+    if (!contenuDos.querySelector('[data-lcdp-diaporama-actions]')) {
+      const actions = document.createElement('div');
+      actions.className = 'lcdp-box-card-parc-diaporama__actions';
+      actions.dataset.lcdpDiaporamaActions = '';
+      contenuDos.append(actions);
+    }
+    if (!contenuDos.querySelector('[data-lcdp-diaporama-description]')) {
+      const description = document.createElement('p');
+      description.className = 'lcdp-box-card-parc-diaporama__description';
+      description.dataset.lcdpDiaporamaDescription = '';
+      contenuDos.append(description);
+    }
+    return article;
+  }
+
   async function chargerModeleCarte() {
     const url = window.LCDP_urlObjet('/BOX/04-box-card-parc-diaporama.html');
     try {
-      const r = await fetch(url, {credentials:'omit', cache:'no-cache'});
-      if (!r.ok) throw new Error('Composant indisponible.');
-      const t = document.createElement('template');
-      t.innerHTML = (await r.text()).trim();
-      const a = t.content.querySelector('[data-lcdp-card-parc-diaporama]');
-      if (!a) throw new Error('Composant diaporama incomplet.');
-      return a;
-    } catch (e) {
-      // Même structure que le composant partagé, sans créer un autre modèle visuel.
-      const t = document.createElement('template');
-      t.innerHTML = `<article class="lcdp-box-card-parc-diaporama" data-lcdp-card-parc-diaporama>
+      const reponse = await fetch(url, {credentials: 'omit', cache: 'no-cache'});
+      if (!reponse.ok) throw new Error('Composant indisponible.');
+      const template = document.createElement('template');
+      template.innerHTML = (await reponse.text()).trim();
+      return completerModeleCarte(template.content.querySelector('[data-lcdp-card-parc-diaporama]'));
+    } catch (erreur) {
+      console.warn('[MES ACCÈS] Modèle de carte de secours :', erreur);
+      const template = document.createElement('template');
+      template.innerHTML = `<article class="lcdp-box-card-parc-diaporama" data-lcdp-card-parc-diaporama>
         <div class="lcdp-box-card-parc-diaporama__scene"><div class="lcdp-box-card-parc-diaporama__faces">
         <div class="lcdp-box-card-parc-diaporama__face lcdp-box-card-parc-diaporama__face--recto">
-        <button type="button" class="lcdp-box-card-parc-diaporama__ouvrir" data-lcdp-diaporama-retourner aria-expanded="false">
-        <img class="lcdp-box-card-parc-diaporama__image" data-lcdp-diaporama-image alt="" loading="lazy">
-        <span class="lcdp-box-card-parc-diaporama__nom" data-lcdp-diaporama-nom></span></button></div>
+          <button type="button" class="lcdp-box-card-parc-diaporama__ouvrir" data-lcdp-diaporama-retourner aria-expanded="false"></button>
+        </div>
         <div class="lcdp-box-card-parc-diaporama__face lcdp-box-card-parc-diaporama__face--verso" data-lcdp-diaporama-dos aria-hidden="true">
-        <button type="button" class="lcdp-box-card-parc-diaporama__fermer" data-lcdp-diaporama-fermer>×</button>
-        <h3 class="lcdp-box-card-parc-diaporama__nom-dos" data-lcdp-diaporama-nom-dos></h3>
-        <div class="lcdp-box-card-parc-diaporama__actions" data-lcdp-diaporama-actions></div>
-        <p class="lcdp-box-card-parc-diaporama__description" data-lcdp-diaporama-description></p>
+          <button type="button" class="lcdp-box-card-parc-diaporama__fermer" data-lcdp-diaporama-fermer aria-label="Revenir à la photo">×</button>
+          <div data-lcdp-diaporama-dos-contenu></div>
         </div></div></div></article>`;
-      return t.content.firstElementChild;
+      return completerModeleCarte(template.content.firstElementChild);
     }
   }
   async function recharger() {
@@ -395,14 +455,18 @@
       const data = await getJson(planningApi + '/mes-reservations');
       if (!Array.isArray(data.reservations)) throw new Error('Liste des accès indisponible.');
       etat.reservations = data.reservations.filter(r => dateValide(r) !== null);
+      etat.reservationsChargees = true;
       synchroniserFiltres();
       afficher();
     } catch (e) {
+      etat.reservationsChargees = false;
       ui.resultat.textContent = '';
+      // Ne pas masquer une erreur réseau en affichant « Aucun accès ».
       msg(e.message || 'Impossible de charger vos accès.', true);
     }
   }
   async function chargerStatutsInvitations() {
+    if (!etat.reservationsChargees) return;
     if (!invitationsApi) {
       etat.disponibiliteStats = false;
       etat.erreurStats = true;
