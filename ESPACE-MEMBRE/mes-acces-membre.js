@@ -120,7 +120,10 @@
     const n = nomDossier(nomParc(r));
     const d = codeDepartement(departement(r));
     if (!n || !d) return '';
-    return window.LCDP_urlObjet('/IMAG/PARC/' + d + '/' + encodeURIComponent(n) + '/card1.webp');
+    const chemin = '/IMAG/PARC/' + d + '/' + encodeURIComponent(n) + '/card1.webp';
+    if (typeof window.LCDP_urlObjet === 'function') return window.LCDP_urlObjet(chemin);
+    const base = String(config.objetBaseUrl || '').replace(/\/+$/, '');
+    return base ? base + chemin : '';
   }
   function textEl(tag, classe, texte) {
     const el = document.createElement(tag);
@@ -371,78 +374,27 @@
     } finally { etat.annulationEnCours = false; }
   }
 
-  function completerModeleCarte(article) {
-    if (!article) throw new Error('Composant diaporama absent.');
-    const ouvrir = article.querySelector('[data-lcdp-diaporama-retourner]');
-    const verso = article.querySelector('[data-lcdp-diaporama-dos]');
-    const fermer = article.querySelector('[data-lcdp-diaporama-fermer]');
-    if (!ouvrir || !verso || !fermer) {
-      throw new Error('Composant diaporama incomplet : structure recto-verso absente.');
-    }
-
-    // L'ancien composant contient déjà ces champs ; la version compacte expose
-    // seulement les surfaces recto et verso. Compléter sans changer son CSS.
-    if (!ouvrir.querySelector('[data-lcdp-diaporama-image]')) {
-      const img = document.createElement('img');
-      img.className = 'lcdp-box-card-parc-diaporama__image';
-      img.dataset.lcdpDiaporamaImage = '';
-      img.alt = '';
-      img.loading = 'lazy';
-      img.decoding = 'async';
-      ouvrir.prepend(img);
-    }
-    if (!ouvrir.querySelector('[data-lcdp-diaporama-nom]')) {
-      const nom = document.createElement('span');
-      nom.className = 'lcdp-box-card-parc-diaporama__nom';
-      nom.dataset.lcdpDiaporamaNom = '';
-      ouvrir.append(nom);
-    }
-
-    // Sur la variante compacte, utiliser le conteneur intérieur prévu au verso.
-    const contenuDos = verso.querySelector('[data-lcdp-diaporama-dos-contenu]') || verso;
-    if (!contenuDos.querySelector('[data-lcdp-diaporama-nom-dos]')) {
-      const titre = document.createElement('h3');
-      titre.className = 'lcdp-box-card-parc-diaporama__nom-dos';
-      titre.dataset.lcdpDiaporamaNomDos = '';
-      contenuDos.prepend(titre);
-    }
-    if (!contenuDos.querySelector('[data-lcdp-diaporama-actions]')) {
-      const actions = document.createElement('div');
-      actions.className = 'lcdp-box-card-parc-diaporama__actions';
-      actions.dataset.lcdpDiaporamaActions = '';
-      contenuDos.append(actions);
-    }
-    if (!contenuDos.querySelector('[data-lcdp-diaporama-description]')) {
-      const description = document.createElement('p');
-      description.className = 'lcdp-box-card-parc-diaporama__description';
-      description.dataset.lcdpDiaporamaDescription = '';
-      contenuDos.append(description);
-    }
-    return article;
-  }
-
-  async function chargerModeleCarte() {
-    const url = window.LCDP_urlObjet('/BOX/04-box-card-parc-diaporama.html');
-    try {
-      const reponse = await fetch(url, {credentials: 'omit', cache: 'no-cache'});
-      if (!reponse.ok) throw new Error('Composant indisponible.');
-      const template = document.createElement('template');
-      template.innerHTML = (await reponse.text()).trim();
-      return completerModeleCarte(template.content.querySelector('[data-lcdp-card-parc-diaporama]'));
-    } catch (erreur) {
-      console.warn('[MES ACCÈS] Modèle de carte de secours :', erreur);
-      const template = document.createElement('template');
-      template.innerHTML = `<article class="lcdp-box-card-parc-diaporama" data-lcdp-card-parc-diaporama>
-        <div class="lcdp-box-card-parc-diaporama__scene"><div class="lcdp-box-card-parc-diaporama__faces">
+  // Structure reprenant BOX/04-box-card-parc-diaporama.html.
+  // Une panne de téléchargement de fragment ne doit jamais empêcher le chargement des réservations.
+  function creerModeleCarte() {
+    const template = document.createElement('template');
+    template.innerHTML = `<article class="lcdp-box-card-parc-diaporama" data-lcdp-card-parc-diaporama>
+      <div class="lcdp-box-card-parc-diaporama__scene"><div class="lcdp-box-card-parc-diaporama__faces">
         <div class="lcdp-box-card-parc-diaporama__face lcdp-box-card-parc-diaporama__face--recto">
-          <button type="button" class="lcdp-box-card-parc-diaporama__ouvrir" data-lcdp-diaporama-retourner aria-expanded="false"></button>
+          <button type="button" class="lcdp-box-card-parc-diaporama__ouvrir" data-lcdp-diaporama-retourner aria-expanded="false" aria-label="Détails de l'accès">
+            <img class="lcdp-box-card-parc-diaporama__image" data-lcdp-diaporama-image alt="" loading="lazy" decoding="async">
+            <span class="lcdp-box-card-parc-diaporama__nom" data-lcdp-diaporama-nom></span>
+          </button>
         </div>
         <div class="lcdp-box-card-parc-diaporama__face lcdp-box-card-parc-diaporama__face--verso" data-lcdp-diaporama-dos aria-hidden="true">
           <button type="button" class="lcdp-box-card-parc-diaporama__fermer" data-lcdp-diaporama-fermer aria-label="Revenir à la photo">×</button>
-          <div data-lcdp-diaporama-dos-contenu></div>
-        </div></div></div></article>`;
-      return completerModeleCarte(template.content.firstElementChild);
-    }
+          <h3 class="lcdp-box-card-parc-diaporama__nom-dos" data-lcdp-diaporama-nom-dos></h3>
+          <div class="lcdp-box-card-parc-diaporama__actions" data-lcdp-diaporama-actions></div>
+          <p class="lcdp-box-card-parc-diaporama__description" data-lcdp-diaporama-description></p>
+        </div>
+      </div></div>
+    </article>`;
+    return template.content.firstElementChild;
   }
   async function recharger() {
     if (!planningApi) {
@@ -450,7 +402,6 @@
       return;
     }
     msg('Chargement de vos accès…');
-    ui.liste.replaceChildren();
     try {
       const data = await getJson(planningApi + '/mes-reservations');
       if (!Array.isArray(data.reservations)) throw new Error('Liste des accès indisponible.');
@@ -461,6 +412,7 @@
     } catch (e) {
       etat.reservationsChargees = false;
       ui.resultat.textContent = '';
+      console.error('[MES ACCÈS] Chargement/rendu des réservations :', e);
       // Ne pas masquer une erreur réseau en affichant « Aucun accès ».
       msg(e.message || 'Impossible de charger vos accès.', true);
     }
@@ -516,11 +468,27 @@
 
   async function initialiser() {
     brancher();
-    etat.cardModele = await chargerModeleCarte();
+    etat.cardModele = creerModeleCarte();
     majOngletsEtFiltres();
     await recharger();
-    // Une erreur de ce second appel n’empêche pas l’affichage des accès.
-    await chargerStatutsInvitations();
+    if (etat.reservationsChargees) {
+      // Les invitations sont facultatives pour le premier affichage du portefeuille.
+      void chargerStatutsInvitations().catch(erreur => {
+        console.error('[MES ACCÈS] Invitations :', erreur);
+        etat.disponibiliteStats = false;
+        etat.erreurStats = true;
+        try { afficher(); } catch (erreurAffichage) { console.error('[MES ACCÈS] Affichage :', erreurAffichage); }
+      });
+    }
   }
-  initialiser().catch(e => { console.error('[MES ACCÈS]', e); msg('Impossible d’initialiser la liste des accès.', true); });
+  function demarrer() {
+    initialiser().catch(erreur => {
+      console.error('[MES ACCÈS] Initialisation :', erreur);
+      // L'erreur exacte est visible sur la page, sans demander au membre d'ouvrir F12.
+      msg('Erreur d’initialisation : ' + (erreur?.message || 'erreur inconnue'), true);
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', demarrer, {once:true});
+  } else demarrer();
 })();
