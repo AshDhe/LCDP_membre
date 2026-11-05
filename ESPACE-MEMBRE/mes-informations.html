@@ -92,6 +92,8 @@
           '">'
         );
       });
+      // Feuille centrale : styles spécifiques DA et RDV, sans retrait des CSS historiques.
+      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css?v=20261105-da-rdv-v1') + '">');
     })();
   </script>
 </head>
@@ -141,5 +143,6 @@
   </script>
 
   <script src="./mes-informations.js"></script>
+  <script src="./rdv-da-membre.js?v=20261105-rdv-da-v1"></script>
 </body>
 </html>

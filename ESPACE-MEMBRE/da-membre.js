@@ -185,7 +185,7 @@
       slot.id = "lcdp-da-membre-overlay-slot";
       document.body.appendChild(slot);
     }
-
+    slot.classList.add("lcdp-da-membre-ui");
     return slot;
   }
 
@@ -211,11 +211,8 @@
     } catch (error) {
       console.error("Fragment alerte DA :", error);
       container.remove();
-      if (typeof options.onAffiche === "function") options.onAffiche();
       alert(message || "");
-      // Sans le dialogue générique, une alerte native ne peut pas confirmer
-      // explicitement la transmission : ne jamais envoyer sur ce repli.
-      return options.boutonOk !== "Confirmer";
+      return true;
     }
 
     container.appendChild(fragment);
@@ -227,15 +224,17 @@
 
     if (!alerte || !texte || !boutonFermer || !boutonOk) {
       container.remove();
-      if (typeof options.onAffiche === "function") options.onAffiche();
       alert(message || "");
-      // Sans le dialogue générique, une alerte native ne peut pas confirmer
-      // explicitement la transmission : ne jamais envoyer sur ce repli.
-      return options.boutonOk !== "Confirmer";
+      return true;
     }
 
     texte.textContent = message || "";
     boutonOk.textContent = options.boutonOk || "OK";
+    if (options.sansCroix === true) {
+      boutonFermer.hidden = true;
+      container.classList.add("lcdp-da-membre-alerte--confirmation");
+    }
+    boutonOk.classList.add("lcdp-confirmation-action");
 
     return new Promise((resolve) => {
       let resolu = false;
@@ -261,21 +260,21 @@
         event.stopPropagation();
         if (event.target === alerte) fermer(false);
       });
-      // Le spinner reste visible pendant le chargement du composant. Il est
-      // retiré une fois la boîte et ses événements effectivement montés.
-      if (typeof options.onAffiche === "function") options.onAffiche();
     });
   }
 
   async function chargerDependancesAlerteDa() {
-    await chargerCssObjetUneFois("/BOX/02-box-alerte.css");
+    await Promise.all([
+      chargerCssObjetUneFois("/BOX/02-box-alerte.css"),
+      chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261105-da-v1")
+    ]);
   }
 
   async function chargerDependancesWorkflowDa() {
     await Promise.all([
       chargerCssObjetUneFois("/BOX/02-box-dialogue-bouton.css"),
       chargerCssObjetUneFois("/BOX/04-box-workflow-abonnement.css"),
-      chargerCssObjetUneFois("/BOX/04-box-questionnaire.css?v=20261104-v1")
+      chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261105-da-v1")
     ]);
   }
 
@@ -284,40 +283,13 @@
       chargerCssObjetUneFois("/BOX/03-box-formulaire.css"),
       chargerCssObjetUneFois("/BOX/03-box-champ-formulaire.css"),
       chargerCssObjetUneFois("/BOX/04-box-dialogue-champ.css"),
+      chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261105-da-v1"),
       chargerScriptObjetUneFois("/BOX/03-box-formulaire.js")
     ]);
 
     if (typeof window.LCDP_creerFormulaire !== "function") {
       throw new Error("Composant formulaire introuvable.");
     }
-  }
-
-  // Attente autonome du module DA, fondée sur le même SVG commun que PLANIFIER.
-  // Utilisée aussi lors du passage de l'introduction vers le formulaire.
-  function afficherAttenteFormulaireDa(message) {
-    const masque = document.createElement("div");
-    masque.className = "lcdp-box-questionnaire-attente";
-    masque.setAttribute("role", "status");
-    masque.setAttribute("aria-label", message || "Chargement en cours");
-    const image = document.createElement("img");
-    image.src = construireUrlObjet("/BOX/pictowait.svg");
-    image.alt = "";
-    image.width = 64;
-    image.height = 64;
-    Object.assign(image.style, { width: "64px", height: "64px", objectFit: "contain" });
-    Object.assign(masque.style, {
-      position: "fixed", inset: "0", display: "flex",
-      alignItems: "center", justifyContent: "center",
-      zIndex: "2147483645", background: "rgba(255,255,255,0.94)",
-      pointerEvents: "auto"
-    });
-    masque.appendChild(image);
-    document.body.appendChild(masque);
-    return () => masque.remove();
-  }
-
-  function signalerInterfaceDaPrete(options) {
-    if (typeof options?.onAffiche === "function") options.onAffiche();
   }
 
   async function chargerContexteDa() {
@@ -375,19 +347,16 @@
 
       if (daactive === true) {
         if (statuda === "oui") {
-          signalerInterfaceDaPrete(options);
           window.location.href = construireUrlMembre(PAGE_ABONNEMENT_MEMBRE);
           return;
         }
 
-        signalerInterfaceDaPrete(options);
         await afficherAlerteDa("Vous avez une DA en cours.");
         return;
       }
 
       if (daactive === false) {
         if (!dateDaAtteinte(datenext)) {
-          signalerInterfaceDaPrete(options);
           await afficherAlerteDa("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(datenext) + ".");
           return;
         }
@@ -397,19 +366,16 @@
       }
 
       if (statuda === "oui") {
-        signalerInterfaceDaPrete(options);
         window.location.href = construireUrlMembre(PAGE_ABONNEMENT_MEMBRE);
         return;
       }
 
       if (statuda === "encours") {
-        signalerInterfaceDaPrete(options);
         await afficherAlerteDa("Vous avez une DA en cours.");
         return;
       }
 
       if (statuda === "non") {
-        signalerInterfaceDaPrete(options);
         await afficherAlerteDa("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(datenext) + ".");
         return;
       }
@@ -417,7 +383,6 @@
       await afficherIntroductionDa(membre, parrain, options);
     } catch (error) {
       console.error("Erreur DA membre :", error);
-      signalerInterfaceDaPrete(options);
       await afficherAlerteDa(error.message || "Erreur technique. Merci de réessayer.");
     }
   }
@@ -467,8 +432,6 @@
       slot.innerHTML = "";
       throw new Error("Structure workflow DA incomplète.");
     }
-    workflow.classList.add("lcdp-box-workflow-abonnement--questionnaire");
-    workflow.setAttribute("aria-label", "Demande d'abonnement");
 
     const boutonFermer = document.createElement("button");
     boutonFermer.type = "button";
@@ -489,92 +452,64 @@
 
   async function afficherIntroductionDa(membre, parrain, options) {
     const { contenu } = await ouvrirWorkflowDa();
-    const bloc = document.createElement("article");
-    bloc.className = "lcdp-box-questionnaire";
+    contenu.innerHTML = "";
 
-    const entete = document.createElement("header");
-    entete.className = "lcdp-box-questionnaire__entete";
+    const bloc = document.createElement("div");
+    bloc.className = "lcdp-stack";
+
     const titre = document.createElement("h2");
-    titre.className = "lcdp-box-questionnaire__titre";
-    titre.id = "lcdp-da-questionnaire-titre";
+    titre.className = "lcdp-title-page-center";
     titre.textContent = "Demande d'abonnement (DA)";
-    entete.appendChild(titre);
-    bloc.appendChild(entete);
+    bloc.appendChild(titre);
 
-    const introduction = document.createElement("div");
-    introduction.className = "lcdp-box-questionnaire__introduction";
-    for (const texte of [
-      "Une DA validée est nécessaire avant votre 1er abonnement.",
-      "Elle permet de vous connaître et comprendre votre motivation à devenir membre abonné.",
-      "Elle s'adresse à chaque membre invité du club qui souhaite devenir membre abonné."
-    ]) {
-      const p = document.createElement("p");
-      p.textContent = texte;
-      introduction.appendChild(p);
-    }
-    bloc.appendChild(introduction);
+    const intro = document.createElement("p");
+    intro.className = "lcdp-text-muted";
+    intro.textContent = "Vous devez faire une DA avant de prendre votre premier abonnement La Clé du Parc. La DA n'emporte aucune obligation d'abonnement, qu'elle soit retenue ou non.";
+    bloc.appendChild(intro);
 
     ajouterBlocInfoDa(
       bloc,
-      "À nous transmettre :",
-      "état civil (nom, prénom), pièce d'identité (nous prenons une copie), n° de téléphone où vous êtes joignable, vos qualités / loisirs / motivation à devenir membre abonné, les valeurs du club, vos coordonnées bancaires en cas de remboursement et votre adresse de facturation."
+      "Qu'est-ce qu'une DA ?",
+      "La DA permet au club de mieux faire votre connaissance et de vous identifier comme candidat membre abonné. Le club s'attache à fournir un service nominatif de qualité et à promouvoir des valeurs de respect, de convivialité et de curiosité. Cela implique un réseau de partenaires."
+    );
+
+    ajouterBlocInfoDa(
+      bloc,
+      "À confirmer ou compléter",
+      "Votre état civil (nom, prénom), votre alias dans l'application (si souhaité), une adrese e-mail personnelle valide, votre n° de téléphone mobile personnel, vos qualités, loisirs et motivation à devenir membre abonné, les valeurs du club, votre parrain actuel dans l'application (si vous en avez un), vos coordonnées bancaires personnelles afin de vous rembourser en cas d'annulation d'abonnement."
     );
     ajouterBlocInfoDa(
       bloc,
-      "Après envoi :",
-      [
-        "votre DA est étudiée par le club. Un rendez-vous visio ou visu peut être organisé.",
-        "Vous êtes informé(e) par e-mail de la suite donnée à votre DA (retenue ou non retenue).",
-        "Vous pouvez refaire une DA passé trois mois si la précédente n'a pas été retenue."
-      ]
+      "Après envoi",
+      "Votre DA est prise en compte par le club. Un échange visio ou visu peut être organisé. Vous êtes informé(e) de la suite donnée par le club à votre DA (retenue ou non retenue). Une copie numérique de votre pièce d'identité sera demandée par e-mail pour finaliser votre DA retenue. Vous pouvez faire une nouvelle DA après trois mois si la précédente n'a pas été retenue."
     );
-    ajouterBlocInfoDa(
-      bloc,
-      "Félicitations !",
-      "votre DA est retenue. Vous pouvez devenir membre abonné et inviter les membres invités du club. Votre premier bracelet de présence La Clé du Parc d'une valeur de 25€ TTC vous est offert à la souscription de votre premier abonnement et sous 5 à 8 jours de délai de livraison. Ce bracelet est nécessaire pour faire votre checkin-checkout d'accès dans les parcs.",
-      true
-    );
+
 
     const actions = document.createElement("div");
-    actions.className = "lcdp-box-questionnaire__actions lcdp-box-formulaire__actions lcdp-workflow-abonnement__actions-full";
+    actions.className = "lcdp-box-formulaire__actions lcdp-workflow-abonnement__actions-full";
+
     const bouton = document.createElement("button");
     bouton.type = "button";
     bouton.className = "lcdp-button lcdp-button-primary";
     bouton.textContent = "Faire ma DA";
-    bouton.addEventListener("click", () => {
-      if (bouton.disabled) return;
-      bouton.disabled = true;
-      afficherFormulaireDa(membre, parrain, options).catch(async erreur => {
-        console.error("Préparation du formulaire DA :", erreur);
-        if (bouton.isConnected) bouton.disabled = false;
-        await afficherAlerteDa(erreur?.message || "Impossible d'ouvrir le formulaire de DA.");
-      });
-    });
+    bouton.addEventListener("click", () => afficherFormulaireDa(membre, parrain, options).catch(console.error));
+
     actions.appendChild(bouton);
     bloc.appendChild(actions);
-
-    contenu.replaceChildren(bloc);
-    // Le callback doit être appelé après le montage de la lightbox : il
-    // retire l'attente du tunnel PLANIFIER dès que l'interface est prête.
-    signalerInterfaceDaPrete(options);
+    contenu.appendChild(bloc);
   }
 
-  function ajouterBlocInfoDa(parent, titre, textes, valorise = false) {
+  function ajouterBlocInfoDa(parent, titre, texte) {
     const section = document.createElement("section");
-    section.className = "lcdp-box-questionnaire__section";
-    if (valorise) section.classList.add("lcdp-box-questionnaire__section--valorisee");
 
     const h3 = document.createElement("h3");
-    h3.className = "lcdp-box-questionnaire__section-titre";
     h3.textContent = titre;
     section.appendChild(h3);
 
-    for (const texte of (Array.isArray(textes) ? textes : [textes])) {
-      const p = document.createElement("p");
-      p.className = "lcdp-box-questionnaire__texte";
-      p.textContent = texte;
-      section.appendChild(p);
-    }
+    const p = document.createElement("p");
+    p.textContent = texte;
+    section.appendChild(p);
+
     parent.appendChild(section);
   }
 
@@ -589,53 +524,36 @@
   }
 
   async function afficherFormulaireDa(membre, parrain, options) {
-    const terminerAttente = afficherAttenteFormulaireDa("Préparation du formulaire de DA");
-    let contenu = null;
-    let contenuPrecedent = null;
-    let workflow = null;
-    try {
-      await chargerDependancesFormulaireDa();
+    await chargerDependancesFormulaireDa();
 
-      const slot = obtenirLightboxSlotDa();
-      contenu = slot.querySelector("[data-lcdp-workflow-abonnement-content]");
-      workflow = slot.querySelector("[data-lcdp-box-workflow-abonnement]");
-      if (!contenu || !workflow) {
-        throw new Error("Zone formulaire DA introuvable.");
-      }
-      // Les composants existants du formulaire sont réutilisés tels quels.
-      // Seule la coque est une présentation générique type questionnaire.
-      contenuPrecedent = Array.from(contenu.childNodes);
-      const coque = document.createElement("section");
-      coque.className = "lcdp-box-questionnaire lcdp-box-questionnaire--formulaire";
-      coque.setAttribute("aria-label", "Formulaire de demande d'abonnement");
-      const formSlot = document.createElement("div");
-      formSlot.id = "lcdp-formulaire-da-slot";
-      coque.appendChild(formSlot);
-      contenu.replaceChildren(coque);
-      workflow.classList.add("lcdp-box-workflow-abonnement--questionnaire-formulaire");
+    const slot = obtenirLightboxSlotDa();
+    const contenu = slot.querySelector("[data-lcdp-workflow-abonnement-content]");
 
-      const form = await window.LCDP_creerFormulaire(formSlot, construireConfigurationDa());
-      if (!form) throw new Error("Formulaire DA introuvable.");
-
-      initialiserValeursFormulaireDa(form, membre, parrain);
-      organiserFormulaireDa(form);
-      const boutonSubmit = form.querySelector("button[type='submit']");
-      if (boutonSubmit) boutonSubmit.textContent = "Transmettre";
-
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        await transmettreDaDepuisFormulaire(form, options);
-      });
-    } catch (error) {
-      // Restaurer l'introduction en cas d'échec de construction du formulaire.
-      if (contenu?.isConnected && contenuPrecedent) {
-        contenu.replaceChildren(...contenuPrecedent);
-        workflow?.classList.remove("lcdp-box-workflow-abonnement--questionnaire-formulaire");
-      }
-      throw error;
-    } finally {
-      terminerAttente();
+    if (!contenu) {
+      throw new Error("Zone formulaire DA introuvable.");
     }
+
+    contenu.innerHTML = "";
+    const formSlot = document.createElement("div");
+    formSlot.id = "lcdp-formulaire-da-slot";
+    contenu.appendChild(formSlot);
+
+    const form = await window.LCDP_creerFormulaire(formSlot, construireConfigurationDa());
+
+    if (!form) {
+      throw new Error("Formulaire DA introuvable.");
+    }
+
+    initialiserValeursFormulaireDa(form, membre, parrain);
+    organiserFormulaireDa(form);
+
+    const boutonSubmit = form.querySelector("button[type='submit']");
+    if (boutonSubmit) boutonSubmit.textContent = "Transmettre";
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await transmettreDaDepuisFormulaire(form, options);
+    });
   }
 
   function construireConfigurationDa() {
@@ -714,17 +632,10 @@
       masquerLibelleChampDa(form, "emailmembre");
     }
 
-    const sectionTelephone = creerSectionFormulaireDa(form, "Téléphone *", "tel");
+    const sectionTelephone = creerSectionFormulaireDa(form, "", "tel");
 
     if (sectionTelephone) {
       deplacerChampDansSectionDa(form, sectionTelephone, "tel");
-    }
-
-    const sectionMotivations = creerSectionFormulaireDa(form, "Qualités, loisirs et motivations *", "autoquali");
-    if (sectionMotivations) {
-      for (const champ of ["autoquali", "autoloisir", "autonouschoisir", "checkboxvaleurs", "targetfamill", "emailparrain"]) {
-        deplacerChampDansSectionDa(form, sectionMotivations, champ);
-      }
     }
 
     const sectionRemboursement = creerSectionFormulaireDa(form, "Coordonnées bancaires de remboursement *", "iban");
@@ -749,7 +660,44 @@
       masquerLibelleChampDa(form, "adresse3");
     }
 
+    configurerAdresseFacturationDa(form);
     obtenirChampEtatCivilMajDa(form);
+  }
+
+  function configurerAdresseFacturationDa(form) {
+    // Champs actuels et contrat API conservés : aucune écriture anticipée en base.
+    const configuration = [
+      ["adresse1", "address-line1", "Numéro et voie"],
+      ["adresse2", "address-line2", "Code postal et ville"],
+      ["adresse3", "address-line3", "Complément d’adresse (facultatif)"]
+    ];
+    const champs = configuration.map(([name, autocomplete, placeholder], index) => {
+      const input = form.querySelector(`[name="${name}"]`);
+      if (!input) return null;
+      input.autocomplete = autocomplete;
+      input.placeholder = placeholder;
+      input.enterKeyHint = index < 2 ? "next" : "done";
+      return input;
+    });
+    // Entrée passe au champ suivant sans déclencher la transmission du formulaire.
+    for (let index = 0; index < champs.length - 1; index++) {
+      const champ = champs[index];
+      const suivant = champs[index + 1];
+      if (!champ || !suivant) continue;
+      champ.addEventListener("keydown", event => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        suivant.focus();
+      });
+      // Un autoremplissage éventuel ne doit jamais écraser le champ suivant.
+      champ.addEventListener("change", () => {
+        window.requestAnimationFrame(() => {
+          if (champ.isConnected && document.activeElement === champ && champ.value.trim() && !suivant.value.trim()) {
+            suivant.focus();
+          }
+        });
+      });
+    }
   }
 
   function creerSectionFormulaireDa(form, titre, nameReference) {
@@ -758,11 +706,11 @@
     if (!reference || !reference.parentNode) return null;
 
     const section = document.createElement("section");
-    section.className = "lcdp-da-formulaire-section lcdp-box-questionnaire__section";
+    section.className = "lcdp-da-formulaire-section";
 
     if (titre) {
       const h3 = document.createElement("h3");
-      h3.className = "lcdp-da-formulaire-section__titre lcdp-box-questionnaire__section-titre";
+      h3.className = "lcdp-da-formulaire-section__titre";
       h3.textContent = titre;
       section.appendChild(h3);
     }
@@ -1054,6 +1002,24 @@
     }
   }
 
+  function afficherAttenteTransmissionDa() {
+    const attente = document.createElement("div");
+    attente.className = "lcdp-da-transmission-attente";
+    attente.setAttribute("role", "status");
+    attente.setAttribute("aria-label", "Transmission de votre DA en cours");
+    const roue = document.createElement("span");
+    roue.className = "lcdp-da-transmission-spinner";
+    roue.setAttribute("aria-hidden", "true");
+    for (let i = 0; i < 12; i++) {
+      const rayon = document.createElement("span");
+      rayon.style.setProperty("--lcdp-rayon", String(i));
+      roue.appendChild(rayon);
+    }
+    attente.appendChild(roue);
+    document.body.appendChild(attente);
+    return () => attente.remove();
+  }
+
   async function transmettreDaDepuisFormulaire(form, options) {
     if (
       form.dataset.lcdpTransmissionDaEnCours ===
@@ -1070,24 +1036,13 @@
       return;
     }
 
-    // Première attente : l'ouverture du dialogue de confirmation peut
-    // nécessiter le chargement du fragment et des CSS de l'alerte.
-    const terminerAttenteConfirmation = afficherAttenteFormulaireDa("Préparation de la confirmation de votre DA…");
-    let confirmation;
-    try {
-      confirmation = await afficherAlerteDa("Votre DA est terminée ?", {
-        boutonOk: "Confirmer",
-        onAffiche: terminerAttenteConfirmation
-      });
-    } finally {
-      terminerAttenteConfirmation();
-    }
+    const confirmation = await afficherAlerteDa("Votre DA est terminée ?", { boutonOk: "Confirmer", sansCroix: true });
     if (!confirmation) return;
 
     const bouton =
       form.querySelector("button[type='submit']");
 
-    form.dataset.lcdpTransmissionDaEnCours =
+form.dataset.lcdpTransmissionDaEnCours =
       "true";
 
     if (bouton) {
@@ -1095,11 +1050,8 @@
       bouton.textContent = "Transmission...";
     }
 
-    // Dès la validation de « Votre DA est terminée ? », couvrir la requête
-    // /transmettre par le pictogramme d'attente commun. La confirmation
-    // finale ou l'alerte d'erreur ne doivent jamais être recouvertes.
-    const terminerAttenteTransmission = afficherAttenteFormulaireDa("Transmission de votre DA en cours…");
     let transmissionReussie = false;
+    const retirerAttenteDa = afficherAttenteTransmissionDa();
 
     try {
       const reponse = await fetchAvecDelai(ENDPOINT_DA_MEMBRE + "/transmettre", {
@@ -1127,11 +1079,12 @@
       });
 
       transmissionReussie = true;
-      terminerAttenteTransmission();
+      retirerAttenteDa();
 
       const confirmationLue =
         await afficherAlerteDa(
-          "Votre DA est envoyée. Merci. Nous espérons vous compter prochainement parmi nos membres abonnés !"
+          "Votre DA est envoyée. Un e-mail vous a été envoyé pour nous transmettre votre pièce d'identité.",
+          { boutonOk: "Fermer", sansCroix: true }
         );
 
       fermerWorkflowDa();
@@ -1150,7 +1103,7 @@
         });
       }
     } catch (error) {
-      terminerAttenteTransmission();
+      retirerAttenteDa();
       console.error("Transmission DA :", error);
 
       /*
@@ -1170,7 +1123,7 @@
 
       await afficherAlerteDa(message);
     } finally {
-      terminerAttenteTransmission();
+      retirerAttenteDa();
       delete form.dataset.lcdpTransmissionDaEnCours;
 
       if (

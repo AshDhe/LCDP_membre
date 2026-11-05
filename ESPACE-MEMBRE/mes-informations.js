@@ -393,9 +393,7 @@
       zoneActions.hidden = true;
     }
 
-    injecterStylesMesInformations();
     ajouterTitresSectionsCompte();
-    masquerLabelsCompte();
 
     champsCompte.forEach((champ) => {
       const input = document.getElementById(champ.id);
@@ -426,6 +424,7 @@
     ajouterActionsAdresseFacturation();
     initialiserActionsModification();
     initialiserZoneSelfie();
+    structurerSectionsCompte(form);
     document.getElementById("modifier-wifi-bracelet")?.addEventListener("click",ouvrirWifiBracelet);
   }
 
@@ -487,9 +486,7 @@
     bloc.insertAdjacentElement("afterend", zone);
     document.getElementById("modifier-selfie").addEventListener("click", ouvrirSelfie);
     document.getElementById("selfie-badge").addEventListener("click", agrandirSelfie);
-    const style = document.createElement("style");
-    style.textContent = `#zone-selfie .lcdp-selfie-control{position:relative;box-sizing:border-box;min-height:46px;width:100%;padding:10px 58px 10px 14px;border:1px solid #bdc5d0;border-radius:16px;background:#f0f2f4;box-shadow:inset 0 1px 2px rgba(0,0,0,.04)}#zone-selfie .lcdp-selfie-contenu{display:flex;align-items:center;gap:12px;min-width:0}#zone-selfie .lcdp-selfie-texte{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;min-width:0;overflow-wrap:anywhere}#zone-selfie #selfie-badge{display:block;width:48px;height:48px;border:0;padding:0;background:transparent;border-radius:50%;overflow:hidden;flex-shrink:0;cursor:zoom-in}#zone-selfie #selfie-badge:focus-visible{outline:3px solid #557347;outline-offset:3px}#zone-selfie #selfie-photo{display:block;width:100%;height:100%;object-fit:cover}#zone-selfie #selfie-badge[hidden],#zone-selfie #selfie-photo[hidden]{display:none!important}#zone-selfie #selfie-etat{font-size:.9rem}#zone-selfie #selfie-etat:empty{display:none}#dialogue-selfie{width:min(92vw,440px);max-height:90vh;overflow:auto;border:0;border-radius:12px;padding:1.25rem}#dialogue-selfie::backdrop{background:rgba(0,0,0,.65)}#dialogue-selfie video{width:100%;max-height:50vh;object-fit:contain;transform:scaleX(-1)}#dialogue-selfie .lcdp-selfie-actions{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}#dialogue-selfie-agrandi{box-sizing:border-box;position:relative;width:min(92vw,720px);max-width:92vw;max-height:92vh;overflow:auto;padding:45px 12px 12px;border:0;border-radius:14px;background:#fff}#dialogue-selfie-agrandi::backdrop{background:rgba(0,0,0,.82)}#dialogue-selfie-agrandi img{display:block;max-width:100%;max-height:calc(92vh - 70px);width:auto;height:auto;object-fit:contain;margin:auto;border-radius:8px}#dialogue-selfie-agrandi button{position:absolute;top:8px;right:8px;width:34px;height:34px;border:0;border-radius:50%;background:#f0f2f4;color:#202820;font-size:24px;line-height:1;cursor:pointer}`;
-    document.head.appendChild(style);
+
   }
   async function chargerSelfie() {
     const statut = document.getElementById("selfie-etat");
@@ -582,94 +579,6 @@
     }catch(e){if(actif)message.textContent=e.name==="NotAllowedError"?"Autorisez l’accès à la caméra pour prendre votre selfie.":e.name==="NotFoundError"?"Aucune caméra disponible sur cet appareil.":e.message || "Caméra indisponible.";}
   }
 
-  function injecterStylesMesInformations() {
-    if (document.querySelector('style[data-lcdp-mes-informations-styles="true"]')) return;
-
-    const style = document.createElement("style");
-    style.dataset.lcdpMesInformationsStyles = "true";
-    style.textContent = `
-      #form-mes-informations-membre .lcdp-title-section {
-        margin: 1.15rem 0 0.55rem;
-      }
-
-      #form-mes-informations-membre [data-lcdp-box-champ-formulaire] + .lcdp-box-formulaire__actions,
-      #form-mes-informations-membre .lcdp-box-formulaire__actions {
-        margin-top: 0.55rem;
-        margin-bottom: 0.55rem;
-        padding-top: 0;
-      }
-
-      #form-mes-informations-membre .lcdp-box-formulaire__actions + [data-lcdp-box-champ-formulaire],
-      #form-mes-informations-membre .lcdp-box-formulaire__actions + .lcdp-title-section {
-        margin-top: 0.55rem;
-      }
-
-      #form-mes-informations-membre .lcdp-compte-actions-adresse {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: var(--lcdp-space-2);
-      }
-
-      #form-mes-informations-membre .lcdp-compte-actions-adresse .lcdp-button {
-        margin-top: 0;
-      }
-
-      #form-mes-informations-membre .lcdp-compte-actions-adresse .lcdp-button-orange {
-        background: var(--lcdp-color-orange);
-        border-color: var(--lcdp-color-orange);
-        color: var(--lcdp-color-text);
-      }
-
-      #form-mes-informations-membre .lcdp-compte-actions-adresse .lcdp-button-orange:hover {
-        background: var(--lcdp-color-orange-hover);
-        border-color: var(--lcdp-color-orange-hover);
-        color: var(--lcdp-color-text);
-      }
-
-      #form-mes-informations-membre .lcdp-box-champ-formulaire__action-edit--rouge,
-      #form-mes-informations-membre .lcdp-box-champ-formulaire__action-edit--rouge:hover,
-      #form-mes-informations-membre .lcdp-box-champ-formulaire__action-edit--rouge:focus-visible {
-        color: #b3261e;
-      }
-
-      #form-mes-informations-membre .lcdp-box-champ-formulaire__action-edit--rouge .lcdp-box-champ-formulaire__action-edit-icon,
-      #form-mes-informations-membre .lcdp-box-champ-formulaire__action-edit--rouge .lcdp-box-champ-formulaire__action-edit-icon path {
-        fill: currentColor;
-        stroke: currentColor;
-      }
-
-      @media (max-width: 767px) {
-        #mention-statut-membre {
-          margin-top: 0.35rem;
-          margin-bottom: 0.45rem;
-        }
-
-        #lcdp-mes-informations-slot {
-          margin-top: 0.25rem;
-        }
-
-        #form-mes-informations-membre {
-          margin-top: 0;
-        }
-
-        #form-mes-informations-membre .lcdp-title-section {
-          font-size: 1.25rem;
-          line-height: 1.2;
-          margin: 1rem 0 0.55rem;
-        }
-
-        #form-mes-informations-membre [data-lcdp-box-champ-formulaire] + .lcdp-box-formulaire__actions,
-        #form-mes-informations-membre .lcdp-box-formulaire__actions {
-          margin-top: 0.5rem;
-          margin-bottom: 0.5rem;
-        }
-      }
-    `;
-
-    document.head.appendChild(style);
-  }
-
   function ajouterTitresSectionsCompte() {
     const sectionsAjoutees = new Set();
 
@@ -690,34 +599,40 @@
     });
   }
 
-  function masquerLabelsCompte() {
-    champsCompte.forEach((champ) => {
-      masquerLabelChampCompte(champ.id, champ.label || champ.name || "Information");
+  // Presentation only: every real field, link and editing control is preserved.
+  // Grouping gives each section a stable CSS hook without hardcoded data.
+  function structurerSectionsCompte(form) {
+    const fields = form.querySelector("[data-lcdp-formulaire-fields]");
+    if (!fields || fields.classList.contains("lcdp-mon-compte-sections")) return;
+
+    const noms = [
+      "etat-civil", "securite", "participation", "reglements",
+      "remboursement", "facturation"
+    ];
+    let indexSection = -1;
+    let section = null;
+    const elements = Array.from(fields.children);
+    const fragment = document.createDocumentFragment();
+
+    elements.forEach(element => {
+      if (element.matches(".lcdp-title-section")) {
+        indexSection += 1;
+        section = document.createElement("section");
+        section.className = "lcdp-mon-compte-section";
+        section.dataset.lcdpCompteSection = noms[indexSection] || "autre";
+        element.id = "lcdp-mon-compte-titre-" + (noms[indexSection] || indexSection);
+        section.setAttribute("aria-labelledby", element.id);
+        section.appendChild(element);
+        fragment.appendChild(section);
+      } else if (section) {
+        section.appendChild(element);
+      } else {
+        fragment.appendChild(element);
+      }
     });
-  }
 
-  function masquerLabelChampCompte(champId, ariaLabel) {
-    const input = document.getElementById(champId);
-    const champ = input ? input.closest("[data-lcdp-box-champ-formulaire]") : null;
-
-    if (!input || !champ) return;
-
-    const label = champ.querySelector(`label[for="${champId}"]`);
-
-    if (label) {
-      label.textContent = "";
-      label.hidden = true;
-      label.setAttribute("aria-hidden", "true");
-    }
-
-    const zoneLabel = champ.querySelector("[data-lcdp-champ-label-zone]");
-
-    if (zoneLabel) {
-      zoneLabel.hidden = true;
-      zoneLabel.setAttribute("aria-hidden", "true");
-    }
-
-    input.setAttribute("aria-label", ariaLabel || "Information");
+    fields.replaceChildren(fragment);
+    fields.classList.add("lcdp-mon-compte-sections");
   }
 
   function marquerChampLectureSeuleInfo(champId) {
@@ -816,7 +731,6 @@
       bouton.hidden = true;
       bouton.disabled = true;
       bouton.tabIndex = -1;
-      bouton.style.display = "none";
       bouton.setAttribute("aria-hidden", "true");
     }
 
@@ -947,8 +861,7 @@
     const statut = String(compte?.statut || "")
       .trim()
       .toLowerCase()
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "");
+      .normalize("NFD").replace(/[̀-ͯ]/g, "");
 
     return statut === "abonne";
   }
@@ -1469,7 +1382,6 @@
         bouton.disabled = false;
         bouton.removeAttribute("aria-hidden");
         bouton.removeAttribute("tabindex");
-        bouton.style.removeProperty("display");
         return;
       }
 
@@ -1897,9 +1809,7 @@
     if (code.slice(0,2)===code.slice(2,4)) return "La même paire de chiffres ne peut pas être répétée.";
     if ([0,1,2].some(i=>Math.abs(Number(code[i])-Number(code[i+1]))===1)) return "Deux chiffres côte à côte ne doivent pas se suivre.";
     return "";
-  }
-
-  async function ouvrirDialogueAliasMembre() {
+  }async function ouvrirDialogueAliasMembre() {
     const resultat = await ouvrirDialogueChamp({
       titre: "Modifier l'alias",
       champs: [
@@ -2309,7 +2219,6 @@
       valeur.type="hidden"; valeur.name=configurationChamp.name; valeur.id=configurationChamp.id;
       const groupe=document.createElement("div");
       groupe.className="lcdp-box-champ-formulaire__code-cases";
-      groupe.style.cssText="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--lcdp-space-2,8px);max-width:340px";
       const elements=[];
       for(let i=0;i<4;i++) {
         const champ=document.createElement("input");
@@ -2320,7 +2229,6 @@
         champ.autocapitalize=estCoda?"off":"characters";
         champ.spellcheck=false;
         champ.setAttribute("aria-label",(estCoda?"Chiffre ":"Mot ")+(i+1)+" sur 4");
-        champ.style.cssText="min-width:0;text-align:center;font-size:1.15rem;padding-inline:3px";
         champ.addEventListener("input",()=>{
           champ.value=estCoda?champ.value.replace(/[^0-9]/g,"").slice(0,1):champ.value.toUpperCase().replace(/[^A-Z]/g,"").slice(0,4);
           valeur.value=elements.map(c=>c.value).join(estCoda?"":"-");
