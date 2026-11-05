@@ -830,8 +830,8 @@
 
   async function ouvrirDialogueChangerCompteBurger() {
     const confirmation = await ouvrirDialogueBoutonsBurger({
-      titre: "Espace connecté",
-      texte: "Choisissez votre espace",
+      titre: "Espace personnel",
+      texte: "Choisissez votre compte",
       boutons: Object.entries(comptesPublicsBurgerMembre).map(([compte, configuration]) => ({
         label: configuration.label,
         valeur: compte,
@@ -1152,7 +1152,7 @@
         href: "/ESPACE-PUBLIC/FAQ-public.html"
       },
       {
-        label: "Changer d'espace connecté",
+        label: "Changer d'espace personnel",
         action: "changer-compte"
       },
       {
