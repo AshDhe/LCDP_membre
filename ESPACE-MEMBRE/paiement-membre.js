@@ -329,7 +329,7 @@
           resolve();
         };
         const touche = event => {
-          if (event.key === 'Escape') { event.preventDefault(); terminer(); return; }
+          if (event.key === 'Escape') { event.preventDefault(); return; }
           if (event.key !== 'Tab') return;
           const focusables = [...workflow.querySelectorAll('a[href],button:not(:disabled),input:not(:disabled)')];
           if (!focusables.length) { event.preventDefault(); workflow.focus(); return; }
@@ -340,7 +340,7 @@
         boutonRetour?.addEventListener('click', terminer);
         boutonPrecedent?.addEventListener('click', terminer);
         workflow.addEventListener('keydown', touche);
-        workflow.addEventListener('click', event => { if (event.target === workflow) terminer(); });
+        // Le clic hors du récapitulatif ne ferme jamais le tunnel.
         // Commencer en haut du bon, sans déplacer l’affichage sur le dernier bouton.
         workflow.querySelector('.lcdp-box-workflow-abonnement__card')?.scrollTo(0, 0);
         workflow.focus({ preventScroll: true });

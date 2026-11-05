@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-lcdp-css="c085 c034 c037 c038 c033 c036 c035 c041 c040 c066 c047">
 <head>
   <meta charset="utf-8">
 
@@ -72,17 +72,11 @@
         return buildUrl(objetBase, path);
       };
 
+      // Coque commune : wrapper, bandeau, burger, footer et composants métier.
+      // Les réglages de cette page restent dans lcdp-mon-compte.css.
       const feuillesCssObjet = [
-        "/CSSBASE/cssbase.css",
-        "/BOX/02-box-bandeau-nav.css",
-        "/BOX/02-box-menu-burger.css",
-        "/BOX/02-box-alerte.css",
-        "/BOX/02-box-dialogue-bouton.css",
-        "/BOX/04-box-card-abonnement.css",
-        "/BOX/02-box-footer.css",
-        "/BOX/03-box-formulaire.css",
-        "/BOX/03-box-champ-formulaire.css",
-        "/BOX/04-box-dialogue-champ.css"
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261105-central-031018",
+        "/CSSBASE/lcdp-mon-compte.css?v=20261105-moncompte-articulation-v3"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -92,14 +86,12 @@
           '">'
         );
       });
-      // Feuille centrale : styles spécifiques DA et RDV, sans retrait des CSS historiques.
-      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css?v=20261105-da-rdv-v1') + '">');
     })();
   </script>
 </head>
 
-<body>
-  <div class="lcdp-site-page">
+<body class="lcdp-page-mon-compte lcdp-app-page">
+  <div class="lcdp-site-page lcdp-app-wrapper">
 
     <div id="lcdp-bandeau-slot"></div>
 
@@ -142,7 +134,6 @@
     })();
   </script>
 
-  <script src="./mes-informations.js"></script>
-  <script src="./rdv-da-membre.js?v=20261105-rdv-da-v1"></script>
+  <script src="./mes-informations.js?v=20261105-moncompte-source-v1"></script>
 </body>
 </html>

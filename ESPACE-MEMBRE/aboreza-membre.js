@@ -13,6 +13,7 @@
   let bandeau = null;
   let attenteFormules = null;
   let conteneurAboreza = null;
+  const SORTIE_FORMULAIRE_ABOREZA = Symbol('sortie-formulaire-aboreza');
 
   // Coque persistante commune à toutes les étapes d'ABO-RÉZA.
   // Elle reprend la structure du composant générique 04-box-workflow-abonnement.
@@ -179,8 +180,35 @@
     masquerAttenteFormules();
     return { workflow, objet };
   }
+  // La croix n'est jamais une fermeture immédiate : la confirmation est
+  // superposée DANS le conteneur et n'efface pas les valeurs du formulaire.
+  function presenterConfirmationQuitter(carte, confirmer, annuler) {
+    const calque = elem('div', 'lcdp-aboreza-confirmation-sortie');
+    const dialogue = composants.dialogue.cloneNode(true);
+    dialogue.removeAttribute('role');
+    dialogue.removeAttribute('aria-modal');
+    dialogue.classList.add('lcdp-workflow-abonnement-box', 'lcdp-aboreza-dialogue-confirmation');
+    const titre = dialogue.querySelector('[data-lcdp-dialogue-title]');
+    const texte = dialogue.querySelector('[data-lcdp-dialogue-text]');
+    const actions = dialogue.querySelector('[data-lcdp-dialogue-actions]');
+    const croix = dialogue.querySelector('[data-lcdp-dialogue-close]');
+    if (![titre, texte, actions, croix].every(Boolean)) throw new Error('Confirmation de sortie incomplète.');
+    titre.textContent = 'Quitter le formulaire d’abonnement ?';
+    texte.hidden = true;
+    actions.replaceChildren();
+    const quitter = bouton('Quitter', true);
+    quitter.addEventListener('click', confirmer);
+    actions.append(quitter);
+    croix.setAttribute('aria-label', 'Revenir au formulaire');
+    croix.addEventListener('click', annuler);
+    calque.append(dialogue);
+    carte.append(calque);
+    quitter.focus({ preventScroll: true });
+    return calque;
+  }
+
   function modalComposant(type, titre, installer) {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       const modele = type === 'calendrier' ? composants.calendrier : composants.dialogue;
       const { workflow, objet } = monterWorkflow(modele, type === 'calendrier' ? 'calendrier-an' : 'confirmation', titre);
       const titreElement = objet.querySelector(type === 'calendrier' ? '[data-lcdp-calendrier-an-title]' : '[data-lcdp-dialogue-title]');
@@ -189,25 +217,155 @@
       titreElement.textContent = titre;
       if (type === 'dialogue') objet.classList.add('lcdp-workflow-abonnement-box--confirmation');
       let clos = false;
-      const finir = valeur => {
-        if (clos) return;
-        clos = true;
+      let confirmationSortie = null;
+      const nettoyer = () => {
         workflow.removeEventListener('keydown', esc);
-        workflow.removeEventListener('click', clicFond);
-        // Le contenu reste en place, masqué par le spinner pendant l'étape
-        // réseau suivante : pas de disparition/réapparition de la boîte.
+        confirmationSortie?.remove();
+        objet.inert = false;
+        confirmationSortie = null;
+      };
+      const finir = valeur => {
+        if (clos || confirmationSortie) return;
+        clos = true;
+        nettoyer();
         afficherAttenteFormules('Préparation de l’étape suivante…');
         resolve(valeur);
       };
-      const esc = evenement => { if (evenement.key === 'Escape') { evenement.preventDefault(); finir(null); } };
-      const clicFond = evenement => { if (evenement.target === workflow) finir(null); };
-      fermeture.addEventListener('click', () => finir(null));
-      workflow.addEventListener('click', clicFond);
+      const sortir = () => {
+        if (clos) return;
+        clos = true;
+        nettoyer();
+        reject(SORTIE_FORMULAIRE_ABOREZA);
+      };
+      const annulerSortie = () => {
+        confirmationSortie?.remove();
+        confirmationSortie = null;
+        objet.inert = false;
+        fermeture.focus({ preventScroll: true });
+      };
+      const demanderSortie = () => {
+        if (clos || confirmationSortie) return;
+        objet.inert = true;
+        try {
+          confirmationSortie = presenterConfirmationQuitter(
+            obtenirConteneurAboreza().carte, sortir, annulerSortie
+          );
+        } catch (erreur) { objet.inert = false; throw erreur; }
+      };
+      const esc = evenement => {
+        if (evenement.key !== 'Escape') return;
+        evenement.preventDefault();
+        // Le menu déroulant se ferme d'abord, sans proposer de sortir du tunnel.
+        const dropdown = objet.querySelector('.lcdp-aboreza-dropdown[open]');
+        if (dropdown && !confirmationSortie) {
+          dropdown.open = false;
+          dropdown.querySelector('summary')?.focus({ preventScroll: true });
+          return;
+        }
+        if (confirmationSortie) annulerSortie();
+        else demanderSortie();
+      };
+      fermeture.addEventListener('click', demanderSortie);
+      // IMPORTANT : ne PAS fermer au clic sur le fond (ni sur le contenu).
       workflow.addEventListener('keydown', esc);
       installer(objet, finir);
       fermeture.focus({ preventScroll: true });
     });
   }
+  function afficherEtapeUne(objet) {
+    const titre = objet.querySelector('[data-lcdp-dialogue-title]');
+    if (!titre) return;
+    const etape = elem('span', 'lcdp-aboreza-etape', 'Etape 1');
+    titre.prepend(etape);
+    objet.classList.add('lcdp-aboreza-premiere-etape');
+  }
+
+  // Menu accessible sans l'aspect bleu imposé par la liste native du navigateur.
+  // Les formules proviennent toujours exclusivement du catalogue du Worker.
+  function creerChoixFormuleAboreza(offres, changement) {
+    const disponibles = offres.filter(offre => offre.disponible !== false);
+    const racine = elem('details', 'lcdp-aboreza-dropdown');
+    const declencheur = elem('summary', 'lcdp-aboreza-dropdown__declencheur');
+    declencheur.setAttribute('aria-label', 'Choisissez la formule d’abonnement');
+    const liste = elem('div', 'lcdp-aboreza-dropdown__liste');
+    liste.setAttribute('role', 'listbox');
+    liste.setAttribute('aria-label', 'Formules d’abonnement');
+    let valeur = disponibles[0]?.formule || '';
+    const boutons = [];
+    for (const offre of disponibles) {
+      const ligne = elem('button', 'lcdp-aboreza-dropdown__option', nomFormule(offre.formule));
+      ligne.type = 'button';
+      ligne.setAttribute('role', 'option');
+      ligne.addEventListener('click', () => {
+        valeur = offre.formule;
+        mettreAJour();
+        racine.open = false;
+        declencheur.focus({ preventScroll: true });
+        changement();
+      });
+      boutons.push({ ligne, formule: offre.formule });
+      liste.append(ligne);
+    }
+    function mettreAJour() {
+      declencheur.textContent = nomFormule(valeur) || 'Choisissez une formule';
+      for (const option of boutons) option.ligne.setAttribute('aria-selected', String(option.formule === valeur));
+    }
+    liste.addEventListener('keydown', evenement => {
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(evenement.key)) return;
+      evenement.preventDefault();
+      const index = boutons.findIndex(option => option.ligne === document.activeElement);
+      let suivant = index;
+      if (evenement.key === 'ArrowDown') suivant = (index + 1) % boutons.length;
+      else if (evenement.key === 'ArrowUp') suivant = (index - 1 + boutons.length) % boutons.length;
+      else if (evenement.key === 'Home') suivant = 0;
+      else suivant = boutons.length - 1;
+      boutons[suivant]?.ligne.focus({ preventScroll: true });
+    });
+    declencheur.addEventListener('keydown', evenement => {
+      if (!['ArrowDown', 'ArrowUp'].includes(evenement.key)) return;
+      evenement.preventDefault();
+      racine.open = true;
+      (evenement.key === 'ArrowUp' ? boutons.at(-1) : boutons[0])?.ligne.focus({ preventScroll: true });
+    });
+    racine.addEventListener('focusout', evenement => {
+      if (!racine.contains(evenement.relatedTarget)) racine.open = false;
+    });
+    racine.append(declencheur, liste);
+    mettreAJour();
+    return { racine, getValeur: () => valeur };
+  }
+
+  // Contrôle placé AVANT le chargement des écrans et des choix d'abonnement.
+  // Le serveur reste seul décisionnaire de l'horaire et de la dérogation de test.
+  async function verifierOuvertureAbonnement() {
+    const disponibilite = await api('/disponibilite');
+    return { autorise: disponibilite.autorise === true, message: disponibilite.message };
+  }
+
+  async function afficherBlocageAbonnement(message) {
+    const dialogue = await lireObjet('/BOX/02-box-dialogue-bouton.html', '[data-lcdp-box-dialogue-bouton]');
+    const titre = dialogue.querySelector('[data-lcdp-dialogue-title]');
+    const texte = dialogue.querySelector('[data-lcdp-dialogue-text]');
+    const actions = dialogue.querySelector('[data-lcdp-dialogue-actions]');
+    if (![titre, texte, actions].every(Boolean)) throw new Error('Dialogue horaire indisponible.');
+    titre.textContent = 'ABO-RÉZA';
+    texte.textContent = String(message || 'Vous pouvez vous abonner à partir de 8h demain (heure de Paris).');
+    dialogue.querySelector('[data-lcdp-dialogue-close]')?.remove();
+    actions.replaceChildren();
+    const fermer = bouton('Fermer', true);
+    actions.append(fermer);
+    const focusAvant = document.activeElement;
+    document.body.append(dialogue);
+    return new Promise(resolve => {
+      fermer.addEventListener('click', () => {
+        dialogue.remove();
+        if (focusAvant?.isConnected) focusAvant.focus({ preventScroll: true });
+        resolve();
+      });
+      fermer.focus({ preventScroll: true });
+    });
+  }
+
   function modal(titre, message, choix) {
     return modalComposant('dialogue', titre, (objet, finir) => {
       const texte = objet.querySelector('[data-lcdp-dialogue-text]');
@@ -240,6 +398,7 @@
   }
   async function choisirFormuleCatalogue(offres) {
     return modalComposant('dialogue', 'Choisissez votre abonnement', (objet, finir) => {
+      afficherEtapeUne(objet);
       objet.querySelector('[data-lcdp-dialogue-text]').textContent =
         'Toutes les formules sont affichées. Les abonnements indisponibles sont désactivés.';
       const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
@@ -326,46 +485,44 @@
       `Débuter l’abonnement le ${dateLibelle(dateDebut)} et inclure les abonnements actuels sur la période (${moisLibelle(dateDebut.slice(0, 7))} – ${moisLibelle(dateFin.slice(0, 7))}) ?`,
       [{ texte: 'Inclure', valeur: true, primaire: true }]);
   }
-  // K1 conserve son formulaire de qualification (formule et date dans la même fenêtre).
+  // K1 : formule et date dans la même étape, sans note dynamique de quotas.
   async function choisirOffre(offres) {
     return modalComposant('dialogue', 'Choisissez votre abonnement', (objet, finir) => {
+      afficherEtapeUne(objet);
       const texte = objet.querySelector('[data-lcdp-dialogue-text]');
-      texte.textContent = 'Choisissez une formule puis sa date de démarrage.';
+      texte.hidden = true;
       const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
-      const choix = elem('select');
-      offres.filter(o => o.disponible !== false).forEach(o => {
-        const option = elem('option', '', nomFormule(o.formule)); option.value = o.formule; choix.append(option);
-      });
-      actions.append(champDialogueCentre('Formule', choix));
       const espace = elem('div', 'lcdp-box-dialogue-bouton__actions');
-      actions.append(espace);
-      const note = elem('p', 'lcdp-box-dialogue-bouton__text');
-      actions.append(note);
-      const reconstruire = () => {
+      const choix = creerChoixFormuleAboreza(offres, reconstruire);
+      actions.append(choix.racine, espace);
+      function reconstruire() {
         espace.replaceChildren();
-        const offre = offres.find(o => o.formule === choix.value);
+        const offre = offres.find(o => o.formule === choix.getValeur());
         if (!offre) return;
         let entree;
         if (offre.formule === '1J') {
-          entree = elem('input'); entree.type = 'date'; entree.min = offre.dateMin; entree.max = offre.dateMax; entree.value = offre.dateMin;
+          entree = elem('input');
+          entree.type = 'date';
+          entree.min = offre.dateMin;
+          entree.max = offre.dateMax;
+          entree.value = offre.dateMin;
         } else {
           entree = elem('select');
           for (const date of offre.debuts) {
-            const option = elem('option', '', dateLibelle(date)); option.value = date; entree.append(option);
+            const option = elem('option', '', dateLibelle(date));
+            option.value = date;
+            entree.append(option);
           }
         }
         entree.required = true;
         espace.append(champDialogueCentre('Date de démarrage choisie', entree));
-        note.textContent = offre.formule === '1J'
-          ? 'Vous devez réserver au moins un accès pour cette formule.'
-          : offre.nbAccesRequis + ' accès obligatoires : deux par mois pendant ' + offre.nbMoisGuides + ' mois consécutifs.';
-      };
-      choix.addEventListener('change', reconstruire); reconstruire();
+      }
+      reconstruire();
       const continuer = bouton('Continuer', true);
       continuer.addEventListener('click', () => {
         const entree = espace.querySelector('input,select');
         if (!entree || !entree.value || !entree.validity.valid) { entree?.reportValidity(); return; }
-        finir({ formule: choix.value, dateDebut: entree.value });
+        finir({ formule: choix.getValeur(), dateDebut: entree.value });
       });
       actions.append(continuer);
     });
@@ -471,6 +628,13 @@
     if(occupe)return;
     occupe=true;
     try{
+      afficherAttenteFormules('Vérification des horaires de souscription…');
+      const disponibilite = await verifierOuvertureAbonnement();
+      if (!disponibilite.autorise) {
+        fermerConteneurAboreza();
+        await afficherBlocageAbonnement(disponibilite.message);
+        return;
+      }
       afficherAttenteFormules();
       await chargerTemplates();
       const enCours=(await api('/panier')).panier;
@@ -524,6 +688,10 @@
       if(!suivant)return; // Le panier reste récupérable.
       await entrerDansCalendrier(nouveau);
     } catch(e){
+      if (e === SORTIE_FORMULAIRE_ABOREZA) {
+        if (courant) await quitterTunnel();
+        return;
+      }
       masquerAttenteFormules();
       if (composants?.workflow) {
         await modal('ABO-RÉZA', e.message || 'Erreur ABO-RÉZA.', [
@@ -570,6 +738,10 @@
         await modal('Accès ajouté', texte, [{ texte: 'Continuer', valeur: true, primaire: true }]);
       }
     }catch(e){
+      if (e === SORTIE_FORMULAIRE_ABOREZA) {
+        await quitterTunnel();
+        return;
+      }
       masquerAttenteFormules();
       await modal('ABO-RÉZA', e.message || 'Impossible d’enregistrer cet accès.', [
         { texte: 'Fermer', valeur: true, primaire: true }
