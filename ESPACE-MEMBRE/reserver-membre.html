@@ -82,7 +82,7 @@
         "/BOX/02-box-dialogue-bouton.css",
         "/BOX/04-box-card-abonnement.css",
         "/BOX/04-box-card-recaporder.css?v=20261031-recapi-v2",
-        "/BOX/04-box-workflow-abonnement.css?v=20261105-sortie-etape1-v3",
+        "/BOX/04-box-workflow-abonnement.css?v=20261105-aboreza-suite-v4",
         "/BOX/04-box-calendrier-an.css",
         "/BOX/02-box-footer.css",
         "/BOX/02-box-wraper-footer.css",
@@ -105,7 +105,7 @@
         "/BOX/04-box-card-heure-in-calendrier-jour.css",
         "/BOX/04-box-workflow-reservation.css?v=20261102-croix-focus-v1",
         "/BOX/04-box-listemails.css",
-        "/CSSBASE/lcdp-planifier.css?v=20261104-mobile-lisibilite-v11"
+        "/CSSBASE/lcdp-planifier.css?v=20261105-fusion-fiche-parc-v14"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -129,41 +129,6 @@
   </script>
 
 
-  <style>
-    /* Amorçage du spinner avant disponibilité des feuilles CSS distantes. */
-    #lcdp-planifier-attente-initiale { position: fixed; inset: 0; z-index: 2147483646; display: flex; align-items: center; justify-content: center; background: #fff; }
-    #lcdp-planifier-attente-initiale .lcdp-loading-spinner { position: relative; display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; box-sizing: border-box; }
-    #lcdp-planifier-attente-initiale .lcdp-loading-spinner > svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
-    #lcdp-planifier-attente-initiale .lcdp-loading-spinner__track { color: rgba(6,95,70,.10); }
-    #lcdp-planifier-attente-initiale .lcdp-loading-spinner__arc { color: #e59834; animation: lcdp-planifier-spinner-tourne .8s linear infinite; }
-    #lcdp-planifier-attente-initiale .lcdp-loading-spinner__dot { width: 8px; height: 8px; border-radius: 50%; background: #4e6838; }
-    @keyframes lcdp-planifier-spinner-tourne { to { transform: rotate(360deg); } }
-    /* Attente ABO-RÉZA : même spinner HTML que PLANIFIER, sans GIF externe. */
-    body > .lcdp-planifier-partage-attente:has(> .lcdp-loading-spinner) {
-      position: fixed; inset: 0; z-index: 2147483000;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(255,255,255,.92);
-    }
-    .lcdp-planifier-partage-attente > .lcdp-loading-spinner {
-      position: relative; box-sizing: border-box; display: flex;
-      flex: 0 0 auto; align-items: center; justify-content: center;
-      width: 64px; height: 64px;
-    }
-    .lcdp-planifier-partage-attente > .lcdp-loading-spinner > svg {
-      position: absolute; inset: 0; display: block; width: 100%; height: 100%;
-    }
-    .lcdp-planifier-partage-attente .lcdp-loading-spinner__track { color: rgba(6,95,70,.10); }
-    .lcdp-planifier-partage-attente .lcdp-loading-spinner__arc {
-      color: #e59834; animation: lcdp-planifier-spinner-tourne .8s linear infinite;
-    }
-    .lcdp-planifier-partage-attente .lcdp-loading-spinner__dot {
-      width: 8px; height: 8px; border-radius: 50%; background: #4e6838;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      #lcdp-planifier-attente-initiale .lcdp-loading-spinner__arc,
-      .lcdp-planifier-partage-attente .lcdp-loading-spinner__arc { animation: none; }
-    }
-  </style>
 </head>
 
 <body>
@@ -220,8 +185,8 @@
   </div>
 
   <script src="./attente-planifier.js?v=20261102-1"></script>
-  <script src="./reserver-membre.js?v=20261104-duo-actif-confirmation-v2"></script>
+  <script src="./reserver-membre.js?v=20261105-aboreza-planning-v4"></script>
   <script src="./paiement-membre.js?v=20261105-sortie-protegee-v3"></script>
-  <script src="./aboreza-membre.js?v=20261105-etape1-controle-horaire-v3"></script>
+  <script src="./aboreza-membre.js?v=20261105-cgv-lcdp-v5"></script>
 </body>
 </html>

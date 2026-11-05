@@ -171,6 +171,15 @@
     actualiser: () => etatPage.actualiserPlanningPrincipal?.(),
     fermerJour: () => document.getElementById("lcdp-planifier-jour-overlay-slot")?.remove(),
     hoteBandeau: () => etatPage.hoteBandeauAboReza,
+    afficherTousLesFiltres: () => {
+      for (const type of ['duo', 'famille', 'coach', 'famille-coach']) filtresAccesPlanifier.add(type);
+      document.querySelectorAll('.lcdp-planifier-filtre-categorie__input').forEach(input => {
+        input.checked = true;
+      });
+      document.querySelectorAll('[data-lcdp-card-jour-mois-slot][data-autorisation]').forEach(slot => {
+        appliquerVisibiliteCategorie(slot, slot.dataset.autorisation);
+      });
+    },
     alerter: (message, options = {}) => afficherAlerteSuperposee(message, "orange", {libelleBouton: options.libelleBouton || "Fermer"}),
     viderCache: () => cachePlanningParcLecture.clear(),
     choisirParc: () => ouvrirFiltreParcPlanifier(),
@@ -931,7 +940,8 @@
       afficher();
       if (parcSelectionne) await actualiserMoisParc();
     };
-    etatPage.hoteBandeauAboReza = enteteFiltres;
+    // Le bandeau d'abonnement s'insère juste après la croix du planning.
+    etatPage.hoteBandeauAboReza = calendrier.querySelector('.lcdp-box-calendrier-mois__card');
 
     function afficher() {
       enteteFiltres.classList.toggle("lcdp-planifier-entete-avec-parc", Boolean(parcSelectionne));
@@ -3203,8 +3213,9 @@
 
     const media = card.querySelector(".lcdp-box-card-parc__media");
     const nomImage = card.querySelector("[data-lcdp-card-parc-nom-image]");
-    const nomCourt = nom.replace(/^(?:parc\s+(?:(?:de|du|des)\s+|d[’\']\s*)?)+/i, "").trim() || nom;
-    if (nomImage) nomImage.textContent = nomCourt.toLocaleUpperCase("fr-FR");
+    const nomCourt = nomParcAvecDepartementPlanifier(parc)
+      .replace(/^(?:parc\s+(?:(?:de|du|des)\s+|d[’\']\s*)?)+/i, '').trim() || nom;
+    if (nomImage) nomImage.textContent = nomCourt.toLocaleUpperCase('fr-FR');
     if (media) media.classList.add("lcdp-box-card-parc__media--avec-nom");
     const image = card.querySelector("[data-lcdp-card-parc-image]");
     const badgePrepa = card.querySelector("[data-lcdp-card-parc-badge-prepa]");
@@ -3238,8 +3249,8 @@
       if (options.afficherTitreTexte === true) {
         // Remplacer le titre entier : le template peut déjà contenir « Parc de ».
         const titreComplet = titre.closest(".lcdp-box-card-parc__title");
-        if (titreComplet) titreComplet.textContent = nomParcAfficheMembre(nom);
-        else titre.textContent = nomParcAfficheMembre(nom);
+        if (titreComplet) titreComplet.textContent = nomParcAvecDepartementPlanifier(parc);
+        else titre.textContent = nomParcAvecDepartementPlanifier(parc);
       } else {
         titre.closest(".lcdp-box-card-parc__title")?.remove();
       }
@@ -3502,6 +3513,9 @@
           if (choix === "choisir") await ouvrirFiltreParcPlanifier();
           return;
         }
+        // Après « Reprendre plus tard », reprendre le panier conservé au serveur.
+        // S'il a expiré, ABO-RÉZA redémarre à sa première étape.
+        if (await window.LCDP_ABOREZA?.reprendrePanierAuClicJour?.()) return;
         if (!window.LCDP_ABOREZA?.actif() &&
             !preparationAbonnementPlanifier &&
             (membreSansDaValidee() ||
@@ -4723,29 +4737,55 @@
       throw new Error("Structure calendrier jour incomplète.");
     }
 
-    const nomParc = String(contexte.parc.nom || contexte.parc.nomparc || "Parc").trim() || "Parc";
-    const departement = String(contexte.parc.dptmt || contexte.parc.departement || "").trim();
-
+    const modeAboReza = window.LCDP_ABOREZA?.actif() === true;
+    const nomParc = nomParcAvecDepartementPlanifier(contexte.parc);
     titre.textContent = "Choisissez une plage horaire";
-    meta.textContent = formaterDateFr(contexte.dateIso) + " · " + nomParc + (departement ? " · " + departement : "");
-
-    boutonFermer.addEventListener("click", () => {
+    meta.replaceChildren();
+    const date = document.createElement('span');
+    date.className = 'lcdp-planifier-heure-entete-date';
+    date.textContent = formaterDateFr(contexte.dateIso);
+    const parc = document.createElement('span');
+    parc.className = 'lcdp-planifier-heure-entete-parc';
+    parc.textContent = nomParc;
+    meta.append(date, parc);
+    if (modeAboReza) {
+      const consigne = document.createElement('p');
+      consigne.className = 'lcdp-aboreza-choix-horaire__consigne';
+      consigne.textContent = 'À quelle heure voulez-vous être au parc ?';
+      const legende = document.createElement('div');
+      legende.className = 'lcdp-aboreza-choix-horaire__legende';
+      legende.setAttribute('aria-label', 'Légende des autorisations');
+      for (const [type, libelle] of [['duo','DUO'],['famille','+ FAMILLE'],['coach','+ COACH'],['famille-coach','+ FAMILLE + COACH']]) {
+        const item = document.createElement('span');
+        item.className = 'lcdp-aboreza-choix-horaire__legende-item';
+        const pastille = document.createElement('span');
+        pastille.className = 'lcdp-aboreza-choix-horaire__pastille lcdp-aboreza-choix-horaire__pastille--' + type;
+        pastille.setAttribute('aria-hidden', 'true');
+        item.append(pastille, document.createTextNode(libelle));
+        legende.append(item);
+      }
+      grille.before(consigne, legende);
+      if (window.LCDP_ABOREZA_UI?.adopterChoixHoraire?.(calendrier)) {
+        calendrier.classList.add('lcdp-aboreza-choix-horaire');
+      }
+    }
+    const fermer = () => {
       slot.remove();
+      if (modeAboReza) window.LCDP_ABOREZA_UI?.fermer?.();
+    };
+    boutonFermer.addEventListener('click', fermer);
+    calendrier.addEventListener('click', event => {
+      if (!modeAboReza && event.target === calendrier) fermer();
     });
-
-    calendrier.addEventListener("click", (event) => {
-      if (event.target === calendrier) slot.remove();
-    });
-
-    document.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.key === "Escape") slot.remove();
-      },
-      { once: true }
-    );
-
+    const fermerEchap = event => {
+      if (event.key !== 'Escape') return;
+      calendrier.removeEventListener('keydown', fermerEchap);
+      fermer();
+    };
+    // Écouteur limité à cette vue : aucune fermeture parasite d'une étape suivante.
+    calendrier.addEventListener('keydown', fermerEchap);
     remplirGrilleHoraires(grille, message, contexte);
+    boutonFermer.focus({ preventScroll: true });
   }
 
   function remplirGrilleHoraires(grille, message, contexte) {
@@ -4817,11 +4857,14 @@
         if (card.dataset.indisponible) {
           const motifs = {
             invitation:"Vous avez déjà une invitation pour cette plage.",
-            "deja-reserve":"Il y a déjà un accès planifié sur cette plage.",
+            "deja-reserve":"Vous avez déjà un accès planifié sur cette plage.",
             fermee:"Cette plage est fermée dans ce parc.",
             passee:"Cette plage a déjà commencé."
           };
-          await afficherAlerteSuperposee(motifs[card.dataset.indisponible],"orange",{libelleBouton:"Fermer"});
+          await afficherAlerteSuperposee(motifs[card.dataset.indisponible], "vert", {
+            libelleBouton: 'Fermer', sansCroix: ['fermee', 'deja-reserve'].includes(card.dataset.indisponible),
+            fermetureLibre: !['fermee', 'deja-reserve'].includes(card.dataset.indisponible)
+          });
           return;
         }
         await traiterChoixReservationDepuisFicheParc({
@@ -4929,16 +4972,25 @@
     if (!debut || Date.parse(debut) <= Date.now()) {
       await afficherAlerteSuperposee("Cette plage a déjà commencé."); return false;
     }
-    const contenu = document.createElement("div");
-    const date = new Intl.DateTimeFormat("fr-FR", {timeZone:"Europe/Paris",weekday:"long",day:"numeric",month:"long",year:"numeric"})
-      .format(new Date(choix.dateIso + "T12:00:00Z"));
-    for (const texte of [choix.parc.nom || choix.parc.nomparc || "Parc", date.charAt(0).toUpperCase()+date.slice(1),
-      "Horaire : " + formaterHeureAffichee(choix.heure) + "–" + formaterHeureAffichee(choix.heureFin)]) {
-      const ligne = document.createElement("div"); ligne.textContent = texte; contenu.append(ligne);
+    const contenu = document.createElement('div');
+    contenu.className = 'lcdp-aboreza-confirmation-acces__recap';
+    const date = new Intl.DateTimeFormat('fr-FR', {timeZone:'UTC', weekday:'long',day:'numeric',month:'long',year:'numeric'})
+      .format(new Date(choix.dateIso + 'T12:00:00Z'));
+    const lignes = [
+      [date.charAt(0).toUpperCase() + date.slice(1), 'date'],
+      [nomParcAvecDepartementPlanifier(choix.parc), 'parc'],
+      ['Horaire : ' + formaterHeureAffichee(choix.heure) + '–' + formaterHeureAffichee(choix.heureFin), 'horaire']
+    ];
+    for (const [texte, classe] of lignes) {
+      const ligne = document.createElement('p');
+      ligne.className = 'lcdp-aboreza-confirmation-acces__' + classe;
+      ligne.textContent = texte;
+      contenu.append(ligne);
     }
     const reponse = await ouvrirDialogueBoutonsSuperpose({
-      titre:"Confirmez votre accès", contenu,
-      boutons:[{label:"Confirmer",valeur:"confirmer",style:"lcdp-button-orange"}]
+      titre: 'Planifier votre accès ?', contenu,
+      classe: 'lcdp-aboreza-confirmation-acces',
+      boutons: [{label:'Confirmer', valeur:'confirmer',style:'lcdp-button-primary'}]
     });
     if (reponse !== "confirmer") return false;
     if (window.LCDP_ABOREZA?.actif()) {
@@ -5391,6 +5443,7 @@
 
     texte.textContent = message || "";
     if (options.libelleBouton) boutonOk.textContent = options.libelleBouton;
+    if (options.sansCroix === true) boutonFermer.remove();
     if (couleurBouton === "vert-plein-partage") {
       alerte.classList.add("lcdp-planifier-partage-confirmation");
     }
@@ -5400,7 +5453,7 @@
       "lcdp-button-orange"
     );
     boutonOk.classList.add(
-      couleurBouton === "vert-plein-partage"
+      (couleurBouton === "vert-plein-partage" || couleurBouton === "vert")
         ? "lcdp-button-primary"
         : couleurBouton === "vert-contour"
           ? "lcdp-button-secondary"
@@ -5424,7 +5477,7 @@
       boutonFermer.addEventListener("click", () => fermer(false));
       boutonOk.addEventListener("click", () => fermer(true));
       alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) fermer(false);
+        if (event.target === alerte && options.fermetureLibre !== false) fermer(false);
       });
     });
   }
@@ -5913,14 +5966,20 @@
     );
   }
 
-  // Normalisation des titres visibles, sans toucher aux identifiants ni aux chemins d'images.
+  // Nom réel du parc : ne pas inventer « Parc de » et ne jamais doubler le
+  // numéro de département dans les titres visibles. Les chemins d'images restent inchangés.
   function nomParcAfficheMembre(valeur) {
-    const brut = String(valeur || "").trim();
-    const sansPrefixe = brut.replace(/^(?:parc\s+(?:(?:de|du|des)\s+|d[’\']\s*)?)+/i, "").trim();
-    const prefixe = /^parc\s+(du|des)\s+/i.test(brut)
-      ? "Parc " + brut.match(/^parc\s+(du|des)\s+/i)[1].toLowerCase() + " "
-      : /^parc\s+d[’']/i.test(brut) ? "Parc d’" : "Parc de ";
-    return (prefixe + (sansPrefixe || brut || "nom inconnu")).toLocaleUpperCase("fr-FR");
+    const brut = String(valeur || '').trim();
+    return (brut || 'Parc').toLocaleUpperCase('fr-FR');
+  }
+  function nomParcAvecDepartementPlanifier(parc) {
+    const code = String(parc?.dptmt || parc?.departement || '').trim();
+    let nom = String(parc?.nom || parc?.nomparc || 'Parc').trim() || 'Parc';
+    if (code && /^\d{2,3}$/.test(code)) {
+      const suffixe = new RegExp('(?:\\s*[-–—]\\s*|\\s*\\()' + code + '\\)?\\s*$', 'i');
+      nom = nom.replace(suffixe, '').trim() || nom;
+    }
+    return nom + (code ? ' (' + code + ')' : '');
   }
 
   function normaliserNomParcPourChemin(valeur) {
