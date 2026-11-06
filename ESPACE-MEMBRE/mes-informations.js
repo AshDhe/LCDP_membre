@@ -235,7 +235,7 @@
       section: "Coordonnées de remboursement IBAN",
       id: "champ-iban-membre",
       name: "iban",
-      label: "IBAN",
+      label: "Numéro IBAN",
       type: "text",
       key: "iban",
       action: {
@@ -251,7 +251,7 @@
       section: "Coordonnées de remboursement IBAN",
       id: "champ-swift-membre",
       name: "swift",
-      label: "SWIFT",
+      label: "Code BIC / SWIFT",
       type: "text",
       key: "swift",
       action: {
@@ -267,7 +267,7 @@
       section: "Coordonnées de remboursement IBAN",
       id: "champ-rib-membre",
       name: "rib",
-      label: "Nom du titulaire",
+      label: "Titulaire du compte",
       type: "text",
       key: "rib",
       action: {
@@ -649,6 +649,10 @@
     });
 
     fields.replaceChildren(fragment);
+    // Sécurité du compte : dernière rubrique, après l'adresse de facturation.
+    // Déplacement du noeud existant : tous les champs, actions et écouteurs sont conservés.
+    const securite = fields.querySelector('[data-lcdp-compte-section="securite"]');
+    if (securite) fields.appendChild(securite);
     fields.classList.add("lcdp-mon-compte-sections");
   }
 
@@ -1201,6 +1205,39 @@
     return "DA non transmise";
   }
 
+
+// Vue DA conforme à la maquette : date réelle à gauche, état réel en badge.
+// Le champ de lecture d'origine reste dans le DOM pour le formulaire.
+function afficherStatutDaCompte(compte) {
+  const input = document.getElementById("champ-da-membre");
+  const ligne = input?.closest("[data-lcdp-box-champ-formulaire]");
+  const label = ligne?.querySelector(".lcdp-box-champ-formulaire__label, .lcdp-box-champ-formulaire__heading");
+  const controle = ligne?.querySelector("[data-lcdp-champ-control]") || input?.parentNode;
+  if (!input || !ligne || !label || !controle) return;
+
+  const dateBrute = compte?.dateDa || compte?.dateda || "";
+  label.textContent = dateBrute ? "DA du " + formaterDate(dateBrute) : "DA";
+  const statutBrut = normaliserStatudaCompte(compte?.statuda || compte?.statutDa || compte?.da || "");
+  const enCours = ["encours", "en_cours", "attente"].includes(statutBrut);
+  const validee = statutBrut === "oui";
+  const nonValidee = statutBrut === "non";
+  const libelle = enCours ? "En cours" : validee ? "Validée" : nonValidee ? "Non validée"
+    : statutBrut ? nettoyerTexteSimple(compte?.statuda || compte?.statutDa || compte?.da) : "Non transmise";
+
+  ligne.classList.add("lcdp-compte-da");
+  ligne.classList.toggle("lcdp-compte-da--en-cours", enCours);
+  ligne.classList.toggle("lcdp-compte-da--validee", validee);
+  ligne.classList.toggle("lcdp-compte-da--non-validee", nonValidee);
+  ligne.classList.toggle("lcdp-compte-da--autre", !enCours && !validee && !nonValidee);
+  let badge = controle.querySelector(".lcdp-compte-da__statut");
+  if (!badge) {
+    badge = document.createElement("span");
+    badge.className = "lcdp-compte-da__statut";
+    controle.appendChild(badge);
+  }
+  badge.textContent = libelle;
+}
+
   function formaterStatutCompte(value) {
     const statut = String(value || "").trim().toLowerCase();
 
@@ -1392,68 +1429,73 @@
     });
 
     actualiserBadgePointsClub(compteMembreActuel);
+    afficherStatutDaCompte(compteMembreActuel);
     afficherResumePointsPassion(compteMembreActuel);
     actualiserActionsProtegeesDa(compteMembreActuel);
   }
 
-  // Présentation uniquement : synthèse de Points passion, sans valeur fictive.
-  // Le champ d'origine et ses IDs restent en place pour les traitements existants.
-  function afficherResumePointsPassion(compte) {
-    const champ = document.getElementById("champ-points-club-membre")
-      ?.closest("[data-lcdp-box-champ-formulaire]");
-    if (!champ) return;
 
-    const pointsObjet = compte?.points || {};
-    const total = compte?.pointsClub ?? compte?.pointsclub ?? pointsObjet.points ?? null;
-    const zoneId = "lcdp-mon-compte-points-resume";
-    let zone = document.getElementById(zoneId);
+// Points passion : valeur, référent et date issus exclusivement du Worker.
+// Le bouton existant « Voir mes points » est déplacé DANS la carte, sans
+// recréation : son ID et son écouteur de navigation restent inchangés.
+function afficherResumePointsPassion(compte) {
+  const champ = document.getElementById("champ-points-club-membre")
+    ?.closest("[data-lcdp-box-champ-formulaire]");
+  if (!champ) return;
 
-    if (total === null || total === undefined || total === "") {
-      zone?.remove();
-      champ.classList.remove("lcdp-points-source-masque");
-      return;
-    }
-    if (!zone) {
-      zone = document.createElement("div");
-      zone.id = zoneId;
-      zone.className = "lcdp-mon-compte-points";
-      zone.setAttribute("aria-label", "Points passion");
-      champ.insertAdjacentElement("afterend", zone);
-    }
-    zone.replaceChildren();
-    const ligne = document.createElement("div");
-    ligne.className = "lcdp-mon-compte-points__resume";
-    const valeur = document.createElement("strong");
-    valeur.className = "lcdp-mon-compte-points__valeur";
-    valeur.textContent = String(total);
-    ligne.appendChild(valeur);
+  const pointsObjet = compte?.points || {};
+  const total = compte?.pointsClub ?? compte?.pointsclub ?? pointsObjet.points ?? null;
+  const totalConnu = total !== null && total !== undefined && total !== "";
+  const zoneId = "lcdp-mon-compte-points-resume";
+  let zone = document.getElementById(zoneId);
+  const boutonPoints = document.getElementById("voir-mes-points");
+  const actionsPoints = boutonPoints?.closest(".lcdp-compte-actions-adresse");
 
-    const statut = normaliserBadgePoints(compte?.statutPointsClub || pointsObjet.statut || "");
-    if (statut) {
-      const etiquette = document.createElement("span");
-      etiquette.className = "lcdp-mon-compte-points__badge";
-      etiquette.textContent = "Référent " + capitaliserBadgePoints(statut);
-      ligne.appendChild(etiquette);
-    }
-    zone.appendChild(ligne);
-
-    const detail = [];
-    const date = compte?.dateCalculPointsClub || compte?.datePointsClub || pointsObjet.date;
-    if (date) detail.push("Total à jour le " + formaterDate(date));
-    const prochain = compte?.prochainReferentPointsClub;
-    const seuil = nombreOuNullCompte(prochain?.seuil);
-    const prochainStatut = capitaliserBadgePoints(prochain?.statut);
-    if (seuil !== null && prochainStatut) {
-      detail.push("Référent " + prochainStatut + " au-dessus de " + Math.max(0, seuil - 1) + " points");
-    }
-    if (detail.length) {
-      const precision = document.createElement("p");
-      precision.className = "lcdp-mon-compte-points__detail";
-      precision.textContent = detail.join(" — ");
-      zone.appendChild(precision);
-    }
-    champ.classList.add("lcdp-points-source-masque");
+  if (!zone) {
+    zone = document.createElement("div");
+    zone.id = zoneId;
+    zone.className = "lcdp-mon-compte-points";
+    zone.setAttribute("aria-label", "Mes points passion");
+    champ.insertAdjacentElement("afterend", zone);
   }
+  zone.replaceChildren();
+  const ligne = document.createElement("div");
+  ligne.className = "lcdp-mon-compte-points__resume";
+  const valeur = document.createElement("strong");
+  valeur.className = "lcdp-mon-compte-points__valeur";
+  if (!totalConnu) valeur.classList.add("lcdp-mon-compte-points__valeur--indisponible");
+  valeur.textContent = totalConnu ? String(total) : "Non renseigné";
+  ligne.appendChild(valeur);
+
+  const statut = normaliserBadgePoints(compte?.statutPointsClub || pointsObjet.statut || "");
+  if (statut) {
+    const etiquette = document.createElement("span");
+    etiquette.className = "lcdp-mon-compte-points__badge";
+    etiquette.textContent = "Référent " + capitaliserBadgePoints(statut);
+    ligne.appendChild(etiquette);
+  }
+  zone.appendChild(ligne);
+
+  const detail = [];
+  const date = compte?.dateCalculPointsClub || compte?.datePointsClub || pointsObjet.date;
+  if (date) detail.push("Total à jour le " + formaterDate(date));
+  const prochain = compte?.prochainReferentPointsClub;
+  const seuil = nombreOuNullCompte(prochain?.seuil);
+  const prochainStatut = capitaliserBadgePoints(prochain?.statut);
+  if (seuil !== null && prochainStatut) {
+    detail.push("Référent " + prochainStatut + " au-dessus de " + Math.max(0, seuil - 1) + " points");
+  }
+  if (detail.length) {
+    const precision = document.createElement("p");
+    precision.className = "lcdp-mon-compte-points__detail";
+    precision.textContent = detail.join(" — ");
+    zone.appendChild(precision);
+  }
+  if (actionsPoints) zone.appendChild(actionsPoints);
+  // Le champ original (avec son badge image) reste accessible au JS,
+  // mais sa présentation redondante n'est plus montrée.
+  champ.classList.add("lcdp-points-source-masque");
+}
 
   function actualiserActionsProtegeesDa(compte) {
     const afficherActionsProtegees = membreAvecDaOui(compte);
