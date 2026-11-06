@@ -40,13 +40,10 @@
 
   let compteMembreActuel = null;
 
+  // Même texte et même présentation pour les champs bancaires et d'adresse
+  // restant à renseigner avec la DA.
   const CHAMPS_A_RENSEIGNER_AVEC_DA = new Set([
-    "adresse1",
-    "adresse2",
-    "adresse3",
-    "iban",
-    "swift",
-    "rib"
+    "iban", "swift", "rib", "adresse1", "adresse2", "adresse3"
   ]);
 
   const champsCompte = [
@@ -341,10 +338,18 @@
       await initialiserFooter();
       await initialiserFormulaireInformations();
       await chargerCompteMembre();
+      terminerAttenteCompte();
     } catch (error) {
       console.error("Erreur mes informations membre :", error);
+      // L'alerte doit rester accessible en cas d'erreur, sans masque de chargement.
+      terminerAttenteCompte();
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
     }
+  }
+
+  function terminerAttenteCompte() {
+    document.body.classList.add("lcdp-compte-pret");
+    document.getElementById("lcdp-mon-compte-attente-initiale")?.remove();
   }
 
   async function initialiserFormulaireInformations() {
@@ -870,10 +875,14 @@
     const compte = resultat.compte;
 
     afficherCompteMembre(compte);
-    await chargerSelfie();
-    await chargerWifiBracelet();
     afficherEtatMembreCompte(compte);
-    await actualiserBurgerMembre(compteIndiqueAbonne(compte));
+    // Le compte est prêt : les appels optionnels ne retardent plus l'affichage.
+    terminerAttenteCompte();
+    void Promise.allSettled([
+      chargerSelfie(),
+      chargerWifiBracelet(),
+      actualiserBurgerMembre(compteIndiqueAbonne(compte))
+    ]);
   }
 
   async function actualiserBurgerMembre(abonne) {
@@ -1345,7 +1354,7 @@ function afficherStatutDaCompte(compte) {
     if (!badge || !image) return;
 
     const pointsObjet = compte?.points || {};
-    const badgePoints = normaliserBadgePoints(compte?.statutPointsClub || pointsObjet.statut || "");
+    const badgePoints = obtenirNiveauReferentCompte(compte);
 
     if (!badgePoints) {
       badge.hidden = true;
@@ -1372,6 +1381,20 @@ function afficherStatutDaCompte(compte) {
     badge.hidden = false;
   }
 
+  // Un niveau doit être communiqué explicitement par le Worker :
+  // le total de points seul ne permet pas d'attribuer un statut Référent.
+  function obtenirNiveauReferentCompte(compte) {
+    const pointsObjet = compte?.points || {};
+    const niveaux = [
+      compte?.statutPointsClub,
+      compte?.statutReferentPointsClub,
+      compte?.niveauReferent,
+      pointsObjet.statut,
+      pointsObjet.niveau
+    ];
+    return niveaux.map(normaliserBadgePoints).find(Boolean) || "";
+  }
+
   function normaliserBadgePoints(value) {
     const badge = String(value || "")
       .trim()
@@ -1381,11 +1404,11 @@ function afficherStatutDaCompte(compte) {
       .replace(/[^a-z0-9]+/g, "");
 
     const correspondances = {
-      bronze: "bronze",
-      bronse: "bronze",
-      argent: "argent",
-      or: "or",
-      platine: "platine"
+      bronze: "bronze", bronse: "bronze",
+      referentbronze: "bronze", referentbronse: "bronze",
+      argent: "argent", referentargent: "argent",
+      or: "or", referentor: "or",
+      platine: "platine", referentplatine: "platine"
     };
 
     return correspondances[badge] || "";
@@ -1467,7 +1490,7 @@ function afficherResumePointsPassion(compte) {
   valeur.textContent = totalConnu ? String(total) : "Non renseigné";
   ligne.appendChild(valeur);
 
-  const statut = normaliserBadgePoints(compte?.statutPointsClub || pointsObjet.statut || "");
+  const statut = obtenirNiveauReferentCompte(compte);
   if (statut) {
     const etiquette = document.createElement("span");
     etiquette.className = "lcdp-mon-compte-points__badge";
@@ -2709,6 +2732,7 @@ function afficherResumePointsPassion(compte) {
     if (!element) return;
 
     const texte = valeur || texteSiVide;
+    element.classList.toggle("lcdp-compte-placeholder-da", !valeur && texteSiVide === "À renseigner avec votre DA");
 
     if ("value" in element) {
       element.value = texte;

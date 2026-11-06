@@ -75,8 +75,8 @@
       // Coque commune : wrapper, bandeau, burger, footer et composants métier.
       // Les réglages de cette page restent dans lcdp-mon-compte.css.
       const feuillesCssObjet = [
-        "/CSSBASE/lcdp-central-mobile-first.css?v=20261106-151702",
-        "/CSSBASE/lcdp-mon-compte.css?v=20261106-fidelite-tailwind-v2"
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261106-1709",
+        "/CSSBASE/lcdp-mon-compte.css?v=20261106-compte-spinner-ref-v3"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -88,9 +88,43 @@
       });
     })();
   </script>
+  <!-- Prévenir le flash de l'ancien formulaire pendant le chargement des CSS et des données. -->
+  <style>
+    body.lcdp-page-mon-compte:not(.lcdp-compte-pret) > .lcdp-site-page { visibility: hidden; }
+    #lcdp-mon-compte-attente-initiale {
+      position: fixed; inset: 0; z-index: 2147483646;
+      display: flex; align-items: center; justify-content: center;
+      background: #fff;
+    }
+    #lcdp-mon-compte-attente-initiale .lcdp-loading-spinner {
+      position: relative; display: flex; align-items: center; justify-content: center;
+      box-sizing: border-box; width: 64px; height: 64px;
+    }
+    #lcdp-mon-compte-attente-initiale .lcdp-loading-spinner > svg {
+      position: absolute; inset: 0; display: block; width: 100%; height: 100%;
+    }
+    #lcdp-mon-compte-attente-initiale .lcdp-loading-spinner__track { color: rgba(6,95,70,.10); }
+    #lcdp-mon-compte-attente-initiale .lcdp-loading-spinner__arc {
+      color: #e59834; animation: lcdp-compte-spinner-tourne .8s linear infinite;
+    }
+    #lcdp-mon-compte-attente-initiale .lcdp-loading-spinner__dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #4e6838;
+    }
+    @keyframes lcdp-compte-spinner-tourne { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      #lcdp-mon-compte-attente-initiale .lcdp-loading-spinner__arc { animation: none; }
+    }
+  </style>
 </head>
 
 <body class="lcdp-page-mon-compte lcdp-app-page">
+  <div id="lcdp-mon-compte-attente-initiale" role="status" aria-label="Chargement de mon compte">
+    <div class="lcdp-loading-spinner" aria-hidden="true">
+      <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
+      <svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg>
+      <span class="lcdp-loading-spinner__dot"></span>
+    </div>
+  </div>
   <div class="lcdp-site-page lcdp-app-wrapper">
 
     <div id="lcdp-bandeau-slot"></div>
@@ -130,6 +164,6 @@
     })();
   </script>
 
-  <script src="./mes-informations.js?v=20261106-fidelite-tailwind-v2"></script>
+  <script src="./mes-informations.js?v=20261106-compte-spinner-ref-v3"></script>
 </body>
 </html>
