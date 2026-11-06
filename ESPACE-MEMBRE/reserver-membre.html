@@ -76,8 +76,8 @@
 
       const feuillesCssObjet = [
         "/CSSBASE/cssbase.css",
-        "/CSSBASE/lcdp-central-mobile-first.css?v=20261106-154930",
-        "/CSSBASE/lcdp-planifier.css?v=20261106-wrapper-mobile-v1"
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261106-165450",
+        "/CSSBASE/lcdp-planifier.css?v=20261106-wrapper-plages-vertical-v2"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -164,6 +164,12 @@
             <!-- Calendrier permanent : dans le corps du wrapper, jamais dans le slot des dialogues. -->
             <div id="lcdp-planifier-calendrier-slot" aria-label="Planning mensuel"></div>
 
+            <!-- Vue Parcs : même wrapper, même largeur, calendrier toujours monté. -->
+            <div id="lcdp-planifier-parcs-vue" aria-label="Parcs du département" hidden></div>
+
+            <!-- Choix des plages : troisième vue de la même coque, sans modale ni fond grisé. -->
+            <div id="lcdp-planifier-jour-overlay-slot" aria-label="Choix des plages horaires" hidden></div>
+
             <p class="lcdp-text-strong-lead" id="titre-parcs-departement" hidden>
               Parcs près de chez vous
             </p>
@@ -195,7 +201,7 @@
   </div>
 
   <script src="./attente-planifier.js?v=20261102-1"></script>
-  <script src="./reserver-membre.js?v=20261106-wrapper-mobile-v1"></script>
+  <script src="./reserver-membre.js?v=20261106-wrapper-plages-v1"></script>
   <script src="./paiement-membre.js?v=20261105-sortie-protegee-v3"></script>
   <script src="./aboreza-membre.js?v=20261105-plage-integree-v6"></script>
 </body>

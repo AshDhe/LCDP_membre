@@ -169,7 +169,7 @@
   window.LCDP_PLANIFIER_ABOREZA = {
     allerMois: cle => etatPage.allerMoisAboReza?.(cle),
     actualiser: () => etatPage.actualiserPlanningPrincipal?.(),
-    fermerJour: () => document.getElementById("lcdp-planifier-jour-overlay-slot")?.remove(),
+    fermerJour: () => fermerVueChoixPlagePlanifier(),
     hoteBandeau: () => etatPage.hoteBandeauAboReza,
     afficherTousLesFiltres: () => {
       for (const type of ['duo', 'famille', 'coach', 'famille-coach']) filtresAccesPlanifier.add(type);
@@ -421,20 +421,25 @@
   async function ouvrirFiltreParcPlanifier() {
     if (filtreParcOuvert) return;
     filtreParcOuvert = true;
+    const vueParcs = document.getElementById("lcdp-planifier-parcs-vue");
+    const calendrier = document.getElementById("lcdp-planifier-calendrier-slot");
+    if (!vueParcs || !calendrier) {
+      filtreParcOuvert = false;
+      throw new Error("Vue Parcs du wrapper PLANIFIER introuvable.");
+    }
     const enveloppe = document.createElement("div");
-    document.body.appendChild(enveloppe);
+    enveloppe.className = "lcdp-planifier-parcs-etape";
+    // Le calendrier reste monté pour conserver le parc, le mois et les réservations.
+    vueParcs.hidden = false;
+    document.body.classList.add("lcdp-planifier-vue-parcs-active");
+    vueParcs.appendChild(enveloppe);
     // Le pictogramme démarre immédiatement, avant les chargements réseau.
     const chargement = document.createElement("div");
     chargement.className = "lcdp-planifier-parcs-chargement";
     chargement.setAttribute("role", "status");
     chargement.setAttribute("aria-label", "Chargement des parcs");
     chargement.appendChild(creerSpinnerPlanifier("Chargement des parcs…"));
-    // Masque autonome et centré : jamais dans le flux de la page ou de la box.
-    Object.assign(chargement.style, {
-      position: "fixed", inset: "0", display: "flex", alignItems: "center",
-      justifyContent: "center", minHeight: "0", zIndex: "10000",
-      background: "rgba(255,255,255,0.92)"
-    });
+    // Attente dans la même vue : ni fond gris ni plein écran.
     enveloppe.appendChild(chargement);
     const barre = document.getElementById("lcdp-commande-bar-reserver-slot");
     const liste = document.getElementById("lcdp-liste-card-parcs-slot");
@@ -449,20 +454,27 @@
       const close = enveloppe.querySelector("[data-lcdp-dialogue-champ-close]");
       if (![dialogue,carte,titre,form,content,close,barre,liste].every(Boolean)) throw new Error("Box Parc incomplète.");
       carte.classList.add("lcdp-planifier-parcs-card");
+      dialogue.classList.add("lcdp-planifier-parcs-inline");
       // Aucun rendu intermédiaire de la box : elle reste hors affichage
       // pendant le montage des fragments, CSS et cartes.
       dialogue.style.display = "none";
       dialogue.style.opacity = "0";
       titre.textContent = "Parcs du département";
+      const numeroDepartement = document.createElement("p");
+      numeroDepartement.className = "lcdp-planifier-parcs-numero";
+      numeroDepartement.textContent = String(etatPage.departement || "").trim();
+      titre.insertAdjacentElement("beforebegin", numeroDepartement);
       const nomDepartement = document.createElement("p");
       nomDepartement.className = "lcdp-planifier-parcs-departement";
-      nomDepartement.textContent = libelleDepartementListeParcs();
+      nomDepartement.textContent = String(etatPage.nomDepartement || "").trim();
+      nomDepartement.hidden = !nomDepartement.textContent;
       titre.insertAdjacentElement("afterend", nomDepartement);
       form.querySelector(".lcdp-box-dialogue-champ__actions")?.remove();
       content.append(barre,liste);
       // Garder le pictogramme hors de la box jusqu’à la fin du chargement.
       // Évite le changement visible de dimensions de la box.
       barre.hidden = false;
+      barre.removeAttribute("aria-hidden");
       liste.hidden = false;
       const zoneCarte = document.createElement("div");
       zoneCarte.className = "lcdp-planifier-parcs-carte";
@@ -484,8 +496,11 @@
         const pageContent = document.querySelector(".lcdp-page-reserver .lcdp-page-content--avec-entete");
         if (pageContent) pageContent.append(barre,liste);
         barre.hidden = true;
+        barre.setAttribute("aria-hidden", "true");
         liste.hidden = true;
         enveloppe.remove();
+        vueParcs.hidden = true;
+        document.body.classList.remove("lcdp-planifier-vue-parcs-active");
         filtreParcOuvert = false;
       };
       navigationParcs.fermer = fermer;
@@ -503,7 +518,7 @@
           ]);
           initialiserBoutonDepartementPrincipal();
           await chargerParcsDepartementMembre();
-          nomDepartement.textContent = libelleDepartementListeParcs();
+          actualiserTitreParcsDepartement();
           await revelerDialogueParcs(dialogue, chargement);
         } catch(error) {parcInitialise = false; throw error;}
       } else {
@@ -514,7 +529,12 @@
     } catch(error) {
       const pageContent = document.querySelector(".lcdp-page-reserver .lcdp-page-content--avec-entete");
       if (pageContent && barre && liste) pageContent.append(barre,liste);
-      enveloppe.remove(); filtreParcOuvert = false;
+      if (barre) { barre.hidden = true; barre.setAttribute("aria-hidden", "true"); }
+      if (liste) liste.hidden = true;
+      enveloppe.remove();
+      vueParcs.hidden = true;
+      document.body.classList.remove("lcdp-planifier-vue-parcs-active");
+      filtreParcOuvert = false;
       throw error;
     }
   }
@@ -3117,8 +3137,13 @@
   }
 
   function actualiserTitreParcsDepartement() {
-    const sousTitre = document.querySelector(".lcdp-planifier-parcs-departement");
-    if (sousTitre) sousTitre.textContent = libelleDepartementListeParcs();
+    const numero = document.querySelector("#lcdp-planifier-parcs-vue .lcdp-planifier-parcs-numero");
+    if (numero) numero.textContent = String(etatPage.departement || "").trim();
+    const sousTitre = document.querySelector("#lcdp-planifier-parcs-vue .lcdp-planifier-parcs-departement");
+    if (sousTitre) {
+      sousTitre.textContent = String(etatPage.nomDepartement || "").trim();
+      sousTitre.hidden = !sousTitre.textContent;
+    }
     const titre = document.getElementById("titre-parcs-departement");
     if (!titre) return;
     titre.replaceChildren(document.createTextNode("Parcs près de chez vous"));
@@ -4700,18 +4725,28 @@
     });
   }
 
-  async function ouvrirCalendrierJourParc(contexte) {
-    // Le calendrier du jour est une couche, le planning mensuel reste immuable.
-    let slot = document.getElementById("lcdp-planifier-jour-overlay-slot");
-    if (!slot) {
-      slot = document.createElement("div");
-      slot.id = "lcdp-planifier-jour-overlay-slot";
-      document.body.appendChild(slot);
+  // Retour à la grille mensuelle sans la démonter : parc, mois et sélections sont préservés.
+  // Le slot est permanent dans le wrapper ; seul son contenu est vidé.
+  function fermerVueChoixPlagePlanifier() {
+    const slot = document.getElementById("lcdp-planifier-jour-overlay-slot");
+    if (slot) {
+      slot.replaceChildren();
+      slot.hidden = true;
+      // Le slot est réutilisé : ne pas conserver l'état visuel d'un ancien ABO-RÉZA.
+      slot.classList.remove("lcdp-aboreza-choix-jour");
     }
-    slot.innerHTML = "";
+    document.body.classList.remove("lcdp-planifier-vue-jour-active");
+  }
 
+  async function ouvrirCalendrierJourParc(contexte) {
+    // Troisième vue du même wrapper ; le calendrier mensuel demeure monté et inchangé.
+    const slot = document.getElementById("lcdp-planifier-jour-overlay-slot");
+    if (!slot || !slot.closest(".lcdp-planifier-wrapper")) {
+      throw new Error("Vue Choix des plages du wrapper PLANIFIER introuvable.");
+    }
+    // Construire l'écran complet avant de le révéler : aucune modale intermédiaire.
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-calendrier-jour.html");
-    slot.appendChild(fragment);
+    slot.replaceChildren(fragment);
 
     const calendrier = slot.querySelector("[data-lcdp-box-calendrier-jour]");
     const titre = slot.querySelector("[data-lcdp-calendrier-jour-title]");
@@ -4735,29 +4770,35 @@
     parc.className = 'lcdp-planifier-heure-entete-parc';
     parc.textContent = nomParc;
     meta.append(date, parc);
+    // Légende conservée sur cet écran pour TOUS les parcours (réservation et ABO-RÉZA).
+    // Elle décrit les mêmes catégories/couleurs que le planning mensuel, sans
+    // ajouter de filtres ni modifier les autorisations renvoyées par le Worker.
+    const legende = document.createElement('div');
+    legende.className = 'lcdp-aboreza-choix-horaire__legende lcdp-planifier-jour-legende';
+    legende.setAttribute('role', 'group');
+    legende.setAttribute('aria-label', 'Légende des autorisations');
+    for (const [type, libelle] of [['duo','DUO'],['famille','+ FAMILLE'],['coach','+ COACH'],['famille-coach','+ FAMILLE + COACH']]) {
+      const item = document.createElement('span');
+      item.className = 'lcdp-aboreza-choix-horaire__legende-item';
+      const pastille = document.createElement('span');
+      pastille.className = 'lcdp-aboreza-choix-horaire__pastille lcdp-aboreza-choix-horaire__pastille--' + type;
+      pastille.setAttribute('aria-hidden', 'true');
+      item.append(pastille, document.createTextNode(libelle));
+      legende.append(item);
+    }
+    grille.before(legende);
     if (modeAboReza) {
       const consigne = document.createElement('p');
       consigne.className = 'lcdp-aboreza-choix-horaire__consigne';
       consigne.textContent = 'À quelle heure voulez-vous être au parc ?';
-      const legende = document.createElement('div');
-      legende.className = 'lcdp-aboreza-choix-horaire__legende';
-      legende.setAttribute('aria-label', 'Légende des autorisations');
-      for (const [type, libelle] of [['duo','DUO'],['famille','+ FAMILLE'],['coach','+ COACH'],['famille-coach','+ FAMILLE + COACH']]) {
-        const item = document.createElement('span');
-        item.className = 'lcdp-aboreza-choix-horaire__legende-item';
-        const pastille = document.createElement('span');
-        pastille.className = 'lcdp-aboreza-choix-horaire__pastille lcdp-aboreza-choix-horaire__pastille--' + type;
-        pastille.setAttribute('aria-hidden', 'true');
-        item.append(pastille, document.createTextNode(libelle));
-        legende.append(item);
-      }
-      grille.before(consigne, legende);
+      legende.before(consigne);
+      // Conserver l'adoption ABO-RÉZA et sa validation métier existantes.
       if (window.LCDP_ABOREZA_UI?.adopterChoixHoraire?.(calendrier)) {
         calendrier.classList.add('lcdp-aboreza-choix-horaire');
       }
     }
     const fermer = () => {
-      slot.remove();
+      fermerVueChoixPlagePlanifier();
       if (modeAboReza) window.LCDP_ABOREZA_UI?.fermer?.();
     };
     boutonFermer.addEventListener('click', fermer);
@@ -4772,6 +4813,10 @@
     // Écouteur limité à cette vue : aucune fermeture parasite d'une étape suivante.
     calendrier.addEventListener('keydown', fermerEchap);
     remplirGrilleHoraires(grille, message, contexte);
+    slot.hidden = false;
+    document.body.classList.add("lcdp-planifier-vue-jour-active");
+    // Revenir au haut de la nouvelle vue, sans faire défiler le calendrier conservé.
+    document.querySelector(".lcdp-planifier-wrapper .lcdp-site-main")?.scrollTo?.(0, 0);
     boutonFermer.focus({ preventScroll: true });
   }
 
@@ -4999,7 +5044,7 @@
         etatPage.reservationsMembre.push({...reservation, parc: {...choix.parc}});
         cachePlanningParcLecture.clear();
         // Fermer uniquement la couche JOUR. Le calendrier mensuel est permanent.
-        document.getElementById("lcdp-planifier-jour-overlay-slot")?.remove();
+        fermerVueChoixPlagePlanifier();
         await etatPage.actualiserPlanningPrincipal?.();
         masqueReservation.remove();
         await afficherAlerteSuperposee("Accès planifié", "orange", {libelleBouton:"Fermer"});
