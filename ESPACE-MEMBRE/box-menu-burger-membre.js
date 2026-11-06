@@ -592,7 +592,7 @@
   function creerBoutonActionMenu(label, action, options = {}) {
     const bouton = document.createElement("button");
     bouton.type = "button";
-    bouton.className = "lcdp-box-menu-burger__link";
+    bouton.className = "lcdp-box-menu-burger__button-link";
     bouton.textContent = label;
 
     if (options.italique === true) {
