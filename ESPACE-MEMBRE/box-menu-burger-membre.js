@@ -1124,11 +1124,13 @@
     const liens = [
       {
         label: "Accueil espace membre",
+        roleGraphique: "accueil",
         espace: "membre",
         href: "/ESPACE-MEMBRE/accueil-membre.html"
       },
       {
         label: "Mon compte",
+        roleGraphique: "compte",
         espace: "membre",
         href: "/ESPACE-MEMBRE/mes-informations.html"
       }
@@ -1156,6 +1158,7 @@
       },
       {
         label: "FAQ",
+        roleGraphique: "faq",
         espace: "membre",
         href: "/ESPACE-MEMBRE/FAQ-membre.html?source=menu-burger-membre"
       },
@@ -1187,7 +1190,9 @@
     listeBurger.innerHTML = "";
 
     liens.forEach((item) => {
-      listeBurger.appendChild(creerLienMenu(item, boutonBurger, navBurger, contexte));
+      const element = creerLienMenu(item, boutonBurger, navBurger, contexte);
+      element.dataset.lcdpMenuRole = item.roleGraphique || "standard";
+      listeBurger.appendChild(element);
     });
 
     boutonBurger.addEventListener("click", (event) => {

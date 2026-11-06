@@ -762,13 +762,8 @@
     );
     if (actionSecurite) {
       bouton.classList.add("lcdp-compte-action-prioritaire");
-      // Cadenas OUVERT : l'action propose une modification, pas un verrouillage.
-      bouton.innerHTML = `
-        <svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-          <path d="M8 11V7a4 4 0 0 1 7.5-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          <rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
-          <circle cx="12" cy="16" r="1.2" fill="currentColor" stroke="none"/>
-        </svg>`;
+      // Pictogramme d'origine fourni dans l'exemple Tailwind.
+      bouton.textContent = "🔒";
     } else {
       bouton.innerHTML = `
         <svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
