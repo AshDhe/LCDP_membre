@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-lcdp-css="c085 c034 c037 c046 c075 c076 c077 c033 c036 c066">
 <head>
   <meta charset="utf-8">
 
@@ -76,8 +76,8 @@
 
       const feuillesCssObjet = [
         "/CSSBASE/cssbase.css",
-        "/CSSBASE/lcdp-central-mobile-first.css?v=20261105-objets-integres-v2",
-        "/CSSBASE/lcdp-planifier.css?v=20261105-fusion-aboreza-compact-v16"
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261106-154930",
+        "/CSSBASE/lcdp-planifier.css?v=20261106-wrapper-mobile-v1"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -138,7 +138,7 @@
   </style>
 </head>
 
-<body>
+<body class="lcdp-app-page lcdp-page-reserver">
   <div id="lcdp-planifier-attente-initiale" role="status" aria-label="Chargement du planning mensuel">
     <div class="lcdp-loading-spinner" aria-hidden="true">
       <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
@@ -146,7 +146,7 @@
       <span class="lcdp-loading-spinner__dot"></span>
     </div>
   </div>
-  <div class="lcdp-site-page">
+  <div class="lcdp-site-page lcdp-app-wrapper lcdp-planifier-wrapper">
 
     <div id="lcdp-bandeau-slot"></div>
 
@@ -160,6 +160,9 @@
 
               <p class="lcdp-mention-connexion" id="mention-statut-membre" aria-live="polite"></p>
             </header>
+
+            <!-- Calendrier permanent : dans le corps du wrapper, jamais dans le slot des dialogues. -->
+            <div id="lcdp-planifier-calendrier-slot" aria-label="Planning mensuel"></div>
 
             <p class="lcdp-text-strong-lead" id="titre-parcs-departement" hidden>
               Parcs près de chez vous
@@ -192,7 +195,7 @@
   </div>
 
   <script src="./attente-planifier.js?v=20261102-1"></script>
-  <script src="./reserver-membre.js?v=20261105-aboreza-planning-v4"></script>
+  <script src="./reserver-membre.js?v=20261106-wrapper-mobile-v1"></script>
   <script src="./paiement-membre.js?v=20261105-sortie-protegee-v3"></script>
   <script src="./aboreza-membre.js?v=20261105-plage-integree-v6"></script>
 </body>

@@ -259,7 +259,7 @@
 
   function masquerAttenteInitialePlanifier() {
     const attente = document.getElementById("lcdp-planifier-attente-initiale");
-    const planning = document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-calendrier-mois]");
+    const planning = document.querySelector("#lcdp-planifier-calendrier-slot [data-lcdp-box-calendrier-mois]");
     // Ne jamais découvrir les textes de la page avant que la grille soit montée.
     // En cas d'erreur, l'alerte doit rester utilisable : le catch révèle alors la page.
     if (!planning) {
@@ -699,7 +699,7 @@
 
   // Un calendrier général reste affiché, avant et après sélection d'un parc.
   async function ouvrirPlanningGeneralVierge() {
-    const slot = document.getElementById("lcdp-lightbox-slot");
+    const slot = document.getElementById("lcdp-planifier-calendrier-slot");
     if (!slot) throw new Error("Emplacement du planning introuvable.");
     const [fragmentCalendrier, fragmentJour, fragmentLegende, droitsInitiaux] = await Promise.all([
       chargerFragmentObjet("/HTMLBASE/04-calendrier-mois.html"),
@@ -3481,7 +3481,7 @@
     }
 
     if (jourCalendrier && !jourCalendrier.disabled &&
-        jourCalendrier.closest("#lcdp-lightbox-slot [data-lcdp-box-calendrier-mois]")) {
+        jourCalendrier.closest("#lcdp-planifier-calendrier-slot [data-lcdp-box-calendrier-mois]")) {
       event.preventDefault();
       if (clicJourPlanifierEnCours) return;
       clicJourPlanifierEnCours = true;
@@ -3715,7 +3715,7 @@
 
   // Tunnel PLANIFIER : le calendrier principal est immuable. Les fiches et
   // plannings contextuels sont des superpositions indépendantes, jamais des
-  // enfants de #lcdp-lightbox-slot (conteneur du processus de planification).
+  // enfants du calendrier permanent #lcdp-planifier-calendrier-slot.
   function obtenirHoteFicheParc() {
     let hote = document.getElementById("lcdp-planifier-fiche-overlay-slot");
     if (!hote) {
