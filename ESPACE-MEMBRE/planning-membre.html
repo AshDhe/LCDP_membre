@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-lcdp-css="c085 c034 c038 c037">
 <head>
   <meta charset="utf-8">
   <title>MES ACCÈS - La Clé du Parc</title>
@@ -27,7 +27,7 @@
 
       [
         "/CSSBASE/cssbase.css",
-        "/CSSBASE/lcdp-central-mobile-first.css?v=20261105-css-objets-complets-v1",
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261106-mes-acces-wrapper",
       ].forEach(path => {
         const link = document.createElement("link");
         link.rel = "stylesheet";
@@ -37,8 +37,8 @@
     })();
   </script>
 </head>
-<body>
-  <div class="lcdp-site-page">
+<body class="lcdp-app-page">
+  <div class="lcdp-site-page lcdp-app-wrapper">
 
     <!-- Bandeau existant intégré dès le rendu HTML : visible même en cas d'échec du chargement des fragments. -->
     <div id="lcdp-bandeau-slot">
