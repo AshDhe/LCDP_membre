@@ -143,7 +143,7 @@
       section: "Participation au club",
       id: "champ-membre-depuis",
       name: "membreDepuisAffichage",
-      label: "Depuis",
+      label: "Date d'inscription",
       type: "text",
       key: "membreDepuisAffichage"
     },
@@ -164,7 +164,7 @@
       section: "Participation au club",
       id: "champ-departement-membre",
       name: "departementAffichage",
-      label: "Département",
+      label: "Département de référence",
       type: "text",
       key: "departementAffichage",
       action: {
@@ -425,6 +425,11 @@
     initialiserActionsModification();
     initialiserZoneSelfie();
     structurerSectionsCompte(form);
+    // Présentation des lignes d'action courtes du modèle Tailwind.
+    ["champ-code-a-membre", "champ-code-r-membre", "champ-geolocalisation-membre"].forEach((id) => {
+      document.getElementById(id)?.closest("[data-lcdp-box-champ-formulaire]")
+        ?.classList.add("lcdp-mon-compte-action-courte");
+    });
     document.getElementById("modifier-wifi-bracelet")?.addEventListener("click",ouvrirWifiBracelet);
   }
 
@@ -1148,21 +1153,21 @@
 
   function formaterAliasAffichage(value) {
     const alias = nettoyerTexteSimple(value);
-    return "Alias : " + (alias || "non renseigné");
+    return alias || "Non renseigné";
   }
 
   function formaterMembreDepuis(value) {
-    return "Inscription le " + formaterDate(value);
+    return value ? "Le " + formaterDate(value) : "Non renseigné";
   }
 
   function formaterParrainAffichage(value) {
     const email = nettoyerEmail(value);
-    return "Parrain : " + (email || "Non renseigné");
+    return email || "Non renseigné";
   }
 
   function formaterDepartementAffichage(value) {
     const departement = nettoyerDepartement(value);
-    return "Département actuel : " + (departement || "Non renseigné");
+    return departement || "Non renseigné";
   }
 
   function formaterDaCompte(compte) {
@@ -1330,7 +1335,7 @@
   }
 
   function formaterReglementCompte(label, value) {
-    return label + " le " + formaterDate(value);
+    return value ? "Validé le " + formaterDate(value) : "Non renseigné";
   }
 
   function afficherCompteMembre(compte) {
@@ -1365,7 +1370,67 @@
     });
 
     actualiserBadgePointsClub(compteMembreActuel);
+    afficherResumePointsPassion(compteMembreActuel);
     actualiserActionsProtegeesDa(compteMembreActuel);
+  }
+
+  // Présentation uniquement : synthèse de Points passion, sans valeur fictive.
+  // Le champ d'origine et ses IDs restent en place pour les traitements existants.
+  function afficherResumePointsPassion(compte) {
+    const champ = document.getElementById("champ-points-club-membre")
+      ?.closest("[data-lcdp-box-champ-formulaire]");
+    if (!champ) return;
+
+    const pointsObjet = compte?.points || {};
+    const total = compte?.pointsClub ?? compte?.pointsclub ?? pointsObjet.points ?? null;
+    const zoneId = "lcdp-mon-compte-points-resume";
+    let zone = document.getElementById(zoneId);
+
+    if (total === null || total === undefined || total === "") {
+      zone?.remove();
+      champ.classList.remove("lcdp-points-source-masque");
+      return;
+    }
+    if (!zone) {
+      zone = document.createElement("div");
+      zone.id = zoneId;
+      zone.className = "lcdp-mon-compte-points";
+      zone.setAttribute("aria-label", "Points passion");
+      champ.insertAdjacentElement("afterend", zone);
+    }
+    zone.replaceChildren();
+    const ligne = document.createElement("div");
+    ligne.className = "lcdp-mon-compte-points__resume";
+    const valeur = document.createElement("strong");
+    valeur.className = "lcdp-mon-compte-points__valeur";
+    valeur.textContent = String(total);
+    ligne.appendChild(valeur);
+
+    const statut = normaliserBadgePoints(compte?.statutPointsClub || pointsObjet.statut || "");
+    if (statut) {
+      const etiquette = document.createElement("span");
+      etiquette.className = "lcdp-mon-compte-points__badge";
+      etiquette.textContent = "Référent " + capitaliserBadgePoints(statut);
+      ligne.appendChild(etiquette);
+    }
+    zone.appendChild(ligne);
+
+    const detail = [];
+    const date = compte?.dateCalculPointsClub || compte?.datePointsClub || pointsObjet.date;
+    if (date) detail.push("Total à jour le " + formaterDate(date));
+    const prochain = compte?.prochainReferentPointsClub;
+    const seuil = nombreOuNullCompte(prochain?.seuil);
+    const prochainStatut = capitaliserBadgePoints(prochain?.statut);
+    if (seuil !== null && prochainStatut) {
+      detail.push("Référent " + prochainStatut + " au-dessus de " + Math.max(0, seuil - 1) + " points");
+    }
+    if (detail.length) {
+      const precision = document.createElement("p");
+      precision.className = "lcdp-mon-compte-points__detail";
+      precision.textContent = detail.join(" — ");
+      zone.appendChild(precision);
+    }
+    champ.classList.add("lcdp-points-source-masque");
   }
 
   function actualiserActionsProtegeesDa(compte) {
