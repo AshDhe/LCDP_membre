@@ -80,7 +80,7 @@
       }
     },
     {
-      section: "Etat civil",
+      section: "Sécurité du compte",
       id: "champ-email-membre",
       name: "email",
       label: "E-mail",
@@ -134,18 +134,34 @@
       section: "Sécurité du compte",
       id: "champ-bracelet-presence",
       name: "braceletPresenceAffichage",
-      label: "Bracelet présence",
+      label: "Bracelet inactif",
       type: "text",
       key: "braceletPresenceAffichage",
       action: {id:"modifier-wifi-bracelet",texte:"Modifier le Wi-Fi du bracelet présence",mode:"picto",pictoRouge:true}
     },
     {
       section: "Participation au club",
+      id: "champ-statut-membre",
+      name: "statutAffichage",
+      label: "Membre",
+      type: "text",
+      key: "statutAffichage"
+    },
+    {
+      section: "Participation au club",
       id: "champ-membre-depuis",
       name: "membreDepuisAffichage",
-      label: "Date d'inscription",
+      label: "Inscription",
       type: "text",
       key: "membreDepuisAffichage"
+    },
+    {
+      section: "Participation au club",
+      id: "champ-da-membre",
+      name: "daAffichage",
+      label: "DA",
+      type: "text",
+      key: "daAffichage"
     },
     {
       section: "Participation au club",
@@ -164,7 +180,7 @@
       section: "Participation au club",
       id: "champ-departement-membre",
       name: "departementAffichage",
-      label: "Département de référence",
+      label: "Département actif",
       type: "text",
       key: "departementAffichage",
       action: {
@@ -172,30 +188,6 @@
         texte: "Modifier le département",
         mode: "picto"
       }
-    },
-    {
-      section: "Participation au club",
-      id: "champ-optin-geolocalisation-membre",
-      name: "optinGeolocalisationAffichage",
-      label: "Opt-in géolocalisation",
-      type: "text",
-      key: "optinGeolocalisationAffichage"
-    },
-    {
-      section: "Participation au club",
-      id: "champ-da-membre",
-      name: "daAffichage",
-      label: "DA",
-      type: "text",
-      key: "daAffichage"
-    },
-    {
-      section: "Participation au club",
-      id: "champ-statut-membre",
-      name: "statutAffichage",
-      label: "Membre",
-      type: "text",
-      key: "statutAffichage"
     },
     {
       section: "Participation au club",
@@ -331,7 +323,7 @@
         pictoRouge: true,
         affichageDaOui: true
       }
-    },
+    }
   ];
 
   if (document.readyState === "loading") {
@@ -425,8 +417,8 @@
     initialiserActionsModification();
     initialiserZoneSelfie();
     structurerSectionsCompte(form);
-    // Présentation des lignes d'action courtes du modèle Tailwind.
-    ["champ-code-a-membre", "champ-code-r-membre", "champ-geolocalisation-membre"].forEach((id) => {
+    // CODA, CODR et bracelet : un seul intitulé visible, l'action à droite.
+    ["champ-code-a-membre", "champ-code-r-membre", "champ-bracelet-presence"].forEach((id) => {
       document.getElementById(id)?.closest("[data-lcdp-box-champ-formulaire]")
         ?.classList.add("lcdp-mon-compte-action-courte");
     });
@@ -434,15 +426,33 @@
   }
 
   let wifiBraceletActuel=null;
+  function afficherStatutBracelet(activationExplicite) {
+    const champ = document.getElementById("champ-bracelet-presence");
+    const ligne = champ?.closest("[data-lcdp-box-champ-formulaire]");
+    const label = ligne?.querySelector(".lcdp-box-champ-formulaire__label");
+    // Cette page ne décide pas ce qui rend un bracelet actif : elle n'utilise
+    // un statut positif que si le Worker le fournit explicitement.
+    const actif = activationExplicite === true;
+    if (label) label.textContent = actif ? "Bracelet actif" : "Bracelet inactif";
+    ligne?.classList.toggle("lcdp-compte-bracelet--inactif", !actif);
+    ligne?.classList.toggle("lcdp-compte-bracelet--actif", actif);
+  }
+
   async function chargerWifiBracelet() {
     const champ=document.getElementById("champ-bracelet-presence");
+    afficherStatutBracelet(false);
     try {
       const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/bracelet-wifi",{credentials:"include",cache:"no-store"});
       const d=await r.json().catch(()=>null);
       if(r.status===401){redirigerConnexionMembre("inactive");return;}
       if(!r.ok || !d?.ok){wifiBraceletActuel=null;champ.value=d?.message || "Bracelet indisponible";return;}
-      wifiBraceletActuel=d.bracelet;
-      champ.value="Bracelet présence — "+(d.bracelet.ssid || "Wi-Fi à renseigner");
+      wifiBraceletActuel=d.bracelet || null;
+      const etat = wifiBraceletActuel?.actif === true || wifiBraceletActuel?.actif === 1
+        || wifiBraceletActuel?.actif === "true";
+      afficherStatutBracelet(etat);
+      champ.value = wifiBraceletActuel
+        ? "Bracelet présence — " + (wifiBraceletActuel.ssid || "Wi-Fi à renseigner")
+        : "Aucun bracelet associé";
     }catch{wifiBraceletActuel=null;champ.value="Bracelet présence — service indisponible";}
   }
   let modificationWifiEnCours=false;
@@ -485,7 +495,7 @@
     zone.setAttribute("aria-label", "Selfie pour le contrôle d’accès");
     zone.className = bloc.className;
     zone.setAttribute("data-lcdp-box-champ-formulaire", "");
-    zone.innerHTML = '<div class="lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><button type="button" id="selfie-badge" aria-label="Agrandir mon selfie" title="Agrandir mon selfie" hidden><img id="selfie-photo" alt="Votre selfie" hidden></button><span class="lcdp-selfie-texte"><span>Selfie</span><span id="selfie-etat" role="status">Chargement…</span></span></div></div>';
+    zone.innerHTML = '<div class="lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><button type="button" id="selfie-badge" aria-label="Agrandir mon selfie" title="Agrandir mon selfie" hidden><img id="selfie-photo" alt="Votre selfie" hidden></button><span class="lcdp-selfie-texte" id="selfie-libelle"><span>Selfie</span><span id="selfie-etat" role="status"></span></span></div></div>';
     const fauxInput = {parentNode:zone.lastElementChild};
     ajouterPictoModificationDansChamp(fauxInput, zone, {id:"modifier-selfie",texte:"Prendre ou remplacer mon selfie",pictoRouge:true});
     bloc.insertAdjacentElement("afterend", zone);
@@ -498,6 +508,7 @@
     const photo = document.getElementById("selfie-photo");
     const badge = document.getElementById("selfie-badge");
     function masquerPhoto() {
+      document.getElementById("selfie-libelle")?.removeAttribute("hidden");
       photo.hidden = true;
       badge.hidden = true;
       photo.removeAttribute("src");
@@ -511,11 +522,12 @@
     try {
       const r = await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie",{credentials:"include",cache:"no-store"});
       if(r.status===401){redirigerConnexionMembre("inactive");return;}
-      if(r.status===404){masquerPhoto();statut.textContent="Aucun selfie";return;}
+      if(r.status===404){masquerPhoto();statut.textContent="";return;}
       if(!r.ok)throw Error("Selfie indisponible");
       const blob=await r.blob();
       const image=document.getElementById("selfie-photo");
       const ancienne=selfieUrl;selfieUrl=URL.createObjectURL(blob);image.src=selfieUrl;image.hidden=false;badge.hidden=false;
+      document.getElementById("selfie-libelle")?.setAttribute("hidden", "");
       if(ancienne)URL.revokeObjectURL(ancienne);
       statut.textContent="";
     } catch { masquerPhoto();statut.textContent="Selfie indisponible. Réessayez."; }
@@ -745,12 +757,25 @@
       bouton.disabled = true;
       bouton.setAttribute("aria-disabled", "true");
     }
-    bouton.innerHTML = `
-      <svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-        <path d="M4 16.8V20h3.2L17.9 9.3l-3.2-3.2L4 16.8Z"></path>
-        <path d="M19.2 8 16 4.8l1.1-1.1a1.7 1.7 0 0 1 2.4 0l.8.8a1.7 1.7 0 0 1 0 2.4L19.2 8Z"></path>
-      </svg>
-    `;
+    const actionSecurite = action.id === "modifier-selfie" || champsCompte.some(
+      item => item.section === "Sécurité du compte" && item.action?.id === action.id
+    );
+    if (actionSecurite) {
+      bouton.classList.add("lcdp-compte-action-prioritaire");
+      // Cadenas OUVERT : l'action propose une modification, pas un verrouillage.
+      bouton.innerHTML = `
+        <svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+          <path d="M8 11V7a4 4 0 0 1 7.5-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+          <circle cx="12" cy="16" r="1.2" fill="currentColor" stroke="none"/>
+        </svg>`;
+    } else {
+      bouton.innerHTML = `
+        <svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+          <path d="M4 16.8V20h3.2L17.9 9.3l-3.2-3.2L4 16.8Z"></path>
+          <path d="M19.2 8 16 4.8l1.1-1.1a1.7 1.7 0 0 1 2.4 0l.8.8a1.7 1.7 0 0 1 0 2.4L19.2 8Z"></path>
+        </svg>`;
+    }
 
     zoneControl.appendChild(bouton);
   }
@@ -885,8 +910,8 @@
     }
 
     mention.textContent = compteIndiqueAbonne(compte)
-      ? "MEMBRE ABONNÉ"
-      : "MEMBRE INVITÉ";
+      ? "ABONNÉ"
+      : "INVITÉ";
 
     afficherSuspensionMembre({
       abonnementSuspendu: valeurBooleenneVraie(compte?.abonnementSuspendu || compte?.suspendu),
@@ -1185,10 +1210,10 @@
     const statut = String(value || "").trim().toLowerCase();
 
     if (statut === "abonné" || statut === "abonne") {
-      return "Membre abonné";
+      return "Abonné";
     }
 
-    return "Membre invité";
+    return "Invité";
   }
 
   function formaterPointsClub(compte) {
@@ -1335,7 +1360,7 @@
   }
 
   function formaterReglementCompte(label, value) {
-    return value ? "Validé le " + formaterDate(value) : "Non renseigné";
+    return value ? "Accepté le " + formaterDate(value) : "Non renseigné";
   }
 
   function afficherCompteMembre(compte) {
@@ -1346,7 +1371,9 @@
       ...compteMembreActuel,
       codeAAffichage: "CODA",
       codeRAffichage: "CODR",
-      geolocalisationAffichage: "Géolocalisation",
+      geolocalisationAffichage: compteMembreActuel.optinGeolocalisation
+        ? "Opt-in le " + formaterDate(compteMembreActuel.optinGeolocalisation)
+        : "Non enregistré",
       alias: formaterAliasAffichage(compteMembreActuel.alias),
       membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
       parrainAffichage: formaterParrainAffichage(compteMembreActuel.parrain),
