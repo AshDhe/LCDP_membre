@@ -830,8 +830,8 @@
 
   async function ouvrirDialogueChangerCompteBurger() {
     const confirmation = await ouvrirDialogueBoutonsBurger({
-      titre: "Espace personnel",
-      texte: "Choisissez votre compte",
+      titre: "Espace connecté",
+      texte: "Choisissez votre espace",
       boutons: Object.entries(comptesPublicsBurgerMembre).map(([compte, configuration]) => ({
         label: configuration.label,
         valeur: compte,
@@ -881,84 +881,92 @@
     window.location.href = construireUrlPublic("/ESPACE-PUBLIC/accueil-public.html");
   }
 
+  // Calcule l'échéance à trois mois calendaires de la date de la DA.
+  // Une date absente ou non interprétable ne permet pas de conclure à son ancienneté.
+  function daNonValideeDepuisTroisMoisBurger(dateda) {
+    const valeur = dateIsoDepuisValeurBurger(dateda);
+    if (!valeur) return false;
+    const [annee, mois, jour] = valeur.split("-").map(Number);
+    const debut = new Date(Date.UTC(annee, mois - 1, jour));
+    if (debut.getUTCFullYear() !== annee || debut.getUTCMonth() !== mois - 1 || debut.getUTCDate() !== jour) {
+      return false;
+    }
+    const anneeEcheance = annee + Math.floor((mois - 1 + 3) / 12);
+    const moisEcheance = (mois - 1 + 3) % 12;
+    const dernierJour = new Date(Date.UTC(anneeEcheance, moisEcheance + 1, 0)).getUTCDate();
+    const echeance = [anneeEcheance, String(moisEcheance + 1).padStart(2, "0"), String(Math.min(jour, dernierJour)).padStart(2, "0")].join("-");
+    return dateIsoAujourdhuiParisBurger() > echeance;
+  }
+
   async function gererClicAbonnementBurger(contexte, boutonBurger, navBurger) {
-    let statudaConnue = contexte && contexte.statudaConnue === true;
+    let statudaConnue = contexte?.statudaConnue === true;
     let statuda = normaliserStatuda(contexte?.statuda);
     let datenext = contexte?.datenext || null;
-    let daactive = contexte?.daactive === true
-      ? true
-      : contexte?.daactive === false
-        ? false
-        : null;
+    let dateda = contexte?.dateda || null;
+    let daactive = contexte?.daactive === true ? true : contexte?.daactive === false ? false : null;
 
+    // Le contexte du Worker fait autorité, lorsqu'il est disponible.
     const contexteDa = await chargerContexteDaBurger();
-
-    if (contexteDa && contexteDa.statudaConnue === true) {
+    if (contexteDa?.statudaConnue === true) {
       statudaConnue = true;
       statuda = normaliserStatuda(contexteDa.statuda);
       datenext = contexteDa.datenext || null;
+      dateda = contexteDa.dateda || null;
       daactive = contexteDa.daactive;
     } else if (!statudaConnue) {
       const statutCharge = await chargerStatutDaDepuisIndexBurger();
-
-      if (statutCharge && statutCharge.statudaConnue === true) {
+      if (statutCharge?.statudaConnue === true) {
         statudaConnue = true;
         statuda = normaliserStatuda(statutCharge.statuda);
         datenext = statutCharge.datenext || null;
+        dateda = statutCharge.dateda || null;
+        daactive = statutCharge.daactive;
       }
     }
 
     if (contexte) {
-      contexte.statudaConnue = statudaConnue;
-      contexte.statuda = statuda;
-      contexte.datenext = datenext;
-
-      if (daactive === true || daactive === false) {
-        contexte.daactive = daactive;
-      }
+      Object.assign(contexte, { statudaConnue, statuda, datenext, dateda, daactive });
     }
 
-    if (daactive === true) {
-      if (statuda === "oui") {
-        window.location.href = construireUrlMembre(PAGE_ABONNEMENT_MEMBRE);
-        return;
-      }
+    const reserver = () => {
+      window.location.href = construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html");
+    };
 
-      await afficherAlerteBurger("Votre DA est en cours. Les abonnements sont accessibles après confirmation.");
-      return;
-    }
-
-    if (daactive === false) {
-      if (!dateDaAtteinteBurger(datenext)) {
-        await afficherAlerteBurger("Vous pouvez nous transmettre votre DA à partir du " + formaterDateDa(datenext) + ".");
-        return;
-      }
-
-      await ouvrirPremiereDaDepuisBurger(contexte, boutonBurger, navBurger);
+    if (!statudaConnue) {
+      await afficherAlerteBurger("Impossible de vérifier votre situation de DA pour le moment.");
       return;
     }
 
     if (statuda === "oui") {
-      window.location.href = construireUrlMembre(PAGE_ABONNEMENT_MEMBRE);
+      await afficherAlerteBurger("Prendre un nouvel abonnement ?", {
+        boutonAction: { label: "M'abonner", style: "lcdp-button-mini lcdp-button-mini-orange", action: reserver }
+      });
       return;
     }
 
-    if (statuda === "encours") {
-      await afficherAlerteBurger("Votre DA est en cours. Les abonnements sont accessibles après confirmation.");
+    if (statuda === "encours" || statuda === "non") {
+      if (!dateIsoDepuisValeurBurger(dateda)) {
+        await afficherAlerteBurger("Impossible de vérifier la date de votre DA pour le moment.");
+        return;
+      }
+      if (daNonValideeDepuisTroisMoisBurger(dateda)) {
+        await ouvrirPremiereDaDepuisBurger(contexte, boutonBurger, navBurger);
+      } else {
+        await afficherAlerteBurger("Vous ne pouvez pas vous abonner pour le moment. Demandez à être invité(e).", {
+          boutonAction: { label: "Être invité(e)", style: "lcdp-button-mini lcdp-button-mini-orange", action: reserver }
+        });
+      }
       return;
     }
 
-    if (statuda === "non") {
-      await afficherAlerteBurger("Vous pouvez nous transmettre votre DA à partir du " + formaterDateDa(datenext) + ".");
-      return;
+    // Aucune DA enregistrée : ouverture du parcours existant.
+    if (!statuda) {
+      if (daactive === false && datenext && !dateDaAtteinteBurger(datenext)) {
+        await afficherAlerteBurger("Vous pouvez transmettre votre DA à partir du " + formaterDateDa(datenext) + ".");
+        return;
+      }
+      await ouvrirPremiereDaDepuisBurger(contexte, boutonBurger, navBurger);
     }
-
-    if (!statudaConnue) {
-      await afficherAlerteBurger("Impossible de vérifier techniquement votre accès aux abonnements. Faîtes votre demande depuis la page La Clé.");
-      return;
-    }
-
-    await ouvrirPremiereDaDepuisBurger(contexte, boutonBurger, navBurger);
   }
 
   async function chargerContexteDaBurger() {
@@ -984,6 +992,7 @@
         statudaConnue: Object.prototype.hasOwnProperty.call(data, "statuda"),
         statuda: normaliserStatuda(data.statuda),
         datenext: data.datenext || null,
+        dateda: data.dateda || null,
         daactive: data.daactive === true
           ? true
           : data.daactive === false
@@ -1018,7 +1027,9 @@
       return {
         statudaConnue: Object.prototype.hasOwnProperty.call(data, "statuda"),
         statuda: normaliserStatuda(data.statuda),
-        datenext: data.datenext || null
+        datenext: data.datenext || null,
+        dateda: data.dateda || null,
+        daactive: data.daactive === true ? true : data.daactive === false ? false : null
       };
     } catch (error) {
       console.error("Erreur vérification DA burger :", error);
@@ -1076,6 +1087,7 @@
       statudaConnue: Object.prototype.hasOwnProperty.call(etatMembre, "statuda"),
       statuda: normaliserStatuda(etatMembre.statuda),
       datenext: etatMembre.datenext || null,
+      dateda: etatMembre.dateda || null,
       daactive: etatMembre.daactive === true
         ? true
         : etatMembre.daactive === false
@@ -1111,7 +1123,7 @@
 
     const liens = [
       {
-        label: "Accueil membre",
+        label: "Accueil espace membre",
         espace: "membre",
         href: "/ESPACE-MEMBRE/accueil-membre.html"
       },
@@ -1122,19 +1134,15 @@
       }
     ];
 
-    // En l'absence d'abonnement, le membre peut demander à être invité.
-    // L'action existante vérifie la présence d'un parrain et affiche l'alerte métier.
-    if (!contexte.abonne) {
-      liens.push({ label: "Être invité(e)", action: "etre-invite" });
-    } else {
-      const itemInviter = creerItemInviterBurger(contexte);
-      if (itemInviter) liens.push(itemInviter);
-    }
-
     liens.push(
       {
         label: "Abonnement",
         action: "abonnement"
+      },
+      {
+        label: "Inviter",
+        espace: "membre",
+        href: "/ESPACE-MEMBRE/planning-membre.html"
       },
       {
         label: "Actualité",
@@ -1144,12 +1152,27 @@
       {
         label: "Le club",
         espace: "public",
-        href: "/ESPACE-PUBLIC/le-club.html"
+        href: "/ESPACE-PUBLIC/le-club.html?source=menu-burger-membre"
       },
       {
         label: "FAQ",
+        espace: "membre",
+        href: "/ESPACE-MEMBRE/FAQ-membre.html?source=menu-burger-membre"
+      },
+      {
+        label: "Bénévolat",
         espace: "public",
-        href: "/ESPACE-PUBLIC/FAQ-public.html"
+        href: "/ESPACE-PUBLIC/benevolat.html?source=menu-burger-membre"
+      },
+      {
+        label: "Galerie",
+        espace: "public",
+        href: "/ESPACE-PUBLIC/galerie.html?source=menu-burger-membre"
+      },
+      {
+        label: "Témoignages",
+        espace: "public",
+        href: "/ESPACE-PUBLIC/temoignages.html?source=menu-burger-membre"
       },
       {
         label: "Changer d'espace personnel",
