@@ -49,7 +49,7 @@
 
   const champsCompte = [
     {
-      section: "Etat civil",
+      section: "Votre compte",
       id: "champ-nom-membre",
       name: "nom",
       label: "Nom",
@@ -57,7 +57,7 @@
       key: "nom"
     },
     {
-      section: "Etat civil",
+      section: "Votre compte",
       id: "champ-prenom-membre",
       name: "prenom",
       label: "Prénom",
@@ -65,7 +65,7 @@
       key: "prenom"
     },
     {
-      section: "Etat civil",
+      section: "Votre compte",
       id: "champ-alias-membre",
       name: "alias",
       label: "Alias",
@@ -78,7 +78,7 @@
       }
     },
     {
-      section: "Sécurité du compte",
+      section: "Sécurité de votre compte",
       id: "champ-email-membre",
       name: "email",
       label: "E-mail",
@@ -92,7 +92,7 @@
       }
     },
     {
-      section: "Sécurité du compte",
+      section: "Sécurité de votre compte",
       id: "champ-code-a-membre",
       name: "codeAAffichage",
       label: "CODA",
@@ -106,7 +106,7 @@
       }
     },
     {
-      section: "Sécurité du compte",
+      section: "Sécurité de votre compte",
       id: "champ-code-r-membre",
       name: "codeRAffichage",
       label: "CODR",
@@ -120,7 +120,7 @@
       }
     },
     {
-      section: "Sécurité du compte",
+      section: "Sécurité de votre compte",
       id: "champ-geolocalisation-membre",
       name: "geolocalisationAffichage",
       label: "Géolocalisation",
@@ -129,7 +129,7 @@
       action: {id:"modifier-geolocalisation-membre",texte:"Mettre à jour votre autorisation de géolocalisation",mode:"picto",pictoRouge:true}
     },
     {
-      section: "Sécurité du compte",
+      section: "Sécurité de votre compte",
       id: "champ-bracelet-presence",
       name: "braceletPresenceAffichage",
       label: "BRACELET",
@@ -138,7 +138,7 @@
       action: {id:"modifier-wifi-bracelet",texte:"Modifier le Wi-Fi du bracelet présence",mode:"picto",pictoRouge:true}
     },
     {
-      section: "Participation au club",
+      section: "Statut membre",
       id: "champ-membre-depuis",
       name: "membreDepuisAffichage",
       label: "Inscription",
@@ -146,7 +146,7 @@
       key: "membreDepuisAffichage"
     },
     {
-      section: "Participation au club",
+      section: "Statut membre",
       id: "champ-statut-membre",
       name: "statutAffichage",
       label: "Membre",
@@ -154,7 +154,7 @@
       key: "statutAffichage"
     },
     {
-      section: "Participation au club",
+      section: "Statut membre",
       id: "champ-da-membre",
       name: "daAffichage",
       label: "DA",
@@ -162,10 +162,10 @@
       key: "daAffichage"
     },
     {
-      section: "Participation au club",
+      section: "Statut membre",
       id: "champ-departement-membre",
       name: "departementAffichage",
-      label: "Département par défaut",
+      label: "Département",
       type: "text",
       key: "departementAffichage",
       action: {
@@ -175,7 +175,7 @@
       }
     },
     {
-      section: "Participation au club",
+      section: "Statut membre",
       id: "champ-points-club-membre",
       name: "pointsClubAffichage",
       label: "Points club",
@@ -217,7 +217,7 @@
       }
     },
     {
-      section: "Coordonnées IBAN",
+      section: "IBAN",
       id: "champ-iban-membre",
       name: "iban",
       label: "Numéro IBAN",
@@ -233,7 +233,7 @@
       }
     },
     {
-      section: "Coordonnées IBAN",
+      section: "IBAN",
       id: "champ-swift-membre",
       name: "swift",
       label: "Code BIC / SWIFT",
@@ -249,7 +249,7 @@
       }
     },
     {
-      section: "Coordonnées IBAN",
+      section: "IBAN",
       id: "champ-rib-membre",
       name: "rib",
       label: "Titulaire du compte",
@@ -415,35 +415,33 @@
   }
 
   let wifiBraceletActuel=null;
-  function afficherStatutBracelet(activationExplicite) {
+  let messageBraceletIndisponible = "Aucun bracelet associé.";
+  function afficherValeurBracelet(valeur) {
     const champ = document.getElementById("champ-bracelet-presence");
-    const ligne = champ?.closest("[data-lcdp-box-champ-formulaire]");
-    const label = ligne?.querySelector(".lcdp-box-champ-formulaire__label");
-    // Cette page ne décide pas ce qui rend un bracelet actif : elle n'utilise
-    // un statut positif que si le Worker le fournit explicitement.
-    const actif = activationExplicite === true;
-    if (label) label.textContent = "BRACELET";
-    if (champ) champ.value = actif ? "Actif" : "Inactif";
-    ligne?.classList.toggle("lcdp-compte-bracelet--inactif", !actif);
-    ligne?.classList.toggle("lcdp-compte-bracelet--actif", actif);
+    if (champ) champ.value = nettoyerTexteSimple(valeur) || "–";
   }
 
   async function chargerWifiBracelet() {
-    const champ=document.getElementById("champ-bracelet-presence");
-    afficherStatutBracelet(false);
+    afficherValeurBracelet("");
     try {
       const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/bracelet-wifi",{credentials:"include",cache:"no-store"});
       const d=await r.json().catch(()=>null);
       if(r.status===401){redirigerConnexionMembre("inactive");return;}
-      if(!r.ok || !d?.ok){wifiBraceletActuel=null;champ.value=d?.message || "Bracelet indisponible";return;}
+      if(!r.ok || !d?.ok){
+        wifiBraceletActuel=null;
+        messageBraceletIndisponible=d?.message || "Bracelet indisponible";
+        return;
+      }
       wifiBraceletActuel=d.bracelet || null;
-      const etat = wifiBraceletActuel?.actif === true || wifiBraceletActuel?.actif === 1
-        || wifiBraceletActuel?.actif === "true";
-      afficherStatutBracelet(etat);
-      champ.value = wifiBraceletActuel
-        ? (etat ? "Actif" : "Inactif")
-        : "Aucun bracelet associé";
-    }catch{wifiBraceletActuel=null;champ.value="Service indisponible";}
+      messageBraceletIndisponible = wifiBraceletActuel ? "" : "Aucun bracelet associé.";
+      // Un SSID ou un booléen Wi-Fi ne constitue pas la valeur du bracelet.
+      // Afficher seulement un libellé explicite, s'il est fourni par le Worker.
+      afficherValeurBracelet(wifiBraceletActuel?.libelle || wifiBraceletActuel?.nom || "");
+    }catch{
+      wifiBraceletActuel=null;
+      messageBraceletIndisponible="Service indisponible";
+      afficherValeurBracelet("");
+    }
   }
   let modificationWifiEnCours=false;
   async function ouvrirWifiBracelet() {
@@ -451,7 +449,7 @@
     modificationWifiEnCours=true;
     try {
       await chargerWifiBracelet();
-      if(!wifiBraceletActuel){await afficherAlerte(document.getElementById("champ-bracelet-presence").value);return;}
+      if(!wifiBraceletActuel){await afficherAlerte(messageBraceletIndisponible);return;}
       await ouvrirDialogueChamp({
         titre:"Bracelet présence",libelleValider:"Valider",
         message:"Renseignez le réseau Wi-Fi auquel votre bracelet devra se connecter. Confirmez avec votre CODA. Vous n’avez droit qu’à une seule tentative.",
@@ -752,7 +750,7 @@
       bouton.setAttribute("aria-disabled", "true");
     }
     const actionSecurite = action.id === "modifier-selfie" || champsCompte.some(
-      item => item.section === "Sécurité du compte" && item.action?.id === action.id
+      item => item.section === "Sécurité de votre compte" && item.action?.id === action.id
     );
     if (actionSecurite) {
       bouton.classList.add("lcdp-compte-action-prioritaire");
@@ -766,7 +764,7 @@
         </svg>`;
     }
 
-    zoneControl.appendChild(bouton);
+    champ.appendChild(bouton);
   }
 
   function ajouterBadgeInformationDansChamp(champId, badgeConfig) {
@@ -1453,6 +1451,7 @@ function afficherStatutDaCompte(compte) {
       // Masques constants : ils ne révèlent jamais les secrets réels.
       codeAAffichage: "••••",
       codeRAffichage: "•••• - •••• - •••• - ••••",
+      braceletPresenceAffichage: "–",
       geolocalisationAffichage: compteMembreActuel.optinGeolocalisation
         ? "Opt-in le " + formaterDate(compteMembreActuel.optinGeolocalisation)
         : "Non enregistré",
