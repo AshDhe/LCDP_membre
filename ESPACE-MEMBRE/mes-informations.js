@@ -132,18 +132,10 @@
       section: "Sécurité du compte",
       id: "champ-bracelet-presence",
       name: "braceletPresenceAffichage",
-      label: "Bracelet inactif",
+      label: "BRACELET",
       type: "text",
       key: "braceletPresenceAffichage",
       action: {id:"modifier-wifi-bracelet",texte:"Modifier le Wi-Fi du bracelet présence",mode:"picto",pictoRouge:true}
-    },
-    {
-      section: "Participation au club",
-      id: "champ-statut-membre",
-      name: "statutAffichage",
-      label: "Membre",
-      type: "text",
-      key: "statutAffichage"
     },
     {
       section: "Participation au club",
@@ -155,6 +147,14 @@
     },
     {
       section: "Participation au club",
+      id: "champ-statut-membre",
+      name: "statutAffichage",
+      label: "Membre",
+      type: "text",
+      key: "statutAffichage"
+    },
+    {
+      section: "Participation au club",
       id: "champ-da-membre",
       name: "daAffichage",
       label: "DA",
@@ -163,22 +163,9 @@
     },
     {
       section: "Participation au club",
-      id: "champ-parrain-membre",
-      name: "parrainAffichage",
-      label: "Parrain",
-      type: "text",
-      key: "parrainAffichage",
-      action: {
-        id: "modifier-parrain-membre",
-        texte: "Modifier le parrain",
-        mode: "picto"
-      }
-    },
-    {
-      section: "Participation au club",
       id: "champ-departement-membre",
       name: "departementAffichage",
-      label: "Département actif",
+      label: "Département par défaut",
       type: "text",
       key: "departementAffichage",
       action: {
@@ -230,7 +217,7 @@
       }
     },
     {
-      section: "Coordonnées de remboursement IBAN",
+      section: "Coordonnées IBAN",
       id: "champ-iban-membre",
       name: "iban",
       label: "Numéro IBAN",
@@ -246,7 +233,7 @@
       }
     },
     {
-      section: "Coordonnées de remboursement IBAN",
+      section: "Coordonnées IBAN",
       id: "champ-swift-membre",
       name: "swift",
       label: "Code BIC / SWIFT",
@@ -262,7 +249,7 @@
       }
     },
     {
-      section: "Coordonnées de remboursement IBAN",
+      section: "Coordonnées IBAN",
       id: "champ-rib-membre",
       name: "rib",
       label: "Titulaire du compte",
@@ -424,11 +411,6 @@
     initialiserActionsModification();
     initialiserZoneSelfie();
     structurerSectionsCompte(form);
-    // CODA, CODR et bracelet : un seul intitulé visible, l'action à droite.
-    ["champ-code-a-membre", "champ-code-r-membre", "champ-bracelet-presence"].forEach((id) => {
-      document.getElementById(id)?.closest("[data-lcdp-box-champ-formulaire]")
-        ?.classList.add("lcdp-mon-compte-action-courte");
-    });
     document.getElementById("modifier-wifi-bracelet")?.addEventListener("click",ouvrirWifiBracelet);
   }
 
@@ -440,7 +422,8 @@
     // Cette page ne décide pas ce qui rend un bracelet actif : elle n'utilise
     // un statut positif que si le Worker le fournit explicitement.
     const actif = activationExplicite === true;
-    if (label) label.textContent = actif ? "Bracelet actif" : "Bracelet inactif";
+    if (label) label.textContent = "BRACELET";
+    if (champ) champ.value = actif ? "Actif" : "Inactif";
     ligne?.classList.toggle("lcdp-compte-bracelet--inactif", !actif);
     ligne?.classList.toggle("lcdp-compte-bracelet--actif", actif);
   }
@@ -458,9 +441,9 @@
         || wifiBraceletActuel?.actif === "true";
       afficherStatutBracelet(etat);
       champ.value = wifiBraceletActuel
-        ? "Bracelet présence — " + (wifiBraceletActuel.ssid || "Wi-Fi à renseigner")
+        ? (etat ? "Actif" : "Inactif")
         : "Aucun bracelet associé";
-    }catch{wifiBraceletActuel=null;champ.value="Bracelet présence — service indisponible";}
+    }catch{wifiBraceletActuel=null;champ.value="Service indisponible";}
   }
   let modificationWifiEnCours=false;
   async function ouvrirWifiBracelet() {
@@ -502,7 +485,7 @@
     zone.setAttribute("aria-label", "Selfie pour le contrôle d’accès");
     zone.className = bloc.className;
     zone.setAttribute("data-lcdp-box-champ-formulaire", "");
-    zone.innerHTML = '<div class="lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><button type="button" id="selfie-badge" aria-label="Agrandir mon selfie" title="Agrandir mon selfie" hidden><img id="selfie-photo" alt="Votre selfie" hidden></button><span class="lcdp-selfie-texte" id="selfie-libelle"><span>Selfie</span><span id="selfie-etat" role="status"></span></span></div></div>';
+    zone.innerHTML = '<div class="lcdp-box-champ-formulaire__label-zone"><span class="lcdp-box-champ-formulaire__label">SELFIE</span></div><div class="lcdp-box-champ-formulaire__control lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><button type="button" id="selfie-badge" aria-label="Agrandir mon selfie" title="Agrandir mon selfie" hidden><img id="selfie-photo" alt="Votre selfie" hidden></button><span class="lcdp-selfie-texte" id="selfie-libelle"><span id="selfie-etat" role="status"></span></span></div></div>';
     const fauxInput = {parentNode:zone.lastElementChild};
     ajouterPictoModificationDansChamp(fauxInput, zone, {id:"modifier-selfie",texte:"Prendre ou remplacer mon selfie",pictoRouge:true});
     bloc.insertAdjacentElement("afterend", zone);
@@ -920,8 +903,8 @@
     }
 
     mention.textContent = compteIndiqueAbonne(compte)
-      ? "ABONNÉ"
-      : "INVITÉ";
+      ? "MEMBRE ABONNÉ"
+      : "MEMBRE INVITÉ";
 
     afficherSuspensionMembre({
       abonnementSuspendu: valeurBooleenneVraie(compte?.abonnementSuspendu || compte?.suspendu),
@@ -1188,11 +1171,16 @@
 
   function formaterAliasAffichage(value) {
     const alias = nettoyerTexteSimple(value);
-    return alias || "Non renseigné";
+    return alias || "–";
   }
 
   function formaterMembreDepuis(value) {
-    return value ? "Le " + formaterDate(value) : "Non renseigné";
+    if (!value) return "–";
+    const dateAffichee = formaterDate(value);
+    const morceaux = dateAffichee.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    return morceaux
+      ? Number(morceaux[1]) + "-" + Number(morceaux[2]) + "-" + morceaux[3]
+      : dateAffichee;
   }
 
   function formaterParrainAffichage(value) {
@@ -1200,9 +1188,45 @@
     return email || "Non renseigné";
   }
 
-  function formaterDepartementAffichage(value) {
-    const departement = nettoyerDepartement(value);
-    return departement || "Non renseigné";
+  // Référentiel des départements français : libellé de présentation seulement.
+  // Les codes inconnus sont conservés tels quels, sans inventer de nom.
+  const NOMS_DEPARTEMENTS_COMPTE = Object.freeze({
+    "01":"Ain","02":"Aisne","03":"Allier","04":"Alpes-de-Haute-Provence",
+    "05":"Hautes-Alpes","06":"Alpes-Maritimes","07":"Ardèche","08":"Ardennes",
+    "09":"Ariège","10":"Aube","11":"Aude","12":"Aveyron","13":"Bouches-du-Rhône",
+    "14":"Calvados","15":"Cantal","16":"Charente","17":"Charente-Maritime",
+    "18":"Cher","19":"Corrèze","2A":"Corse-du-Sud","2B":"Haute-Corse",
+    "21":"Côte-d'Or","22":"Côtes-d'Armor","23":"Creuse","24":"Dordogne",
+    "25":"Doubs","26":"Drôme","27":"Eure","28":"Eure-et-Loir",
+    "29":"Finistère","30":"Gard","31":"Haute-Garonne","32":"Gers",
+    "33":"Gironde","34":"Hérault","35":"Ille-et-Vilaine","36":"Indre",
+    "37":"Indre-et-Loire","38":"Isère","39":"Jura","40":"Landes",
+    "41":"Loir-et-Cher","42":"Loire","43":"Haute-Loire","44":"Loire-Atlantique",
+    "45":"Loiret","46":"Lot","47":"Lot-et-Garonne","48":"Lozère",
+    "49":"Maine-et-Loire","50":"Manche","51":"Marne","52":"Haute-Marne",
+    "53":"Mayenne","54":"Meurthe-et-Moselle","55":"Meuse","56":"Morbihan",
+    "57":"Moselle","58":"Nièvre","59":"Nord","60":"Oise",
+    "61":"Orne","62":"Pas-de-Calais","63":"Puy-de-Dôme","64":"Pyrénées-Atlantiques",
+    "65":"Hautes-Pyrénées","66":"Pyrénées-Orientales","67":"Bas-Rhin","68":"Haut-Rhin",
+    "69":"Rhône","70":"Haute-Saône","71":"Saône-et-Loire","72":"Sarthe",
+    "73":"Savoie","74":"Haute-Savoie","75":"Paris","76":"Seine-Maritime",
+    "77":"Seine-et-Marne","78":"Yvelines","79":"Deux-Sèvres","80":"Somme",
+    "81":"Tarn","82":"Tarn-et-Garonne","83":"Var","84":"Vaucluse",
+    "85":"Vendée","86":"Vienne","87":"Haute-Vienne","88":"Vosges",
+    "89":"Yonne","90":"Territoire de Belfort","91":"Essonne","92":"Hauts-de-Seine",
+    "93":"Seine-Saint-Denis","94":"Val-de-Marne","95":"Val-d'Oise",
+    "971":"Guadeloupe","972":"Martinique","973":"Guyane","974":"La Réunion","976":"Mayotte"
+  });
+
+  function formaterDepartementAffichage(value, compte = null) {
+    const departement = nettoyerDepartement(value).toUpperCase();
+    if (!departement) return "–";
+    const code = /^\d$/.test(departement) ? "0" + departement : departement;
+    const nomApi = nettoyerTexteSimple(
+      compte?.nomDepartement || compte?.nomdepartement || compte?.departementNom || ""
+    );
+    const nom = nomApi || NOMS_DEPARTEMENTS_COMPTE[code];
+    return nom ? nom + " (" + code + ")" : departement;
   }
 
   function formaterDaCompte(compte) {
@@ -1426,15 +1450,16 @@ function afficherStatutDaCompte(compte) {
 
     const compteAffiche = {
       ...compteMembreActuel,
-      codeAAffichage: "CODA",
-      codeRAffichage: "CODR",
+      // Masques constants : ils ne révèlent jamais les secrets réels.
+      codeAAffichage: "••••",
+      codeRAffichage: "•••• - •••• - •••• - ••••",
       geolocalisationAffichage: compteMembreActuel.optinGeolocalisation
         ? "Opt-in le " + formaterDate(compteMembreActuel.optinGeolocalisation)
         : "Non enregistré",
       alias: formaterAliasAffichage(compteMembreActuel.alias),
       membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
       parrainAffichage: formaterParrainAffichage(compteMembreActuel.parrain),
-      departementAffichage: formaterDepartementAffichage(compteMembreActuel.departement),
+      departementAffichage: formaterDepartementAffichage(compteMembreActuel.departement, compteMembreActuel),
       optinGeolocalisationAffichage: compteMembreActuel.optinGeolocalisation ? formaterDate(compteMembreActuel.optinGeolocalisation) : "Non enregistré",
       daAffichage: formaterDaCompte(compteMembreActuel),
       statutAffichage: formaterStatutCompte(compteMembreActuel.statut),
