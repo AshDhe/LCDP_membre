@@ -1714,9 +1714,27 @@
       if (typeof moteurCarte?.rendreCarteDansConteneur !== "function") {
         throw new Error("La carte du diaporama n’a pas pu être chargée.");
       }
-      // La carte du département n'a pas besoin d'une fiche de parc si aucun
-      // parc n'existe encore. La géométrie vient du GeoJSON commun.
+      // Sans parc dans le département, récupérer les localités déjà
+      // référencées dans notre table parcs via le Worker fiche-parc.
       let detail = { parc: null, parcsDepartement: [], localites: [] };
+      if (!parcs.length) {
+        const endpointFiche = construireEndpointApi(
+          "workerFicheParcUrl", "WORKER_FICHE_PARC_URL", "fiche-parc-api"
+        );
+        if (!endpointFiche) throw new Error("Service de localisation des parcs indisponible.");
+        const reponseLocalites = await fetch(endpointFiche + "/localites-carte", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: { Accept: "application/json" }
+        });
+        const donneesLocalites = await reponseLocalites.json().catch(() => null);
+        if (!reponseLocalites.ok || !donneesLocalites ||
+            (donneesLocalites.ok !== true && donneesLocalites.success !== true)) {
+          throw new Error(donneesLocalites?.message || "Localités des parcs indisponibles.");
+        }
+        detail.localites = Array.isArray(donneesLocalites.localites) ? donneesLocalites.localites : [];
+      }
       if (parcs.length) {
         const endpointFiche = construireEndpointApi(
           "workerFicheParcUrl", "WORKER_FICHE_PARC_URL", "fiche-parc-api"
