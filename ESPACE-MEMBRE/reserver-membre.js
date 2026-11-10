@@ -1722,7 +1722,7 @@
           "workerFicheParcUrl", "WORKER_FICHE_PARC_URL", "fiche-parc-api"
         );
         if (!endpointFiche) throw new Error("Service de localisation des parcs indisponible.");
-        const reponseLocalites = await fetch(endpointFiche + "/localites-carte", {
+        const reponseLocalites = await fetch(endpointFiche + "/localites-carte?dptmt=" + encodeURIComponent(departement), {
           method: "GET",
           credentials: "include",
           cache: "no-store",
