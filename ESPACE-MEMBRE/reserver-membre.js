@@ -1596,6 +1596,26 @@
     const zone = liste.querySelector("[data-lcdp-liste-card-diaporama-list]");
     if (!zone) return;
     for (const parc of etatPage.parcs) zone.appendChild(creerCardParcDiaporama(parc));
+    if (!etatPage.parcs.length) {
+      const note = document.createElement("p");
+      note.setAttribute("role", "status");
+      note.textContent = "Il n’y a pas encore de parc dans ce département.";
+      note.style.cssText = [
+        "box-sizing:border-box",
+        "width:100%",
+        "margin:12px auto",
+        "padding:16px 12px",
+        "border:1px solid #dce4da",
+        "border-radius:14px",
+        "background:#fff",
+        "box-shadow:0 3px 12px rgba(35,55,35,.08)",
+        "color:#263e2f",
+        "font-weight:600",
+        "text-align:center",
+        "line-height:1.5"
+      ].join(";");
+      zone.appendChild(note);
+    }
     navigation.zoneDiaporama.replaceChildren(liste);
   }
 
@@ -1753,6 +1773,37 @@
           latparc: coordonnee(parc, detailParc, ["latparc", "latitude", "latloc"], 90)
         };
       });
+      // Sans parc, la fiche ne contient pas de localité : récupérer une ville
+      // du département et son centre géographique auprès du référentiel officiel.
+      let localitesCarte = Array.isArray(detail.localites) ? detail.localites : [];
+      if (!parcs.length && !localitesCarte.length && /^(?:[0-9]{2,3}|2[AB])$/.test(departement)) {
+        try {
+          const reponseCommunes = await fetch(
+            "https://geo.api.gouv.fr/departements/" + encodeURIComponent(departement) +
+            "/communes?fields=nom,centre,population,codeDepartement",
+            { headers: { Accept: "application/json" } }
+          );
+          if (!reponseCommunes.ok) throw new Error("Référentiel géographique HTTP " + reponseCommunes.status);
+          const communes = await reponseCommunes.json();
+          const commune = (Array.isArray(communes) ? communes : [])
+            .filter(item => item?.nom && item?.codeDepartement === departement &&
+              Array.isArray(item?.centre?.coordinates) &&
+              item.centre.coordinates.length >= 2 &&
+              item.centre.coordinates.slice(0, 2).every(valeur => Number.isFinite(Number(valeur))))
+            .sort((a, b) => (Number(b.population) || 0) - (Number(a.population) || 0))[0];
+          if (commune) {
+            localitesCarte = [{
+              nom: commune.nom,
+              longitude: Number(commune.centre.coordinates[0]),
+              latitude: Number(commune.centre.coordinates[1]),
+              dptmt: departement
+            }];
+          }
+        } catch (erreurLocalite) {
+          console.warn("Localité du département indisponible :", erreurLocalite);
+        }
+      }
+      if (!estCourante()) return;
       const hote = document.createElement("div");
       hote.className = "lcdp-planifier-carte-hote";
       // La carte est mesurable pendant sa construction ; seul le GIF est visible.
@@ -1760,8 +1811,9 @@
       navigation.zoneCarte.appendChild(hote);
       const controleur = await moteurCarte.rendreCarteDansConteneur(hote, {
         dptmt: departement,
+        nomDepartement: etatPage.nomDepartement,
         parcsDepartement: parcsCarte,
-        localitesCarte: detail.localites || []
+        localitesCarte
       }, {
         chargerFragmentObjet,
         construireUrlObjet,
