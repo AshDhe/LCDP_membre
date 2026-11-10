@@ -5,6 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Accueil de votre espace membre La Clé du Parc.">
   <title>La Clé du Parc - Accueil membre</title>
+  <!-- Centrage immédiat du spinner, avant config.js et le CSS distant. -->
+  <style>
+    #lcdp-accueil-attente,
+    #lcdp-navigation-attente:not([hidden]) {
+      position: fixed; inset: 0; z-index: 2147483646;
+      box-sizing: border-box; width: 100%; height: 100vh; height: 100dvh;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0; padding: 0; background: #fff;
+    }
+    #lcdp-navigation-attente[hidden] { display: none !important; }
+    :is(#lcdp-accueil-attente, #lcdp-navigation-attente) .public-home__loading-inner {
+      display: flex; align-items: center; justify-content: center;
+      margin: 0; padding: 0; gap: 0;
+    }
+    :is(#lcdp-accueil-attente, #lcdp-navigation-attente) .lcdp-loading-spinner {
+      position: relative; display: flex; align-items: center; justify-content: center;
+      box-sizing: border-box; width: 64px; height: 64px; flex: 0 0 64px;
+    }
+    :is(#lcdp-accueil-attente, #lcdp-navigation-attente) .lcdp-loading-spinner > svg {
+      position: absolute; inset: 0; display: block; width: 100%; height: 100%;
+    }
+    :is(#lcdp-accueil-attente, #lcdp-navigation-attente) .lcdp-loading-spinner__track { color: rgba(6,95,70,.10); }
+    :is(#lcdp-accueil-attente, #lcdp-navigation-attente) .lcdp-loading-spinner__arc {
+      color: #e59834; animation: lcdp-attente-premier-rendu .8s linear infinite;
+    }
+    :is(#lcdp-accueil-attente, #lcdp-navigation-attente) .lcdp-loading-spinner__dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #4e6838;
+    }
+    @keyframes lcdp-attente-premier-rendu { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      :is(#lcdp-accueil-attente, #lcdp-navigation-attente) .lcdp-loading-spinner__arc { animation: none; }
+    }
+  </style>
   <script src="../config.js"></script>
   <script>
 
@@ -75,7 +108,7 @@
   <!-- Même CSS central que l'accueil public, résolu sur le domaine OBJET configuré. -->
   <script>
     (() => {
-      const href = window.LCDP_urlObjet("/CSSBASE/lcdp-central-mobile-first.css");
+      const href = window.LCDP_urlObjet("/CSSBASE/lcdp-central-mobile-first.css?v=20261110-spinner-centre-v1");
       document.write('<link rel="stylesheet" href="' + href.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">');
       document.write('<script src="' + window.LCDP_urlObjet("/JSBASE/02-footer.js") + '" data-lcdp-footer-autonome defer><\/script>');
     })();
@@ -93,16 +126,12 @@
 </head>
 <body class="public-home public-home--loading lcdp-app-page lcdp-page-accueil-membre">
   <!-- Ecran d'attente identique à l'accueil public. -->
-  <div aria-label="Chargement de votre espace membre" aria-live="polite" class="public-home__loading" id="lcdp-accueil-attente" role="status">
+  <div aria-label="Chargement de votre espace membre" aria-live="polite" class="public-home__loading lcdp-attente-plein-ecran" id="lcdp-accueil-attente" role="status">
   <div class="public-home__loading-inner">
   <div aria-hidden="true" class="lcdp-loading-spinner">
   <svg class="lcdp-loading-spinner__track" viewbox="0 0 36 36"><circle cx="18" cy="18" fill="none" r="16" stroke="currentColor" stroke-linecap="round" stroke-width="3"></circle></svg>
   <svg class="lcdp-loading-spinner__arc" viewbox="0 0 36 36"><circle cx="18" cy="18" fill="none" r="16" stroke="currentColor" stroke-dasharray="100" stroke-dashoffset="75" stroke-linecap="round" stroke-width="3"></circle></svg>
   <span class="lcdp-loading-spinner__dot"></span>
-  </div>
-  <div class="public-home__loading-copy">
-  <p class="public-home__loading-title">Vérification de vos accès</p>
-  <p class="public-home__loading-subtitle">Un instant, nous ouvrons la barrière...</p>
   </div>
   </div>
   </div>
@@ -165,16 +194,12 @@
   </div>
 
   <!-- Ces deux conteneurs sont pilotés exclusivement par accueil-membre.js. -->
-  <div aria-label="Ouverture de la fonctionnalité" aria-live="polite" class="public-home__loading" hidden="" id="lcdp-navigation-attente" role="status">
+  <div aria-label="Ouverture de la fonctionnalité" aria-live="polite" class="public-home__loading lcdp-attente-plein-ecran" hidden="" id="lcdp-navigation-attente" role="status">
   <div class="public-home__loading-inner">
   <div aria-hidden="true" class="lcdp-loading-spinner">
   <svg class="lcdp-loading-spinner__track" viewbox="0 0 36 36"><circle cx="18" cy="18" fill="none" r="16" stroke="currentColor" stroke-linecap="round" stroke-width="3"></circle></svg>
   <svg class="lcdp-loading-spinner__arc" viewbox="0 0 36 36"><circle cx="18" cy="18" fill="none" r="16" stroke="currentColor" stroke-dasharray="100" stroke-dashoffset="75" stroke-linecap="round" stroke-width="3"></circle></svg>
   <span class="lcdp-loading-spinner__dot"></span>
-  </div>
-  <div class="public-home__loading-copy">
-  <p class="public-home__loading-title">Vérification de vos accès</p>
-  <p class="public-home__loading-subtitle">Un instant, nous ouvrons la barrière...</p>
   </div>
   </div>
   </div>
@@ -191,6 +216,6 @@
     };
   </script>
   <script>document.write('<script src="' + window.LCDP_urlPublic("/ESPACE-PUBLIC/controle-acces-accueil.js") + '"><\/script>');</script>
-  <script src="./accueil-membre.js?v=20261104-depuis-accueil-public" onerror="window.LCDP_echecAccueilMembre()"></script>
+  <script src="./accueil-membre.js?v=20261110-spinner-centre-v1" onerror="window.LCDP_echecAccueilMembre()"></script>
 </body>
 </html>

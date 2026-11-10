@@ -123,7 +123,7 @@
       // Coque commune : wrapper, bandeau, burger, footer et composants métier.
       // Les réglages de cette page restent dans lcdp-mon-compte.css.
       const feuillesCssObjet = [
-        "/CSSBASE/lcdp-central-mobile-first.css?v=20261110-statut-membre-160-v1",
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261110-spinner-centre-v1",
         "/CSSBASE/lcdp-mon-compte.css?v=20261110-statut-membre-central-v1"
       ];
 
@@ -139,7 +139,7 @@
 </head>
 
 <body class="lcdp-page-mon-compte lcdp-app-page">
-  <div id="lcdp-mon-compte-attente-initiale" role="status" aria-label="Chargement de mon compte">
+  <div class="lcdp-attente-plein-ecran" id="lcdp-mon-compte-attente-initiale" role="status" aria-label="Chargement de mon compte">
     <div class="lcdp-loading-spinner" aria-hidden="true">
       <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
       <svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg>

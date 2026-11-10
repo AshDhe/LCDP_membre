@@ -8,6 +8,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Choisir un parc et réserver une nouvelle date dans votre espace membre La Clé du Parc.">
 
+  <style>
+    /* Amorçage du spinner avant disponibilité des feuilles CSS distantes. */
+    #lcdp-planifier-attente-initiale { position: fixed; inset: 0; z-index: 2147483646; display: flex; align-items: center; justify-content: center; background: #fff; }
+    #lcdp-planifier-attente-initiale .lcdp-loading-spinner { position: relative; display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; box-sizing: border-box; }
+    #lcdp-planifier-attente-initiale .lcdp-loading-spinner > svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+    #lcdp-planifier-attente-initiale .lcdp-loading-spinner__track { color: rgba(6,95,70,.10); }
+    #lcdp-planifier-attente-initiale .lcdp-loading-spinner__arc { color: #e59834; animation: lcdp-planifier-spinner-tourne .8s linear infinite; }
+    #lcdp-planifier-attente-initiale .lcdp-loading-spinner__dot { width: 8px; height: 8px; border-radius: 50%; background: #4e6838; }
+    @keyframes lcdp-planifier-spinner-tourne { to { transform: rotate(360deg); } }
+    /* Attente ABO-RÉZA : même spinner HTML que PLANIFIER, sans GIF externe. */
+    body > .lcdp-planifier-partage-attente:has(> .lcdp-loading-spinner) {
+      position: fixed; inset: 0; z-index: 2147483000;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.92);
+    }
+    .lcdp-planifier-partage-attente > .lcdp-loading-spinner {
+      position: relative; box-sizing: border-box; display: flex;
+      flex: 0 0 auto; align-items: center; justify-content: center;
+      width: 64px; height: 64px;
+    }
+    .lcdp-planifier-partage-attente > .lcdp-loading-spinner > svg {
+      position: absolute; inset: 0; display: block; width: 100%; height: 100%;
+    }
+    .lcdp-planifier-partage-attente .lcdp-loading-spinner__track { color: rgba(6,95,70,.10); }
+    .lcdp-planifier-partage-attente .lcdp-loading-spinner__arc {
+      color: #e59834; animation: lcdp-planifier-spinner-tourne .8s linear infinite;
+    }
+    .lcdp-planifier-partage-attente .lcdp-loading-spinner__dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #4e6838;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #lcdp-planifier-attente-initiale .lcdp-loading-spinner__arc,
+      .lcdp-planifier-partage-attente .lcdp-loading-spinner__arc { animation: none; }
+    }
+  </style>
+
   <script src="../config.js"></script>
 
   <script>
@@ -76,7 +112,7 @@
 
       const feuillesCssObjet = [
         "/CSSBASE/cssbase.css",
-        "/CSSBASE/lcdp-central-mobile-first.css?v=20261110-statut-membre-160-v1",
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261110-spinner-centre-v1",
         "/CSSBASE/lcdp-planifier.css?v=20261110-titres-retour-general-v1"
       ];
 
@@ -101,45 +137,11 @@
   </script>
 
 
-  <style>
-    /* Amorçage du spinner avant disponibilité des feuilles CSS distantes. */
-    #lcdp-planifier-attente-initiale { position: fixed; inset: 0; z-index: 2147483646; display: flex; align-items: center; justify-content: center; background: #fff; }
-    #lcdp-planifier-attente-initiale .lcdp-loading-spinner { position: relative; display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; box-sizing: border-box; }
-    #lcdp-planifier-attente-initiale .lcdp-loading-spinner > svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
-    #lcdp-planifier-attente-initiale .lcdp-loading-spinner__track { color: rgba(6,95,70,.10); }
-    #lcdp-planifier-attente-initiale .lcdp-loading-spinner__arc { color: #e59834; animation: lcdp-planifier-spinner-tourne .8s linear infinite; }
-    #lcdp-planifier-attente-initiale .lcdp-loading-spinner__dot { width: 8px; height: 8px; border-radius: 50%; background: #4e6838; }
-    @keyframes lcdp-planifier-spinner-tourne { to { transform: rotate(360deg); } }
-    /* Attente ABO-RÉZA : même spinner HTML que PLANIFIER, sans GIF externe. */
-    body > .lcdp-planifier-partage-attente:has(> .lcdp-loading-spinner) {
-      position: fixed; inset: 0; z-index: 2147483000;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(255,255,255,.92);
-    }
-    .lcdp-planifier-partage-attente > .lcdp-loading-spinner {
-      position: relative; box-sizing: border-box; display: flex;
-      flex: 0 0 auto; align-items: center; justify-content: center;
-      width: 64px; height: 64px;
-    }
-    .lcdp-planifier-partage-attente > .lcdp-loading-spinner > svg {
-      position: absolute; inset: 0; display: block; width: 100%; height: 100%;
-    }
-    .lcdp-planifier-partage-attente .lcdp-loading-spinner__track { color: rgba(6,95,70,.10); }
-    .lcdp-planifier-partage-attente .lcdp-loading-spinner__arc {
-      color: #e59834; animation: lcdp-planifier-spinner-tourne .8s linear infinite;
-    }
-    .lcdp-planifier-partage-attente .lcdp-loading-spinner__dot {
-      width: 8px; height: 8px; border-radius: 50%; background: #4e6838;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      #lcdp-planifier-attente-initiale .lcdp-loading-spinner__arc,
-      .lcdp-planifier-partage-attente .lcdp-loading-spinner__arc { animation: none; }
-    }
-  </style>
+
 </head>
 
 <body class="lcdp-app-page lcdp-page-reserver">
-  <div id="lcdp-planifier-attente-initiale" role="status" aria-label="Chargement du planning mensuel">
+  <div class="lcdp-attente-plein-ecran" id="lcdp-planifier-attente-initiale" role="status" aria-label="Chargement du planning mensuel">
     <div class="lcdp-loading-spinner" aria-hidden="true">
       <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
       <svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg>
@@ -156,7 +158,7 @@
           <div class="lcdp-page-content lcdp-page-content--avec-entete lcdp-stack-large">
 
             <header class="lcdp-page-header">
-              <p class="lcdp-mention-connexion lcdp-etiquette-statut-membre" id="mention-statut-membre" aria-live="polite"></p>
+              <p class="lcdp-mention-connexion" id="mention-statut-membre" aria-live="polite"></p>
             </header>
 
             <!-- Calendrier permanent : dans le corps du wrapper, jamais dans le slot des dialogues. -->
