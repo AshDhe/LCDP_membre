@@ -1753,6 +1753,46 @@
           latparc: coordonnee(parc, detailParc, ["latparc", "latitude", "latloc"], 90)
         };
       });
+      // Sans parc, aucune fiche-parc ne fournit les localités. Récupérer
+      // le chef-lieu officiel du département indépendamment des parcs.
+      let localitesCarte = Array.isArray(detail.localites) ? detail.localites : [];
+      if (!parcs.length && !localitesCarte.length && /^[0-9]{2,3}$|^2[AB]$/.test(departement)) {
+        try {
+          const reponseDepartement = await fetch(
+            "https://geo.api.gouv.fr/departements/" + encodeURIComponent(departement) + "?fields=nom,code,chefLieu",
+            { headers: { Accept: "application/json" } }
+          );
+          if (reponseDepartement.ok) {
+            const ficheDepartement = await reponseDepartement.json();
+            const codeChefLieu = String(ficheDepartement?.chefLieu || "").trim();
+            if (codeChefLieu) {
+              const reponseCommune = await fetch(
+                "https://geo.api.gouv.fr/communes/" + encodeURIComponent(codeChefLieu) +
+                "?fields=nom,centre,codeDepartement",
+                { headers: { Accept: "application/json" } }
+              );
+              if (reponseCommune.ok) {
+                const commune = await reponseCommune.json();
+                const coordonnees = commune?.centre?.coordinates;
+                if (commune?.nom && commune?.codeDepartement === departement &&
+                    Array.isArray(coordonnees) && coordonnees.length >= 2 &&
+                    coordonnees.slice(0, 2).every(valeur => Number.isFinite(Number(valeur)))) {
+                  localitesCarte = [{
+                    nom: commune.nom,
+                    longitude: Number(coordonnees[0]),
+                    latitude: Number(coordonnees[1]),
+                    dptmt: departement
+                  }];
+                }
+              }
+            }
+          }
+        } catch (erreurLocalite) {
+          // La carte et le libellé du département restent disponibles hors ligne.
+          console.warn("Chef-lieu du département indisponible :", erreurLocalite);
+        }
+      }
+      if (!estCourante()) return;
       const hote = document.createElement("div");
       hote.className = "lcdp-planifier-carte-hote";
       // La carte est mesurable pendant sa construction ; seul le GIF est visible.
@@ -1760,8 +1800,9 @@
       navigation.zoneCarte.appendChild(hote);
       const controleur = await moteurCarte.rendreCarteDansConteneur(hote, {
         dptmt: departement,
+        nomDepartement: etatPage.nomDepartement,
         parcsDepartement: parcsCarte,
-        localitesCarte: detail.localites || []
+        localitesCarte
       }, {
         chargerFragmentObjet,
         construireUrlObjet,
