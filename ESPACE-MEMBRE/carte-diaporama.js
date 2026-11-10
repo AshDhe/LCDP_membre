@@ -122,6 +122,34 @@
     const traceSelectionnee = traces.find((item) => item.code === codeDepartement);
     const bboxFrance = fusionnerBbox(traces.map((item) => item.trace.bbox));
     const bboxCible = traceSelectionnee?.trace?.bbox || bboxFrance;
+    // Le département est connu même lorsqu'aucun parc ni aucune localité
+    // n'est répertorié. Son nom est tracé sur la carte indépendamment de ceux-ci.
+    const featureSelectionnee = features.find(
+      feature => nettoyerDepartement(feature?.properties?.code) === codeDepartement
+    );
+    const nomDepartement = nettoyerTexte(
+      parc.nomDepartement || featureSelectionnee?.properties?.nom ||
+      featureSelectionnee?.properties?.name
+    );
+    const libelleDepartement = traceSelectionnee && nomDepartement
+      ? creerElementSvg("text")
+      : null;
+    if (libelleDepartement) {
+      const bbox = traceSelectionnee.trace.bbox;
+      libelleDepartement.setAttribute("x", String((bbox[0] + bbox[2]) / 2));
+      libelleDepartement.setAttribute("y", String(bbox[1] + (bbox[3] - bbox[1]) * 0.21));
+      libelleDepartement.setAttribute("text-anchor", "middle");
+      libelleDepartement.setAttribute("dominant-baseline", "middle");
+      libelleDepartement.setAttribute("class", "lcdp-carte-dynamique__departement-label");
+      libelleDepartement.style.setProperty("font-family", "inherit");
+      libelleDepartement.style.setProperty("font-weight", "700");
+      libelleDepartement.style.setProperty("fill", "#587244");
+      libelleDepartement.style.setProperty("stroke", "#ffffff");
+      libelleDepartement.style.setProperty("paint-order", "stroke");
+      libelleDepartement.style.setProperty("pointer-events", "none");
+      libelleDepartement.textContent = nomDepartement;
+      coucheSelection.appendChild(libelleDepartement);
+    }
     // La fiche reprend exactement l'emprise initiale de la vue CARTE.
     const viewBoxInitiale = bboxVersViewBox(bboxCible, traceSelectionnee ? 0.04 : 0.045);
 
@@ -152,6 +180,11 @@
       const carteMobile = largeurMesuree <= 520;
       const tailleLibelle = Math.max(0.12, uniteEcran * (carteMobile ? 12.5 : 11));
       const decalageLibelle = Math.max(0.08, uniteEcran * (carteMobile ? 10 : 7));
+
+      if (libelleDepartement) {
+        libelleDepartement.setAttribute("font-size", String(Math.max(0.12, uniteEcran * 13)));
+        libelleDepartement.style.setProperty("stroke-width", (uniteEcran * 3) + "px");
+      }
 
       coucheParcs
         .querySelectorAll(".lcdp-carte-dynamique__marker")
