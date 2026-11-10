@@ -337,6 +337,7 @@
 
   function terminerAttenteCompte() {
     if (redirectionCompteEnCours) return;
+    document.documentElement.classList.add("lcdp-compte-pret");
     document.body.classList.add("lcdp-compte-pret");
     document.getElementById("lcdp-mon-compte-attente-initiale")?.remove();
   }
