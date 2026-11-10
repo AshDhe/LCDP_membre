@@ -49,7 +49,7 @@
 
   const champsCompte = [
     {
-      section: "Votre compte",
+      section: "Mon compte",
       id: "champ-nom-membre",
       name: "nom",
       label: "Nom",
@@ -57,7 +57,7 @@
       key: "nom"
     },
     {
-      section: "Votre compte",
+      section: "Mon compte",
       id: "champ-prenom-membre",
       name: "prenom",
       label: "Prénom",
@@ -65,7 +65,7 @@
       key: "prenom"
     },
     {
-      section: "Votre compte",
+      section: "Mon compte",
       id: "champ-alias-membre",
       name: "alias",
       label: "Alias",
@@ -78,7 +78,7 @@
       }
     },
     {
-      section: "Sécurité de votre compte",
+      section: "Sécurité du compte",
       id: "champ-email-membre",
       name: "email",
       label: "E-mail",
@@ -92,7 +92,7 @@
       }
     },
     {
-      section: "Sécurité de votre compte",
+      section: "Sécurité du compte",
       id: "champ-code-a-membre",
       name: "codeAAffichage",
       label: "CODA",
@@ -106,7 +106,7 @@
       }
     },
     {
-      section: "Sécurité de votre compte",
+      section: "Sécurité du compte",
       id: "champ-code-r-membre",
       name: "codeRAffichage",
       label: "CODR",
@@ -120,7 +120,7 @@
       }
     },
     {
-      section: "Sécurité de votre compte",
+      section: "Sécurité du compte",
       id: "champ-geolocalisation-membre",
       name: "geolocalisationAffichage",
       label: "Géolocalisation",
@@ -129,7 +129,7 @@
       action: {id:"modifier-geolocalisation-membre",texte:"Mettre à jour votre autorisation de géolocalisation",mode:"picto",pictoRouge:true}
     },
     {
-      section: "Sécurité de votre compte",
+      section: "Sécurité du compte",
       id: "champ-bracelet-presence",
       name: "braceletPresenceAffichage",
       label: "BRACELET",
@@ -191,7 +191,7 @@
       }
     },
     {
-      section: "Acceptation du règlement",
+      section: "Règlement",
       id: "champ-reglement-club",
       name: "reglementClubAffichage",
       label: "Club",
@@ -204,7 +204,7 @@
       }
     },
     {
-      section: "Acceptation du règlement",
+      section: "Règlement",
       id: "champ-reglement-application",
       name: "reglementApplicationAffichage",
       label: "Application",
@@ -483,7 +483,7 @@
     zone.setAttribute("aria-label", "Selfie pour le contrôle d’accès");
     zone.className = bloc.className;
     zone.setAttribute("data-lcdp-box-champ-formulaire", "");
-    zone.innerHTML = '<div class="lcdp-box-champ-formulaire__label-zone"><span class="lcdp-box-champ-formulaire__label">SELFIE</span></div><div class="lcdp-box-champ-formulaire__control lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><button type="button" id="selfie-badge" aria-label="Agrandir mon selfie" title="Agrandir mon selfie" hidden><img id="selfie-photo" alt="Votre selfie" hidden></button><span class="lcdp-selfie-texte" id="selfie-libelle"><span id="selfie-etat" role="status"></span></span></div></div>';
+    zone.innerHTML = '<div class="lcdp-box-champ-formulaire__label-zone"><span class="lcdp-box-champ-formulaire__label">SELFIE</span></div><div class="lcdp-box-champ-formulaire__control lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><button type="button" id="selfie-badge" aria-label="Agrandir mon selfie" title="Agrandir mon selfie" hidden><img id="selfie-photo" alt="Votre selfie" hidden></button><span class="lcdp-selfie-texte" id="selfie-libelle"><span id="selfie-etat" role="status">–</span></span></div></div>';
     const fauxInput = {parentNode:zone.lastElementChild};
     ajouterPictoModificationDansChamp(fauxInput, zone, {id:"modifier-selfie",texte:"Prendre ou remplacer mon selfie",pictoRouge:true});
     bloc.insertAdjacentElement("afterend", zone);
@@ -510,7 +510,7 @@
     try {
       const r = await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie",{credentials:"include",cache:"no-store"});
       if(r.status===401){redirigerConnexionMembre("inactive");return;}
-      if(r.status===404){masquerPhoto();statut.textContent="";return;}
+      if(r.status===404){masquerPhoto();statut.textContent="–";return;}
       if(!r.ok)throw Error("Selfie indisponible");
       const blob=await r.blob();
       const image=document.getElementById("selfie-photo");
@@ -750,7 +750,7 @@
       bouton.setAttribute("aria-disabled", "true");
     }
     const actionSecurite = action.id === "modifier-selfie" || champsCompte.some(
-      item => item.section === "Sécurité de votre compte" && item.action?.id === action.id
+      item => item.section === "Sécurité du compte" && item.action?.id === action.id
     );
     if (actionSecurite) {
       bouton.classList.add("lcdp-compte-action-prioritaire");
