@@ -771,7 +771,7 @@
     iconeParc.height = 17;
     iconeParc.decoding = "async";
     iconeParc.setAttribute("aria-hidden", "true");
-    boutonParc.append(iconeParc, document.createTextNode("PARC"));
+    boutonParc.append(iconeParc, document.createTextNode("CHANGER"));
     actionsFiltres.appendChild(boutonParc);
 
     const legende = fragmentLegende?.querySelector("[data-lcdp-box-legende]") || document.createElement("div");
@@ -991,13 +991,11 @@
         grille.appendChild(card);
       }
       if (parcSelectionne) {
-        meta.textContent = nomParcAfficheMembre(parcSelectionne.nom || parcSelectionne.nomparc || "Parc");
+        meta.textContent = nomParcAvecDepartementPlanifier(parcSelectionne).toLocaleUpperCase("fr-FR");
         meta.hidden = false;
-        const codeDpt = String(parcSelectionne.dptmt || parcSelectionne.departement || etatPage.departement || "").trim();
-        const nomDpt = String(parcSelectionne.nomDepartement || parcSelectionne.nomdepartement ||
-          (codeDpt === String(etatPage.departement || "") ? etatPage.nomDepartement : "") || "").trim();
-        departementParc.textContent = nomDpt && codeDpt ? nomDpt + " (" + codeDpt + ")" : nomDpt || (codeDpt ? "Département " + codeDpt : "");
-        departementParc.hidden = !departementParc.textContent;
+        // Le département est déjà dans le titre ; aucune seconde étiquette géographique.
+        departementParc.textContent = "";
+        departementParc.hidden = true;
         message.hidden = true;
         remplirGrilleCalendrier(grille, {
           parc: parcSelectionne, annee: etat.annee, mois: etat.mois, modePlanning: "lecture"
@@ -3608,7 +3606,10 @@
       );
     }
 
-    detail.racine.dataset.lcdpTitreParc = nomParcAfficheMembre(parc.nom);
+    const hote = obtenirHoteFicheParc();
+    hote.hidden = false;
+    document.body.classList.add("lcdp-planifier-vue-fiche-active");
+    detail.racine.dataset.lcdpTitreParc = nomParcAvecDepartementPlanifier(parc).toLocaleUpperCase("fr-FR");
     afficherPictowaitShiftDetailParc(
       detail,
       vueDemandee === "planning"
@@ -3617,7 +3618,10 @@
     );
 
     const constructeur =
-      await chargerConstructeurFicheParc();
+      await chargerConstructeurFicheParc().catch(erreur => {
+        fermerShiftDetailParc();
+        throw erreur;
+      });
     const ancienControleur =
       etatPage.shiftDetailParc?.controleur;
 
@@ -3706,6 +3710,7 @@
             };
             detail.racine.dataset.lcdpShiftVue =
               vue;
+            harmoniserTitreFicheDansPlanifier(detail.contenu, parcCible);
 
             if (detail.alerteSlot) {
               detail.alerteSlot.innerHTML = "";
@@ -3733,6 +3738,7 @@
     };
     detail.racine.dataset.lcdpShiftVue =
       controleur.getVue();
+    harmoniserTitreFicheDansPlanifier(detail.contenu, controleur.getParc());
     detail.racine.hidden = false;
     detail.racine.classList.remove(
       "lcdp-box-shift-detail-parc--preparation"
@@ -3746,15 +3752,16 @@
     });
   }
 
-  // Tunnel PLANIFIER : le calendrier principal est immuable. Les fiches et
-  // plannings contextuels sont des superpositions indépendantes, jamais des
-  // enfants du calendrier permanent #lcdp-planifier-calendrier-slot.
+  // Fiche et planning du parc : une vue du wrapper, calendrier permanent conservé.
   function obtenirHoteFicheParc() {
     let hote = document.getElementById("lcdp-planifier-fiche-overlay-slot");
     if (!hote) {
+      const parent = document.querySelector(".lcdp-page-reserver .lcdp-page-content--avec-entete");
+      if (!parent) throw new Error("Wrapper PLANIFIER introuvable.");
       hote = document.createElement("div");
       hote.id = "lcdp-planifier-fiche-overlay-slot";
-      document.body.appendChild(hote);
+      hote.hidden = true;
+      parent.appendChild(hote);
     }
     return hote;
   }
@@ -3771,6 +3778,10 @@
       if (!shift) throw new Error("Template shift détail parc introuvable.");
 
       shift.hidden = true;
+      // La fiche intégrée n'est plus un dialogue modal.
+      shift.removeAttribute("aria-modal");
+      shift.setAttribute("role", "region");
+      shift.setAttribute("aria-label", "Fiche et planning du parc");
       shift.classList.add("lcdp-box-shift-detail-parc--preparation");
       hote.appendChild(shift);
       racine = shift;
@@ -3820,9 +3831,26 @@
       document.removeEventListener("keydown", racine._lcdpShiftDetailParcEscape);
     }
     etatPage.shiftDetailParc = null;
-    // Ne toucher ni à la liste, ni à la carte, ni au calendrier de PLANIFIER.
+    // Restaurer la vue précédente sans reconstruire le calendrier ni le diaporama.
     racine?.remove();
-    hote?.remove();
+    if (hote) hote.hidden = true;
+    document.body.classList.remove("lcdp-planifier-vue-fiche-active");
+  }
+
+  function harmoniserTitreFicheDansPlanifier(contenu, parc) {
+    const titre = contenu?.querySelector("[data-lcdp-fiche-parc-title]");
+    if (!titre) return;
+    const code = String(parc?.dptmt || parc?.departement || "").trim();
+    if (!/^[0-9]{2,3}$/.test(code)) return;
+    let nom = String(titre.textContent || "").trim();
+    if (nom.endsWith(" (" + code + ")")) return;
+    for (const separateur of [" - ", " – ", " — "]) {
+      if (nom.endsWith(separateur + code)) {
+        nom = nom.slice(0, -(separateur.length + code.length)).trim();
+        break;
+      }
+    }
+    if (nom) titre.textContent = nom + " (" + code + ")";
   }
 
 
@@ -5803,7 +5831,11 @@
   function chargerScriptPublicUneFois(chemin, forcer = false) {
     const cle = chemin + (forcer ? ":actualisation" : ":normal");
     if (chargementsConstructeurFiche.has(cle)) return chargementsConstructeurFiche.get(cle);
-    const src = construireUrlPublic(chemin) + "?v=20261029-planning-horizon-v3" +
+    // Le moteur du diaporama appartient au domaine membre, la fiche au domaine public.
+    const urlScript = chemin.startsWith("/ESPACE-MEMBRE/")
+      ? construireUrlMembre(chemin)
+      : construireUrlPublic(chemin);
+    const src = urlScript + "?v=20261110-planifier-carte-chemin-v2" +
       (forcer ? "&actualisation=" + Date.now() : "");
     const promesse = new Promise((resolve, reject) => {
       const script = document.createElement("script");
@@ -5831,7 +5863,10 @@
     });
     chargementsConstructeurFiche.set(cle, promesse);
     promesse.then(() => {
-      if (!constructeurFicheComplet()) chargementsConstructeurFiche.delete(cle);
+      const pret = chemin.startsWith("/ESPACE-MEMBRE/")
+        ? typeof window.LCDP_CARTE_DIAPORAMA?.rendreCarteDansConteneur === "function"
+        : constructeurFicheComplet();
+      if (!pret) chargementsConstructeurFiche.delete(cle);
     }, () => chargementsConstructeurFiche.delete(cle));
     return promesse;
   }
