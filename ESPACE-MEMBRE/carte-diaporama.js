@@ -67,7 +67,8 @@
     cardSlot.hidden = true;
     if (options.carteNavigation) {
       carte.classList.add("lcdp-carte-dynamique--navigation");
-      cardSlot.className = "lcdp-planifier-carte-cartouche";
+      // Même verso, mêmes règles et mêmes dimensions que dans le diaporama de parcs.
+      cardSlot.className = "lcdp-planifier-carte-cartouche lcdp-planifier-parcs-diaporama";
       carte.appendChild(cardSlot);
     }
 

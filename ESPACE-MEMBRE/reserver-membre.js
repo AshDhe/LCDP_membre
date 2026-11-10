@@ -736,6 +736,9 @@
     }
 
     titre.textContent = "PLANIFIER";
+    // Le fragment générique laisse une marge pour sa commande, vide sur ce calendrier.
+    // Sa suppression aligne le titre avec la croix dès la première ouverture.
+    calendrier.querySelector("[data-lcdp-calendrier-mois-commande]")?.remove();
     // En-tête PLANIFIER : identité du parc, changement de parc, filtres directs.
     const enteteFiltres = document.createElement("div");
     enteteFiltres.className = "lcdp-planifier-entete-filtres";
@@ -5835,7 +5838,7 @@
     const urlScript = chemin.startsWith("/ESPACE-MEMBRE/")
       ? construireUrlMembre(chemin)
       : construireUrlPublic(chemin);
-    const src = urlScript + "?v=20261110-planifier-carte-chemin-v2" +
+    const src = urlScript + "?v=20261110-alignement-carte-wrapper-v3" +
       (forcer ? "&actualisation=" + Date.now() : "");
     const promesse = new Promise((resolve, reject) => {
       const script = document.createElement("script");
