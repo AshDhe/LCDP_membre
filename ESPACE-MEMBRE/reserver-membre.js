@@ -1773,43 +1773,34 @@
           latparc: coordonnee(parc, detailParc, ["latparc", "latitude", "latloc"], 90)
         };
       });
-      // Sans parc, aucune fiche-parc ne fournit les localités. Récupérer
-      // le chef-lieu officiel du département indépendamment des parcs.
+      // Sans parc, la fiche ne contient pas de localité : récupérer une ville
+      // du département et son centre géographique auprès du référentiel officiel.
       let localitesCarte = Array.isArray(detail.localites) ? detail.localites : [];
-      if (!parcs.length && !localitesCarte.length && /^[0-9]{2,3}$|^2[AB]$/.test(departement)) {
+      if (!parcs.length && !localitesCarte.length && /^(?:[0-9]{2,3}|2[AB])$/.test(departement)) {
         try {
-          const reponseDepartement = await fetch(
-            "https://geo.api.gouv.fr/departements/" + encodeURIComponent(departement) + "?fields=nom,code,chefLieu",
+          const reponseCommunes = await fetch(
+            "https://geo.api.gouv.fr/departements/" + encodeURIComponent(departement) +
+            "/communes?fields=nom,centre,population,codeDepartement",
             { headers: { Accept: "application/json" } }
           );
-          if (reponseDepartement.ok) {
-            const ficheDepartement = await reponseDepartement.json();
-            const codeChefLieu = String(ficheDepartement?.chefLieu || "").trim();
-            if (codeChefLieu) {
-              const reponseCommune = await fetch(
-                "https://geo.api.gouv.fr/communes/" + encodeURIComponent(codeChefLieu) +
-                "?fields=nom,centre,codeDepartement",
-                { headers: { Accept: "application/json" } }
-              );
-              if (reponseCommune.ok) {
-                const commune = await reponseCommune.json();
-                const coordonnees = commune?.centre?.coordinates;
-                if (commune?.nom && commune?.codeDepartement === departement &&
-                    Array.isArray(coordonnees) && coordonnees.length >= 2 &&
-                    coordonnees.slice(0, 2).every(valeur => Number.isFinite(Number(valeur)))) {
-                  localitesCarte = [{
-                    nom: commune.nom,
-                    longitude: Number(coordonnees[0]),
-                    latitude: Number(coordonnees[1]),
-                    dptmt: departement
-                  }];
-                }
-              }
-            }
+          if (!reponseCommunes.ok) throw new Error("Référentiel géographique HTTP " + reponseCommunes.status);
+          const communes = await reponseCommunes.json();
+          const commune = (Array.isArray(communes) ? communes : [])
+            .filter(item => item?.nom && item?.codeDepartement === departement &&
+              Array.isArray(item?.centre?.coordinates) &&
+              item.centre.coordinates.length >= 2 &&
+              item.centre.coordinates.slice(0, 2).every(valeur => Number.isFinite(Number(valeur))))
+            .sort((a, b) => (Number(b.population) || 0) - (Number(a.population) || 0))[0];
+          if (commune) {
+            localitesCarte = [{
+              nom: commune.nom,
+              longitude: Number(commune.centre.coordinates[0]),
+              latitude: Number(commune.centre.coordinates[1]),
+              dptmt: departement
+            }];
           }
         } catch (erreurLocalite) {
-          // La carte et le libellé du département restent disponibles hors ligne.
-          console.warn("Chef-lieu du département indisponible :", erreurLocalite);
+          console.warn("Localité du département indisponible :", erreurLocalite);
         }
       }
       if (!estCourante()) return;
