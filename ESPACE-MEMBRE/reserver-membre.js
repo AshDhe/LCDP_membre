@@ -1699,7 +1699,7 @@
     const parcs = [...etatPage.parcs];
     const departement = etatPage.departement;
     try {
-      if (!parcs.length) throw new Error("Aucun parc à afficher pour ce département.");
+      // Un département valide peut être sans parc : la carte reste accessible.
       // Moteur de carte dédié à PLANIFIER, indépendant de LCDP_FicheParc.
       await chargerScriptPublicUneFois("/ESPACE-MEMBRE/carte-diaporama.js");
       const moteurCarte = window.LCDP_CARTE_DIAPORAMA;
@@ -1707,26 +1707,29 @@
       if (typeof moteurCarte?.rendreCarteDansConteneur !== "function") {
         throw new Error("La carte du diaporama n’a pas pu être chargée.");
       }
-      // Le service fournit toujours les coordonnées complémentaires et la localité.
-      // Il est interrogé directement : aucun appel au module de fiche parc.
-      const endpointFiche = construireEndpointApi(
-        "workerFicheParcUrl", "WORKER_FICHE_PARC_URL", "fiche-parc-api"
-      );
-      if (!endpointFiche) throw new Error("Service de localisation des parcs indisponible.");
-      const idPremierParc = String(parcs[0].idparc || parcs[0].id || "");
-      const reponseDetail = await fetch(
-        endpointFiche + "/fiche-parc?idparc=" + encodeURIComponent(idPremierParc) + "&token=&ctx=",
-        { method: "GET", credentials: "include", cache: "no-store", headers: { Accept: "application/json" } }
-      );
-      const donneesDetail = await reponseDetail.json().catch(() => null);
-      if (!reponseDetail.ok || !donneesDetail || (donneesDetail.ok !== true && donneesDetail.success !== true)) {
-        throw new Error(donneesDetail?.message || "Impossible de localiser les parcs du département.");
+      // La carte du département n'a pas besoin d'une fiche de parc si aucun
+      // parc n'existe encore. La géométrie vient du GeoJSON commun.
+      let detail = { parc: null, parcsDepartement: [], localites: [] };
+      if (parcs.length) {
+        const endpointFiche = construireEndpointApi(
+          "workerFicheParcUrl", "WORKER_FICHE_PARC_URL", "fiche-parc-api"
+        );
+        if (!endpointFiche) throw new Error("Service de localisation des parcs indisponible.");
+        const idPremierParc = String(parcs[0].idparc || parcs[0].id || "");
+        const reponseDetail = await fetch(
+          endpointFiche + "/fiche-parc?idparc=" + encodeURIComponent(idPremierParc) + "&token=&ctx=",
+          { method: "GET", credentials: "include", cache: "no-store", headers: { Accept: "application/json" } }
+        );
+        const donneesDetail = await reponseDetail.json().catch(() => null);
+        if (!reponseDetail.ok || !donneesDetail || (donneesDetail.ok !== true && donneesDetail.success !== true)) {
+          throw new Error(donneesDetail?.message || "Impossible de localiser les parcs du département.");
+        }
+        detail = {
+          parc: donneesDetail.parc || null,
+          parcsDepartement: Array.isArray(donneesDetail.parcs) ? donneesDetail.parcs : [],
+          localites: Array.isArray(donneesDetail.localites) ? donneesDetail.localites : []
+        };
       }
-      const detail = {
-        parc: donneesDetail.parc || null,
-        parcsDepartement: Array.isArray(donneesDetail.parcs) ? donneesDetail.parcs : [],
-        localites: Array.isArray(donneesDetail.localites) ? donneesDetail.localites : []
-      };
       if (!estCourante()) return;
       const donneesCarte = new Map((detail.parcsDepartement || []).map(parc => [String(parc.idparc || parc.id || ""), parc]));
       if (detail.parc) {
@@ -1771,9 +1774,17 @@
       if (!estCourante()) { controleur?.detruire(); return; }
       navigation.controleur = controleur;
       const nombrePoints = hote.querySelectorAll(".lcdp-carte-dynamique__marker").length;
-      if (!nombrePoints) {
+      if (parcs.length && !nombrePoints) {
         controleur?.detruire();
         throw new Error("Les coordonnées des parcs ne sont pas disponibles. Consultez la liste.");
+      }
+      if (!parcs.length) {
+        const note = document.createElement("p");
+        note.className = "lcdp-planifier-carte-sans-parc";
+        note.setAttribute("role", "status");
+        note.textContent = "Il n’y a pas encore de parc dans ce département.";
+        const carte = hote.querySelector(".lcdp-carte-dynamique__map-shell") || hote;
+        carte.appendChild(note);
       }
       if (nombrePoints < parcs.length) {
         const note = document.createElement("p");
@@ -2816,9 +2827,10 @@
         if (!String(data.nomDepartement || "").trim()) {
           return "Code de département invalide. Exemple : 08.";
         }
-        if (!Array.isArray(data.parcs) || data.parcs.length === 0) {
-          return "Aucun parc disponible dans ce département.";
+        if (!Array.isArray(data.parcs)) {
+          return "Liste des parcs indisponible pour ce département. Réessayez.";
         }
+        // Zéro parc est une réponse valide : on ouvrira la carte sans marqueur.
         donneesDepartementVerifiees = data;
         return null;
       }
@@ -3117,6 +3129,9 @@
       etatPage.departement = departementRecu;
       etatPage.parcs = parcs;
       actualiserTitreParcsDepartement();
+      // Un département sans parc ouvre directement sa carte, plutôt qu'un
+      // diaporama vide. La navigation DIAPORAMA/CHANGER reste disponible.
+      if (!parcs.length && navigationParcs) navigationParcs.mode = "carte";
 
       publierListeParcs(listePreparee);
     } catch (error) {
