@@ -3686,6 +3686,9 @@
             afficherAlerteDetailParcOuPage,
           onChoixReservation:
             traiterChoixReservationDepuisFicheParc,
+          // Accès du membre : blocage par date et plage, tous parcs confondus.
+          verifierPlageReserveeMembre: (dateIso, plage) =>
+            Boolean(trouverReservationActiveDatePlage(dateIso, plage)),
           onPartager: (
             parcCible,
             typePartage
@@ -4865,8 +4868,9 @@
     for (const plage of plages) {
       const flux = Array.isArray(contexte.planningJour?.plages?.[plage.nom]?.planningMembre)
         ? contexte.planningJour.plages[plage.nom].planningMembre : [];
-      const reservation = flux.find(r => r?.statut !== "cancd") ||
-        trouverReservationActiveDatePlage(contexte.dateIso, plage.nom);
+      // Priorité à l'accès personnel quel que soit le parc du flux consulté.
+      const reservation = trouverReservationActiveDatePlage(contexte.dateIso, plage.nom) ||
+        flux.find(r => r?.statut !== "cancd");
       grille.appendChild(creerCardHeure(contexte, plage.debut, plage, reservation));
     }
     message.hidden = plages.length > 0;
@@ -5031,6 +5035,13 @@
         cachePlanningParcLecture.clear();
         await choix.actualiser();
       }
+      return false;
+    }
+    // Blocage trans-parcs : une réservation personnelle existante interdit
+    // la même date et plage, indépendamment du département et du parc.
+    if (trouverReservationActiveDatePlage(choix.dateIso, choix.plagebookd)) {
+      await afficherAlerteSuperposee("Vous avez déjà un accès planifié sur cette plage.", "vert",
+        {libelleBouton:"Fermer", sansCroix:true, fermetureLibre:false});
       return false;
     }
     // Une plage est indivisible, y compris si l'ancienne fiche parc envoie
@@ -5838,7 +5849,7 @@
     const urlScript = chemin.startsWith("/ESPACE-MEMBRE/")
       ? construireUrlMembre(chemin)
       : construireUrlPublic(chemin);
-    const src = urlScript + "?v=20261110-alignement-carte-wrapper-v3" +
+    const src = urlScript + "?v=20261110-plages-card-cartouche-v4" +
       (forcer ? "&actualisation=" + Date.now() : "");
     const promesse = new Promise((resolve, reject) => {
       const script = document.createElement("script");
