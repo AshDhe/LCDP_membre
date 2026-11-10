@@ -4643,17 +4643,23 @@
 
   function marquerAccesPersonnelPlanifier(card, planningJour) {
     const idparc = String(card.dataset.idparc || "");
+    const dateIso = String(card.dataset.date || "");
     for (const nomPlage of CLES_PLAGES_AFFICHAGE) {
       const slot = card.querySelector(
         '[data-lcdp-card-jour-mois-slot="' + nomPlage + '"]'
       );
       const plage = planningJour?.plages?.[nomPlage];
       if (!slot || !plage?.ouverte || slot.hidden) continue;
+      // Même priorité que la vue journalière : accès du membre sur la date
+      // et la plage, y compris lorsqu'il a réservé dans un autre parc.
+      const reservation = trouverReservationActiveDatePlage(dateIso, nomPlage);
       const flux = (Array.isArray(plage.planningMembre) ? plage.planningMembre : [])
         .filter(item => String(item?.idparc || "") === idparc &&
           String(item?.statut || "").toLowerCase() !== "cancd");
-      if (!flux.length) continue;
-      const reserve = flux.some(item => item.invitation !== true);
+      if (!reservation && !flux.length) continue;
+      const reserve = reservation
+        ? reservation.invitation !== true
+        : flux.some(item => item.invitation !== true);
       slot.classList.add(reserve
         ? "lcdp-planifier-plage--acces-personnel"
         : "lcdp-planifier-plage--invitation-recue");
