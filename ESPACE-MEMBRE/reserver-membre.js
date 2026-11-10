@@ -1616,6 +1616,13 @@
     const zone = liste.querySelector("[data-lcdp-liste-card-diaporama-list]");
     if (!zone) return;
     for (const parc of etatPage.parcs) zone.appendChild(creerCardParcDiaporama(parc));
+    if (!etatPage.parcs.length) {
+      const message = document.createElement("p");
+      message.setAttribute("role", "status");
+      message.textContent = "Il n’y a pas encore de parc dans ce département.";
+      message.style.cssText = "box-sizing:border-box;width:100%;margin:12px auto;padding:16px 12px;border:1px solid #dce4da;border-radius:14px;background:#fff;box-shadow:0 3px 12px rgba(35,55,35,.08);color:#263e2f;font-weight:600;text-align:center;line-height:1.5";
+      zone.appendChild(message);
+    }
     navigation.zoneDiaporama.replaceChildren(liste);
   }
 
@@ -1730,6 +1737,24 @@
       // La carte du département n'a pas besoin d'une fiche de parc si aucun
       // parc n'existe encore. La géométrie vient du GeoJSON commun.
       let detail = { parc: null, parcsDepartement: [], localites: [] };
+      if (!parcs.length) {
+        const endpointFiche = construireEndpointApi(
+          "workerFicheParcUrl", "WORKER_FICHE_PARC_URL", "fiche-parc-api"
+        );
+        if (!endpointFiche) throw new Error("Service de localisation des parcs indisponible.");
+        const reponseLocalites = await fetch(endpointFiche + "/localites-carte?dptmt=" + encodeURIComponent(departement), {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: { Accept: "application/json" }
+        });
+        const donneesLocalites = await reponseLocalites.json().catch(() => null);
+        if (!reponseLocalites.ok || !donneesLocalites ||
+            (donneesLocalites.ok !== true && donneesLocalites.success !== true)) {
+          throw new Error(donneesLocalites?.message || "Localités des parcs indisponibles.");
+        }
+        detail.localites = Array.isArray(donneesLocalites.localites) ? donneesLocalites.localites : [];
+      }
       if (parcs.length) {
         const endpointFiche = construireEndpointApi(
           "workerFicheParcUrl", "WORKER_FICHE_PARC_URL", "fiche-parc-api"
