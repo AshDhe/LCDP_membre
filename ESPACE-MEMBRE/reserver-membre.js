@@ -459,16 +459,8 @@
       // pendant le montage des fragments, CSS et cartes.
       dialogue.style.display = "none";
       dialogue.style.opacity = "0";
-      titre.textContent = "Parcs du département";
-      const numeroDepartement = document.createElement("p");
-      numeroDepartement.className = "lcdp-planifier-parcs-numero";
-      numeroDepartement.textContent = String(etatPage.departement || "").trim();
-      titre.insertAdjacentElement("beforebegin", numeroDepartement);
-      const nomDepartement = document.createElement("p");
-      nomDepartement.className = "lcdp-planifier-parcs-departement";
-      nomDepartement.textContent = String(etatPage.nomDepartement || "").trim();
-      nomDepartement.hidden = !nomDepartement.textContent;
-      titre.insertAdjacentElement("afterend", nomDepartement);
+      // Un seul titre, mis à jour lors du changement de département.
+      titre.textContent = libelleDepartementListeParcs();
       form.querySelector(".lcdp-box-dialogue-champ__actions")?.remove();
       content.append(barre,liste);
       // Garder le pictogramme hors de la box jusqu’à la fin du chargement.
@@ -1520,13 +1512,16 @@
     ajouterPictoCommandeBar(
       boutonDepartement,
       "/IMAG/PICTO/picto-changer-donnees.svg",
-      "Changer de département"
+      "CHANGER"
     );
     ajouterPictoCommandeBar(
       boutonCarte,
       "/IMAG/PICTO/picto-localiser.svg",
-      "Voir la carte"
+      "CARTE"
     );
+
+    boutonDepartement.setAttribute("aria-label", "Changer de département");
+    boutonCarte.setAttribute("aria-label", "Voir la carte");
 
     const fragment = await chargerFragmentListeParcs("/HTMLBASE/04-commande-bar.html");
     const commandeBar = fragment.querySelector("[data-lcdp-box-commande-bar]");
@@ -1573,7 +1568,8 @@
     const boutonCarte = document.getElementById("bouton-voir-carte");
     if (boutonCarte) ajouterPictoCommandeBar(boutonCarte,
       navigation.mode === "carte" ? "/IMAG/PICTO/picto-galerie-cadre.svg" : "/IMAG/PICTO/picto-localiser.svg",
-      navigation.mode === "carte" ? "Voir le diaporama" : "Voir la carte");
+      navigation.mode === "carte" ? "DIAPORAMA" : "CARTE");
+    if (boutonCarte) boutonCarte.setAttribute("aria-label", navigation.mode === "carte" ? "Voir le diaporama" : "Voir la carte");
     if (navigation.mode === "diaporama") afficherDiaporamaParcs();
   }
 
@@ -1657,7 +1653,8 @@
     navigation.zoneCarte.hidden = true;
     navigation.liste.hidden = navigation.mode !== "liste";
     const bouton = document.getElementById("bouton-voir-carte");
-    ajouterPictoCommandeBar(bouton, "/IMAG/PICTO/picto-localiser.svg", "Voir la carte");
+    ajouterPictoCommandeBar(bouton, "/IMAG/PICTO/picto-localiser.svg", "CARTE");
+    bouton?.setAttribute("aria-label", "Voir la carte");
     bouton?.setAttribute("aria-expanded", "false");
   }
 
@@ -1674,7 +1671,8 @@
     navigation.zoneCarte.hidden = false;
     navigation.zoneCarte.classList.add("is-loading");
     const bouton = document.getElementById("bouton-voir-carte");
-    ajouterPictoCommandeBar(bouton, "/IMAG/PICTO/picto-galerie-cadre.svg", "Voir le diaporama");
+    ajouterPictoCommandeBar(bouton, "/IMAG/PICTO/picto-galerie-cadre.svg", "DIAPORAMA");
+    bouton?.setAttribute("aria-label", "Voir le diaporama");
     bouton?.setAttribute("aria-expanded", "true");
     const attente = document.createElement("div");
     attente.className = "lcdp-planifier-parcs-chargement lcdp-planifier-carte-attente";
@@ -3137,13 +3135,8 @@
   }
 
   function actualiserTitreParcsDepartement() {
-    const numero = document.querySelector("#lcdp-planifier-parcs-vue .lcdp-planifier-parcs-numero");
-    if (numero) numero.textContent = String(etatPage.departement || "").trim();
-    const sousTitre = document.querySelector("#lcdp-planifier-parcs-vue .lcdp-planifier-parcs-departement");
-    if (sousTitre) {
-      sousTitre.textContent = String(etatPage.nomDepartement || "").trim();
-      sousTitre.hidden = !sousTitre.textContent;
-    }
+    const titreDiaporama = document.querySelector("#lcdp-planifier-parcs-vue [data-lcdp-dialogue-champ-title]");
+    if (titreDiaporama) titreDiaporama.textContent = libelleDepartementListeParcs();
     const titre = document.getElementById("titre-parcs-departement");
     if (!titre) return;
     titre.replaceChildren(document.createTextNode("Parcs près de chez vous"));
