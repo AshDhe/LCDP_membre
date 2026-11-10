@@ -793,8 +793,8 @@
     ligneLegende.className = "lcdp-box-legende__ligne";
     for (const [type, libelle, picto] of [
       ["duo", "DUO SEUL", "🧑‍🤝‍🧑"],
-      ["famille", "DUO+FAMILLE", "🏠"],
-      ["coach", "DUO+COACH", "🏋️"],
+      ["famille", "+ FAMILLE", "🏠"],
+      ["coach", "+ COACH", "🏋️"],
       ["famille-coach", "TOUS", "🌟"]
     ]) {
       const item = document.createElement("label");
