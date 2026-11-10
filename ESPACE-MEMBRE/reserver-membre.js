@@ -749,10 +749,6 @@
     const informationsParc = document.createElement("div");
     informationsParc.className = "lcdp-planifier-entete-parc";
     informationsParc.appendChild(titre);
-    const indicationSansParc = document.createElement("span");
-    indicationSansParc.className = "lcdp-planifier-aucun-parc";
-    indicationSansParc.textContent = "Aucun parc sélectionné";
-    informationsParc.appendChild(indicationSansParc);
     meta.classList.add("lcdp-planifier-nom-parc");
     informationsParc.appendChild(meta);
     // L'ordre visuel change avec le parc : nom en premier, PLANIFIER en dessous.
@@ -971,7 +967,12 @@
 
     function afficher() {
       enteteFiltres.classList.toggle("lcdp-planifier-entete-avec-parc", Boolean(parcSelectionne));
-      indicationSansParc.hidden = Boolean(parcSelectionne);
+      const nomParcEnTete = document.getElementById("lcdp-planifier-parc-en-tete");
+      if (nomParcEnTete) {
+        nomParcEnTete.textContent = parcSelectionne
+          ? nomParcAvecDepartementPlanifier(parcSelectionne)
+          : "Aucun parc sélectionné";
+      }
       courant.textContent = formaterMoisAnnee(etat.annee, etat.mois);
       grille.replaceChildren();
       const premierJour = new Date(etat.annee, etat.mois - 1, 1);
@@ -1006,8 +1007,8 @@
         grille.appendChild(card);
       }
       if (parcSelectionne) {
-        meta.textContent = nomParcAvecDepartementPlanifier(parcSelectionne).toLocaleUpperCase("fr-FR");
-        meta.hidden = false;
+        meta.textContent = "";
+        meta.hidden = true;
         // Le département est déjà dans le titre ; aucune seconde étiquette géographique.
         departementParc.textContent = "";
         departementParc.hidden = true;
