@@ -787,15 +787,15 @@
     contenuLegende.replaceChildren();
     const titreFiltres = document.createElement("span");
     titreFiltres.className = "lcdp-box-legende__titre";
-    titreFiltres.textContent = "FILTRER PAR TYPE D’ACCÈS";
+    titreFiltres.textContent = "FILTRER PAR INVITÉS";
     contenuLegende.appendChild(titreFiltres);
     const ligneLegende = document.createElement("div");
     ligneLegende.className = "lcdp-box-legende__ligne";
-    for (const [type, libelle] of [
-      ["duo", "DUO"],
-      ["famille", "+ FAMILLE"],
-      ["coach", "+ COACH"],
-      ["famille-coach", "+ FAMILLE + COACH"]
+    for (const [type, libelle, picto] of [
+      ["duo", "DUO SEUL", "🧑‍🤝‍🧑"],
+      ["famille", "DUO+FAMILLE", "🏠"],
+      ["coach", "DUO+COACH", "🏋️"],
+      ["famille-coach", "TOUS", "🌟"]
     ]) {
       const item = document.createElement("label");
       item.className = "lcdp-box-legende__item lcdp-planifier-filtre-categorie";
@@ -815,6 +815,10 @@
       const texte = document.createElement("span");
       texte.className = "lcdp-box-legende__libelle";
       texte.textContent = libelle;
+      const icone = document.createElement("span");
+      icone.className = "lcdp-planifier-filtre-categorie__picto";
+      icone.textContent = picto;
+      icone.setAttribute("aria-hidden", "true");
       input.addEventListener("change", () => {
         if (input.checked) filtresAccesPlanifier.add(type);
         else filtresAccesPlanifier.delete(type);
@@ -823,7 +827,7 @@
         });
         // Le filtre est exclusivement visuel : aucune écriture ni appel réseau.
       });
-      item.append(texte, input, carre);
+      item.append(icone, texte, input, carre);
       ligneLegende.appendChild(item);
     }
     contenuLegende.appendChild(ligneLegende);
