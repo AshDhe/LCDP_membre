@@ -823,6 +823,26 @@
       ligneLegende.appendChild(item);
     }
     contenuLegende.appendChild(ligneLegende);
+    // Signaux de statut en lecture seule, avec les classes des plages du mois.
+    const ligneStatuts = document.createElement("div");
+    ligneStatuts.className = "lcdp-box-legende__ligne";
+    for (const [statut, libelle] of [
+      ["lcdp-planifier-plage--acces-personnel", "Accès planifié"],
+      ["lcdp-planifier-plage--invitation-recue", "Invitation reçue"]
+    ]) {
+      const item = document.createElement("span");
+      item.className = "lcdp-box-legende__item";
+      const carre = document.createElement("span");
+      carre.className = "lcdp-box-legende__carre lcdp-box-card-jour-in-calendrier-mois__slot--gris-clair " + statut;
+      carre.setAttribute("data-lcdp-card-jour-mois-slot", "legende");
+      carre.setAttribute("aria-hidden", "true");
+      const texte = document.createElement("span");
+      texte.className = "lcdp-box-legende__libelle";
+      texte.textContent = libelle;
+      item.append(carre, texte);
+      ligneStatuts.appendChild(item);
+    }
+    contenuLegende.appendChild(ligneStatuts);
     enteteFiltres.appendChild(legende);
     // Placer PARC au-dessus de la navigation mensuelle, hors de l’en-tête.
     const navigationMois = calendrier.querySelector(".lcdp-box-calendrier-mois__navigation");
@@ -4847,6 +4867,20 @@
       pastille.className = 'lcdp-aboreza-choix-horaire__pastille lcdp-aboreza-choix-horaire__pastille--' + type;
       pastille.setAttribute('aria-hidden', 'true');
       item.append(pastille, document.createTextNode(libelle));
+      legende.append(item);
+    }
+    // Même signalétique que sur le calendrier mensuel, sans filtre.
+    for (const [statut, libelle] of [
+      ['lcdp-planifier-plage--acces-personnel', 'Accès planifié'],
+      ['lcdp-planifier-plage--invitation-recue', 'Invitation reçue']
+    ]) {
+      const item = document.createElement('span');
+      item.className = 'lcdp-aboreza-choix-horaire__legende-item';
+      const carre = document.createElement('span');
+      carre.className = 'lcdp-box-legende__carre lcdp-box-card-jour-in-calendrier-mois__slot--gris-clair ' + statut;
+      carre.setAttribute('data-lcdp-card-jour-mois-slot', 'legende');
+      carre.setAttribute('aria-hidden', 'true');
+      item.append(carre, document.createTextNode(libelle));
       legende.append(item);
     }
     grille.before(legende);
