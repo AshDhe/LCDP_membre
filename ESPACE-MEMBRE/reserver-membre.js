@@ -997,6 +997,12 @@
           slotPlage.hidden = true;
           slotPlage.replaceChildren();
         });
+        // Calendrier général : les abonnements colorent déjà les jours à venir,
+        // sans attendre qu'un parc soit sélectionné.
+        card.classList.add("lcdp-box-card-jour-in-calendrier-mois--planning-lecture");
+        if (iso >= aujourdhui && jourCouvertParAbonnementCalendrierPlanifier(iso)) {
+          card.classList.add("lcdp-planifier-jour--abonnement-couvert");
+        }
         if (iso < aujourdhui) {
           card.classList.add("lcdp-box-card-jour-in-calendrier-mois--past");
           card.disabled = true;
@@ -4612,10 +4618,12 @@
       card.classList.add("lcdp-box-card-jour-in-calendrier-mois--today");
     }
 
-    // Couverture d'une journée : seuls les abonnements « paye » colorent la
-    // carte. Cette information est indépendante des filtres DUO / invités.
-    if (jourCouvertParAbonnementPayePlanifier(dateIso)) {
-      card.classList.add("lcdp-planifier-jour--abonnement-paye");
+    // La couverture VISUELLE inclut les abonnements non résiliés, payés ou non.
+    // Elle est distincte des droits de réserver, qui exigent toujours « paye ».
+    // Un parc fermé et une date passée ne reçoivent jamais le fond vert.
+    if (modeLecture && !estPasse && ouvert &&
+        jourCouvertParAbonnementCalendrierPlanifier(dateIso)) {
+      card.classList.add("lcdp-planifier-jour--abonnement-couvert");
     }
 
     if (window.LCDP_ABOREZA?.actif() && !window.LCDP_ABOREZA.datePossible(dateIso)) {
@@ -4668,6 +4676,20 @@
     }
 
     return card;
+  }
+
+  // Champ dédié fourni par RÉZABO : couverture calendrier, pas droit de réserver.
+  // Repli sur les abonnements payés tant que le Worker n'est pas mis à jour.
+  function jourCouvertParAbonnementCalendrierPlanifier(dateIso) {
+    const droits = etatPage.droitsPlanningParcActifs;
+    const abonnements = Array.isArray(droits?.abonnementsCalendrier)
+      ? droits.abonnementsCalendrier
+      : droits?.abonnements;
+    return Array.isArray(abonnements) && abonnements.some(abo =>
+      String(abo?.statutabo || "").trim().toLowerCase() !== "cancd" &&
+      String(abo?.debut || "").slice(0, 10) <= dateIso &&
+      String(abo?.fin || "").slice(0, 10) >= dateIso
+    );
   }
 
   function jourCouvertParAbonnementPayePlanifier(dateIso) {
