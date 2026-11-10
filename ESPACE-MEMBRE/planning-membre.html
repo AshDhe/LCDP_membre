@@ -36,8 +36,37 @@
       });
     })();
   </script>
+  <!-- Spinner d'arrivée : pictogramme SVG commun, sans nouvelle feuille CSS. -->
+  <style>
+    #lcdp-attente-arrivee { position:fixed; inset:0; z-index:2147483646; display:flex; align-items:center; justify-content:center; background:#fff; }
+    #lcdp-attente-arrivee .lcdp-loading-spinner { position:relative; box-sizing:border-box; width:64px; height:64px; display:flex; align-items:center; justify-content:center; }
+    #lcdp-attente-arrivee .lcdp-loading-spinner > svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
+    #lcdp-attente-arrivee .lcdp-loading-spinner__track { color:rgba(6,95,70,.10); }
+    #lcdp-attente-arrivee .lcdp-loading-spinner__arc { color:#e59834; animation:lcdp-arrivee-rotation .8s linear infinite; }
+    #lcdp-attente-arrivee .lcdp-loading-spinner__dot { width:8px; height:8px; border-radius:50%; background:#4e6838; }
+    @keyframes lcdp-arrivee-rotation { to { transform:rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { #lcdp-attente-arrivee .lcdp-loading-spinner__arc { animation:none; } }
+  </style>
+  <noscript><style>#lcdp-attente-arrivee { display:none !important; }</style></noscript>
 </head>
 <body class="lcdp-app-page">
+  <div id="lcdp-attente-arrivee" role="status" aria-label="Chargement de la page">
+    <div class="lcdp-loading-spinner" aria-hidden="true">
+      <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
+      <svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg>
+      <span class="lcdp-loading-spinner__dot"></span>
+    </div>
+  </div>
+  <script>
+    (() => {
+      const terminer = () => document.getElementById('lcdp-attente-arrivee')?.remove();
+      window.LCDP_terminerAttenteArrivee = terminer;
+      // Sécurité : ne pas bloquer définitivement l'accès en cas d'échec d'un fragment/API.
+      window.setTimeout(terminer, 15000);
+      window.addEventListener('pageshow', event => { if (event.persisted) terminer(); });
+    })();
+  </script>
+
   <div class="lcdp-site-page lcdp-app-wrapper">
 
     <!-- Bandeau existant intégré dès le rendu HTML : visible même en cas d'échec du chargement des fragments. -->
@@ -204,6 +233,31 @@
       } else {
         initialiser();
       }
+    })();
+  </script>
+
+  <script>
+    (() => {
+      function observerPremierAffichage() {
+        const message = document.getElementById('lcdp-mes-acces-message');
+        if (!message) { window.LCDP_terminerAttenteArrivee(); return; }
+        const observer = new MutationObserver(verifier);
+        function verifier() {
+          if (!document.getElementById('lcdp-attente-arrivee')) { observer.disconnect(); return; }
+          const texte = (message.textContent || '').trim();
+          const termine = message.hidden || (texte && !/^Chargement\b/i.test(texte));
+          const bandeauPret = Boolean(document.querySelector('#lcdp-bandeau-slot [data-lcdp-burger-button]'));
+          const footerPret = Boolean(document.querySelector('#lcdp-footer-slot [data-lcdp-box-footer]'));
+          if (termine && bandeauPret && footerPret) {
+            observer.disconnect();
+            window.LCDP_terminerAttenteArrivee();
+          }
+        }
+        observer.observe(document.body, {subtree:true,childList:true,attributes:true,characterData:true});
+        verifier();
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', observerPremierAffichage, {once:true});
+      else observerPremierAffichage();
     })();
   </script>
   <script src="./mes-acces-membre.js?v=20261105-6"></script>

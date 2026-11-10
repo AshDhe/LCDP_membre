@@ -32,6 +32,7 @@
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
 
   let pageInitialisee = false;
+  let redirectionCompteEnCours = false;
   let emailMembreActuel = "";
 
   const PAGE_POINTS_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-points.html");
@@ -348,6 +349,7 @@
   }
 
   function terminerAttenteCompte() {
+    if (redirectionCompteEnCours) return;
     document.body.classList.add("lcdp-compte-pret");
     document.getElementById("lcdp-mon-compte-attente-initiale")?.remove();
   }
@@ -2778,6 +2780,7 @@ function afficherResumePointsPassion(compte) {
   }
 
   function redirigerConnexionMembre(motif) {
+    redirectionCompteEnCours = true;
     const separateur = PAGE_CONNEXION_MEMBRE.includes("?") ? "&" : "?";
 
     window.location.href =

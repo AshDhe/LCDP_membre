@@ -603,6 +603,98 @@
     return bouton;
   }
 
+  // Spinner de navigation : même dessin SVG que le chargement de Mon compte.
+  // Aucun nouveau fichier CSS ; l'overlay ne s'applique qu'à une vraie navigation.
+  function afficherAttenteNavigationBurger() {
+    const existant = document.getElementById("lcdp-burger-attente-navigation");
+    if (existant) return existant;
+
+    const attente = document.createElement("div");
+    attente.id = "lcdp-burger-attente-navigation";
+    attente.setAttribute("role", "status");
+    attente.setAttribute("aria-label", "Chargement de la page");
+    attente.style.cssText = "position:fixed;inset:0;z-index:2147483646;" +
+      "display:flex;align-items:center;justify-content:center;background:#fff;";
+
+    const spinner = document.createElement("div");
+    spinner.className = "lcdp-loading-spinner";
+    spinner.setAttribute("aria-hidden", "true");
+    spinner.style.cssText = "position:relative;display:flex;align-items:center;" +
+      "justify-content:center;box-sizing:border-box;width:64px;height:64px;";
+
+    const namespaceSvg = "http://www.w3.org/2000/svg";
+    const creerAnneau = (classe, couleur, pointille = false) => {
+      const svg = document.createElementNS(namespaceSvg, "svg");
+      svg.setAttribute("viewBox", "0 0 36 36");
+      svg.setAttribute("aria-hidden", "true");
+      svg.setAttribute("class", classe);
+      svg.style.cssText = "position:absolute;inset:0;display:block;width:100%;height:100%;color:" + couleur + ";";
+      const cercle = document.createElementNS(namespaceSvg, "circle");
+      cercle.setAttribute("cx", "18");
+      cercle.setAttribute("cy", "18");
+      cercle.setAttribute("r", "16");
+      cercle.setAttribute("fill", "none");
+      cercle.setAttribute("stroke", "currentColor");
+      cercle.setAttribute("stroke-width", "3");
+      cercle.setAttribute("stroke-linecap", "round");
+      if (pointille) {
+        cercle.setAttribute("stroke-dasharray", "100");
+        cercle.setAttribute("stroke-dashoffset", "75");
+      }
+      svg.appendChild(cercle);
+      return svg;
+    };
+
+    spinner.appendChild(creerAnneau("lcdp-loading-spinner__track", "rgba(6,95,70,.10)"));
+    const arc = creerAnneau("lcdp-loading-spinner__arc", "#e59834", true);
+    arc.style.transformOrigin = "center";
+    spinner.appendChild(arc);
+    const point = document.createElement("span");
+    point.className = "lcdp-loading-spinner__dot";
+    point.style.cssText = "width:8px;height:8px;border-radius:50%;background:#4e6838;";
+    spinner.appendChild(point);
+    attente.appendChild(spinner);
+    document.body.appendChild(attente);
+
+    // Web Animations : pas de nouvelle feuille CSS ni de keyframe globale.
+    const mouvementReduit = typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!mouvementReduit && typeof arc.animate === "function") {
+      arc.animate(
+        [{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }],
+        { duration: 800, iterations: Infinity, easing: "linear" }
+      );
+    }
+    return attente;
+  }
+
+  function naviguerAvecSpinnerBurger(destination) {
+    if (!destination) return;
+    let url;
+    try {
+      url = new URL(destination, window.location.href);
+    } catch (_error) {
+      window.location.href = destination;
+      return;
+    }
+    if (!/^(https?:)$/.test(url.protocol)) {
+      window.location.href = destination;
+      return;
+    }
+    if (url.href === window.location.href) return;
+
+    afficherAttenteNavigationBurger();
+    // Laisser au navigateur une occasion de peindre le spinner avant la navigation.
+    window.setTimeout(() => {
+      window.location.assign(url.href);
+    }, 50);
+  }
+
+  // Un retour depuis le cache arrière du navigateur ne doit pas conserver le masque.
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) document.getElementById("lcdp-burger-attente-navigation")?.remove();
+  });
+
   function creerLienMenu(item, boutonBurger, navBurger, contexte) {
     if (item.action === "etre-invite") {
       return creerBoutonActionMenu(item.label, () => {
@@ -639,7 +731,7 @@
         fermerMenu(boutonBurger, navBurger);
         ouvrirDialogueChangerCompteBurger().catch((error) => {
           console.error("Erreur dialogue changement de compte :", error);
-          window.location.href = construireUrlConnexionBurger("membre");
+          naviguerAvecSpinnerBurger(construireUrlConnexionBurger("membre"));
         });
       });
     }
@@ -666,8 +758,18 @@
       ? construireUrlMembre(item.href)
       : construireUrlPublic(item.href);
 
-    lien.addEventListener("click", () => {
+    lien.addEventListener("click", (event) => {
       fermerMenu(boutonBurger, navBurger);
+      // Conserver le comportement natif des nouveaux onglets et raccourcis clavier.
+      if (event.defaultPrevented || event.button !== 0 || event.ctrlKey ||
+          event.metaKey || event.shiftKey || event.altKey ||
+          (lien.target && lien.target !== "_self") || lien.hasAttribute("download")) {
+        return;
+      }
+      const destination = new URL(lien.href, window.location.href);
+      if (destination.href === window.location.href) return;
+      event.preventDefault();
+      naviguerAvecSpinnerBurger(destination.href);
     });
 
     return lien;
@@ -686,7 +788,7 @@
 
     if (!ok) return;
 
-    window.location.href = construireUrlMembre(PAGE_ABONNEMENT_MEMBRE);
+    naviguerAvecSpinnerBurger(construireUrlMembre(PAGE_ABONNEMENT_MEMBRE));
   }
 
   async function gererClicInviterBurger(contexte, etatInviter = null) {
@@ -695,7 +797,7 @@
     if (!etat.visible) return;
 
     if (etat.actif === true) {
-      window.location.href = construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html");
+      naviguerAvecSpinnerBurger(construireUrlMembre("/ESPACE-MEMBRE/inviter-membre.html"));
       return;
     }
 
@@ -795,7 +897,7 @@
     const workerUrl = obtenirWorkerUserRouteurUrlBurger();
 
     if (!workerUrl) {
-      window.location.href = construireUrlConnexionBurger(compte);
+      naviguerAvecSpinnerBurger(construireUrlConnexionBurger(compte));
       return;
     }
 
@@ -816,15 +918,15 @@
       const data = await reponse.json().catch(() => null);
 
       if (data && data.redirectUrl) {
-        window.location.href = data.redirectUrl;
+        naviguerAvecSpinnerBurger(data.redirectUrl);
         return;
       }
 
-      window.location.href = construireUrlConnexionBurger(compte);
+      naviguerAvecSpinnerBurger(construireUrlConnexionBurger(compte));
 
     } catch (error) {
       console.error("Erreur routeur utilisateur :", error);
-      window.location.href = construireUrlConnexionBurger(compte);
+      naviguerAvecSpinnerBurger(construireUrlConnexionBurger(compte));
     }
   }
 
@@ -878,7 +980,7 @@
       throw new Error(messageErreurApiBurger(resultat, "Impossible de fermer la session membre."));
     }
 
-    window.location.href = construireUrlPublic("/ESPACE-PUBLIC/accueil-public.html");
+    naviguerAvecSpinnerBurger(construireUrlPublic("/ESPACE-PUBLIC/accueil-public.html"));
   }
 
   // Calcule l'échéance à trois mois calendaires de la date de la DA.
@@ -929,7 +1031,7 @@
     }
 
     const reserver = () => {
-      window.location.href = construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html");
+      naviguerAvecSpinnerBurger(construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html"));
     };
 
     if (!statudaConnue) {
