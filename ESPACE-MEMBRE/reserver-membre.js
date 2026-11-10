@@ -749,6 +749,10 @@
     const informationsParc = document.createElement("div");
     informationsParc.className = "lcdp-planifier-entete-parc";
     informationsParc.appendChild(titre);
+    const indicationSansParc = document.createElement("span");
+    indicationSansParc.className = "lcdp-planifier-aucun-parc";
+    indicationSansParc.textContent = "Aucun parc sélectionné";
+    informationsParc.appendChild(indicationSansParc);
     meta.classList.add("lcdp-planifier-nom-parc");
     informationsParc.appendChild(meta);
     // L'ordre visuel change avec le parc : nom en premier, PLANIFIER en dessous.
@@ -776,6 +780,8 @@
     iconeParc.setAttribute("aria-hidden", "true");
     boutonParc.append(iconeParc, document.createTextNode("CHANGER"));
     actionsFiltres.appendChild(boutonParc);
+    // Réutiliser le bouton CHANGER existant dans la ligne d’identité.
+    ligneIdentite.appendChild(actionsFiltres);
 
     const legende = fragmentLegende?.querySelector("[data-lcdp-box-legende]") || document.createElement("div");
     legende.className = "lcdp-box-legende lcdp-planifier-legende-autorisations";
@@ -832,9 +838,6 @@
     }
     contenuLegende.appendChild(ligneLegende);
     enteteFiltres.appendChild(legende);
-    // Placer PARC au-dessus de la navigation mensuelle, hors de l’en-tête.
-    const navigationMois = calendrier.querySelector(".lcdp-box-calendrier-mois__navigation");
-    if (navigationMois) navigationMois.before(actionsFiltres);
     meta.textContent = "";
     meta.hidden = true;
     message.hidden = true;
@@ -968,6 +971,7 @@
 
     function afficher() {
       enteteFiltres.classList.toggle("lcdp-planifier-entete-avec-parc", Boolean(parcSelectionne));
+      indicationSansParc.hidden = Boolean(parcSelectionne);
       courant.textContent = formaterMoisAnnee(etat.annee, etat.mois);
       grille.replaceChildren();
       const premierJour = new Date(etat.annee, etat.mois - 1, 1);
