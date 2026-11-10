@@ -235,12 +235,7 @@
   }
 
   function afficherMessageAccueil(element, prenom) {
-    const premiereLigne = document.createTextNode("Votre compte La Clé du Parc");
-    const sautLigne = document.createElement("br");
-    const deuxiemeLigne = document.createElement("span");
-    deuxiemeLigne.textContent = prenom ? "Bonjour " + prenom : "Bonjour";
-    deuxiemeLigne.style.fontWeight = "400";
-    element.replaceChildren(premiereLigne, sautLigne, deuxiemeLigne);
+    element.textContent = prenom ? "Bonjour " + prenom : "Bonjour";
   }
 
   function afficherMentionAbonnementMembre(etat) {

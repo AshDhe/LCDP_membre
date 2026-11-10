@@ -1129,6 +1129,8 @@
       entetePage.appendChild(mention);
     }
 
+    // Même étiquette que les autres pages membres, y compris si l'élément est recréé.
+    mention.classList.add("lcdp-etiquette-statut-membre");
     mention.textContent = etat && etat.abonne ? "MEMBRE ABONNÉ" : "MEMBRE INVITÉ";
     afficherSuspensionMembre(etat);
   }
