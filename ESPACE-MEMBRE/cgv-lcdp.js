@@ -47,6 +47,7 @@
       contenu.replaceChildren(fragment);status.hidden=true;contenu.hidden=false;
       if(data.datepublication){const d=new Date(data.datepublication);if(!isNaN(d.valueOf())){date.textContent='Version publiée le '+new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',day:'numeric',month:'long',year:'numeric'}).format(d);date.hidden=false;}}
     }catch(e){message('Impossible de charger les CGV.');}
+    finally { window.LCDP_terminerAttentePageMembre?.(); }
   }
   charger();
 })();

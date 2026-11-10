@@ -1017,17 +1017,13 @@
 
   function afficherAttenteTransmissionDa() {
     const attente = document.createElement("div");
-    attente.className = "lcdp-da-transmission-attente";
+    attente.className = "lcdp-da-transmission-attente lcdp-attente-plein-ecran";
     attente.setAttribute("role", "status");
     attente.setAttribute("aria-label", "Transmission de votre DA en cours");
-    const roue = document.createElement("span");
-    roue.className = "lcdp-da-transmission-spinner";
+    const roue = document.createElement("div");
+    roue.className = "lcdp-loading-spinner";
     roue.setAttribute("aria-hidden", "true");
-    for (let i = 0; i < 12; i++) {
-      const rayon = document.createElement("span");
-      rayon.style.setProperty("--lcdp-rayon", String(i));
-      roue.appendChild(rayon);
-    }
+    roue.innerHTML = `<svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg><svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg><span class="lcdp-loading-spinner__dot"></span>`;
     attente.appendChild(roue);
     document.body.appendChild(attente);
     return () => attente.remove();

@@ -20,6 +20,7 @@
   }
 
   async function initialiserPageAvoir() {
+    try {
     const racine = document.getElementById("lcdp-avoir-a4-root");
     const params = new URLSearchParams(window.location.search);
     const avoirid = String(params.get("avoirid") || "").trim();
@@ -47,8 +48,10 @@
       console.error("Erreur avoir abonnement :", error);
       afficherMessage(racine, error.message || "Impossible de charger l'avoir.");
     }
+      } finally {
+      window.LCDP_terminerAttentePageMembre?.();
+    }
   }
-
   async function chargerAvoir({ avoirid, idabo }) {
     const recherche = avoirid
       ? "avoirid=" + encodeURIComponent(avoirid)

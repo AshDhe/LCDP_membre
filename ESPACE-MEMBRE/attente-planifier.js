@@ -8,28 +8,18 @@
   let masque = null;
   let numero = 0;
   const MINIMUM_MS = 500;
-  const chemin = () => {
-    if (typeof window.LCDP_urlObjet === 'function') return window.LCDP_urlObjet('/IMAG/PICTO/pictowait.svg');
-    return '/OBJET/IMAG/PICTO/pictowait.svg';
-  };
   function actualiser() {
     if (!operations.size) { masque?.remove(); masque = null; return; }
     if (!masque) {
       masque = document.createElement('div');
-      masque.className = 'lcdp-planifier-partage-attente'; // CSS existant, aucun style supplémentaire
+      masque.className = 'lcdp-planifier-partage-attente lcdp-attente-plein-ecran';
       masque.setAttribute('role', 'status');
       masque.setAttribute('aria-live', 'polite');
-      const attente = document.createElement('div');
-      attente.className = 'lcdp-pictowait';
-      attente.dataset.lcdpPictowait = '';
-      const image = document.createElement('img');
-      image.className = 'lcdp-pictowait__image';
-      image.src = chemin();
-      image.alt = '';
-      image.width = 56;
-      image.height = 56;
-      image.setAttribute('aria-hidden', 'true');
-      attente.append(image); masque.append(attente);
+      const roue = document.createElement('div');
+      roue.className = 'lcdp-loading-spinner';
+      roue.setAttribute('aria-hidden', 'true');
+      roue.innerHTML = `<svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg><svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg><span class="lcdp-loading-spinner__dot"></span>`;
+      masque.append(roue);
       document.body.append(masque);
     }
     masque.setAttribute('aria-label', [...operations.values()].at(-1).libelle);

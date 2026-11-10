@@ -27,12 +27,6 @@
   display: none !important;
 }
 
-.lcdp-cle-wait__image {
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
-}
-
 .lcdp-cle-workflow {
   width: 100%;
 }

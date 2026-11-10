@@ -20,6 +20,7 @@
   }
 
   async function initialiserPageFacture() {
+    try {
     const racine = document.getElementById("lcdp-facture-a4-root");
     const params = new URLSearchParams(window.location.search);
     const orderid = String(params.get("orderid") || "").trim();
@@ -46,8 +47,10 @@
       console.error("Erreur facture abonnement :", error);
       afficherMessage(racine, error.message || "Impossible de charger la facture.");
     }
+      } finally {
+      window.LCDP_terminerAttentePageMembre?.();
+    }
   }
-
   async function chargerFacture(orderid) {
     const reponse = await fetch(
       ENDPOINT_FACTUPAIEMENT + "/facture?orderid=" + encodeURIComponent(orderid),

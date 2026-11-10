@@ -681,7 +681,7 @@
     const terminerAttenteDa = () => masqueDa.remove();
     try {
       if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
-        await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js?v=20261104-da-questionnaire-v1");
+        await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js?v=20261110-spinner-membre-espace-v1");
       }
       if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
         throw new Error("Le formulaire de demande d'abonnement est indisponible.");

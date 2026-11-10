@@ -107,6 +107,8 @@
     } catch (error) {
       console.error("Erreur abonnement membre :", error);
       afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
+    } finally {
+      window.LCDP_terminerAttentePageMembre?.();
     }
   }
 

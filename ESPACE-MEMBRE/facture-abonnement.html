@@ -1,6 +1,19 @@
 <!doctype html>
 <html lang="fr">
 <head>
+  <style>
+    /* Début du document : le spinner est centré avant les CSS externes. */
+    #lcdp-attente-page-membre {position:fixed;inset:0;z-index:2147483646;box-sizing:border-box;width:100%;height:100vh;height:100dvh;display:flex;align-items:center;justify-content:center;background:#fff;}
+    #lcdp-attente-page-membre .lcdp-loading-spinner {position:relative;box-sizing:border-box;width:64px;height:64px;display:flex;align-items:center;justify-content:center;}
+    #lcdp-attente-page-membre .lcdp-loading-spinner > svg {position:absolute;inset:0;display:block;width:100%;height:100%;}
+    #lcdp-attente-page-membre .lcdp-loading-spinner__track {color:rgba(6,95,70,.10);}
+    #lcdp-attente-page-membre .lcdp-loading-spinner__arc {color:#e59834;animation:lcdp-attente-page-rotation .8s linear infinite;}
+    #lcdp-attente-page-membre .lcdp-loading-spinner__dot {width:8px;height:8px;border-radius:50%;background:#4e6838;}
+    @keyframes lcdp-attente-page-rotation {to {transform:rotate(360deg);}}
+    @media(prefers-reduced-motion:reduce) {#lcdp-attente-page-membre .lcdp-loading-spinner__arc {animation:none;}}
+  </style>
+  <noscript><style>#lcdp-attente-page-membre{display:none!important;}</style></noscript>
+
   <meta charset="utf-8">
 
   <title>Facture abonnement - La Clé du Parc</title>
@@ -65,7 +78,7 @@
 
       const feuillesCssObjet = [
         "/CSSBASE/cssbase.css",
-        "/CSSBASE/lcdp-central-mobile-first.css?v=20261105-css-objets-complets-v1",
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261110-spinner-membre-espace-v1",
         "/CSSBASE/lcdp-factures.css?v=20261105-css-factures-v1",
         "/CSSBASE/lcdp-factures-a4.css?v=20261105-css-factures-v1",
       ];
@@ -82,12 +95,28 @@
 </head>
 
 <body class="lcdp-page-facture-a4">
+  <div id="lcdp-attente-page-membre" class="lcdp-attente-plein-ecran" role="status" aria-label="Chargement de la page">
+    <div class="lcdp-loading-spinner" aria-hidden="true">
+      <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
+      <svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg>
+      <span class="lcdp-loading-spinner__dot"></span>
+    </div>
+  </div>
+  <script>
+    (() => {
+      const terminer = () => document.getElementById("lcdp-attente-page-membre")?.remove();
+      window.LCDP_terminerAttentePageMembre = terminer;
+      window.setTimeout(terminer, 15000);
+      window.addEventListener("pageshow", event => { if(event.persisted) terminer(); });
+    })();
+  </script>
+
   <main class="lcdp-page-facture-a4__main" id="lcdp-facture-a4-root">
     <p class="lcdp-page-facture-a4__message" data-lcdp-facture-a4-message>
       Chargement de la facture...
     </p>
   </main>
 
-  <script src="./facture-abonnement.js"></script>
+  <script src="./facture-abonnement.js?v=20261110-spinner-membre-espace-v1"></script>
 </body>
 </html>

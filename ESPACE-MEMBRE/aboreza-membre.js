@@ -28,7 +28,7 @@
       attenteFormules.setAttribute('aria-label', libelle);
       return;
     }
-    const masque = elem('div', 'lcdp-planifier-partage-attente');
+    const masque = elem('div', 'lcdp-planifier-partage-attente lcdp-attente-plein-ecran');
     masque.setAttribute('role', 'status');
     masque.setAttribute('aria-label', libelle);
     masque.append(creerSpinnerAboReza());

@@ -27,9 +27,12 @@
       ]);
     } catch (error) {
       console.error("Erreur mes points membre :", error);
+      window.LCDP_terminerAttentePageMembre?.();
       await afficherAlerte(
         String(error?.message || error || "Erreur de chargement.")
       );
+    } finally {
+      window.LCDP_terminerAttentePageMembre?.();
     }
   }
 
