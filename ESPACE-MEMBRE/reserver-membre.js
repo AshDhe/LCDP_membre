@@ -202,8 +202,6 @@
     pageInitialisee = true;
     document.addEventListener("click", gererClicDocument);
     document.body.classList.add("lcdp-page-reserver");
-    const titrePage = document.querySelector(".lcdp-title-page-center");
-    if (titrePage) titrePage.textContent = "PLANIFIER";
 
     // Les éléments non indispensables ne retardent pas l'affichage du calendrier.
     const bandeauPret = initialiserBandeau().catch(erreur => {
@@ -750,6 +748,8 @@
     informationsParc.appendChild(titre);
     meta.classList.add("lcdp-planifier-nom-parc");
     informationsParc.appendChild(meta);
+    // L'ordre visuel change avec le parc : nom en premier, PLANIFIER en dessous.
+    // Sans parc : PLANIFIER reprend la première ligne, au niveau de la croix.
     const departementParc = document.createElement("p");
     departementParc.className = "lcdp-planifier-departement-parc";
     departementParc.hidden = true;
@@ -1034,8 +1034,21 @@
       if (parcSelectionne) actualiserMoisParc();
     });
     fermer.addEventListener("click", () => {
-      // Libérer le focus de la croix avant que le masque de chargement la recouvre.
       fermer.blur();
+      if (parcSelectionne) {
+        // Fermer la VUE Parc sans quitter PLANIFIER : calendrier général conservé,
+        // même mois, mêmes filtres et réservations membre en mémoire.
+        parcSelectionne = null;
+        planningCourant = [];
+        droitsParc = droitsInitiaux;
+        etatPage.calendrierMoisActif = null;
+        etatPage.droitsPlanningParcActifs = droitsInitiaux;
+        generationPlanning++;
+        afficher();
+        enregistrerContextePlanning();
+        return;
+      }
+      // La croix du planning général conserve son retour à l'accueil membre.
       // Afficher l'attente AVANT de quitter PLANIFIER : aucun temps mort visuel.
       if (document.getElementById("lcdp-retour-accueil-attente")) return;
       const masque = document.createElement("div");
@@ -1107,13 +1120,13 @@
     let mention = document.getElementById("mention-statut-membre");
 
     if (!mention) {
-      const titre = document.querySelector(".lcdp-title-page-center");
-      if (!titre || !titre.parentNode) return;
+      const entetePage = document.querySelector(".lcdp-page-header");
+      if (!entetePage) return;
 
       mention = document.createElement("p");
       mention.id = "mention-statut-membre";
       mention.className = "lcdp-mention-connexion";
-      titre.insertAdjacentElement("afterend", mention);
+      entetePage.appendChild(mention);
     }
 
     mention.textContent = etat && etat.abonne ? "MEMBRE ABONNÉ" : "MEMBRE INVITÉ";
