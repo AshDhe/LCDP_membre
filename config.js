@@ -265,7 +265,7 @@
     slot.innerHTML = "";
 
     const reponse = await fetch(
-      buildUrl(objetBase, "/BOX/02-box-alerte.html"),
+      buildUrl(objetBase, "/HTMLBASE/02-alerte.html"),
       {
         method: "GET",
         credentials: "omit",
@@ -314,7 +314,7 @@
   }
 
   function assurerCssAlerteSessionRemplacee() {
-    const href = buildUrl(objetBase, "/BOX/02-box-alerte.css");
+    const href = buildUrl(objetBase, "/CSSBASE/02-box-alerte.css");
     const existant = Array.from(
       document.querySelectorAll('link[rel="stylesheet"]')
     ).find((link) => String(link.href || "") === href);
