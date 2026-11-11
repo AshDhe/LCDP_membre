@@ -19,6 +19,8 @@
     recues: document.getElementById('lcdp-mes-acces-recues'),
     envoyees: document.getElementById('lcdp-mes-acces-envoyees'),
     effacer: document.getElementById('lcdp-mes-acces-effacer'),
+    compteurRecues: document.getElementById('lcdp-mes-acces-compteur-recues'),
+    compteurEnvoyees: document.getElementById('lcdp-mes-acces-compteur-envoyees'),
     onglets: Array.from(root.querySelectorAll('[data-lcdp-periode]')),
     planning: document.getElementById('lcdp-mes-acces-planning'),
     listeConteneur: document.getElementById('lcdp-mes-acces-liste-conteneur')
@@ -251,6 +253,20 @@
       else if (el === ui.effacer) el.disabled = !avenir || !actifsFiltres();
       else el.disabled = !avenir;
     });
+    // Compteurs calculés sur les réservations réellement chargées, jamais fictifs.
+    if (ui.compteurRecues) {
+      ui.compteurRecues.textContent = String(toutesFutures().filter(estRecue).length);
+    }
+    if (ui.compteurEnvoyees) {
+      if (etat.disponibiliteStats) {
+        ui.compteurEnvoyees.textContent = String(
+          toutesFutures().filter(r => !estRecue(r)).reduce((total,r)=>total+statsActifs(r),0)
+        );
+        ui.compteurEnvoyees.hidden = false;
+      } else {
+        ui.compteurEnvoyees.hidden = true;
+      }
+    }
     ui.recues.setAttribute('aria-pressed', String(etat.filtre.recues));
     ui.envoyees.setAttribute('aria-pressed', String(etat.filtre.envoyees));
     ui.recues.classList.toggle('lcdp-button-primary', etat.filtre.recues);
