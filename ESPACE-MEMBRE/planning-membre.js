@@ -264,18 +264,31 @@
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card__header {
         min-width: 0;
       }
+      /* Navigation segmentée de la maquette MES ACCÈS, commit 34045ac7d. */
       #lcdp-planning-calendrier-slot [data-lcdp-commande-bar-actions] {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        gap: 9px;
-        width: 100%;
-        min-width: 0;
+        display: block !important; width:100% !important; min-width:0 !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-membre-periode-tabs {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-        width: 100%;
+        display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+        align-items:stretch !important;box-sizing:border-box;width:100%;
+        gap:4px !important;margin:0 0 16px;padding:5px !important;
+        border:1px solid #e7e5e4;border-radius:16px;background:#f5f5f4;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-membre-periode-button {
+        display:flex !important;align-items:center !important;justify-content:center !important;
+        box-sizing:border-box;width:100% !important;max-width:none !important;min-width:0 !important;
+        height:44px !important;min-height:44px !important;margin:0 !important;
+        padding:8px 3px !important;border:0 !important;border-radius:11px !important;
+        background:transparent !important;color:#78716c !important;
+        font:600 .82rem/1.2 var(--lcdp-font-main) !important;box-shadow:none !important;
+        transform:none !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-membre-periode-button[aria-pressed="true"] {
+        background:#4e6838 !important;color:#fff !important;font-weight:700 !important;
+        box-shadow:0 1px 2px rgba(0,0,0,.12) !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-agenda .lcdp-box-liste-card__header {
+        display:block !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card__tools:not([hidden]) {
         display: block;
@@ -283,65 +296,65 @@
         border: 0;
         background: transparent;
       }
+      /* Formulaire : valeurs reprises du modèle MES ACCÈS historique 34045ac7d. */
       .lcdp-planning-filtres {
-        display: grid;
-        grid-template-columns: repeat(2,minmax(0,1fr));
-        gap: 12px;
-        padding: 14px;
-        border: 1px solid #dfe6da;
-        border-radius: 16px;
-        background: #f7f9f5;
+        display:flex;flex-direction:column;box-sizing:border-box;width:100%;min-width:0;
+        gap:13px;padding:16px;margin:0 0 14px;
+        border:1px solid #e7e5e4;border-radius:16px;background:#fafaf9;
       }
-      .lcdp-planning-filtres__titre {
-        grid-column: 1 / -1;
-        margin: 0;
-        color: #476238;
-        font-weight: 800;
-        font-size: .86rem;
-        line-height: 1.35;
-      }
+      .lcdp-planning-filtres__titre {display:none;}
       .lcdp-planning-filtres__champ {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-        gap: 5px;
+        display:flex;flex:0 0 auto;flex-direction:column;gap:5px;
+        box-sizing:border-box;width:100%;min-width:0;margin:0;font-family:var(--lcdp-font-main);
       }
       .lcdp-planning-filtres__champ label {
-        font-size: .75rem;
-        font-weight: 700;
-        color: #31472d;
+        display:block;margin:0;color:#57534e;font-size:.76rem;font-weight:700;line-height:1.3;
       }
-      .lcdp-planning-filtres__champ select,
-      .lcdp-planning-filtres__champ input {
-        box-sizing: border-box;
-        width: 100%;
-        min-width: 0;
-        min-height: 42px;
-        padding: 9px 10px;
-        border: 1px solid #bdcbb6;
-        border-radius: 10px;
-        background: white;
-        color: #28362a;
-        font: inherit;
-        font-size: .8rem;
+      .lcdp-planning-filtres__champ input,.lcdp-planning-filtres__champ select {
+        display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;
+        min-height:43px;margin:0;padding:9px 13px;
+        border:1px solid #e7e5e4;border-radius:12px;background:#fff;color:#44403c;
+        font:500 .84rem/1.3 var(--lcdp-font-main);
+      }
+      .lcdp-planning-filtres__champ :is(input,select):focus-visible {
+        outline:2px solid rgba(78,104,56,.35);outline-offset:2px;
       }
       .lcdp-planning-filtres__invitations {
-        grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+        display:flex;flex-direction:column;gap:9px;align-items:stretch;width:100%;
       }
       .lcdp-planning-filtres__invitation {
-        min-width:0;max-width:100%;white-space:normal;
-        font-size:.75rem;display:flex;align-items:center;justify-content:center;gap:5px;
+        display:flex;align-items:center;justify-content:center;gap:9px;
+        box-sizing:border-box;width:100%;min-height:42px;padding:9px 12px;margin:0;
+        border:1px solid #e7e5e4;border-radius:12px;
+        background:#fff;color:#44403c;font:700 .79rem/1.3 var(--lcdp-font-main);
       }
-      .lcdp-planning-filtres__resultat {font-size:.75rem;font-weight:700;color:#526248;}
+      .lcdp-planning-filtres__invitation[aria-pressed="true"] {
+        border-color:#55733f;background:#eef3ea;color:#4e6838;
+      }
+      .lcdp-planning-filtres__invitation:disabled {opacity:.55;cursor:not-allowed;}
+      .lcdp-planning-filtres__compteur {
+        display:inline-flex;align-items:center;justify-content:center;
+        min-width:24px;height:22px;padding:1px 7px;
+        border-radius:999px;background:#e7e5e4;color:#57534e;font-size:.7rem;
+      }
+      .lcdp-planning-filtres__invitations [data-lcdp-filtre-invitation="recues"] .lcdp-planning-filtres__compteur {
+        background:#ffe4e6;color:#be123c;
+      }
       .lcdp-planning-filtres__actions {
-        grid-column: 1 / -1;
-        display: flex;
-        gap: 8px;
-        justify-content: flex-end;
-        flex-wrap: wrap;
+        display:flex;align-items:center;justify-content:space-between;gap:8px;
+        padding-top:12px;border-top:1px solid #e7e5e4;
       }
-      .lcdp-planning-filtres[aria-disabled="true"] { opacity: .55; }
-      .lcdp-planning-filtres :disabled { cursor: not-allowed; }
+      .lcdp-planning-filtres__resultat {
+        flex:1 1 auto;min-width:0;margin:0;color:#78716c;text-align:left;
+        font:600 .72rem/1.3 var(--lcdp-font-main);
+      }
+      .lcdp-planning-filtres__actions button {
+        flex:0 0 auto;width:auto;min-height:0;height:auto;margin:0;padding:3px 0;
+        border:0;border-radius:0;background:transparent;box-shadow:none;
+        color:#78716c;font:700 .72rem/1.3 var(--lcdp-font-main);
+        text-decoration:underline;text-decoration-color:#d6d3d1;text-underline-offset:3px;
+      }
+      .lcdp-planning-filtres__actions button:disabled {opacity:.55;cursor:not-allowed;}
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card-diaporama__list {
         display: grid;
         grid-template-columns: 1fr;
@@ -801,37 +814,17 @@
       )
     );
 
-    const boutonAffichage =
-      document.createElement("button");
+    const boutonAffichage = document.createElement("button");
     boutonAffichage.type = "button";
-    boutonAffichage.className =
-      "lcdp-button lcdp-button-secondary " +
-      "lcdp-button-mini " +
-      "lcdp-planning-membre-affichage-button";
-    boutonAffichage.dataset.lcdpPlanningAffichage =
-      "true";
-
-    const estListe =
-      etat.modeAffichage === "liste";
-
-    boutonAffichage.textContent = estListe
-      ? "Afficher en planning"
-      : "Afficher en liste";
-    boutonAffichage.setAttribute(
-      "aria-pressed",
-      estListe ? "true" : "false"
-    );
-    boutonAffichage.addEventListener(
-      "click",
-      basculerAffichagePlanningMembre
-    );
-
-    actionsWrapper.appendChild(
-      groupePeriodes
-    );
-    actionsWrapper.appendChild(
-      boutonAffichage
-    );
+    boutonAffichage.className = "lcdp-button lcdp-button-secondary lcdp-button-mini lcdp-planning-membre-periode-button lcdp-planning-membre-affichage-button";
+    boutonAffichage.dataset.lcdpPlanningAffichage = "true";
+    boutonAffichage.textContent = "Planning";
+    boutonAffichage.setAttribute("aria-pressed","false");
+    boutonAffichage.addEventListener("click", () => {
+      if (etat.modeAffichage !== "agenda") afficherPlanningMembreEnAgenda();
+    });
+    groupePeriodes.appendChild(boutonAffichage);
+    actionsWrapper.appendChild(groupePeriodes);
 
     actualiserBoutonsPeriodePlanningMembre();
   }
@@ -878,6 +871,10 @@
 
     etat.periodeAffichage =
       prochainePeriode;
+    if (etat.modeAffichage === "agenda") {
+      etat.modeAffichage = "liste";
+      afficherPlanningMembreEnListe();
+    }
 
     ajusterMoisCourantSelonPeriode();
     actualiserBoutonsPeriodePlanningMembre();
@@ -946,14 +943,7 @@
         calendrier
       );
 
-      if (
-        etat.slotCommandeAgenda &&
-        etat.commandeBar
-      ) {
-        etat.slotCommandeAgenda.appendChild(
-          etat.commandeBar
-        );
-      }
+      // Navigation segmentée toujours en haut du formulaire : ne pas la déplacer dans le calendrier.
 
       etat.modeAffichage = "agenda";
       actualiserModeWrapperPlanning();
@@ -1231,6 +1221,7 @@
     const formulaire = etat.formulaireFiltres;
     if (!formulaire) return;
     const inactif = etat.periodeAffichage !== "avenir";
+    formulaire.closest("[data-lcdp-liste-card-tools]").hidden = inactif || etat.modeAffichage === "agenda";
     for (const input of formulaire.querySelectorAll("input,select,button")) {
       input.disabled = inactif;
       if (input.dataset.lcdpFiltre) input.value = etat.filtres[input.dataset.lcdpFiltre] || "";
@@ -1351,11 +1342,11 @@
 
     if (!bouton) return;
 
-    const estListe = etat.modeAffichage === "liste";
-    bouton.textContent = estListe
-      ? "Afficher en planning"
-      : "Afficher en liste";
-    bouton.setAttribute("aria-pressed", estListe ? "true" : "false");
+    const actif = etat.modeAffichage === "agenda";
+    bouton.textContent = "Planning";
+    bouton.setAttribute("aria-pressed", actif ? "true" : "false");
+    bouton.classList.toggle("lcdp-button-primary", actif);
+    bouton.classList.toggle("lcdp-button-secondary", !actif);
   }
 
   async function chargerReservations() {
