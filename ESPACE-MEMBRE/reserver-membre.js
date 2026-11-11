@@ -5071,6 +5071,19 @@
     });
   }
 
+  function nomParcReservationPlanifier(reservation) {
+    if (!reservation) return "";
+    const parc = reservation.parc || {};
+    const id = String(parc.idparc || parc.id || reservation.idparc || "").trim();
+    const connu = id ? trouverParcParId(id) : null;
+    const nom = String(parc.nom || parc.nomparc || reservation.nomparc ||
+      connu?.nom || connu?.nomparc || "").trim();
+    const departement = String(parc.dptmt || parc.departement || reservation.dptmt ||
+      reservation.departement || connu?.dptmt || connu?.departement || "").trim();
+    if (!nom) return "";
+    return nomParcAvecDepartementPlanifier({nom, dptmt: departement});
+  }
+
   function creerCardHeure(contexte, heure, plage, reservationPlage) {
     const card = etatPage.templateHeureJour.cloneNode(true);
     const label = card.querySelector("[data-lcdp-card-heure-jour-label]");
@@ -5118,7 +5131,13 @@
         if (card.dataset.indisponible) {
           const motifs = {
             invitation:"Vous avez déjà une invitation pour cette plage.",
-            "deja-reserve":"Vous avez déjà un accès planifié sur cette plage.",
+            "deja-reserve": (() => {
+              const parcReservation = nomParcReservationPlanifier(reservationPlage);
+              const horaire = "entre " + formaterHeureAffichee(heure) +
+                " et " + formaterHeureAffichee(plage.fin);
+              return "Vous avez déjà un accès planifié " + horaire +
+                (parcReservation ? " au parc de " + parcReservation : " sur cette plage") + ".";
+            })(),
             fermee:"Accès au parc clos",
             passee:"Cette plage a déjà commencé."
           };
