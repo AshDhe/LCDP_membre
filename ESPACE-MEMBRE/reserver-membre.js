@@ -4952,23 +4952,16 @@
     enteteJour.querySelectorAll("[id]").forEach(element => element.removeAttribute("id"));
     const titrePlanifier = enteteJour.querySelector("[data-lcdp-calendrier-mois-title]");
     if (titrePlanifier) titrePlanifier.textContent = "PLANIFIER";
-    const identiteParc = enteteJour.querySelector(".lcdp-planifier-nom-parc");
-    if (identiteParc) {
-      identiteParc.textContent = "PARC DE " + nomParc.toLocaleUpperCase("fr-FR");
-      identiteParc.hidden = false;
-    }
-    // Une ligne PLANIFIER + CHANGER, distincte du nom du parc.
+    // Même en-tête que la vue mensuelle : le parc figure déjà, en grand,
+    // dans le bandeau de page conservé pendant la vue des horaires.
+    enteteJour.querySelector(".lcdp-planifier-nom-parc")?.remove();
+    const ligneIdentiteJour = enteteJour.querySelector(".lcdp-planifier-entete-identite");
     const informationsJour = enteteJour.querySelector(".lcdp-planifier-entete-parc");
     const actionsJour = enteteJour.querySelector(".lcdp-planifier-actions-filtres");
-    if (titrePlanifier && informationsJour && actionsJour) {
-      const ligneTitre = document.createElement("div");
-      ligneTitre.className = "lcdp-planifier-jour-ligne-titre";
-      informationsJour.prepend(ligneTitre);
-      ligneTitre.append(titrePlanifier, actionsJour);
+    if (titrePlanifier && informationsJour && actionsJour && ligneIdentiteJour) {
+      informationsJour.replaceChildren(titrePlanifier);
+      ligneIdentiteJour.appendChild(actionsJour);
     }
-    // Le nom du parc est placé SOUS les filtres, pas dans la ligne de titre.
-    const filtreJour = enteteJour.querySelector(".lcdp-planifier-legende-autorisations");
-    if (identiteParc && filtreJour) filtreJour.after(identiteParc);
     const boutonChanger = enteteJour.querySelector(".lcdp-planifier-filtre--parc");
     boutonChanger?.addEventListener("click", () => {
       fermerVueChoixPlagePlanifier();
