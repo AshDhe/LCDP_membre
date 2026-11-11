@@ -1,11 +1,9 @@
 <!doctype html>
 <html lang="fr" data-lcdp-css="c085 c034 c038 c037 c058 c072">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MES ACCÈS - La Clé du Parc</title>
-<meta name="description" content="Vos accès, invitations et planning du réseau La Clé du Parc.">
-  <script src="../config.js"></script>
+<script src="../config.js"></script>
   <script>
     (() => {
       "use strict";
@@ -38,137 +36,69 @@
 
 
 <style>
-/* MES ACCÈS : nouveau document indépendant, coque commune c085.
-   Aucun script de molette et aucun gestionnaire de scroll concurrent. */
-html[data-lcdp-css~="c085"] body.lcdp-app-page.lcdp-mes-acces-page {
-  justify-content:center;
-  align-items:center;
+html[data-lcdp-css~="c085"] body#lcdp-access-body {
+ display:flex!important;justify-content:center!important;align-items:center!important;
+ width:100%!important;min-height:100dvh!important;box-sizing:border-box!important;
+ padding:16px!important;margin:0!important;background:#f8fafc;
 }
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
-  box-sizing:border-box;
-  flex:0 1 448px;
-  width:100%;
-  min-width:0;
-  max-width:448px;
-  height:calc(100dvh - 32px);
-  max-height:850px;
-  min-height:0;
-  margin:0 auto;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
+html[data-lcdp-css~="c085"] #lcdp-access-wrapper.lcdp-app-wrapper.lcdp-site-page {
+ display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+ grid-template-rows:68px minmax(0,1fr) 50px!important;flex:0 1 448px!important;
+ box-sizing:border-box!important;width:100%!important;max-width:448px!important;
+ height:min(850px,calc(100dvh - 32px))!important;max-height:850px!important;
+ min-height:0!important;margin:0 auto!important;padding:0!important;
+ border:1px solid #dde5dc!important;border-radius:24px!important;
+ background:white!important;overflow:hidden!important;
+ box-shadow:0 12px 30px rgba(20,35,25,.12)!important;
 }
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-bandeau-slot {
-  flex:0 0 68px; height:68px; min-height:68px; width:100%;
+#lcdp-access-wrapper > #lcdp-bandeau-slot {grid-row:1!important;min-height:0!important;height:68px!important;width:100%!important;background:#4e6838;}
+#lcdp-access-wrapper > #lcdp-bandeau-slot .lcdp-box-bandeau-nav {height:68px!important;min-height:68px!important;border-radius:23px 23px 0 0;}
+html[data-lcdp-css~="c085"] #lcdp-access-scroll.lcdp-site-main {
+ grid-row:2!important;display:block!important;flex:none!important;
+ width:100%!important;height:100%!important;min-height:0!important;min-width:0!important;
+ max-height:none!important;margin:0!important;padding:0!important;
+ overflow-x:hidden!important;overflow-y:auto!important;
+ scrollbar-width:thin;scrollbar-color:#a9b4a8 #f6f8f6;
+ overscroll-behavior-y:contain;background:white;
 }
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-bandeau-slot > .lcdp-box-bandeau-nav {
-  height:68px; min-height:68px; border-radius:23px 23px 0 0;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
-  display:block; flex:1 1 0px; height:auto; min-height:0; min-width:0;
-  overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
-  scrollbar-width:thin;
-  scrollbar-color:#b7c2b7 transparent;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-footer-slot {
-  display:block; flex:0 0 50px; height:50px; min-height:50px; width:100%;
-  background:#fff; border-top:1px solid #edf1ed;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-footer-slot .lcdp-box-footer {
-  width:100%; min-height:49px; height:49px;
-}
-#lcdp-mes-acces-page-conteneur {display:flex; flex-direction:column; gap:12px; width:100%; min-width:0;}
-#lcdp-mes-acces-page-conteneur .lcdp-mes-acces-page-header {
- display:flex; justify-content:center; padding:0; margin:0;
-}
-#lcdp-mes-acces-page-conteneur .lcdp-mes-acces-page-header .lcdp-etiquette-statut-membre { margin:0; }
-#lcdp-mes-acces-conteneur {
- display:flex; flex-direction:column; gap:14px; box-sizing:border-box; width:100%; min-width:0;
- padding:15px 12px 17px; border:1px solid #e2e7e2; border-radius:19px; background:#fff;
-}
-#lcdp-mes-acces-conteneur > .lcdp-title-page-center {
- margin:0; text-align:center; font:800 1.35rem/1.25 var(--lcdp-font-main);
-}
-#lcdp-mes-acces-conteneur .lcdp-box-liste-card__header,
-#lcdp-mes-acces-conteneur .lcdp-box-liste-card__commande {width:100%; margin:0; padding:0; min-width:0;}
-#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-tabs {
- display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; width:100%;
- padding:5px; border:1px solid #e7e5e4; border-radius:16px; background:#f5f5f4;
-}
-#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button {
- display:flex; justify-content:center; align-items:center; box-sizing:border-box;
- flex:none; width:100%; min-width:0; height:44px; min-height:44px; padding:7px 2px;
- border:0; border-radius:11px; margin:0; transform:none; box-shadow:none;
- background:transparent; color:#78716c; font:600 .82rem/1.2 var(--lcdp-font-main);
-}
-#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button[aria-selected="true"] {
- background:#4e6838; color:#fff; font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,.12);
-}
-#lcdp-mes-acces-filtres {
- display:flex; flex-direction:column; gap:14px; box-sizing:border-box; width:100%; min-width:0;
- padding:16px; margin:0; border:1px solid #e7e5e4; border-radius:16px; background:#fafaf9;
-}
-#lcdp-mes-acces-filtres .lcdp-box-commande-bar {display:block; width:100%; margin:0; padding:0;}
-#lcdp-mes-acces-filtres .lcdp-box-commande-bar__actions {
- display:flex; flex-direction:column; gap:13px; width:100%; flex-wrap:nowrap; align-items:stretch;
-}
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire {
- display:flex; flex:0 0 auto; flex-direction:column; gap:6px; width:100%; min-width:0; margin:0;
-}
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire__label {font-size:.77rem; font-weight:700; color:#57534e;}
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire :is(input,select) {
- box-sizing:border-box; width:100%; max-width:100%; min-width:0; height:45px; min-height:45px;
- padding:10px 12px; margin:0; border:1px solid #e7e5e4; border-radius:12px;
- background:white; color:#44403c; font:500 .84rem/1.2 var(--lcdp-font-main);
-}
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations {margin-top:4px;}
+#lcdp-access-scroll > .lcdp-page-section {width:100%;box-sizing:border-box;margin:0;padding:18px 13px 24px;}
+#lcdp-access-wrapper > #lcdp-footer-slot {grid-row:3!important;width:100%!important;height:50px!important;min-height:0!important;background:white;overflow:hidden;border-top:1px solid #eef0ed;}
+#lcdp-access-wrapper > #lcdp-footer-slot .lcdp-box-footer {height:49px!important;min-height:49px!important;width:100%!important;}
+#lcdp-mes-acces-page-conteneur {display:flex;flex-direction:column;gap:12px;width:100%;min-width:0;}
+#lcdp-mes-acces-page-conteneur .lcdp-mes-acces-page-header {display:flex;justify-content:center;margin:0;padding:0;}
+#lcdp-mes-acces-page-conteneur .lcdp-etiquette-statut-membre {margin:0;}
+#lcdp-mes-acces-conteneur {display:flex;flex-direction:column;gap:14px;width:100%;min-width:0;box-sizing:border-box;margin:0;padding:14px 12px 16px;background:white;border:1px solid #e4eae4;border-radius:18px;}
+#lcdp-mes-acces-conteneur > .lcdp-title-page-center {margin:0;text-align:center;font:800 1.35rem/1.25 var(--lcdp-font-main);}
+#lcdp-mes-acces-conteneur .lcdp-box-liste-card__header,#lcdp-mes-acces-conteneur .lcdp-box-liste-card__commande {width:100%;min-width:0;margin:0;padding:0;}
+#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-tabs {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;width:100%;padding:5px;border:1px solid #e7e5e4;border-radius:16px;background:#f5f5f4;}
+#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button {display:flex;justify-content:center;align-items:center;flex:none;box-sizing:border-box;width:100%;min-width:0;max-width:none;height:44px;min-height:44px;padding:7px 2px;margin:0;border:0;border-radius:11px;background:transparent;color:#78716c;font:600 .82rem/1.2 var(--lcdp-font-main);transform:none;box-shadow:none;}
+#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button[aria-selected="true"] {background:#4e6838;color:white;font-weight:700;}
+#lcdp-mes-acces-filtres {display:flex;flex-direction:column;gap:14px;box-sizing:border-box;width:100%;min-width:0;margin:0;padding:16px;border:1px solid #e7e5e4;border-radius:16px;background:#fafaf9;}
+#lcdp-mes-acces-filtres .lcdp-box-commande-bar {display:block;width:100%;margin:0;padding:0;}
+#lcdp-mes-acces-filtres .lcdp-box-commande-bar__actions {display:flex;flex-wrap:nowrap;flex-direction:column;align-items:stretch;gap:13px;width:100%;min-width:0;}
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire {display:flex;flex:0 0 auto;flex-direction:column;gap:6px;box-sizing:border-box;width:100%;min-width:0;margin:0;}
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire__label {font:700 .77rem/1.25 var(--lcdp-font-main);color:#57534e;}
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire :is(input,select) {box-sizing:border-box;width:100%;max-width:100%;min-width:0;min-height:45px;padding:9px 12px;margin:0;border:1px solid #e7e5e4;border-radius:12px;background:white;color:#44403c;font:500 .84rem/1.2 var(--lcdp-font-main);}
 #lcdp-mes-acces-filtres .lcdp-mes-acces-invitations .lcdp-box-commande-bar__actions {gap:10px;}
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button {
- display:flex; justify-content:center; align-items:center; gap:10px;
- box-sizing:border-box; width:100%; min-height:43px; margin:0; padding:9px 12px;
- border:1px solid #e7e5e4; border-radius:12px; background:#fff; color:#44403c;
- font:700 .8rem/1.2 var(--lcdp-font-main);
-}
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button[aria-pressed="true"] {
- background:#eef3ea; border-color:#55733f; color:#4e6838;
-}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button {display:flex;justify-content:center;align-items:center;gap:10px;box-sizing:border-box;width:100%;min-height:43px;padding:9px 12px;margin:0;border:1px solid #e7e5e4;border-radius:12px;background:white;color:#44403c;font:700 .8rem/1.2 var(--lcdp-font-main);}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button[aria-pressed="true"] {background:#eef3ea;border-color:#55733f;color:#4e6838;}
 #lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button:disabled {opacity:.55;}
-#lcdp-mes-acces-filtres .lcdp-mes-acces-compteur {
- display:inline-flex; justify-content:center; align-items:center;
- min-width:24px; height:22px; padding:1px 7px;
- border-radius:999px; background:#f5f5f4; color:#78716c; font-size:.71rem; font-weight:800;
-}
-#lcdp-mes-acces-filtres #lcdp-mes-acces-recues .lcdp-mes-acces-compteur {background:#ffe4e6; color:#be123c;}
-#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied {
- display:flex; align-items:center; justify-content:space-between; gap:8px;
- padding-top:12px; border-top:1px solid #e7e5e4;
-}
-#lcdp-mes-acces-filtres #lcdp-mes-acces-resultat {
- flex:1 1 auto; min-width:0; width:auto; margin:0; text-align:left; color:#78716c;
- font:600 .72rem/1.3 var(--lcdp-font-main);
-}
-#lcdp-mes-acces-filtres #lcdp-mes-acces-effacer {
- flex:0 0 auto; width:auto; min-height:0; margin:0; padding:3px 0;
- border:0; background:transparent; color:#78716c; box-shadow:none;
- font:700 .72rem/1.3 var(--lcdp-font-main); text-decoration:underline;
- text-decoration-color:#d6d3d1; text-underline-offset:3px;
-}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-compteur {display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:1px 7px;border-radius:999px;background:#f5f5f4;color:#78716c;font-size:.71rem;font-weight:800;}
+#lcdp-mes-acces-filtres #lcdp-mes-acces-recues .lcdp-mes-acces-compteur {background:#ffe4e6;color:#be123c;}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied {display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:12px;border-top:1px solid #e7e5e4;}
+#lcdp-mes-acces-filtres #lcdp-mes-acces-resultat {flex:1 1 auto;width:auto;min-width:0;margin:0;color:#78716c;text-align:left;font:600 .72rem/1.3 var(--lcdp-font-main);}
+#lcdp-mes-acces-filtres #lcdp-mes-acces-effacer {flex:0 0 auto;width:auto;min-height:0;padding:3px 0;margin:0;border:0;background:transparent;box-shadow:none;color:#78716c;font:700 .72rem/1.3 var(--lcdp-font-main);text-decoration:underline;}
 #lcdp-mes-acces-filtres #lcdp-mes-acces-effacer:disabled {opacity:.55;}
-#lcdp-mes-acces-planning {min-width:0; width:100%;}
-#lcdp-mes-acces-liste {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; min-width:0; width:100%;}
+#lcdp-mes-acces-planning {min-width:0;width:100%;}
+#lcdp-mes-acces-liste {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;min-width:0;}
 #lcdp-mes-acces-liste > .lcdp-box-card-parc-diaporama.is-retourne {grid-column:1/-1;}
-#mention-statut-membre[hidden],#lcdp-mes-acces-planning[hidden],#lcdp-mes-acces-filtres[hidden],
-#lcdp-mes-acces-liste-conteneur[hidden],#lcdp-mes-acces-resultat[hidden],
-#lcdp-mes-acces-message[hidden],.lcdp-mes-acces-compteur[hidden] {display:none!important;}
-@media(max-width:767px) {
- html[data-lcdp-css~="c085"] body.lcdp-app-page.lcdp-mes-acces-page {align-items:flex-start;}
- html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {height:calc(100dvh - 24px);}
-}
+#mention-statut-membre[hidden],#lcdp-mes-acces-planning[hidden],#lcdp-mes-acces-filtres[hidden],#lcdp-mes-acces-liste-conteneur[hidden],#lcdp-mes-acces-resultat[hidden],#lcdp-mes-acces-message[hidden],#lcdp-mes-acces-compteur-envoyees[hidden] {display:none!important;}
+@media(max-width:767px) {html[data-lcdp-css~="c085"] body#lcdp-access-body {align-items:flex-start!important;padding:12px!important;}html[data-lcdp-css~="c085"] #lcdp-access-wrapper.lcdp-app-wrapper {height:calc(100dvh - 24px)!important;}}
 </style>
 </head>
-<body class="lcdp-app-page lcdp-mes-acces-page">
-<div class="lcdp-site-page lcdp-app-wrapper">
-    <div id="lcdp-bandeau-slot">
+<body class="lcdp-app-page lcdp-mes-acces-page" id="lcdp-access-body">
+<div id="lcdp-access-wrapper" class="lcdp-site-page lcdp-app-wrapper">
+<div id="lcdp-bandeau-slot">
       <header class="lcdp-box-bandeau-nav" data-lcdp-box-bandeau-nav>
         <div class="lcdp-box-bandeau-nav__inner">
           <a class="lcdp-box-bandeau-nav__logo-link"
@@ -186,11 +116,10 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-footer-slot .lcdp-box
         </div>
       </header>
     </div>
-<main class="lcdp-site-main" aria-label="Mes accès" tabindex="0">
- <section class="lcdp-page-section" aria-label="Contenu de Mes accès">
-  <div class="lcdp-page-container">
-   <div class="lcdp-page-content lcdp-stack-large" id="lcdp-mes-acces-page-conteneur">
-            <header class="lcdp-page-header lcdp-mes-acces-page-header">
+
+<main id="lcdp-access-scroll" class="lcdp-site-main" tabindex="0" aria-label="Mes accès">
+<section class="lcdp-page-section"><div class="lcdp-page-container"><div class="lcdp-page-content lcdp-stack-large" id="lcdp-mes-acces-page-conteneur">
+<header class="lcdp-page-header lcdp-mes-acces-page-header">
               <p class="lcdp-mention-connexion lcdp-etiquette-statut-membre" id="mention-statut-membre" aria-live="polite" hidden></p>
             </header>
 
@@ -245,11 +174,8 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-footer-slot .lcdp-box
                 <div class="lcdp-box-liste-card-diaporama__list" id="lcdp-mes-acces-liste"></div>
               </div>
             </section>
-   </div>
-  </div>
- </section>
-</main>
-    <div id="lcdp-footer-slot">
+</div></div></section></main>
+<div id="lcdp-footer-slot">
       <footer class="lcdp-box-footer" data-lcdp-box-footer>
         <div class="lcdp-box-footer__inner">
           <a href="../ESPACE-PUBLIC/mentions-legales.html" data-site-href="/ESPACE-PUBLIC/mentions-legales.html">Mentions légales - Données</a>
@@ -337,6 +263,5 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-footer-slot .lcdp-box
   </script>
 
 
-<script src="./mes-acces-membre.js?v=20261111-refonte-propre-v11"></script>
-</body>
-</html>
+<script src="./mes-acces-membre.js?v=20261111-refonte-zero-v13"></script>
+</body></html>
