@@ -833,13 +833,21 @@
   function datePossible(d){return Boolean(courant && d.slice(0,7)===courant.moisActif && d>=courant.dateDebut&&d<=courant.dateFin);}
   function accesDejaChoisi(date,plage){return courant?.acces?.some(a=>a.dateacces===date&&a.plagebookd===plage);}
   function marquerAccesProvisoires(card,date){
-    if(!courant)return;
-    const idparc=card.dataset.idparc;
-    courant.acces.filter(a=>a.dateacces===date&&a.idparc===idparc).forEach(a=>{
-      if(a.origine==='existant')return;
-      const slot=card.querySelector('[data-lcdp-card-jour-mois-slot="'+a.plagebookd+'"]');
-      if(slot){slot.classList.add('lcdp-planifier-plage--acces-personnel');slot.title+=' · Accès provisoire ABO-RÉZA';}
-    });
+    if(!courant || !Array.isArray(courant.acces))return;
+    const plages = courant.acces.filter(a =>
+      a.dateacces === date && a.origine !== 'existant'
+    );
+    for(const acces of plages){
+      const slot=card.querySelector('[data-lcdp-card-jour-mois-slot="'+acces.plagebookd+'"]');
+      if(!slot)continue;
+      // Les accès du panier sont visibles sur le planning général,
+      // quel que soit le parc actuellement consulté.
+      slot.hidden=false;
+      slot.classList.remove('lcdp-planifier-plage--masquee');
+      slot.classList.add('lcdp-planifier-plage--acces-personnel');
+      slot.title='Plage '+String(acces.plagebookd).slice(5)+' · Accès provisoire ABO-RÉZA (tous parcs)';
+      card.setAttribute('aria-label',date+' · Accès provisoire ABO-RÉZA, plage '+String(acces.plagebookd).slice(5));
+    }
   }
   window.LCDP_ABOREZA={actif:()=>Boolean(courant),panier:()=>courant,demarrer,quitter:quitterTunnel,selectionnerAcces,datePossible,accesDejaChoisi,marquerAccesProvisoires};
   window.LCDP_ouvrirAboReza=demarrer;
