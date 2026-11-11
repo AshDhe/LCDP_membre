@@ -166,6 +166,8 @@
         masques.forEach(({ element }) => { element.hidden = true; });
         slot.hidden = false;
         slot.replaceChildren(workflow);
+        // Ne retirer le spinner qu'après installation de la nouvelle étape.
+        masquerAttenteFormules();
         conteneur.closest('.lcdp-site-main')?.scrollTo?.({ top: 0 });
         fermeture.focus();
       } catch (erreur) {
@@ -269,7 +271,11 @@
       }
 
       // Valider la formule disponible avant de présenter les offres non sélectionnables.
-      continuer.addEventListener('click', () => { if (selection) finir(selection); });
+      continuer.addEventListener('click', () => {
+        if (!selection) return;
+        afficherAttenteFormules('Préparation de l’étape suivante…');
+        finir(selection);
+      });
       zoneValidation.append(continuer);
       zoneDefilement.append(zoneValidation);
 
@@ -301,7 +307,11 @@
         entree.required = true;
         actions.append(champDialogueCentre('Date de démarrage choisie', entree));
         const continuer = bouton('Continuer', true);
-        continuer.addEventListener('click', () => { if (entree.validity.valid) finir(entree.value); else entree.reportValidity(); });
+        continuer.addEventListener('click', () => {
+          if (!entree.validity.valid) { entree.reportValidity(); return; }
+          afficherAttenteFormules('Vérification de la date de démarrage…');
+          finir(entree.value);
+        });
         actions.append(continuer);
         const retour = bouton('Retour aux abonnements');
         retour.addEventListener('click', () => finir(null));
@@ -391,7 +401,11 @@
       precedent.textContent = 'Retour';
       suivant.textContent = 'Continuer';
       precedent.addEventListener('click', () => finir(null));
-      suivant.addEventListener('click', () => { if (selection) finir(selection); });
+      suivant.addEventListener('click', () => {
+        if (!selection) return;
+        afficherAttenteFormules('Vérification de la date de démarrage…');
+        finir(selection);
+      });
     });
   }
   async function presenterCompatibilite(verification) {
@@ -446,6 +460,7 @@
       continuer.addEventListener('click', () => {
         const entree = espace.querySelector('input,select');
         if (!entree || !entree.value || !entree.validity.valid) { entree?.reportValidity(); return; }
+        afficherAttenteFormules('Préparation de vos accès…');
         finir({ formule: choix.value, dateDebut: entree.value });
       });
       actions.append(continuer);
@@ -634,6 +649,8 @@
         demande=await choisirOffre(offres,contexte);
         if(!demande)return;
       }
+      // Pendant le POST, le planning ne doit jamais réapparaître entre deux étapes.
+      afficherAttenteFormules('Préparation de vos accès…');
       const nouveau=(await api('/panier','POST',{
         ...demande,origine:contexte.origine,inclureExistants,
         ...(contexte.origine==='jour_hors_couverture'?{dateCible:contexte.date}:{}),
