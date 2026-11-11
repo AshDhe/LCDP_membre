@@ -164,6 +164,11 @@
       const finir = valeur => {
         if (clos) return;
         clos = true;
+        // Reprise Stripe : installer le masque AVANT de démonter le dialogue,
+        // afin de ne jamais révéler le planning entre le clic et la navigation.
+        if (titre === 'Commande en cours' && valeur === 'payer') {
+          afficherAttenteFormules('Vérification de votre commande…');
+        }
         workflow.removeEventListener('keydown', esc);
         slot.replaceChildren();
         slot.hidden = true;
