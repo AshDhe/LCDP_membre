@@ -703,6 +703,52 @@
           width:calc(100vw - 24px) !important;padding:16px 12px !important;
         }
       }
+      /* Journée intégrée dans le wrapper, présentation mobile-first en galerie. */
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-inline {
+        box-sizing:border-box;width:100%;max-width:100%;min-width:0;
+        margin:0;padding:0;background:transparent;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-entete {
+        display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+        gap:10px;margin:0 0 16px;padding:0 0 12px;
+        border-bottom:1px solid var(--lcdp-color-border,#e7e5e4);
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-entete h2 {
+        margin:0;color:var(--lcdp-color-text,#1f2a24);
+        font-size:1rem;line-height:1.4;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-fermer {
+        box-sizing:border-box;max-width:100%;padding:9px 12px;
+        border:1px solid var(--lcdp-color-border,#d6d3d1);border-radius:999px;
+        background:#fff;color:var(--lcdp-color-text,#1f2a24);cursor:pointer;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-workflow-inline,
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-workflow-inline > .lcdp-box-workflow-reservation__card {
+        position:static !important;inset:auto !important;
+        display:block !important;box-sizing:border-box;
+        width:100% !important;max-width:100% !important;min-width:0 !important;
+        height:auto !important;max-height:none !important;min-height:0 !important;
+        margin:0 !important;padding:0 !important;border:0 !important;
+        background:transparent !important;box-shadow:none !important;
+        overflow:visible !important;transform:none !important;
+        backdrop-filter:none !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-workflow-inline::backdrop {
+        display:none !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-workflow-inline .lcdp-box-workflow-reservation__content,
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-workflow-inline .lcdp-planning-reservation-vues,
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-workflow-inline .lcdp-box-liste-card-diaporama {
+        box-sizing:border-box;width:100%;max-width:100%;min-width:0;
+        padding:0;margin:0;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-liste {
+        display:grid !important;grid-template-columns:minmax(0,1fr) !important;
+        gap:16px !important;width:100% !important;max-width:100%;min-width:0;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-liste > * {
+        grid-column:1 / -1 !important;max-width:100%;min-width:0;
+      }
       @media (max-width: 350px) {
         .lcdp-planning-filtres { grid-template-columns: 1fr; }
       }
@@ -1065,7 +1111,8 @@
     boutonAffichage.textContent = "Planning";
     boutonAffichage.setAttribute("aria-pressed","false");
     boutonAffichage.addEventListener("click", () => {
-      if (etat.modeAffichage !== "agenda") afficherPlanningMembreEnAgenda();
+      if (etat.modeAffichage === "agenda") fermerReservationsJourPlanning();
+      else afficherPlanningMembreEnAgenda();
     });
     groupePeriodes.appendChild(boutonAffichage);
     actionsWrapper.appendChild(groupePeriodes);
@@ -1974,7 +2021,7 @@
     if (jourReservable) {
       jour.setAttribute("aria-label", "Afficher tous les accès du " + formaterJourMoisDateIso(jourMois.dateIso));
       jour.addEventListener("click", () => {
-        ouvrirReservationsJourPlanning(jourMois.dateIso, jour).catch(error => {
+        ouvrirReservationsJourPlanning(jourMois.dateIso).catch(error => {
           console.error("Erreur ouverture des accès du jour :", error);
           afficherAlerte("Impossible d’afficher les accès de cette journée.").catch(console.error);
         });
@@ -2011,7 +2058,21 @@
     ).catch(console.error);
   }
 
-  async function ouvrirReservationsJourPlanning(dateIso, declencheur) {
+  // Consultation d'une journée DANS le wrapper membre : aucune lightbox globale.
+  function fermerReservationsJourPlanning() {
+    const slot = etat.slotPlanning;
+    if (!slot || !slot.querySelector("[data-lcdp-planning-jour-inline]")) return;
+    slot.replaceChildren(etat.calendrierMois);
+    afficherCalendrierMois();
+    const retour = slot.querySelector('[data-lcdp-card-jour-mois][data-date="' +
+      (etat.jourConsultationPlanning || "") + '"]');
+    etat.jourConsultationPlanning = null;
+    if (retour) retour.focus({preventScroll:true});
+  }
+
+  async function ouvrirReservationsJourPlanning(dateIso) {
+    const slot = etat.slotPlanning;
+    if (!slot || !etat.templateReservation || etat.modeAffichage !== "agenda") return;
     const reservations = (etat.reservations || [])
       .filter(reservation =>
         extraireDateFranceReservation(reservation.datebookd) === dateIso &&
@@ -2024,77 +2085,59 @@
         return PLAGES.indexOf(normaliserPlageReservation(a)) -
           PLAGES.indexOf(normaliserPlageReservation(b));
       });
-    if (!reservations.length || !etat.templateReservation) return;
+    if (!reservations.length) return;
 
-    const slot = document.getElementById("lcdp-lightbox-slot");
-    if (!slot) return;
-    const fragment = await chargerFragmentObjet("/HTMLBASE/04-workflow-reservation.html");
-    const workflow = fragment.querySelector("[data-lcdp-box-workflow-reservation]");
-    const contenu = fragment.querySelector("[data-lcdp-workflow-reservation-content]");
-    if (!workflow || !contenu) throw new Error("Gabarit de consultation des accès indisponible.");
-
-    workflow.classList.add("lcdp-box-workflow-reservation--planning-reservation",
-      "lcdp-workflow-reservation-box", "lcdp-planning-jour-workflow");
-    const vues = document.createElement("div");
-    vues.className = "lcdp-planning-reservation-vues lcdp-planning-jour-vues";
-    vues.dataset.lcdpPlanningReservationVues = "true";
-    const vueReservation = document.createElement("section");
-    vueReservation.className = "lcdp-planning-reservation-vue lcdp-planning-reservation-vue--active";
-    vueReservation.dataset.lcdpPlanningVue = "reservation";
-
+    const page = document.createElement("section");
+    page.className = "lcdp-planning-jour-inline";
+    page.dataset.lcdpPlanningJourInline = "true";
     const entete = document.createElement("header");
     entete.className = "lcdp-planning-jour-entete";
     const titre = document.createElement("h2");
-    titre.id = "lcdp-planning-jour-titre";
     titre.textContent = "Accès du " + formaterJourMoisDateIso(dateIso);
-    const fermerBouton = document.createElement("button");
-    fermerBouton.type = "button";
-    fermerBouton.className = "lcdp-planning-jour-fermer";
-    fermerBouton.textContent = "Fermer";
-    fermerBouton.setAttribute("aria-label", "Fermer les accès de la journée");
-    entete.append(titre, fermerBouton);
-    vueReservation.appendChild(entete);
+    const fermer = document.createElement("button");
+    fermer.type = "button";
+    fermer.className = "lcdp-planning-jour-fermer";
+    fermer.textContent = "Retour au planning";
+    fermer.addEventListener("click", fermerReservationsJourPlanning);
+    entete.append(titre,fermer);
+    page.appendChild(entete);
 
-    const liste = document.createElement("div");
-    liste.className = "lcdp-planning-jour-liste";
-    liste.setAttribute("role","list");
-    reservations.forEach(reservation => {
-      const element = document.createElement("div");
-      element.className = "lcdp-planning-jour-item";
-      element.setAttribute("role","listitem");
-      element.appendChild(creerCardReservation(reservation, {contexte:"liste"}));
-      liste.appendChild(element);
-    });
-    vueReservation.appendChild(liste);
-    vues.appendChild(vueReservation);
+    // Le workflow existant est conservé pour les actions Accès/Inviter/Annuler.
+    // En mode inline, il n'est ni modal ni en superposition.
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-workflow-reservation.html");
+    const workflow = fragment.querySelector("[data-lcdp-box-workflow-reservation]");
+    const contenu = fragment.querySelector("[data-lcdp-workflow-reservation-content]");
+    if (!workflow || !contenu) throw new Error("Gabarit workflow réservation introuvable.");
+    workflow.removeAttribute("role");
+    workflow.removeAttribute("aria-modal");
+    workflow.classList.add("lcdp-box-workflow-reservation--planning-page",
+      "lcdp-planning-jour-workflow-inline");
+    const vues = document.createElement("div");
+    vues.className = "lcdp-planning-reservation-vues";
+    vues.dataset.lcdpPlanningReservationVues = "true";
+    const vue = document.createElement("div");
+    vue.className = "lcdp-planning-reservation-vue lcdp-planning-reservation-vue--active";
+    vue.dataset.lcdpPlanningVue = "reservation";
+
+    const galerie = etat.templateListeParcsDiaporama
+      ? etat.templateListeParcsDiaporama.cloneNode(true)
+      : document.createElement("div");
+    const liste = galerie.querySelector?.("[data-lcdp-liste-card-diaporama-list]") || galerie;
+    liste.classList.add("lcdp-planning-jour-liste");
+    for (const reservation of reservations) {
+      const carteReservation = creerCardReservation(reservation,{contexte:"liste"});
+      carteReservation.classList.add("lcdp-box-card-reservation-membre--liste");
+      liste.appendChild(creerCarteVisiteDiaporama(carteReservation,reservation));
+    }
+    vue.appendChild(galerie);
+    vues.appendChild(vue);
     contenu.appendChild(vues);
-    workflow.setAttribute("aria-labelledby", titre.id);
+    workflow._lcdpFermerReservationPlanning = fermerReservationsJourPlanning;
+    page.appendChild(workflow);
 
-    let ferme = false;
-    function fermer() {
-      if (ferme) return;
-      ferme = true;
-      document.removeEventListener("keydown", gererEchap);
-      if (slot.contains(workflow)) slot.replaceChildren();
-      if (declencheur?.isConnected) declencheur.focus({preventScroll:true});
-    }
-    function gererEchap(event) {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      if (workflow.classList.contains("lcdp-box-workflow-reservation--acces-parc-ouvert")) {
-        fermerAccesParcDansReservation(workflow);
-        return;
-      }
-      fermer();
-    }
-    workflow._lcdpFermerReservationPlanning = fermer;
-    fermerBouton.addEventListener("click", fermer);
-    workflow.addEventListener("click", event => {
-      if (event.target === workflow) fermer();
-    });
-    slot.replaceChildren(workflow);
-    document.addEventListener("keydown", gererEchap);
-    fermerBouton.focus({preventScroll:true});
+    etat.jourConsultationPlanning = dateIso;
+    slot.replaceChildren(page);
+    fermer.focus({preventScroll:true});
   }
 
   async function ouvrirReservationPlanning(reservation) {
