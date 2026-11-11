@@ -41,10 +41,9 @@
         "/CSSBASE/lcdp-central-mobile-first.css?v=20261110-spinner-membre-espace-v1",
         "/CSSBASE/lcdp-planifier.css?v=20261111-mes-acces-scope-v54",
       ].forEach(path => {
-        const link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = window.LCDP_urlObjet(path);
-        document.head.appendChild(link);
+        // Comme sur mes-informations.html : conserver l'ordre de cascade CSS
+        // avant le style de page, sans chargement asynchrone concurrent.
+        document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(path) + '">');
       });
     })();
   </script>
