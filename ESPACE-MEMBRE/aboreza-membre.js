@@ -12,6 +12,23 @@
   let occupe = false;
   let bandeau = null;
   let attenteFormules = null;
+  let gardeRetourNavigateur = false;
+  function protegerRetourNavigateur() {
+    if (!gardeRetourNavigateur) {
+      window.addEventListener('popstate', () => {
+        const slot = document.getElementById('lcdp-aboreza-workflow-slot');
+        if (occupe || courant || (slot && !slot.hidden && slot.childElementCount)) {
+          window.history.pushState({ lcdpAboreza: true }, '', window.location.href);
+        } else {
+          gardeRetourNavigateur = false;
+        }
+      });
+      gardeRetourNavigateur = true;
+    }
+    if (!window.history.state?.lcdpAboreza) {
+      window.history.pushState({ lcdpAboreza: true }, '', window.location.href);
+    }
+  }
 
   // Spinner HTML commun à PLANIFIER : aucun fichier GIF/SVG d'attente externe.
   function creerSpinnerAboReza() {
@@ -706,6 +723,7 @@
     }
     if(occupe)return;
     occupe=true;
+    protegerRetourNavigateur();
     try{
       afficherAttenteFormules();
       await chargerTemplates();
