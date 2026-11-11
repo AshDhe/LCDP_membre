@@ -380,35 +380,37 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-f
               </div>
 
               <section class="lcdp-box-liste-card__tools" id="lcdp-mes-acces-filtres" aria-label="Filtres des accès planifiés">
-                <div class="lcdp-box-commande-bar">
+                <div class="lcdp-box-commande-bar lcdp-mes-acces-champs">
                   <div class="lcdp-box-commande-bar__actions" role="group" aria-label="Filtrer les accès à venir">
-                    <label class="lcdp-box-champ-formulaire" style="flex:1 1 145px;min-width:0;width:auto">
+                    <label class="lcdp-box-champ-formulaire">
                       <span class="lcdp-box-champ-formulaire__label">Date</span>
                       <input id="lcdp-mes-acces-date" type="date" aria-label="Filtrer par date">
                     </label>
-                    <label class="lcdp-box-champ-formulaire" style="flex:1 1 145px;min-width:0;width:auto">
+                    <label class="lcdp-box-champ-formulaire">
                       <span class="lcdp-box-champ-formulaire__label">Parc</span>
                       <select id="lcdp-mes-acces-parc" aria-label="Filtrer par parc"><option value="">Tous les parcs</option></select>
                     </label>
-                    <label class="lcdp-box-champ-formulaire" style="flex:1 1 130px;min-width:0;width:auto">
+                    <label class="lcdp-box-champ-formulaire">
                       <span class="lcdp-box-champ-formulaire__label">Département</span>
                       <select id="lcdp-mes-acces-departement" aria-label="Filtrer par département"><option value="">Tous les départements</option></select>
                     </label>
                   </div>
                 </div>
-                <div class="lcdp-box-commande-bar">
+                <div class="lcdp-box-commande-bar lcdp-mes-acces-invitations">
                   <div class="lcdp-box-commande-bar__actions" role="group" aria-label="Invitations">
-                    <button type="button" class="lcdp-button lcdp-button-secondary" id="lcdp-mes-acces-recues" aria-pressed="false">INVT reçues</button>
+                    <button type="button" class="lcdp-button lcdp-button-secondary" id="lcdp-mes-acces-recues" aria-pressed="false">Invitations reçues</button>
                     <button type="button" class="lcdp-button lcdp-button-secondary" id="lcdp-mes-acces-envoyees" aria-pressed="false" disabled>Invitations envoyées</button>
-                    <button type="button" class="lcdp-button lcdp-button-secondary" id="lcdp-mes-acces-effacer" disabled>Effacer les filtres</button>
                   </div>
+                </div>
+                <div class="lcdp-mes-acces-filtres-pied">
+                  <p id="lcdp-mes-acces-resultat" role="status" aria-live="polite" class="lcdp-mention-connexion"></p>
+                  <button type="button" class="lcdp-button lcdp-button-secondary" id="lcdp-mes-acces-effacer" disabled>Effacer les filtres</button>
                 </div>
               </section>
 
               <section id="lcdp-mes-acces-planning" class="lcdp-mes-acces-planning" aria-label="Planning de mes accès sur tout le réseau" hidden>
                 <div id="lcdp-planifier-calendrier-slot" aria-label="Calendrier des accès du membre"></div>
               </section>
-              <p id="lcdp-mes-acces-resultat" role="status" aria-live="polite" class="lcdp-mention-connexion"></p>
               <p id="lcdp-mes-acces-message" role="status" aria-live="polite" class="lcdp-box-liste-card__message">Chargement de vos accès…</p>
               <div class="lcdp-box-liste-card-diaporama" id="lcdp-mes-acces-liste-conteneur" aria-label="Liste des accès">
                 <div class="lcdp-box-liste-card-diaporama__list" id="lcdp-mes-acces-liste"></div>
