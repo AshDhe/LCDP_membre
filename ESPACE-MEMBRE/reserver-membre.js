@@ -854,6 +854,7 @@
     contenuPlanning.replaceChildren();
     const lignePlanning = document.createElement("div");
     lignePlanning.className = "lcdp-box-legende__ligne";
+    let itemAccesClos = null;
     for (const [libelle, etatJour] of [
       ["abonnement en cours", "lcdp-planifier-jour--abonnement-couvert"],
       ["accès planifié dans un parc", "lcdp-box-legende__carre--bleu-fonce"],
@@ -869,6 +870,7 @@
       texte.className = "lcdp-box-legende__libelle";
       texte.textContent = libelle;
       item.append(carre, document.createTextNode(" "), texte);
+      if (etatJour === "lcdp-box-legende__carre--acces-clos") itemAccesClos = item;
       lignePlanning.appendChild(item);
     }
     contenuPlanning.appendChild(lignePlanning);
@@ -1014,6 +1016,8 @@
     etatPage.hoteBandeauAboReza = calendrier.querySelector('.lcdp-box-calendrier-mois__card');
 
     function afficher() {
+      // « accès clos » ne concerne que la consultation d'un parc sélectionné.
+      if (itemAccesClos) itemAccesClos.style.display = parcSelectionne ? "" : "none";
       enteteFiltres.classList.toggle("lcdp-planifier-entete-avec-parc", Boolean(parcSelectionne));
       const nomParcEnTete = document.getElementById("lcdp-planifier-parc-en-tete");
       if (nomParcEnTete) {
