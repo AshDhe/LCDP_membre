@@ -896,7 +896,7 @@
     // La récupération des réservations est déjà assurée par /mes-reservations.
     etatPage.actualiserIndicateursPlanningGeneral = () => {
       grille.querySelectorAll("[data-lcdp-card-jour-mois][data-date]").forEach(card => {
-        afficherIndicateursAccesPlanifier(card, card.dataset.date);
+        afficherReservationsSurPlagesPlanifier(card, card.dataset.date);
       });
     };
 
@@ -1057,7 +1057,7 @@
           card.classList.add("lcdp-box-card-jour-in-calendrier-mois--today");
         }
         // Les réservations et invitations du membre sont indépendantes du parc choisi.
-        afficherIndicateursAccesPlanifier(card, iso);
+        afficherReservationsSurPlagesPlanifier(card, iso);
         // Aucune action sur les jours avant définition des filtres.
         grille.appendChild(card);
       }
@@ -4711,7 +4711,6 @@
     // Une marque corail signale un accès PERSONNEL dans ce parc ; un corail
     // plus clair signale une invitation reçue dans ce même parc.
     if (modeLecture && ouvert && !estPasse) {
-      marquerAccesPersonnelPlanifier(card, planningJour);
       if (window.LCDP_ABOREZA?.actif()) {
         window.LCDP_ABOREZA.marquerAccesProvisoires(card, dateIso);
       }
@@ -4725,7 +4724,7 @@
       });
     }
 
-    if (modeLecture) afficherIndicateursAccesPlanifier(card, dateIso);
+    if (modeLecture) afficherReservationsSurPlagesPlanifier(card, dateIso);
     return card;
   }
 
@@ -5085,35 +5084,56 @@
     return card;
   }
 
-  function afficherIndicateursAccesPlanifier(card, dateIso) {
-    card.querySelector("[data-lcdp-planifier-indicateurs-acces]")?.remove();
+  function afficherReservationsSurPlagesPlanifier(card, dateIso) {
+    // Les accès du membre sont indépendants du parc consulté.
+    // Le numéro plagebookd correspond directement à la position du trait.
     const reservations = (Array.isArray(etatPage.reservationsMembre) ? etatPage.reservationsMembre : [])
       .filter(reservation =>
         reservation && String(reservation.statut || "").toLowerCase() !== "cancd" &&
-        extraireDateFranceReservation(reservation.datebookd) === dateIso
+        extraireDateFranceReservation(reservation.datebookd) === dateIso &&
+        CLES_PLAGES_AFFICHAGE.includes(String(reservation.plagebookd || ""))
       );
-    if (!reservations.length) return;
+    const libellesJour = [];
 
-    const indicateurs = document.createElement("span");
-    indicateurs.className = "lcdp-planifier-indicateurs-acces";
-    indicateurs.dataset.lcdpPlanifierIndicateursAcces = "";
-    const types = [
-      ["lcdp-planifier-indicateur-acces--planifie", "Accès planifié", reservations.some(reservation => reservation.invitation !== true)],
-      ["lcdp-planifier-indicateur-acces--invitation", "Invitation reçue", reservations.some(reservation => reservation.invitation === true)]
-    ];
-    const libelles = [];
-    for (const [classe, libelle, present] of types) {
-      if (!present) continue;
-      const marque = document.createElement("span");
-      marque.className = "lcdp-planifier-indicateur-acces " + classe;
-      marque.setAttribute("aria-hidden", "true");
-      indicateurs.appendChild(marque);
-      libelles.push(libelle);
+    for (const nomPlage of CLES_PLAGES_AFFICHAGE) {
+      const slot = card.querySelector('[data-lcdp-card-jour-mois-slot="' + nomPlage + '"]');
+      if (!slot) continue;
+      slot.classList.remove(
+        "lcdp-planifier-plage--acces-personnel",
+        "lcdp-planifier-plage--invitation-recue",
+        "lcdp-planifier-plage--acces-et-invitation"
+      );
+      const correspondantes = reservations.filter(reservation =>
+        String(reservation.plagebookd || "") === nomPlage
+      );
+      if (!correspondantes.length) continue;
+
+      const acces = correspondantes.some(reservation => reservation.invitation !== true);
+      const invitation = correspondantes.some(reservation => reservation.invitation === true);
+      const libelles = [];
+      if (acces) libelles.push("Accès planifié");
+      if (invitation) libelles.push("Invitation reçue");
+
+      // Rendre visible la plage réservée même lorsque le parc affiché
+      // est fermé à cette date : l'information concerne le réseau entier.
+      slot.hidden = false;
+      slot.classList.remove("lcdp-planifier-plage--masquee");
+      slot.classList.add(
+        acces && invitation
+          ? "lcdp-planifier-plage--acces-et-invitation"
+          : acces
+            ? "lcdp-planifier-plage--acces-personnel"
+            : "lcdp-planifier-plage--invitation-recue"
+      );
+      slot.title = "Plage " + nomPlage.slice(5) + " · " + libelles.join(" · ") +
+        " (tous parcs)";
+      libellesJour.push("plage " + nomPlage.slice(5) + " : " + libelles.join(" et "));
     }
-    if (!libelles.length) return;
-    card.appendChild(indicateurs);
-    card.setAttribute("aria-label", dateIso + " · " + libelles.join(" · "));
-    card.title = libelles.join(" · ");
+
+    // Un marqueur visuel est porté par chaque plage, jamais par la case entière.
+    if (libellesJour.length) {
+      card.setAttribute("aria-label", dateIso + " · " + libellesJour.join(" · "));
+    }
   }
 
   function trouverReservationActiveDatePlage(dateIso, plagebookd) {
