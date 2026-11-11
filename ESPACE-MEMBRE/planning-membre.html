@@ -24,7 +24,9 @@
       window.LCDP_urlObjet = path => typeof config.objetUrl === "function" ? config.objetUrl(path) : joindre(objetBase, path);
 
       [
-        "/CSSBASE/lcdp-central-mobile-first.css?v=20261110-spinner-centre-v1"
+        "/CSSBASE/cssbase.css",
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261110-spinner-centre-v1",
+        "/CSSBASE/lcdp-planifier.css?v=20261111-horaires-sans-recouvrement-v6"
       ].forEach(path => {
         // Comme sur mes-informations.html : conserver l'ordre de cascade CSS
         // avant le style de page, sans chargement asynchrone concurrent.
@@ -63,7 +65,7 @@
     }
   </style>
 </head>
-<body class="lcdp-app-page">
+<body class="lcdp-app-page lcdp-mes-acces-page">
   <div id="lcdp-planning-attente" role="status" aria-label="Chargement du planning">
     <div class="lcdp-loading-spinner" aria-hidden="true">
       <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3"></circle></svg>
