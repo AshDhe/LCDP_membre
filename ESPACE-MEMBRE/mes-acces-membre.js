@@ -19,31 +19,19 @@
     recues: document.getElementById('lcdp-mes-acces-recues'),
     envoyees: document.getElementById('lcdp-mes-acces-envoyees'),
     effacer: document.getElementById('lcdp-mes-acces-effacer'),
-    onglets: Array.from(root.querySelectorAll('[data-lcdp-periode]')),
-    planning: document.getElementById('lcdp-mes-acces-planning'),
-    grillePlanning: null,
-    moisPlanning: null,
-    precedentPlanning: null,
-    suivantPlanning: null,
-    listeConteneur: document.getElementById('lcdp-mes-acces-liste-conteneur')
+    onglets: Array.from(root.querySelectorAll('[data-lcdp-periode]'))
   };
-  if (!ui.liste || !ui.message || !ui.filtres || ui.onglets.length !== 3 || !ui.planning) return;
+  if (!ui.liste || !ui.message || !ui.filtres || ui.onglets.length !== 2) return;
 
   const etat = {
     periode: 'avenir',
     reservations: [],
-    moisPlanning: (() => {
-      const d = new Date();
-      return {annee:d.getFullYear(),mois:d.getMonth()+1};
-    })(),
     filtre: { date: '', parc: '', departement: '', recues: false, envoyees: false },
     donneesInvitations: new Map(),
     disponibiliteStats: false,
     erreurStats: false,
     cardModele: null,
     reservationsChargees: false,
-    templateJour: null,
-    calendrierPret: false,
     annulationEnCours: false
   };
 
@@ -54,20 +42,6 @@
   }
   const planningApi = endpoint('workerPlanningMembreUrl', 'WORKER_PLANNING_MEMBRE_URL', 'planning-membre-api');
   const invitationsApi = endpoint('workerInviterMembreUrl', 'WORKER_INVITER_MEMBRE_URL', 'inviter-membre-api');
-  const indexApi = endpoint('workerIndexMembreUrl','WORKER_INDEX_MEMBRE_URL','index-membre-api');
-
-  async function initialiserStatutMembre() {
-    const mention = document.getElementById('mention-statut-membre');
-    if (!mention || !indexApi) return;
-    try {
-      const data = await getJson(indexApi + '/index');
-      mention.textContent = vrai(data.abonne) ? 'MEMBRE ABONNÉ' : 'MEMBRE INVITÉ';
-      mention.hidden = false;
-    } catch (erreur) {
-      console.warn('[MES ACCÈS] Statut membre non vérifié :', erreur);
-      mention.hidden = true;
-    }
-  }
 
   function dateValide(r) {
     const timestamp = Date.parse(String(r?.datebookd || ''));
@@ -243,12 +217,6 @@
       b.classList.toggle('lcdp-button-secondary', !actif);
     }
     const avenir = etat.periode === 'avenir';
-    const planning = etat.periode === 'planning';
-    ui.filtres.hidden = !avenir;
-    ui.planning.hidden = !planning;
-    ui.listeConteneur.hidden = planning;
-    ui.resultat.hidden = planning;
-    if (planning) ui.message.hidden = true;
     ui.filtres.setAttribute('aria-disabled', String(!avenir));
     ui.filtres.querySelectorAll('input, select, button').forEach(el => {
       if (el === ui.envoyees) el.disabled = !avenir || !etat.disponibiliteStats;
@@ -304,10 +272,10 @@
     if (r.parc?.adresse1 || r.parc?.entreeparc) {
       const infos = [r.parc?.adresse1, r.parc?.adresse2, r.parc?.adresse3, r.parc?.entreeparc]
         .map(v => String(v || '').trim()).filter(Boolean).join(' — ');
-      if (infos) description.appendChild(textEl('span', '', ' · ' + infos));
+      if (infos) verso.appendChild(textEl('p', 'lcdp-box-card-parc-diaporama__description', infos));
     }
     const ajouterBouton = (libelle, action, style='lcdp-button-secondary') => {
-      const b = textEl('button', 'lcdp-button lcdp-box-card-parc__action ' + style, libelle);
+      const b = textEl('button', 'lcdp-button ' + style, libelle);
       b.type = 'button';
       b.addEventListener('click', action);
       actions.appendChild(b);
@@ -321,7 +289,7 @@
     }
     if (etat.periode === 'avenir' && !statutAnnule(r)) {
       const delaiDepasse = dateValide(r) !== null && Date.now() >= dateValide(r) - 30 * 60 * 1000;
-      const annuler = textEl('button', 'lcdp-button lcdp-box-card-parc__action lcdp-button-orange', estRecue(r) ? 'Annuler mon invitation' : 'Annuler cet accès');
+      const annuler = textEl('button', 'lcdp-button lcdp-button-orange', estRecue(r) ? 'Annuler mon invitation' : 'Annuler cet accès');
       annuler.type = 'button';
       annuler.disabled = delaiDepasse;
       if (delaiDepasse) annuler.title = 'Délai d’annulation dépassé';
@@ -350,157 +318,8 @@
     return article;
   }
 
-  // Même composant HTMLBASE, mêmes classes et mêmes règles que PLANIFIER sans parc.
-  async function initialiserCalendrierPersonnel() {
-    if (etat.calendrierPret) return;
-    const charger = async chemin => {
-      const url = typeof window.LCDP_urlObjet === 'function'
-        ? window.LCDP_urlObjet(chemin) : chemin;
-      const response = await fetch(url,{credentials:'omit',cache:'no-store'});
-      if (!response.ok) throw new Error('Composant calendrier indisponible.');
-      const template=document.createElement('template');
-      template.innerHTML=await response.text();
-      return template.content;
-    };
-    const [contenu,jour,legendeFragment] = await Promise.all([
-      charger('/HTMLBASE/04-calendrier-mois.html'),
-      charger('/HTMLBASE/04-card-jour-in-calendrier-mois.html'),
-      charger('/HTMLBASE/04-legende.html')
-    ]);
-    const calendrier=contenu.querySelector('[data-lcdp-box-calendrier-mois]');
-    const jourModele=jour.querySelector('[data-lcdp-card-jour-mois]');
-    if (!calendrier || !jourModele) throw new Error('Structure calendrier incomplète.');
-    calendrier.removeAttribute('role');
-    calendrier.removeAttribute('aria-modal');
-    calendrier.classList.add('lcdp-box-calendrier-mois--inline');
-    const fermeture=calendrier.querySelector('[data-lcdp-calendrier-mois-close]');
-    fermeture?.remove();
-    const entete=calendrier.querySelector('[data-lcdp-calendrier-mois-header]');
-    calendrier.querySelector('.lcdp-box-calendrier-mois__header')?.remove();
-    const navigation=calendrier.querySelector('.lcdp-box-calendrier-mois__navigation');
-    const grille=calendrier.querySelector('[data-lcdp-calendrier-mois-grid]');
-    if (!navigation || !grille) throw new Error('Navigation calendrier indisponible.');
-    const legende=legendeFragment.querySelector('[data-lcdp-box-legende]')?.cloneNode(true);
-    if (legende) {
-      legende.className='lcdp-box-legende lcdp-planifier-legende-planning';
-      legende.setAttribute('aria-label','Légende des accès');
-      const contenuLegende=legende.querySelector('[data-lcdp-legende-contenu]');
-      if (contenuLegende) {
-        contenuLegende.replaceChildren();
-        const ligne=document.createElement('div');
-        ligne.className='lcdp-box-legende__ligne';
-        for(const [texte,classe] of [
-          ['accès planifié dans un parc','lcdp-box-legende__carre--bleu-fonce'],
-          ['invitation reçue pour un parc','lcdp-box-legende__carre--bleu-clair']
-        ]) {
-          const item=document.createElement('span');
-          item.className='lcdp-box-legende__item';
-          const carre=document.createElement('span');
-          carre.className='lcdp-box-legende__carre '+classe;
-          carre.setAttribute('aria-hidden','true');
-          const libelle=document.createElement('span');
-          libelle.className='lcdp-box-legende__libelle';
-          libelle.textContent=texte;
-          item.append(carre,libelle);
-          ligne.appendChild(item);
-        }
-        contenuLegende.appendChild(ligne);
-      }
-      grille.after(legende);
-    }
-    ui.planning.querySelector('#lcdp-planifier-calendrier-slot').replaceChildren(calendrier);
-    ui.grillePlanning=grille;
-    ui.moisPlanning=calendrier.querySelector('[data-lcdp-calendrier-mois-current]');
-    ui.precedentPlanning=calendrier.querySelector('[data-lcdp-calendrier-mois-prev]');
-    ui.suivantPlanning=calendrier.querySelector('[data-lcdp-calendrier-mois-next]');
-    etat.templateJour=jourModele;
-    const changerMois=ecart=>{
-      const d=new Date(etat.moisPlanning.annee,etat.moisPlanning.mois-1+ecart,1);
-      etat.moisPlanning={annee:d.getFullYear(),mois:d.getMonth()+1};
-      afficherPlanningPersonnel();
-    };
-    ui.precedentPlanning.addEventListener('click',()=>changerMois(-1));
-    ui.suivantPlanning.addEventListener('click',()=>changerMois(1));
-    etat.calendrierPret=true;
-  }
-
-  function afficherPlanningPersonnel() {
-    if (!etat.calendrierPret) return;
-    const {annee,mois}=etat.moisPlanning;
-    const moisDate=new Date(annee,mois-1,1);
-    ui.moisPlanning.textContent=new Intl.DateTimeFormat('fr-FR',{
-      month:'long',year:'numeric'
-    }).format(moisDate).replace(/^./,c=>c.toUpperCase());
-    ui.grillePlanning.replaceChildren();
-    const decalage=(moisDate.getDay()+6)%7;
-    const nombreJours=new Date(annee,mois,0).getDate();
-    const aujourdHui=dateIsoParis(Date.now());
-    const parDate=new Map();
-    for(const reservation of etat.reservations) {
-      if (statutAnnule(reservation) || estPasse(reservation)) continue;
-      const date=dateIsoParis(reservation);
-      const plage=String(reservation.plagebookd||'');
-      if(!/^plage[1-5]$/.test(plage))continue;
-      if(!parDate.has(date))parDate.set(date,new Map());
-      const byPlage=parDate.get(date);
-      if(!byPlage.has(plage))byPlage.set(plage,{acces:false,invitation:false,parcs:[]});
-      const e=byPlage.get(plage);
-      if(estRecue(reservation))e.invitation=true;
-      else e.acces=true;
-      const parc=nomParc(reservation);
-      if(parc && parc!=='Parc')e.parcs.push(parc);
-    }
-    for(let i=0;i<decalage;i++) {
-      const vide=etat.templateJour.cloneNode(true);
-      vide.classList.add('lcdp-box-card-jour-in-calendrier-mois--empty');
-      vide.disabled=true;
-      vide.setAttribute('aria-hidden','true');
-      ui.grillePlanning.appendChild(vide);
-    }
-    for(let jour=1;jour<=nombreJours;jour++) {
-      const iso=annee+'-'+String(mois).padStart(2,'0')+'-'+String(jour).padStart(2,'0');
-      const card=etat.templateJour.cloneNode(true);
-      card.classList.add('lcdp-box-card-jour-in-calendrier-mois--planning-lecture','lcdp-planifier-jour--sans-parc');
-      card.dataset.date=iso;
-      card.querySelector('[data-lcdp-card-jour-mois-number]').textContent=String(jour);
-      if(iso<aujourdHui) {
-        card.classList.add('lcdp-box-card-jour-in-calendrier-mois--past');
-        card.disabled=true;
-      }else if(iso===aujourdHui)card.classList.add('lcdp-box-card-jour-in-calendrier-mois--today');
-      const plages=parDate.get(iso);
-      const info=[];
-      for(let p=1;p<=5;p++) {
-        const cle='plage'+p;
-        const segment=card.querySelector('[data-lcdp-card-jour-mois-slot="'+cle+'"]');
-        segment.hidden=true;
-        const e=plages?.get(cle);
-        if(!e)continue;
-        segment.hidden=false;
-        segment.classList.add(e.acces&&e.invitation?'lcdp-planifier-plage--acces-et-invitation':
-          e.invitation?'lcdp-planifier-plage--invitation-recue':'lcdp-planifier-plage--acces-personnel');
-        const nature=e.acces&&e.invitation?'accès et invitation':
-          e.invitation?'invitation reçue':'accès planifié';
-        info.push('plage '+p+' : '+nature+(e.parcs.length?' ('+[...new Set(e.parcs)].join(', ')+')':''));
-      }
-      const texte=iso+(info.length?' · '+info.join(' · '):' · aucun accès');
-      card.title=texte;
-      card.setAttribute('aria-label',texte);
-      // Lecture seule sans griser artificiellement les jours futurs.
-      card.tabIndex=-1;
-      ui.grillePlanning.appendChild(card);
-    }
-  }
-
   function afficher() {
     majOngletsEtFiltres();
-    if (etat.periode === 'planning') {
-      if (!etat.calendrierPret) {
-        initialiserCalendrierPersonnel()
-          .then(()=>afficherPlanningPersonnel())
-          .catch(erreur=>{ui.message.hidden=false;ui.message.textContent=erreur.message;});
-      } else afficherPlanningPersonnel();
-      return;
-    }
     const periode = periodeReservations();
     const visibles = etat.periode === 'avenir' ? periode.filter(passeFiltres) : periode;
     const fragment = document.createDocumentFragment();
@@ -563,23 +382,15 @@
       <div class="lcdp-box-card-parc-diaporama__scene"><div class="lcdp-box-card-parc-diaporama__faces">
         <div class="lcdp-box-card-parc-diaporama__face lcdp-box-card-parc-diaporama__face--recto">
           <button type="button" class="lcdp-box-card-parc-diaporama__ouvrir" data-lcdp-diaporama-retourner aria-expanded="false" aria-label="Détails de l'accès">
-            <span class="lcdp-box-card-parc__media lcdp-box-card-parc__media--avec-nom">
-              <img class="lcdp-box-card-parc__image" data-lcdp-diaporama-image alt="" loading="lazy" decoding="async">
-              <span class="lcdp-box-card-parc__nom-image" data-lcdp-diaporama-nom></span>
-            </span>
+            <img class="lcdp-box-card-parc-diaporama__image" data-lcdp-diaporama-image alt="" loading="lazy" decoding="async">
+            <span class="lcdp-box-card-parc-diaporama__nom" data-lcdp-diaporama-nom></span>
           </button>
         </div>
-        <div class="lcdp-box-card-parc-diaporama__face lcdp-box-card-parc-diaporama__face--verso lcdp-box-card-parc--reserver" data-lcdp-diaporama-dos aria-hidden="true">
+        <div class="lcdp-box-card-parc-diaporama__face lcdp-box-card-parc-diaporama__face--verso" data-lcdp-diaporama-dos aria-hidden="true">
           <button type="button" class="lcdp-box-card-parc-diaporama__fermer" data-lcdp-diaporama-fermer aria-label="Revenir à la photo">×</button>
-          <div class="lcdp-box-card-parc-diaporama__contenu">
-            <div class="lcdp-box-card-parc__body">
-              <div class="lcdp-box-card-parc__text">
-                <h3 class="lcdp-box-card-parc__title" data-lcdp-diaporama-nom-dos></h3>
-              </div>
-              <div class="lcdp-box-card-parc__actions--reserver" data-lcdp-diaporama-actions></div>
-              <p class="lcdp-box-card-parc__description" data-lcdp-diaporama-description></p>
-            </div>
-          </div>
+          <h3 class="lcdp-box-card-parc-diaporama__nom-dos" data-lcdp-diaporama-nom-dos></h3>
+          <div class="lcdp-box-card-parc-diaporama__actions" data-lcdp-diaporama-actions></div>
+          <p class="lcdp-box-card-parc-diaporama__description" data-lcdp-diaporama-description></p>
         </div>
       </div></div>
     </article>`;
@@ -634,7 +445,7 @@
 
   function brancher() {
     ui.onglets.forEach(button => button.addEventListener('click', () => {
-      etat.periode = button.dataset.lcdpPeriode;
+      etat.periode = button.dataset.lcdpPeriode === 'passe' ? 'passe' : 'avenir';
       afficher();
     }));
     ui.date.addEventListener('change', () => { etat.filtre.date = ui.date.value; afficher(); });
@@ -656,7 +467,6 @@
   }
 
   async function initialiser() {
-    void initialiserStatutMembre();
     brancher();
     etat.cardModele = creerModeleCarte();
     majOngletsEtFiltres();
