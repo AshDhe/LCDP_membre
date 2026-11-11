@@ -1098,38 +1098,19 @@
     return bouton;
   }
 
-  function changerPeriodePlanningMembre(
-    periode
-  ) {
-    const prochainePeriode =
-      periode === "passe"
-        ? "passe"
-        : "avenir";
+  function changerPeriodePlanningMembre(periode) {
+    const prochainePeriode = periode === "passe" ? "passe" : "avenir";
+    const changementPeriode = etat.periodeAffichage !== prochainePeriode;
+    const retourDepuisPlanning = etat.modeAffichage === "agenda";
 
-    if (
-      etat.periodeAffichage ===
-      prochainePeriode
-    ) {
-      return;
-    }
+    // Le bouton À venir doit aussi quitter Planning quand la période est déjà avenir.
+    if (!changementPeriode && !retourDepuisPlanning) return;
 
-    etat.periodeAffichage =
-      prochainePeriode;
-    if (etat.modeAffichage === "agenda") {
-      etat.modeAffichage = "liste";
-      afficherPlanningMembreEnListe();
-    }
+    etat.periodeAffichage = prochainePeriode;
+    if (changementPeriode) ajusterMoisCourantSelonPeriode();
 
-    ajusterMoisCourantSelonPeriode();
-    actualiserBoutonsPeriodePlanningMembre();
-    actualiserEtatFiltresPlanningMembre();
-
-    if (etat.modeAffichage === "liste") {
-      afficherPlanningMembreEnListe();
-      return;
-    }
-
-    afficherCalendrierMois();
+    // AfficherPlanningMembreEnListe actualise seul les trois boutons et les filtres.
+    afficherPlanningMembreEnListe();
   }
 
   function actualiserBoutonsPeriodePlanningMembre() {
