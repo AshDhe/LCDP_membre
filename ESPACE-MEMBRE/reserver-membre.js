@@ -856,7 +856,7 @@
     lignePlanning.className = "lcdp-box-legende__ligne";
     let itemAccesClos = null;
     for (const [libelle, etatJour] of [
-      ["abonnement en cours", "lcdp-planifier-jour--abonnement-couvert"],
+      ["journée couverte", "lcdp-planifier-jour--abonnement-couvert"],
       ["accès planifié dans un parc", "lcdp-box-legende__carre--bleu-fonce"],
       ["invitation reçue pour un parc", "lcdp-box-legende__carre--bleu-clair"],
       ["accès de ce parc clos", "lcdp-box-legende__carre--acces-clos"]
