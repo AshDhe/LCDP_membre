@@ -672,7 +672,6 @@
       reprendre.insertAdjacentHTML('beforeend', '<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 7l5 5-5 5M18 12H6"/></svg>');
       reprendre.addEventListener('click', () => finir('reprendre'));
       const annuler = bouton('Annuler ce panier et recommencer');
-      annuler.insertAdjacentHTML('afterbegin', '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16"/></svg>');
       annuler.addEventListener('click', () => finir('recommencer'));
       actions.append(reprendre, annuler);
     });
