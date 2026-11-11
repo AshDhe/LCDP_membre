@@ -5130,7 +5130,13 @@
       try {
         if (card.dataset.indisponible) {
           const motifs = {
-            invitation:"Vous avez déjà une invitation pour cette plage.",
+            invitation: (() => {
+              const parcInvitation = nomParcReservationPlanifier(reservationPlage);
+              const horaire = "entre " + formaterHeureAffichee(heure) +
+                " et " + formaterHeureAffichee(plage.fin);
+              return "Vous avez déjà reçu une invitation " + horaire +
+                (parcInvitation ? " pour le parc de " + parcInvitation : " sur cette plage") + ".";
+            })(),
             "deja-reserve": (() => {
               const parcReservation = nomParcReservationPlanifier(reservationPlage);
               const horaire = "entre " + formaterHeureAffichee(heure) +
