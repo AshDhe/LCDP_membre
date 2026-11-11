@@ -749,6 +749,40 @@
       #lcdp-planning-calendrier-slot .lcdp-planning-jour-liste > * {
         grid-column:1 / -1 !important;max-width:100%;min-width:0;
       }
+      /* Versos en galerie dans MES ACCÈS : marges de sécurité pour les libellés. */
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-inline
+      .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__face--verso {
+        position:relative !important;
+        box-sizing:border-box !important;
+        height:auto !important;
+        padding:42px 18px 20px !important;
+        overflow:visible !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-inline
+      .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__contenu {
+        box-sizing:border-box !important;
+        padding:0 !important;
+        margin:0 !important;
+        overflow:visible !important;
+        height:auto !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-inline
+      .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__date,
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-inline
+      .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__place {
+        overflow:visible !important;
+        min-height:0 !important;
+        line-height:1.4 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-inline
+      .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__date-label,
+      #lcdp-planning-calendrier-slot .lcdp-planning-jour-inline
+      .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__park {
+        display:block;
+        white-space:normal !important;
+        overflow:visible !important;
+        line-height:1.45 !important;
+      }
       @media (max-width: 350px) {
         .lcdp-planning-filtres { grid-template-columns: 1fr; }
       }
@@ -1346,6 +1380,11 @@
     ouvrir.setAttribute("aria-label", "Voir les détails de la visite au parc " + nom + " le " + date);
     contenu.appendChild(cardReservation);
     const basculer = ouvert => {
+      // Éviter de conserver un décalage vertical du recto dans le verso.
+      if (ouvert) {
+        dos.scrollTop = 0;
+        contenu.scrollTop = 0;
+      }
       carte.classList.toggle("is-retourne", ouvert);
       ouvrir.setAttribute("aria-expanded", String(ouvert));
       dos.setAttribute("aria-hidden", String(!ouvert));
