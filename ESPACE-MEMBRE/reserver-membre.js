@@ -223,6 +223,21 @@
       etatMembre = etat;
       afficherEtatMembre(etatMembre);
       masquerAttenteInitialePlanifier();
+      // Ouverture IA depuis le sélecteur de l'accueil membre uniquement.
+      const parametresPlanifier = new URL(window.location.href);
+      if (parametresPlanifier.searchParams.get("mode") === "ia") {
+        parametresPlanifier.searchParams.delete("mode");
+        window.history.replaceState(window.history.state, "", parametresPlanifier.href);
+        const autoriseIa = etatMembre.abonne === true &&
+          etatMembre.abonnementSuspendu !== true &&
+          etatMembre.abonnementAnnuleNonPaye !== true &&
+          ["1A", "11M", "10M"].includes(String(etatMembre.typeabo || "").trim().toUpperCase());
+        if (autoriseIa) {
+          await demanderOuvertureRechercheIaShift();
+        } else {
+          await afficherAlerte("La recherche avec l’IA est réservée aux abonnements permanents 1A, 11M et 10M.");
+        }
+      }
 
       // L'initialisation du burger dépend du bandeau, mais pas l'affichage du planning.
       bandeauPret.then(() => actualiserBurgerMembre(etatMembre.abonne))
@@ -1208,6 +1223,7 @@
 
     return {
       abonne: valeurBooleenneVraie(resultat.abonne),
+      typeabo: resultat.abonnementEnCours?.typeabo || resultat.abonnementEnCours?.typeaboPrix || "",
       abonnementSuspendu: valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu),
       abonnementAnnuleNonPaye: valeurBooleenneVraie(resultat.abonnementAnnuleNonPaye || resultat.abonnementAnnule || resultat.annuleNonPaye),
       paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null,
