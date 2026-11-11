@@ -372,9 +372,16 @@
     return promesseDialogueFiltre.then(fragment => fragment.cloneNode(true));
   }
 
+  // Les réponses PLANIFIER restent dans le wrapper, et non dans le viewport body.
+  function hoteDialoguesPlanifier() {
+    const hote = document.getElementById("lcdp-planifier-dialogues-slot");
+    if (!hote) throw new Error("Emplacement des dialogues PLANIFIER introuvable.");
+    return hote;
+  }
+
   async function ouvrirFiltreAccesPlanifier() {
     const enveloppe = document.createElement("div");
-    document.body.appendChild(enveloppe);
+    hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
       const fragment = await chargerDialogueFiltrePlanifier();
       enveloppe.appendChild(fragment);
@@ -1175,14 +1182,14 @@
       const gif = creerSpinnerPlanifier("Retour à l’accueil en cours");
       // Centrage autonome : ne dépend pas du chargement du CSS du workflow.
       Object.assign(masque.style, {
-        position: "fixed", inset: "0", width: "100vw", height: "100dvh",
+        position: "absolute", inset: "0", width: "100%", height: "100%",
         zIndex: "2147483647", display: "flex", alignItems: "center",
         justifyContent: "center", margin: "0", padding: "0",
         background: "rgba(255,255,255,0.94)"
       });
       Object.assign(gif.style, { margin: "0", flex: "none" });
       masque.appendChild(gif);
-      document.body.appendChild(masque);
+      hoteDialoguesPlanifier().appendChild(masque);
       // Peindre l'attente, sans dépendre exclusivement de requestAnimationFrame
       // (susceptible d'être suspendu sur certains navigateurs/onglets).
       let navigationLancee = false;
@@ -3037,11 +3044,11 @@
     masque.setAttribute("aria-label", message || "Chargement en cours");
     masque.appendChild(creerSpinnerPlanifier(message));
     Object.assign(masque.style, {
-      position: "fixed", inset: "0", display: "flex", alignItems: "center",
+      position: "absolute", inset: "0", display: "flex", alignItems: "center",
       justifyContent: "center", zIndex: "2147483645",
       background: "rgba(255,255,255,0.94)", pointerEvents: "auto"
     });
-    document.body.appendChild(masque);
+    hoteDialoguesPlanifier().appendChild(masque);
     return masque;
   }
 
@@ -4283,7 +4290,7 @@
     const attente = document.createElement("div");
     attente.className = "lcdp-planifier-partage-attente";
     attente.appendChild(creerSpinnerPlanifier("Envoi du partage en cours…"));
-    document.body.appendChild(attente);
+    hoteDialoguesPlanifier().appendChild(attente);
     let messageResultat = "";
     let succes = false;
     try {
@@ -4300,7 +4307,7 @@
 
   async function ouvrirDialoguePartageEmails() {
     const conteneur = document.createElement("div");
-    document.body.appendChild(conteneur);
+    hoteDialoguesPlanifier().appendChild(conteneur);
 
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-listemails.html");
     conteneur.appendChild(fragment);
@@ -5797,7 +5804,7 @@
 
   async function ouvrirDialogueBoutonsSuperpose(options) {
     const conteneur = document.createElement("div");
-    document.body.appendChild(conteneur);
+    hoteDialoguesPlanifier().appendChild(conteneur);
 
     const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
     conteneur.appendChild(fragment);
@@ -5867,7 +5874,7 @@
     options = {}
   ) {
     const conteneur = document.createElement("div");
-    document.body.appendChild(conteneur);
+    hoteDialoguesPlanifier().appendChild(conteneur);
 
     const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     conteneur.appendChild(fragment);
@@ -6014,7 +6021,7 @@
       zoneContent.appendChild(await creerChampDialogue(champ));
     }
     // Le dialogue complet apparaît en une seule fois (pas de flash du champ).
-    if (conteneur) document.body.appendChild(conteneur);
+    if (conteneur) hoteDialoguesPlanifier().appendChild(conteneur);
     else document.getElementById("lcdp-lightbox-slot")?.replaceChildren(dialogue);
 
     return new Promise((resolve) => {
