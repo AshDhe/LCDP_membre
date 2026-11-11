@@ -581,19 +581,6 @@
     );
     bandeau.append(ligne);
 
-    const pourcentage = total > 0 ? Math.max(0, Math.min(100, Math.round(planifies / total * 100))) : 0;
-    const piste = elem('div', 'lcdp-aboreza-suivi__barre');
-    piste.setAttribute('role', 'progressbar');
-    piste.setAttribute('aria-label', 'Accès planifiés');
-    piste.setAttribute('aria-valuemin', '0');
-    piste.setAttribute('aria-valuemax', String(total));
-    piste.setAttribute('aria-valuenow', String(planifies));
-    piste.setAttribute('aria-valuetext', planifies + ' accès planifiés sur ' + total);
-    const remplissage = elem('div', 'lcdp-aboreza-suivi__barre-remplissage');
-    remplissage.style.width = pourcentage + '%';
-    piste.append(remplissage);
-    bandeau.append(piste);
-
     const groupes = elem('div', 'lcdp-aboreza-suivi__mois');
     groupes.setAttribute('role', 'group');
     groupes.setAttribute('aria-label', 'Progression des accès par mois');
