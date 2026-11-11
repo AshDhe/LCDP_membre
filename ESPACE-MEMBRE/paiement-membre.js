@@ -483,7 +483,7 @@
       const boutonRetour = workflow.querySelector('[data-lcdp-recaporder-cancel]');
       const boutonPrecedent = workflow.querySelector('[data-lcdp-recaporder-back]');
       const precedent = document.activeElement;
-      if (!workflow.isConnected) document.body.append(workflow);
+      if (!workflow.isConnected) (document.getElementById('lcdp-planifier-dialogues-slot') || document.querySelector('.lcdp-planifier-wrapper')).append(workflow);
       if (typeof surOuverture === 'function') surOuverture();
       await new Promise(resolve => {
         let ferme = false;
@@ -578,7 +578,7 @@
         });
       } else bouton?.addEventListener('click',fermer);
       racine.querySelector('[data-lcdp-alerte-close]')?.addEventListener('click',fermer);
-      document.body.append(racine);
+      (document.getElementById('lcdp-planifier-dialogues-slot') || document.querySelector('.lcdp-planifier-wrapper')).append(racine);
     }catch(e){console.error('Retour Paiement',e);}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',traiterRetourStripe);
