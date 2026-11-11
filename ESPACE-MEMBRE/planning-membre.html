@@ -272,40 +272,40 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-f
   html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper { height:calc(100dvh - 24px)!important; }
 }
 
-/* Le propriétaire UNIQUE du défilement est maintenant le wrapper lui-même.
-   Le main retrouve sa hauteur naturelle : plus de scroll imbriqué dépendant de flex/grid. */
+/* Wrapper conforme au gabarit membre : bandeau et footer hors de la zone scrollable.
+   La seule zone défilante est le main, sans défilement concurrent sur le wrapper. */
 html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
   display:flex!important;
   flex-direction:column!important;
-  overflow-x:hidden!important;
-  overflow-y:auto!important;
-  overscroll-behavior-y:contain;
-  scrollbar-width:thin;
-  -webkit-overflow-scrolling:touch;
+  overflow:hidden!important;
 }
 html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
-  position:sticky!important;
-  top:0!important;
-  z-index:20!important;
-  flex-shrink:0!important;
+  position:relative!important;
+  flex:0 0 68px!important;
 }
 html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
   display:block!important;
-  position:relative!important;
-  flex:0 0 auto!important;
-  width:100%!important;
+  flex:1 1 0px!important;
   height:auto!important;
   min-height:0!important;
-  max-height:none!important;
-  overflow:visible!important;
+  min-width:0!important;
+  overflow-x:hidden!important;
+  overflow-y:scroll!important;
+  overscroll-behavior-y:contain;
+  scrollbar-width:auto;
+  -webkit-overflow-scrolling:touch;
 }
 html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot {
-  position:sticky!important;
-  bottom:0!important;
-  z-index:20!important;
-  flex-shrink:0!important;
-  margin-top:auto!important;
+  position:relative!important;
+  flex:0 0 50px!important;
+  margin-top:0!important;
 }
+/* Filtres : respiration entre champs, commandes et pied de formulaire. */
+#lcdp-mes-acces-filtres .lcdp-mes-acces-champs .lcdp-box-commande-bar__actions { gap:15px!important; }
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire { gap:7px!important; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations { margin-top:7px!important; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations .lcdp-box-commande-bar__actions { gap:10px!important; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied { margin-top:3px; }
 </style>
 </head>
 <body class="lcdp-app-page lcdp-mes-acces-page">
@@ -524,6 +524,27 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-f
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', observerPremierAffichage, {once:true});
       else observerPremierAffichage();
+    })();
+  </script>
+  <script>
+    // Le main est la surface de scroll. Permet à la molette de défiler même si
+    // le pointeur se trouve sur une carte qui intercepte l'événement natif.
+    (() => {
+      const init=()=>{
+        const main=document.querySelector('.lcdp-app-wrapper > .lcdp-site-main');
+        if (!main) return;
+        main.addEventListener('wheel',e=>{
+          if(e.ctrlKey||e.defaultPrevented||!e.deltaY||main.scrollHeight<=main.clientHeight) return;
+          const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?main.clientHeight:1);
+          const before=main.scrollTop;
+          const next=Math.max(0,Math.min(main.scrollHeight-main.clientHeight,before+delta));
+          if(before===next)return;
+          main.scrollTop=next;
+          e.preventDefault();
+        },{passive:false,capture:true});
+      };
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
+      else init();
     })();
   </script>
   <script src="./mes-acces-membre.js?v=20261111-filtres-compteurs-v10"></script>
