@@ -585,16 +585,7 @@
       const permanent = etatMembre.abonne === true &&
         etatMembre.abonnementSuspendu !== true &&
         ["1A", "11M", "10M"].includes(String(etatMembre.typeabo || "").trim().toUpperCase());
-      const choix = await ouvrirDialogueBoutons({
-        titre: "PLANIFIER",
-        texte: "Choisissez comment planifier votre visite.",
-        boutons: [
-          { label: "Par PARC", valeur: "parc", style: "lcdp-button-primary" },
-          { label: "Avec alerte", valeur: "alerte", style: "lcdp-button-secondary" },
-          { label: "Avec IA", valeur: "ia", style: "lcdp-button-orange", disabled: !permanent,
-            description: "Réservé aux abonnés permanents (1A, 11M ou 10M)" }
-        ]
-      });
+      const choix = await ouvrirChoixPlanifier(permanent);
       if (!choix) return "annule";
       if (choix === "alerte") {
         await ouvrirFormulaireAlertePlanning();
@@ -618,6 +609,56 @@
     });
     if (issue === "non_connecte") redirigerConnexionMembre("inactive");
     return issue;
+  }
+
+  async function ouvrirChoixPlanifier(permanent) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    if (!slot) throw new Error("Emplacement de lightbox introuvable.");
+    const fragment = await chargerFragmentMembre("/ESPACE-MEMBRE/box-choix-planifier.html");
+    slot.replaceChildren(fragment);
+    const dialogue = slot.querySelector("[data-lcdp-choix-planifier]");
+    const fermerBouton = slot.querySelector("[data-lcdp-choix-fermer]");
+    const choixIa = slot.querySelector('[data-lcdp-choix-action="ia"]');
+    if (!dialogue || !fermerBouton || !choixIa) throw new Error("Structure du choix PLANIFIER incomplète.");
+    if (permanent) {
+      choixIa.disabled = false;
+      choixIa.removeAttribute("aria-disabled");
+      choixIa.classList.remove("lcdp-planifier-choix__option--disabled");
+      choixIa.classList.add("lcdp-planifier-choix__option--alerte");
+      slot.querySelector("[data-lcdp-choix-bientot]")?.remove();
+    }
+    return new Promise(resolve => {
+      let termine = false;
+      const precedent = document.activeElement;
+      const controle = new AbortController();
+      function fermer(valeur) {
+        if (termine) return;
+        termine = true;
+        controle.abort();
+        slot.replaceChildren();
+        if (precedent?.isConnected) precedent.focus({ preventScroll: true });
+        resolve(valeur);
+      }
+      fermerBouton.addEventListener("click", () => fermer(null), { signal: controle.signal });
+      dialogue.addEventListener("click", event => {
+        if (event.target === dialogue) fermer(null);
+      }, { signal: controle.signal });
+      dialogue.querySelectorAll("[data-lcdp-choix-action]:not(:disabled)").forEach(bouton => {
+        bouton.addEventListener("click", () => fermer(bouton.dataset.lcdpChoixAction), { signal: controle.signal });
+      });
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape") { fermer(null); return; }
+        if (event.key !== "Tab") return;
+        const focus = Array.from(dialogue.querySelectorAll("button:not(:disabled)"));
+        const premier = focus[0], dernier = focus[focus.length - 1];
+        if (event.shiftKey && document.activeElement === premier) {
+          event.preventDefault(); dernier.focus();
+        } else if (!event.shiftKey && document.activeElement === dernier) {
+          event.preventDefault(); premier.focus();
+        }
+      }, { signal: controle.signal });
+      fermerBouton.focus({ preventScroll: true });
+    });
   }
 
   async function ouvrirFormulaireAlertePlanning() {
