@@ -867,100 +867,11 @@
     });
   }
 
-  // Pendant un panier ABO-RÉZA actif, le calendrier du jour propose une
-  // sélection puis une validation explicite, sans ouvrir un deuxième dialogue
-  // de confirmation derrière la fenêtre. Hors ABO-RÉZA, le comportement du
-  // calendrier et de RÉZABO demeure inchangé.
-  function installerValidationPlageAbonnement() {
-    if (!window.LCDP_ABOREZA?.actif?.()) return;
-    const slot = document.getElementById('lcdp-planifier-jour-overlay-slot');
-    const grille = slot?.querySelector('[data-lcdp-calendrier-jour-grid]');
-    const carte = slot?.querySelector('.lcdp-box-calendrier-jour__card');
-    if (!grille || !carte || grille.dataset.lcdpAboValidation === '1') return;
-    grille.dataset.lcdpAboValidation = '1';
-    slot.classList.add('lcdp-aboreza-choix-jour');
-
-    const bloc = elem('div', 'lcdp-aboreza-choix-validation');
-    const indication = elem('p', 'lcdp-aboreza-choix-validation__aide',
-      'Sélectionnez une plage horaire pour continuer.');
-    const valider = elem('button', 'lcdp-button lcdp-button-orange lcdp-aboreza-choix-validation__bouton',
-      'Valider cette plage');
-    valider.type = 'button';
-    valider.disabled = true;
-    const message = elem('p', 'lcdp-aboreza-choix-validation__message');
-    message.setAttribute('role', 'alert');
-    message.hidden = true;
-    bloc.append(indication, valider, message);
-    grille.after(bloc);
-
-    let selection = null;
-    let enCours = false;
-    // Capture avant le listener du bouton original, pour éviter deux
-    // validations concurrentes et le dialogue masqué sous le calendrier.
-    grille.addEventListener('click', (event) => {
-      if (!window.LCDP_ABOREZA?.actif?.() || enCours) return;
-      const cible = event.target instanceof Element
-        ? event.target.closest('[data-lcdp-card-heure-jour]') : null;
-      if (!cible || !grille.contains(cible) || cible.disabled || cible.dataset.indisponible) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const idparc = String(cible.dataset.idparc || '');
-      const dateIso = String(cible.dataset.date || '');
-      const plagebookd = String(cible.dataset.plagebookd || '');
-      if (!idparc || !/^\d{4}-\d{2}-\d{2}$/.test(dateIso) || !/^plage[1-5]$/.test(plagebookd)) {
-        selection = null;
-        valider.disabled = true;
-        message.textContent = 'Données de la plage incomplètes. Réouvrez la journée.';
-        message.hidden = false;
-        return;
-      }
-      selection = { parc: { idparc }, dateIso, plagebookd };
-      grille.querySelectorAll('[data-lcdp-card-heure-jour]').forEach((bouton) => {
-        const retenu = bouton === cible;
-        bouton.classList.toggle('lcdp-aboreza-choix-validation--retenue', retenu);
-        bouton.setAttribute('aria-pressed', String(retenu));
-      });
-      indication.textContent = 'Plage choisie : ' + (cible.textContent || '').trim();
-      message.hidden = true;
-      message.textContent = '';
-      valider.disabled = false;
-    }, true);
-
-    valider.addEventListener('click', async () => {
-      if (!selection || enCours || !window.LCDP_ABOREZA?.actif?.()) return;
-      enCours = true;
-      valider.disabled = true;
-      valider.textContent = 'Enregistrement…';
-      message.hidden = true;
-      try {
-        const avant = Number(window.LCDP_ABOREZA?.panier?.()?.nbSelectionnes);
-        // Le traitement métier reste dans ABO-RÉZA : /acces, état du panier,
-        // actualisation du planning, passage au mois suivant ou paiement.
-        await window.LCDP_ABOREZA.selectionnerAcces(selection);
-        const apres = Number(window.LCDP_ABOREZA?.panier?.()?.nbSelectionnes);
-        if (slot.isConnected && Number.isFinite(avant) && Number.isFinite(apres) && apres <= avant) {
-          throw new Error('Cet accès n’a pas été enregistré. Vérifiez les disponibilités.');
-        }
-      } catch (erreur) {
-        if (slot.isConnected) {
-          message.textContent = String(erreur?.message || 'Impossible d’enregistrer cet accès.');
-          message.hidden = false;
-        }
-      } finally {
-        enCours = false;
-        if (slot.isConnected) {
-          valider.textContent = 'Valider cette plage';
-          valider.disabled = !selection;
-        }
-      }
-    });
-  }
-
-  // Un observateur unique pour les deux présentations dynamiques du tunnel.
+  // Le choix des plages conserve la lightbox de confirmation native de PLANIFIER.
+  // L'observateur ne gère que la mise en page de l'étape de préparation.
   function demarrerPresentationAboReza() {
     const actualiser = () => {
       organiserEtape2Planification();
-      installerValidationPlageAbonnement();
     };
     actualiser();
     const observateur = new MutationObserver((mutations) => {
