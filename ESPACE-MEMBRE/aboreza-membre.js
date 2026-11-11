@@ -550,35 +550,40 @@
     if (!hote) return;
     if (!courant) { bandeau?.remove(); bandeau = null; return; }
     if (!bandeau) {
-      bandeau = composants.carte.cloneNode(false);
+      bandeau = elem('section', 'lcdp-aboreza-suivi');
       bandeau.setAttribute('aria-live', 'polite');
-      hote.append(bandeau);
     }
     bandeau.replaceChildren();
-    const main = elem('div', 'lcdp-box-card-abonnement__row lcdp-box-card-abonnement__row--main');
-    const name = elem('div', 'lcdp-box-card-abonnement__item lcdp-box-card-abonnement__item--name');
-    name.append(elem('span', 'lcdp-box-card-abonnement__label', 'ABO-RÉZA — '));
-    name.append(elem('span', 'lcdp-box-card-abonnement__value', nomFormule(courant.formule)));
-    main.append(name);
-    bandeau.append(main);
-    const prog = elem('div', 'lcdp-box-card-abonnement__row');
-    const mention = elem('div', 'lcdp-box-card-abonnement__item');
-    const m = courant.mois.find(x => x.mois === courant.moisActif);
-    mention.append(elem('span', 'lcdp-box-card-abonnement__mention', courant.complet
-      ? `Panier prêt : ${courant.nbSelectionnes} accès sur ${courant.nbAccesRequis}.`
-      : `${moisLibelle(courant.moisActif)} : ${m?.selectionnes || 0}/${m?.attendu || 2} accès. Il reste ${m?.restants || 0} accès sur ce mois.`));
-    if (courant.expirationCommande) {
-      mention.append(elem('span', 'lcdp-box-card-abonnement__mention',
-        'Retenues valides jusqu’à ' + new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }).format(new Date(courant.expirationCommande)) + '.'));
-    }
-    prog.append(mention);
-    const commandes = elem('div', 'lcdp-box-card-abonnement__actions');
-    const quitter = elem('button', 'lcdp-box-card-abonnement__micro-action', 'Quitter ABO-RÉZA sans supprimer le panier');
-    quitter.type = 'button';
-    quitter.addEventListener('click', () => quitterTunnel().catch(e => bridge()?.alerter?.(e.message)));
-    commandes.append(quitter);
-    prog.append(commandes);
-    bandeau.append(prog);
+    const details = elem('div', 'lcdp-aboreza-suivi__details');
+    const formule = elem('div', 'lcdp-aboreza-suivi__champ');
+    formule.append(elem('span', 'lcdp-aboreza-suivi__libelle', 'Abonnement choisi'),
+      elem('strong', 'lcdp-aboreza-suivi__valeur', nomFormule(courant.formule)));
+    const debut = elem('div', 'lcdp-aboreza-suivi__champ');
+    debut.append(elem('span', 'lcdp-aboreza-suivi__libelle', 'Début choisi'),
+      elem('strong', 'lcdp-aboreza-suivi__valeur', dateLibelle(courant.dateDebut)));
+    details.append(formule, debut);
+    bandeau.append(details);
+
+    const mois = courant.mois.find(m => m.mois === courant.moisActif);
+    const progression = elem('p', 'lcdp-aboreza-suivi__progression');
+    progression.append(elem('span', '', 'À planifier sur ce mois (à la commande) : '),
+      elem('strong', '', String(mois?.selectionnes || 0) + '/' + String(mois?.attendu || 2)));
+    bandeau.append(progression);
+
+    const reprendre = elem('button', 'lcdp-button lcdp-button-secondary lcdp-aboreza-suivi__reprendre',
+      'Reprendre plus tard (enregistrement conservé 15 minutes)');
+    reprendre.type = 'button';
+    reprendre.addEventListener('click', async () => {
+      const accord = await modal('Reprendre plus tard ?',
+        'Enregistrement conservé 15 minutes.', [
+          { texte: 'Confirmer', valeur: true, primaire: true }
+        ]);
+      if (accord === true) await quitterTunnel();
+    });
+    bandeau.append(reprendre);
+    const fermeture = hote.querySelector('.lcdp-box-calendrier-mois__close');
+    if (fermeture) fermeture.after(bandeau);
+    else hote.prepend(bandeau);
   }
   async function entrerDansCalendrier(p){
     courant=p;
