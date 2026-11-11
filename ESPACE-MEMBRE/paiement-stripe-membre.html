@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Paiement sécurisé – La Clé du Parc</title>
+  <meta name="description" content="Paiement sécurisé de votre abonnement La Clé du Parc.">
+  <script src="../config.js"></script>
+  <script>
+    (function () {
+      const c = window.SITE_CONFIG || {};
+      const base = String(c.objetBaseUrl || c.OBJET_BASE || 
+        (String(c.publicBaseUrl || c.PUBLIC_BASE || '').replace(/\/+$/, '') + '/OBJET')).replace(/\/+$/, '');
+      const url = typeof c.objetUrl === 'function'
+        ? c.objetUrl('/CSSBASE/lcdp-planifier.css?v=20261111-stripe-elements-v1')
+        : base + '/CSSBASE/lcdp-planifier.css?v=20261111-stripe-elements-v1';
+      const link = document.createElement('link');
+      link.rel = 'stylesheet'; link.href = url; document.head.appendChild(link);
+      window.LCDP_urlObjet = typeof c.objetUrl === 'function' ? c.objetUrl : (p => base + '/' + p.replace(/^\/+/, ''));
+    })();
+  </script>
+  <script defer src="https://js.stripe.com/endive/stripe.js"></script>
+  <script defer src="./paiement-stripe-membre.js?v=20261111-stripe-elements-v1"></script>
+</head>
+<body class="lcdp-page-reserver lcdp-stripe-page">
+  <main class="lcdp-stripe" aria-labelledby="paiement-titre">
+    <header class="lcdp-stripe__entete">
+      <span class="lcdp-stripe__logo">
+        <img id="logo-lcdp" alt="La Clé du Parc" hidden>
+        <span id="logo-attente" aria-hidden="true">LCDP</span>
+      </span>
+      <div class="lcdp-stripe__marque"><p>La Clé du Parc</p><span>Paiement sécurisé</span></div>
+      <span class="lcdp-stripe__test" id="environnement-test" hidden>TEST</span>
+    </header>
+    <section class="lcdp-stripe__corps">
+      <div class="lcdp-stripe__etape">Votre commande</div>
+      <h1 id="paiement-titre">Règlement de votre abonnement</h1>
+      <p class="lcdp-stripe__commande" id="description-commande">Chargement du montant sécurisé…</p>
+      <div class="lcdp-stripe__resume" aria-label="Récapitulatif du règlement">
+        <div><span>Référence</span><strong id="reference-commande">—</strong></div>
+        <div><span>Montant de cette échéance</span><strong id="montant-commande">—</strong></div>
+      </div>
+      <form id="paiement-formulaire" novalidate>
+        <h2>Payer par carte bancaire</h2>
+        <label class="lcdp-stripe__label" for="email-paiement">Adresse e-mail</label>
+        <input class="lcdp-stripe__email" id="email-paiement" name="email" type="email" autocomplete="email" inputmode="email" placeholder="email@exemple.com" required>
+        <div id="stripe-payment-element" aria-label="Formulaire bancaire sécurisé Stripe"></div>
+        <p class="lcdp-stripe__erreur" id="paiement-erreur" role="alert" hidden></p>
+        <button class="lcdp-stripe__payer" id="bouton-payer" type="submit" disabled>Payer</button>
+      </form>
+      <p class="lcdp-stripe__aide">Vos informations bancaires sont saisies directement dans le composant sécurisé Stripe.</p>
+      <a class="lcdp-stripe__retour" href="./reserver-membre.html">Retour au planning</a>
+    </section>
+    <footer class="lcdp-stripe__pied">Paiement traité par Stripe</footer>
+  </main>
+</body>
+</html>
