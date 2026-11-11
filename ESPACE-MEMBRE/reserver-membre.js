@@ -844,7 +844,7 @@
     // Les accès planifiés, invitations et jauges seront ajoutés ultérieurement.
     const legendePlanning = fragmentLegende?.querySelector("[data-lcdp-box-legende]")?.cloneNode(true)
       || document.createElement("div");
-    legendePlanning.className = "lcdp-box-legende";
+    legendePlanning.className = "lcdp-box-legende lcdp-planifier-legende-planning";
     legendePlanning.setAttribute("role", "group");
     legendePlanning.setAttribute("aria-label", "Légende du planning");
     const contenuPlanning = legendePlanning.querySelector("[data-lcdp-legende-contenu]")
@@ -855,9 +855,7 @@
     const lignePlanning = document.createElement("div");
     lignePlanning.className = "lcdp-box-legende__ligne";
     for (const [libelle, etatJour] of [
-      ["Abonnement en cours", "lcdp-planifier-jour--abonnement-couvert"],
-      ["Aucun abonnement", "lcdp-box-card-jour-in-calendrier-mois--closed"],
-      ["Parc fermé", "lcdp-box-card-jour-in-calendrier-mois--closed"]
+      ["Abonnement en cours", "lcdp-planifier-jour--abonnement-couvert"]
     ]) {
       const item = document.createElement("span");
       item.className = "lcdp-box-legende__item";
