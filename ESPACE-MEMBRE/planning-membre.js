@@ -570,6 +570,111 @@
         margin-top:2px !important;
         padding-top:16px !important;
       }
+      /* Espacements du gabarit : le statut, les onglets et les filtres ne se touchent pas. */
+      #lcdp-planning-calendrier-slot {
+        box-sizing:border-box;
+        width:100%;
+        min-width:0;
+      }
+      .lcdp-page-content:has(> .lcdp-page-header > #mention-statut-membre) {
+        box-sizing:border-box;
+        width:100%;
+        min-width:0;
+        padding:18px 16px 24px;
+      }
+      .lcdp-page-content:has(> .lcdp-page-header > #mention-statut-membre) > .lcdp-page-header {
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        box-sizing:border-box;
+        width:100%;
+        margin:0 0 20px;
+        padding:0;
+      }
+      .lcdp-page-content:has(> .lcdp-page-header > #mention-statut-membre) #mention-statut-membre {
+        margin:0;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-liste {
+        box-sizing:border-box;
+        padding:18px 16px 20px !important;
+        gap:18px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-liste .lcdp-box-liste-card__header {
+        box-sizing:border-box;
+        margin:0;
+        padding:0 0 18px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-liste .lcdp-box-liste-card__list {
+        padding-top:18px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres {
+        padding:18px 16px 20px !important;
+        gap:18px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champ {
+        gap:8px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitations {
+        margin-top:4px;
+        gap:12px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__actions {
+        margin-top:4px !important;
+        padding-top:18px !important;
+      }
+      /* Recto/verso ouvert : neutraliser les effets 3D qui rognent les textes. */
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne,
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__scene,
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__faces {
+        perspective:none !important;
+        transform:none !important;
+        transform-style:flat !important;
+        overflow:visible !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__face--verso {
+        box-sizing:border-box !important;
+        top:auto !important;
+        left:auto !important;
+        right:auto !important;
+        bottom:auto !important;
+        margin:0 !important;
+        padding:24px 20px 20px !important;
+        overflow:visible !important;
+        transform:none !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__contenu {
+        box-sizing:border-box !important;
+        width:100% !important;
+        min-width:0 !important;
+        padding:16px 0 0 !important;
+        margin:0 !important;
+        overflow:visible !important;
+        transform:none !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__body,
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__content {
+        box-sizing:border-box !important;
+        width:100% !important;
+        min-width:0 !important;
+        padding:0 !important;
+        margin:0 !important;
+        overflow:visible !important;
+        transform:none !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__date-label,
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__park {
+        display:block;
+        max-width:100%;
+        white-space:normal !important;
+        overflow:visible !important;
+        text-overflow:clip !important;
+        overflow-wrap:anywhere;
+        line-height:1.4 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__fermer {
+        top:10px !important;
+        right:10px !important;
+      }
       @media (max-width: 350px) {
         .lcdp-planning-filtres { grid-template-columns: 1fr; }
       }
