@@ -76,7 +76,7 @@
     return base + '/' + chemin.replace(/^\/+/, '');
   }
   async function lireObjet(chemin, selecteur) {
-    const reponse = await fetch(cheminObjet(chemin), { cache: 'no-store' });
+    const reponse = await fetch(cheminObjet(chemin), { cache: 'no-store', signal: AbortSignal.timeout(15000) });
     if (!reponse.ok) throw new Error('Composant indisponible : ' + chemin);
     const documentObjet = new DOMParser().parseFromString(await reponse.text(), 'text/html');
     const racine = documentObjet.querySelector(selecteur);
@@ -798,7 +798,12 @@
       const suivant=await informerContrainte(nouveau);
       if(!suivant)return; // Le panier reste récupérable.
       await entrerDansCalendrier(nouveau);
-    } catch(e){await bridge()?.alerter?.(e.message||'Erreur ABO-RÉZA.');}
+    } catch(e){
+      // L'alerte doit être visible et cliquable avant son attente :
+      // sinon le masque de chargement la recouvre et bloque le tunnel.
+      masquerAttenteFormules();
+      await bridge()?.alerter?.(e.message||'Erreur ABO-RÉZA.');
+    }
     finally{masquerAttenteFormules();occupe=false;}
   }
   async function selectionnerAcces(choix){
