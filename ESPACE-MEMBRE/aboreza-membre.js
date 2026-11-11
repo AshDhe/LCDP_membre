@@ -592,11 +592,83 @@
     await bridge()?.allerMois?.(v('year')+'-'+v('month'));
   }
   async function reprendreOuRecommencer(p) {
-    return modal('Un panier existe déjà',
-      `Abonnement ${nomFormule(p.formule)}, début ${dateLibelle(p.dateDebut)}. ${p.nbSelectionnes} accès sélectionné${p.nbSelectionnes > 1 ? 's' : ''} sur ${p.nbAccesRequis}.`, [
-        { texte: 'Reprendre', valeur: 'reprendre', primaire: true },
-        { texte: 'Annuler ce panier et recommencer', valeur: 'recommencer' }
-      ]);
+    return modalComposant('dialogue', 'Un panier existe déjà', (objet, finir) => {
+      objet.classList.add('lcdp-panier-existant');
+      const carte = objet.querySelector('.lcdp-box-dialogue-bouton__card');
+      const titre = objet.querySelector('[data-lcdp-dialogue-title]');
+      const texte = objet.querySelector('[data-lcdp-dialogue-text]');
+      const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
+      if (!carte || !titre || !texte || !actions) throw Error('Dialogue de panier incomplet.');
+      const style = elem('style');
+      style.textContent = `
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__card{box-sizing:border-box;position:relative;width:100%;max-width:480px;margin:auto;padding:32px 30px 29px;border:1px solid #eee;border-radius:28px;background:#fff;box-shadow:0 24px 50px #0002;text-align:center;color:#292524}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__close{position:absolute;top:20px;right:20px;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:50%;background:#f5f5f4;color:#a8a29e;font-size:23px;cursor:pointer}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__close:hover{background:#e7e5e4;color:#44403c}
+        .lcdp-panier-existant__icone{display:grid;place-items:center;box-sizing:border-box;width:60px;height:60px;margin:0 auto 22px;border:1px solid #fde68a;border-radius:20px;background:#fffbeb;color:#d97706}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__title{margin:0;max-width:none;color:#1c1917;font-size:23px;font-weight:900;letter-spacing:-.5px;line-height:1.2}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__text{margin:7px 0 24px;max-width:none;color:#78716c;font-size:13px;font-weight:600;line-height:1.45}
+        .lcdp-panier-existant__recap{box-sizing:border-box;margin-bottom:28px;padding:20px;border:1px solid #e7e5e4;border-radius:20px;background:#fafaf9;text-align:left}
+        .lcdp-panier-existant__ligne{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:17px;border-bottom:1px solid #e7e5e4}
+        .lcdp-panier-existant__col{min-width:0}.lcdp-panier-existant__col--date{text-align:right}
+        .lcdp-panier-existant__legende{display:block;margin-bottom:6px;color:#a8a29e;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
+        .lcdp-panier-existant__valeur{display:block;color:#1c1917;font-size:15px;font-weight:850;line-height:1.3}
+        .lcdp-panier-existant__col--date .lcdp-panier-existant__valeur{color:#4b6333}
+        .lcdp-panier-existant__progres{padding-top:15px}
+        .lcdp-panier-existant__progres-ligne{display:flex;justify-content:space-between;gap:10px;font-size:13px;line-height:1.4}
+        .lcdp-panier-existant__progres-ligne span{color:#57534e;font-weight:600}
+        .lcdp-panier-existant__progres-ligne strong{color:#1c1917;font-weight:850}
+        .lcdp-panier-existant__barre{height:10px;margin-top:10px;overflow:hidden;border-radius:999px;background:#e7e5e4}
+        .lcdp-panier-existant__remplissage{height:100%;border-radius:inherit;background:#4b6333}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;width:100%}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button{box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-width:0;max-width:none;margin:0;padding:15px 12px;border-radius:18px;font-family:inherit;line-height:1.3;cursor:pointer}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-primary{min-height:58px;border:1px solid #4b6333;background:#4b6333;color:#fff;box-shadow:0 3px 6px #0002;font-size:15px;font-weight:850}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-primary:hover{background:#3d5129;border-color:#3d5129}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-secondary{min-height:50px;border:1px solid #e7e5e4;background:#fff;color:#57534e;box-shadow:none;font-size:12px;font-weight:750}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-secondary:hover{background:#fff1f2;border-color:#fecdd3;color:#be123c}
+        .lcdp-panier-existant .lcdp-button:focus-visible,.lcdp-panier-existant .lcdp-box-dialogue-bouton__close:focus-visible{outline:2px solid #4b6333;outline-offset:3px}
+        @media(max-width:480px){.lcdp-panier-existant .lcdp-box-dialogue-bouton__card{padding:25px 17px 22px;border-radius:23px}.lcdp-panier-existant__recap{padding:16px 14px}.lcdp-panier-existant__valeur{font-size:13px}.lcdp-panier-existant .lcdp-box-dialogue-bouton__title{font-size:21px}}
+      `;
+      objet.prepend(style);
+      const icone = elem('div', 'lcdp-panier-existant__icone');
+      icone.setAttribute('aria-hidden', 'true');
+      icone.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11V7a4 4 0 0 0-8 0v4"/><path d="M5 9h14l1 12H4L5 9z"/></svg>';
+      carte.insertBefore(icone, titre);
+      texte.textContent = 'Vous avez une sélection en attente de validation.';
+      const recap = elem('div', 'lcdp-panier-existant__recap');
+      const ligne = elem('div', 'lcdp-panier-existant__ligne');
+      const formule = elem('div', 'lcdp-panier-existant__col');
+      formule.append(elem('span', 'lcdp-panier-existant__legende', 'Formule'),
+        elem('strong', 'lcdp-panier-existant__valeur', 'Abonnement ' + nomFormule(p.formule)));
+      const date = elem('div', 'lcdp-panier-existant__col lcdp-panier-existant__col--date');
+      date.append(elem('span', 'lcdp-panier-existant__legende', 'Début prévu'),
+        elem('strong', 'lcdp-panier-existant__valeur', dateLibelle(p.dateDebut)));
+      ligne.append(formule, date);
+      const nombre = Math.max(0, Number(p.nbSelectionnes) || 0);
+      const total = Math.max(0, Number(p.nbAccesRequis) || 0);
+      const progres = elem('div', 'lcdp-panier-existant__progres');
+      const nombres = elem('div', 'lcdp-panier-existant__progres-ligne');
+      nombres.append(elem('span', '', 'Accès planifiés'), elem('strong', '', nombre + ' sur ' + total));
+      const barre = elem('div', 'lcdp-panier-existant__barre');
+      barre.setAttribute('role', 'progressbar');
+      barre.setAttribute('aria-label', 'Accès planifiés');
+      barre.setAttribute('aria-valuemin', '0');
+      barre.setAttribute('aria-valuemax', String(total));
+      barre.setAttribute('aria-valuenow', String(Math.min(nombre, total)));
+      const rempli = elem('div', 'lcdp-panier-existant__remplissage');
+      rempli.style.width = (total ? Math.min(100, nombre / total * 100) : 0) + '%';
+      barre.append(rempli);
+      progres.append(nombres, barre);
+      recap.append(ligne, progres);
+      carte.insertBefore(recap, actions);
+      actions.replaceChildren();
+      const reprendre = bouton('Reprendre ce panier', true);
+      reprendre.insertAdjacentHTML('beforeend', '<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 7l5 5-5 5M18 12H6"/></svg>');
+      reprendre.addEventListener('click', () => finir('reprendre'));
+      const annuler = bouton('Annuler ce panier et recommencer');
+      annuler.insertAdjacentHTML('afterbegin', '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16"/></svg>');
+      annuler.addEventListener('click', () => finir('recommencer'));
+      actions.append(reprendre, annuler);
+    });
   }
   async function demarrer(contexte={}){
     if(!['sans_abonnement','jour_hors_couverture','horizon'].includes(contexte.origine)){
