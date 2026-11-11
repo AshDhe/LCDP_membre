@@ -22,11 +22,8 @@
 }
 #lcdp-lightbox-slot .lcdp-planifier-choix__close:hover{background:#e7e5e4;color:var(--lcdp-modal-ink,#44403c)}
 #lcdp-lightbox-slot .lcdp-planifier-choix__head{text-align:center}
-#lcdp-lightbox-slot .lcdp-planifier-choix__eyebrow {
-  display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(75,99,51,.20);
-  border-radius:999px;padding:6px 12px;background:#ecfdf5;color:#4b6333;
-  font-size:11px;line-height:1.2;font-weight:800;letter-spacing:.025em;text-transform:uppercase;
-}
+/* Le badge « Nouvel accès » appartient maintenant au socle partagé. */
+#lcdp-lightbox-slot .lcdp-planifier-choix__eyebrow { gap: 6px; }
 #lcdp-lightbox-slot .lcdp-planifier-choix__title{
   margin:12px 0 0;color:var(--lcdp-modal-ink,#1c1917);font-size:20px;line-height:1.25;font-weight:900;
   letter-spacing:-.025em;text-transform:uppercase;
