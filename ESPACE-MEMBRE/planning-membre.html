@@ -110,6 +110,199 @@
 #lcdp-mes-acces-liste { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; width:100%; min-width:0; }
 #lcdp-mes-acces-liste > .lcdp-box-card-parc-diaporama.is-retourne { grid-column:1/-1; }
 #lcdp-mes-acces-planning { width:100%; min-width:0; }
+
+/* Restauration des règles de coque présentes lors du dernier affichage correctement cadré. */
+/* Restaurer le flux du gabarit membre validé, sans dépendre des styles de PLANIFIER. */
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  max-width: 448px !important;
+  min-height: 0 !important;
+  background: #fff !important;
+  overflow: hidden !important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
+  display: block !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-page-conteneur {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  width: 100% !important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-conteneur {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  flex: 0 0 auto !important;
+  visibility: visible !important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-conteneur > .lcdp-title-page-center,
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-conteneur > .lcdp-box-liste-card__header {
+  display: block !important;
+  position: static !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100% !important;
+  height: auto !important;
+  flex: 0 0 auto !important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-filtres:not([hidden]) {
+  display: block !important;
+  position: static !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100% !important;
+  height: auto !important;
+  flex: 0 0 auto !important;
+}
+
+/* MES ACCÈS : coque complète identique à l'espace membre, header/footer inclus.
+   Ces règles ciblent exclusivement cette page et n'affectent pas PLANIFIER. */
+html[data-lcdp-css~="c085"] body.lcdp-app-page.lcdp-mes-acces-page {
+  display:flex!important;
+  flex-direction:row!important;
+  justify-content:center!important;
+  align-items:center!important;
+  box-sizing:border-box;
+  width:100%;
+  min-height:100dvh;
+  padding:16px!important;
+  margin:0!important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
+  position:relative!important;
+  display:flex!important;
+  flex-direction:column!important;
+  flex:0 1 448px!important;
+  width:100%!important;
+  max-width:448px!important;
+  min-width:0!important;
+  height:calc(100dvh - 32px)!important;
+  max-height:850px!important;
+  min-height:0!important;
+  margin:0 auto!important;
+  padding:0!important;
+  border:1px solid #f1f5f9!important;
+  border-radius:24px!important;
+  background:#fff!important;
+  overflow:hidden!important;
+  box-shadow:0 20px 25px -5px rgb(226 232 240 / 50%),0 8px 10px -6px rgb(226 232 240 / 50%)!important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
+  display:block!important;
+  position:relative!important;
+  visibility:visible!important;
+  opacity:1!important;
+  flex:0 0 68px!important;
+  height:68px!important;
+  min-height:68px!important;
+  width:100%!important;
+  background:#4e6838!important;
+  overflow:visible!important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot > .lcdp-box-bandeau-nav {
+  position:relative!important;
+  top:auto!important;
+  left:auto!important;
+  right:auto!important;
+  inset:auto!important;
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  height:68px!important;
+  min-height:68px!important;
+  border-radius:23px 23px 0 0!important;
+  background:#4e6838!important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot .lcdp-box-bandeau-nav__inner {
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  min-height:68px!important;
+}
+/* Le wrapper fonctionne en trois rangées : bandeau, zone scrollable, footer.
+   Ne pas donner height:0 à la zone de contenu. */
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:68px minmax(0,1fr) 50px!important;
+  align-content:stretch!important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
+  grid-row:1!important;
+  min-height:0!important;
+  height:68px!important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
+  display:block!important;
+  grid-row:2!important;
+  min-height:0!important;
+  height:100%!important;
+  width:100%!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:auto;
+  scrollbar-gutter:stable;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot {
+  grid-row:3!important;
+  height:50px!important;
+  min-height:0!important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot {
+  position:relative!important;
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  flex:0 0 50px!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  height:50px!important;
+  min-height:50px!important;
+  margin:0!important;
+  padding:0!important;
+  border-top:1px solid #f1f5f9!important;
+  background:#fff!important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot > .lcdp-box-footer {
+  display:block!important;
+  position:relative!important;
+  inset:auto!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:100%!important;
+  height:49px!important;
+  min-height:49px!important;
+}
+@media(max-width:767px) {
+  html[data-lcdp-css~="c085"] body.lcdp-app-page.lcdp-mes-acces-page { align-items:flex-start!important; padding:12px!important; }
+  html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper { height:calc(100dvh - 24px)!important; }
+}
 </style>
 </head>
 <body class="lcdp-app-page lcdp-mes-acces-page">
