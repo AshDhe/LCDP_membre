@@ -692,11 +692,22 @@
 
   let modeCoachPlanifierActif = false;
 
-  function abonnementPermanentActifCoach(etat) {
-    return etat?.abonne === true &&
-      etat.abonnementSuspendu !== true &&
-      etat.abonnementAnnuleNonPaye !== true &&
-      ["1A", "11M", "10M"].includes(String(etat.typeabo || "").trim().toUpperCase());
+  function abonnementPermanentActifCoach(etat, droits = etatPage.droitsPlanningParcActifs) {
+    const typesPermanents = ["1A", "11M", "10M"];
+    const typeMembre = String(etat?.typeabo || "").trim().toUpperCase();
+    if (etat?.abonne !== true ||
+        etat.abonnementSuspendu === true ||
+        etat.abonnementAnnuleNonPaye === true ||
+        !typesPermanents.includes(typeMembre)) return false;
+
+    // RÉZABO est la source des droits de réservation : l'abonnement
+    // permanent doit lui-même être payé, pas simplement visible au calendrier.
+    const abonnements = droits?.abonnements;
+    return Array.isArray(abonnements) && abonnements.some(abo => {
+      const statut = String(abo?.statutabo || "").trim().toLowerCase();
+      const type = String(abo?.typeabo || abo?.typeaboPrix || abo?.formule || "").trim().toUpperCase();
+      return statut === "paye" && (type ? type === typeMembre : false);
+    });
   }
 
   function periodeSouscriptionPermanenteCoach() {
@@ -741,21 +752,49 @@
   }
 
   async function ouvrirModeCoachPlanifier() {
+    let droitsCoach;
     try {
-      etatMembre = await chargerEtatMembre();
+      // Les droits et l'état membre sont relus au clic : pas de lecture COACH
+      // sur le seul indicateur "abonne", ni sur un cache de calendrier.
+      [etatMembre, droitsCoach] = await Promise.all([chargerEtatMembre(), chargerDroitsRezabo()]);
+      etatPage.droitsPlanningParcActifs = droitsCoach;
     } catch (erreur) {
       await afficherAlerteSuperposee(erreur.message || "Impossible de vérifier votre abonnement.");
       return;
     }
+    const permanentPaye = abonnementPermanentActifCoach(etatMembre, droitsCoach);
     document.querySelectorAll(".lcdp-planifier-filtre--coach").forEach(bouton => {
-      bouton.setAttribute("aria-disabled", String(!abonnementPermanentActifCoach(etatMembre)));
+      bouton.setAttribute("aria-disabled", String(!permanentPaye));
     });
-    if (abonnementPermanentActifCoach(etatMembre)) {
+    if (permanentPaye) {
       if (document.body.classList.contains("lcdp-planifier-vue-jour-active")) {
         fermerVueChoixPlagePlanifier();
       }
       modeCoachPlanifierActif = !modeCoachPlanifierActif;
       afficherModeCoachPlanifier();
+      return;
+    }
+    // Réutiliser l'alerte et le paiement des échéances déjà prévus
+    // pour les abonnements suspendus, sans créer de commande artificielle.
+    if (etatMembre.abonnementSuspendu === true || abonnementAnnuleNonPaye(etatMembre) ||
+        (["1A", "11M", "10M"].includes(String(etatMembre.typeabo || "").trim().toUpperCase()) &&
+         etatMembre.abonne === true)) {
+      const messageImpayé = messageBlocageNouvelleDate(etatMembre) ||
+        "Votre abonnement permanent doit être payé pour accéder aux filtres coach.";
+      const paiement = etatMembre.paiementSuspension;
+      const peutRegulariser = !abonnementAnnuleNonPaye(etatMembre) &&
+        Boolean(String(paiement?.orderid || "").trim()) &&
+        echeancesPaiementSuspension(paiement).length > 0;
+      if (peutRegulariser) {
+        const choix = await ouvrirDialogueBoutonsSuperpose({
+          titre: "Paiement en attente",
+          texte: messageImpayé,
+          boutons: [{label:"Régulariser", valeur:"payer", style:"lcdp-button-primary"}]
+        });
+        if (choix === "payer") await gererPaiementSuspensionMembre(etatMembre);
+      } else {
+        await afficherAlerteSuperposee(messageImpayé, "orange", {libelleBouton:"Fermer"});
+      }
       return;
     }
     const message = "Vous devez être abonné permanent (1A, 11M, 10M) pour suivre les coachs.";
