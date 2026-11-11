@@ -3,22 +3,22 @@
    action-card, state, hover et focus. Pas de modification des objets globaux. */
 #lcdp-lightbox-slot .lcdp-planifier-choix {
   position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;
-  box-sizing:border-box;padding:16px;background:rgba(28,25,23,.50);
+  box-sizing:border-box;padding:16px;background:var(--lcdp-modal-backdrop,rgba(28,25,23,.50));
   backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
   color:#292524;font-family:inherit;-webkit-font-smoothing:antialiased;
 }
 #lcdp-lightbox-slot .lcdp-planifier-choix *,#lcdp-lightbox-slot .lcdp-planifier-choix *::before,#lcdp-lightbox-slot .lcdp-planifier-choix *::after{box-sizing:border-box}
 #lcdp-lightbox-slot .lcdp-planifier-choix__card {
   position:relative;width:100%;max-width:448px;max-height:calc(100dvh - 32px);overflow-y:auto;
-  border:1px solid rgba(0,0,0,.05);border-radius:24px;padding:24px;
-  background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,.28);
+  border:1px solid rgba(0,0,0,.05);border-radius:var(--lcdp-modal-radius,24px);padding:24px;
+  background:var(--lcdp-modal-surface,#fff);box-shadow:var(--lcdp-modal-shadow,0 25px 50px -12px rgba(0,0,0,.28));
 }
 #lcdp-lightbox-slot .lcdp-planifier-choix__close {
   position:absolute;right:20px;top:20px;display:flex;align-items:center;justify-content:center;
-  width:32px;height:32px;padding:0;border:0;border-radius:999px;background:#f5f5f4;
+  width:32px;height:32px;padding:0;border:0;border-radius:999px;background:var(--lcdp-modal-close-bg,#f5f5f4);
   color:#a8a29e;cursor:pointer;transition:background .2s,color .2s;
 }
-#lcdp-lightbox-slot .lcdp-planifier-choix__close:hover{background:#e7e5e4;color:#44403c}
+#lcdp-lightbox-slot .lcdp-planifier-choix__close:hover{background:#e7e5e4;color:var(--lcdp-modal-ink,#44403c)}
 #lcdp-lightbox-slot .lcdp-planifier-choix__head{text-align:center}
 #lcdp-lightbox-slot .lcdp-planifier-choix__eyebrow {
   display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(75,99,51,.20);
@@ -26,24 +26,24 @@
   font-size:11px;line-height:1.2;font-weight:800;letter-spacing:.025em;text-transform:uppercase;
 }
 #lcdp-lightbox-slot .lcdp-planifier-choix__title{
-  margin:12px 0 0;color:#1c1917;font-size:20px;line-height:1.25;font-weight:900;
+  margin:12px 0 0;color:var(--lcdp-modal-ink,#1c1917);font-size:20px;line-height:1.25;font-weight:900;
   letter-spacing:-.025em;text-transform:uppercase;
 }
 #lcdp-lightbox-slot .lcdp-planifier-choix__subtitle{
-  margin:4px 0 0;color:#78716c;font-size:12px;line-height:1.5;font-weight:500;
+  margin:4px 0 0;color:var(--lcdp-modal-muted,#78716c);font-size:12px;line-height:1.5;font-weight:500;
 }
 #lcdp-lightbox-slot .lcdp-planifier-choix__options{
   display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:24px;
 }
 #lcdp-lightbox-slot .lcdp-planifier-choix__option {
   display:flex;align-items:center;gap:16px;width:100%;min-width:0;min-height:94px;
-  padding:16px;border:1px solid #e7e5e4;border-radius:18px;background:#fff;
+  padding:16px;border:1px solid #e7e5e4;border-radius:var(--lcdp-modal-action-radius,18px);background:var(--lcdp-modal-surface,#fff);
   color:#292524;font:inherit;text-align:left;cursor:pointer;
   transition:background .2s,border-color .2s,transform .2s,color .2s;
 }
 #lcdp-lightbox-slot .lcdp-planifier-choix__option:active:not(:disabled){transform:scale(.99)}
 #lcdp-lightbox-slot .lcdp-planifier-choix__option--parc{
-  border:2px solid #4b6333;background:rgba(75,99,51,.05);padding:15px;
+  border:2px solid var(--lcdp-modal-accent,#4b6333);background:rgba(75,99,51,.05);padding:15px;
 }
 #lcdp-lightbox-slot .lcdp-planifier-choix__option--parc:hover{background:#4b6333;color:#fff}
 #lcdp-lightbox-slot .lcdp-planifier-choix__option--alerte:hover{
@@ -89,7 +89,7 @@
 #lcdp-lightbox-slot .lcdp-planifier-choix__option--parc .lcdp-planifier-choix__arrow{color:#4b6333}
 #lcdp-lightbox-slot .lcdp-planifier-choix__option--parc:hover .lcdp-planifier-choix__arrow{color:#fff;transform:translateX(2px)}
 #lcdp-lightbox-slot .lcdp-planifier-choix__option--alerte:hover .lcdp-planifier-choix__arrow{color:#4b6333;transform:translateX(2px)}
-#lcdp-lightbox-slot .lcdp-planifier-choix button:focus-visible{outline:3px solid #b45309;outline-offset:3px}
+#lcdp-lightbox-slot .lcdp-planifier-choix button:focus-visible{outline:3px solid var(--lcdp-modal-focus,#b45309);outline-offset:3px}
 @media(min-width:640px){#lcdp-lightbox-slot .lcdp-planifier-choix__card{padding:28px}}
 @media(max-width:370px){#lcdp-lightbox-slot .lcdp-planifier-choix__card{padding:20px 16px}#lcdp-lightbox-slot .lcdp-planifier-choix__option{gap:12px;padding:12px;min-height:88px}#lcdp-lightbox-slot .lcdp-planifier-choix__option--parc{padding:11px}}
 @media(prefers-reduced-motion:reduce){#lcdp-lightbox-slot .lcdp-planifier-choix *{transition:none!important}}
