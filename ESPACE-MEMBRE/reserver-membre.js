@@ -397,6 +397,7 @@
           termine = true;
           if (appliquer) {
             filtresAccesPlanifier.clear();
+            filtresAccesPlanifier.add("duo");
             content.querySelectorAll('input[name="type-acces"]:checked').forEach(input => filtresAccesPlanifier.add(input.value));
             document.getElementById("lcdp-planifier-bouton-acces")?.setAttribute("aria-label", "ACCÈS : " + (filtresAccesPlanifier.size ? [...filtresAccesPlanifier].join(", ") : "aucun filtre"));
           }
@@ -799,7 +800,8 @@
       ["coach", "+ COACH", "🏋️"],
       ["famille-coach", "TOUS", "🌟"]
     ]) {
-      const item = document.createElement("label");
+      const duoPermanent = type === "duo";
+      const item = document.createElement(duoPermanent ? "span" : "label");
       item.className = "lcdp-box-legende__item lcdp-planifier-filtre-categorie";
       const input = document.createElement("input");
       input.type = "checkbox";
@@ -829,7 +831,12 @@
         });
         // Le filtre est exclusivement visuel : aucune écriture ni appel réseau.
       });
-      item.append(icone, texte, input, carre);
+      // DUO SEUL reste visible sans commande à cocher : ce filtre est permanent.
+      if (duoPermanent) {
+        item.append(icone, texte);
+      } else {
+        item.append(icone, texte, input, carre);
+      }
       ligneLegende.appendChild(item);
     }
     contenuLegende.appendChild(ligneLegende);
@@ -6367,7 +6374,7 @@
 
   function appliquerVisibiliteCategorie(slot, autorisation) {
     // Conserver la place du segment dans la grille pour ne pas déplacer les autres plages.
-    slot.classList.toggle("lcdp-planifier-plage--masquee", !filtresAccesPlanifier.has(autorisation));
+    slot.classList.toggle("lcdp-planifier-plage--masquee", autorisation !== "duo" && !filtresAccesPlanifier.has(autorisation));
   }
 
   function appliquerRenduPlageLecture(slot, nomPlage, plage) {
