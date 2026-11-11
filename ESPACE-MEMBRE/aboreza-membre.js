@@ -117,31 +117,63 @@
     return { workflow, objet };
   }
   function modalComposant(type, titre, installer) {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
+      // Toutes les étapes ABO-RÉZA restent dans le wrapper de PLANIFIER.
+      // Le calendrier est masqué, jamais démonté ; header et footer restent visibles.
+      const slot = document.getElementById('lcdp-aboreza-workflow-slot');
+      const conteneur = slot?.closest('.lcdp-planifier-wrapper .lcdp-page-content');
+      if (!slot || !conteneur) {
+        reject(new Error('Vue ABO-RÉZA du wrapper PLANIFIER introuvable.'));
+        return;
+      }
       const modele = type === 'calendrier' ? composants.calendrier : composants.dialogue;
-      const { workflow, objet } = monterWorkflow(modele, type === 'calendrier' ? 'calendrier-an' : 'confirmation', titre);
-      const titreElement = objet.querySelector(type === 'calendrier' ? '[data-lcdp-calendrier-an-title]' : '[data-lcdp-dialogue-title]');
-      const fermeture = objet.querySelector(type === 'calendrier' ? '[data-lcdp-calendrier-an-close]' : '[data-lcdp-dialogue-close]');
-      if (!titreElement || !fermeture) throw Error('Structure du dialogue générique incomplète.');
+      const { workflow, objet } = monterWorkflow(modele,
+        type === 'calendrier' ? 'calendrier-an' : 'confirmation', titre);
+      workflow.classList.add('lcdp-aboreza-workflow-interne');
+      workflow.setAttribute('role', 'region');
+      workflow.removeAttribute('aria-modal');
+      const titreElement = objet.querySelector(type === 'calendrier'
+        ? '[data-lcdp-calendrier-an-title]' : '[data-lcdp-dialogue-title]');
+      const fermeture = objet.querySelector(type === 'calendrier'
+        ? '[data-lcdp-calendrier-an-close]' : '[data-lcdp-dialogue-close]');
+      if (!titreElement || !fermeture) {
+        reject(new Error('Structure du dialogue ABO-RÉZA incomplète.'));
+        return;
+      }
       titreElement.textContent = titre;
       if (type === 'dialogue') objet.classList.add('lcdp-workflow-abonnement-box--confirmation');
       let clos = false;
       const precedent = document.activeElement;
+      const masques = [...conteneur.children].filter(element => element !== slot)
+        .map(element => ({ element, hidden: element.hidden }));
       const finir = valeur => {
         if (clos) return;
         clos = true;
         workflow.removeEventListener('keydown', esc);
-        workflow.remove();
+        slot.replaceChildren();
+        slot.hidden = true;
+        masques.forEach(({ element, hidden }) => { element.hidden = hidden; });
         if (precedent?.isConnected && typeof precedent.focus === 'function') precedent.focus();
         resolve(valeur);
       };
-      const esc = evenement => { if (evenement.key === 'Escape') { evenement.preventDefault(); finir(null); } };
+      const esc = evenement => {
+        if (evenement.key === 'Escape') { evenement.preventDefault(); finir(null); }
+      };
       fermeture.addEventListener('click', () => finir(null));
-      workflow.addEventListener('click', evenement => { if (evenement.target === workflow) finir(null); });
       workflow.addEventListener('keydown', esc);
-      installer(objet, finir);
-      document.body.append(workflow);
-      fermeture.focus();
+      try {
+        installer(objet, finir);
+        masques.forEach(({ element }) => { element.hidden = true; });
+        slot.hidden = false;
+        slot.replaceChildren(workflow);
+        conteneur.closest('.lcdp-site-main')?.scrollTo?.({ top: 0 });
+        fermeture.focus();
+      } catch (erreur) {
+        slot.replaceChildren();
+        slot.hidden = true;
+        masques.forEach(({ element, hidden }) => { element.hidden = hidden; });
+        reject(erreur);
+      }
     });
   }
   function modal(titre, message, choix) {
