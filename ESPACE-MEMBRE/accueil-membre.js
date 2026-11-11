@@ -603,7 +603,7 @@
       if (choix === "ia") {
         if (!permanent) return "refuse";
         // Le contrôle serveur de session et de suspension reste celui de PLANIFIER.
-        const issue = await window.LCDP_AccueilDroits.executer("planifier");
+        const issue = await window.LCDP_AccueilDroits.executer("planifier", { planifierMode: "ia" });
         if (issue === "non_connecte") redirigerConnexionMembre("inactive");
         // Le dialogue IA existant s'ouvre dans le tunnel PLANIFIER.
         if (issue === "ouvert") return issue;
