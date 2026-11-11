@@ -792,14 +792,11 @@
     boutonParc.className = "lcdp-planifier-filtre lcdp-planifier-filtre--parc";
     boutonParc.setAttribute("aria-label", "Changer de parc");
     boutonParc.addEventListener("click", () => ouvrirFiltreParcPlanifier().catch(console.error));
-    // Même pictogramme que « Changer de département ».
-    const iconeParc = document.createElement("img");
-    iconeParc.src = construireUrlObjet("/IMAG/PICTO/picto-changer-donnees.svg");
-    iconeParc.alt = "";
-    iconeParc.width = 17;
-    iconeParc.height = 17;
-    iconeParc.decoding = "async";
+    // Pictogramme vectoriel assorti à la couleur du bouton (design générique).
+    const iconeParc = document.createElement("span");
+    iconeParc.className = "lcdp-planifier-filtre__picto";
     iconeParc.setAttribute("aria-hidden", "true");
+    iconeParc.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.2 8.5A7.2 7.2 0 0 1 18 7.4M18.2 4.7v3.1h-3.1M17.8 15.5A7.2 7.2 0 0 1 6 16.6M5.8 19.3v-3.1h3.1" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     boutonParc.append(iconeParc, document.createTextNode("CHANGER"));
     actionsFiltres.appendChild(boutonParc);
     // Commande COACH affichée dans les trois vues ; action définie ultérieurement.
@@ -810,7 +807,7 @@
     boutonCoach.setAttribute("aria-label", "Coach (fonction à venir)");
     const iconeCoach = document.createElement("span");
     iconeCoach.className = "lcdp-planifier-filtre-coach__picto";
-    iconeCoach.textContent = "🏋️";
+    iconeCoach.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 20v-2.2a5.5 5.5 0 0 1 11 0V20M16 5.5a3 3 0 0 1 0 6M17 14a4 4 0 0 1 3.5 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     iconeCoach.setAttribute("aria-hidden", "true");
     boutonCoach.append(iconeCoach, document.createTextNode("COACH"));
     actionsFiltres.appendChild(boutonCoach);
