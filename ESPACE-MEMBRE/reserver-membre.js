@@ -4956,6 +4956,8 @@
     if (identiteParc) {
       identiteParc.textContent = nomParc;
       identiteParc.hidden = false;
+      // Sur la vue journalière, le parc apparaît avant PLANIFIER.
+      if (titrePlanifier) titrePlanifier.before(identiteParc);
     }
     const boutonChanger = enteteJour.querySelector(".lcdp-planifier-filtre--parc");
     boutonChanger?.addEventListener("click", () => {
@@ -4993,7 +4995,7 @@
     meta.replaceChildren();
     const date = document.createElement("span");
     date.className = "lcdp-planifier-heure-entete-date";
-    date.textContent = formaterDateFr(contexte.dateIso);
+    date.textContent = "Date sélectionnée : " + formaterDateFr(contexte.dateIso);
     // Date sélectionnée au-dessus de la consigne, sous les filtres.
     titre.before(meta);
     meta.appendChild(date);
