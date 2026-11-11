@@ -431,6 +431,100 @@
       .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__micro-action {
         max-width: 100%; white-space: normal; overflow-wrap: anywhere;
       }
+
+      /* Gouttières alignées et contenu contraint à la largeur du wrapper. */
+      #lcdp-planning-calendrier-slot .lcdp-box-workflow-reservation--planning-page,
+      #lcdp-planning-calendrier-slot .lcdp-box-workflow-reservation__card,
+      #lcdp-planning-calendrier-slot .lcdp-box-workflow-reservation__content,
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card--planning-membre {
+        box-sizing:border-box !important;min-width:0 !important;
+        width:100% !important;max-width:100% !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-liste {
+        padding:12px !important;gap:12px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-liste .lcdp-box-liste-card__header {
+        padding-bottom:12px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-membre-periode-tabs {margin-bottom:0 !important;}
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card__tools:not([hidden]) {
+        box-sizing:border-box;padding:0 !important;margin:0 !important;
+        width:100% !important;max-width:100% !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres {
+        box-sizing:border-box;width:100% !important;max-width:100% !important;
+        margin:0 !important;padding:14px !important;gap:12px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card__list {
+        box-sizing:border-box;padding-top:12px !important;
+        width:100% !important;max-width:100% !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card-diaporama,
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card-diaporama__list {
+        box-sizing:border-box;width:100% !important;max-width:100% !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__scene {
+        box-sizing:border-box;max-width:100%;
+      }
+      /* Verso en flux normal : aucun cadre imbriqué à hauteur fixe ni scroll secondaire. */
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__scene {
+        aspect-ratio:auto !important;height:auto !important;min-height:0 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__faces {
+        height:auto !important;transform:none !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__face--recto {
+        display:none !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__face--verso {
+        position:relative !important;inset:auto !important;
+        display:block !important;visibility:visible !important;
+        height:auto !important;min-height:0 !important;
+        overflow:visible !important;transform:none !important;
+        backface-visibility:visible !important;
+        -webkit-backface-visibility:visible !important;
+        padding:16px 14px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__contenu {
+        padding:18px 0 0 !important;height:auto !important;
+        min-height:0 !important;overflow:visible !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre {
+        display:block !important;border:0 !important;
+        padding:0 !important;margin:0 !important;box-shadow:none !important;
+        background:transparent !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__body {
+        padding:0 !important;display:flex !important;flex-direction:column !important;
+        gap:12px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__content {
+        display:flex !important;flex-direction:column !important;gap:12px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__date,
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__place {
+        box-sizing:border-box;display:flex !important;flex-wrap:wrap !important;
+        align-items:baseline !important;justify-content:flex-start !important;
+        gap:6px 10px !important;flex:none !important;width:100% !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__place {
+        align-items:flex-start !important;flex-direction:column !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__actions {
+        display:flex !important;flex-wrap:wrap !important;gap:8px !important;
+        padding:0 !important;margin:0 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__micro-action {
+        box-sizing:border-box;max-width:100% !important;
+      }
+      @media (min-width:460px) {
+        #lcdp-planning-calendrier-slot .lcdp-box-liste-card-diaporama__list {
+          grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+        }
+        #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne {
+          grid-column:1/-1;
+        }
+      }
       @media (max-width: 350px) {
         .lcdp-planning-filtres { grid-template-columns: 1fr; }
       }
@@ -460,6 +554,9 @@
     } catch (error) {
       console.error("Erreur planning membre :", error);
       afficherErreurCalendrier(error.message || "Erreur technique. Merci de réessayer.");
+    } finally {
+      // Aucun fragment ou cartouche ne doit apparaître isolément pendant l'initialisation.
+      document.documentElement.classList.add("lcdp-planning-membre-ready");
     }
   }
 
