@@ -148,6 +148,30 @@
       <span class="lcdp-loading-spinner__dot"></span>
     </div>
   </div>
+  <script>
+    // Secours autonome : même si un script applicatif ou un service reste bloqué,
+    // l'écran de chargement initial ne doit jamais rester indéfiniment.
+    window.setTimeout(() => {
+      const attente = document.getElementById('lcdp-planifier-attente-initiale');
+      if (!attente || !attente.isConnected) return;
+      attente.setAttribute('role', 'alert');
+      attente.setAttribute('aria-label', 'Chargement du planning interrompu');
+      attente.replaceChildren();
+      const panneau = document.createElement('div');
+      Object.assign(panneau.style, {maxWidth:'430px',padding:'30px',textAlign:'center',
+        fontFamily:'Arial,sans-serif',color:'#333',lineHeight:'1.5'});
+      const message = document.createElement('p');
+      message.textContent = 'Le planning ne répond pas. Vous pouvez réessayer sans perdre votre commande en cours.';
+      const relancer = document.createElement('button');
+      relancer.type = 'button';
+      relancer.textContent = 'Réessayer';
+      Object.assign(relancer.style,{padding:'12px 24px',border:'0',borderRadius:'12px',
+        background:'#4e6838',color:'#fff',fontSize:'16px',cursor:'pointer'});
+      relancer.addEventListener('click', () => window.location.reload());
+      panneau.append(message, relancer);
+      attente.append(panneau);
+    }, 16000);
+  </script>
   <div class="lcdp-site-page lcdp-app-wrapper lcdp-planifier-wrapper">
 
     <div id="lcdp-bandeau-slot"></div>
@@ -208,7 +232,7 @@
   </div>
 
   <script src="./attente-planifier.js?v=20261110-spinner-membre-espace-v1"></script>
-  <script src="./reserver-membre.js?v=20261111-alerte-avant-planning-v1"></script>
+  <script src="./reserver-membre.js?v=20261111-timeout-initial-v1"></script>
   <script src="./paiement-membre.js?v=20261111-reprise-transmis-paiement-v2"></script>
   <script src="./aboreza-membre.js?v=20261111-reprise-panier-paiement-v1"></script>
 </body>
