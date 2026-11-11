@@ -268,6 +268,11 @@
         continuer.disabled = false;
       }
 
+      // Valider la formule disponible avant de présenter les offres non sélectionnables.
+      continuer.addEventListener('click', () => { if (selection) finir(selection); });
+      zoneValidation.append(continuer);
+      zoneDefilement.append(zoneValidation);
+
       if (indisponibles.length) {
         const listeIndisponibles = section('Formules indisponibles', 'lcdp-aboreza-catalogue__section--indisponibles');
         for (const offre of indisponibles) {
@@ -283,9 +288,7 @@
       }
 
       if (!offres.length) zoneDefilement.append(elem('p', 'lcdp-aboreza-catalogue__vide', 'Aucune formule disponible.'));
-      continuer.addEventListener('click', () => { if (selection) finir(selection); });
-      zoneValidation.append(continuer);
-      actions.append(zoneDefilement, zoneValidation);
+      actions.append(zoneDefilement);
     });
   }
   async function choisirDateDemarrage(offre) {
