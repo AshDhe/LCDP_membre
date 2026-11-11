@@ -822,10 +822,11 @@
       }else{
         await miseAJour;
         masquerAttenteFormules();
-        const texte=courant.moisActif!==avant
-          ? `Les deux accès de ${moisLibelle(avant)} sont sélectionnés. Passage à ${moisLibelle(courant.moisActif)}.`
+        const moisTermine = courant.moisActif !== avant;
+        const texte = moisTermine
+          ? 'Les accès du mois sont planifiés. Continuer le planning.'
           : `Accès ajouté. Il vous reste ${courant.restantsMois} accès à réserver pour ${moisLibelle(courant.moisActif)}.`;
-        await bridge()?.alerter?.(texte);
+        await bridge()?.alerter?.(texte, moisTermine ? { libelleBouton: 'Continuer' } : {});
       }
     }finally{masquerAttenteFormules();occupe=false;}
   }
