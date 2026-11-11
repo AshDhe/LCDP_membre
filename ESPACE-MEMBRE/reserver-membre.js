@@ -895,7 +895,6 @@
     // Le calendrier général affiche les accès du membre, indépendamment du parc.
     // La récupération des réservations est déjà assurée par /mes-reservations.
     etatPage.actualiserIndicateursPlanningGeneral = () => {
-      if (parcSelectionne) return;
       grille.querySelectorAll("[data-lcdp-card-jour-mois][data-date]").forEach(card => {
         afficherIndicateursAccesPlanifier(card, card.dataset.date);
       });
@@ -4726,6 +4725,7 @@
       });
     }
 
+    if (modeLecture) afficherIndicateursAccesPlanifier(card, dateIso);
     return card;
   }
 
@@ -5087,10 +5087,12 @@
 
   function afficherIndicateursAccesPlanifier(card, dateIso) {
     card.querySelector("[data-lcdp-planifier-indicateurs-acces]")?.remove();
+    const idparc = String(card.dataset.idparc || "");
     const reservations = (Array.isArray(etatPage.reservationsMembre) ? etatPage.reservationsMembre : [])
       .filter(reservation =>
         reservation && String(reservation.statut || "").toLowerCase() !== "cancd" &&
-        extraireDateFranceReservation(reservation.datebookd) === dateIso
+        extraireDateFranceReservation(reservation.datebookd) === dateIso &&
+        (!idparc || String(reservation.idparc || reservation.parc?.idparc || reservation.parc?.id || "") === idparc)
       );
     if (!reservations.length) return;
 
