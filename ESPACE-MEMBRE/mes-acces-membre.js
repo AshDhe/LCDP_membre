@@ -307,7 +307,7 @@
       if (infos) verso.appendChild(textEl('p', 'lcdp-box-card-parc-diaporama__description', infos));
     }
     const ajouterBouton = (libelle, action, style='lcdp-button-secondary') => {
-      const b = textEl('button', 'lcdp-button ' + style, libelle);
+      const b = textEl('button', 'lcdp-button lcdp-box-card-parc__action ' + style, libelle);
       b.type = 'button';
       b.addEventListener('click', action);
       actions.appendChild(b);
@@ -321,7 +321,7 @@
     }
     if (etat.periode === 'avenir' && !statutAnnule(r)) {
       const delaiDepasse = dateValide(r) !== null && Date.now() >= dateValide(r) - 30 * 60 * 1000;
-      const annuler = textEl('button', 'lcdp-button lcdp-button-orange', estRecue(r) ? 'Annuler mon invitation' : 'Annuler cet accès');
+      const annuler = textEl('button', 'lcdp-button lcdp-box-card-parc__action lcdp-button-orange', estRecue(r) ? 'Annuler mon invitation' : 'Annuler cet accès');
       annuler.type = 'button';
       annuler.disabled = delaiDepasse;
       if (delaiDepasse) annuler.title = 'Délai d’annulation dépassé';
@@ -562,15 +562,23 @@
       <div class="lcdp-box-card-parc-diaporama__scene"><div class="lcdp-box-card-parc-diaporama__faces">
         <div class="lcdp-box-card-parc-diaporama__face lcdp-box-card-parc-diaporama__face--recto">
           <button type="button" class="lcdp-box-card-parc-diaporama__ouvrir" data-lcdp-diaporama-retourner aria-expanded="false" aria-label="Détails de l'accès">
-            <img class="lcdp-box-card-parc-diaporama__image" data-lcdp-diaporama-image alt="" loading="lazy" decoding="async">
-            <span class="lcdp-box-card-parc-diaporama__nom" data-lcdp-diaporama-nom></span>
+            <span class="lcdp-box-card-parc__media lcdp-box-card-parc__media--avec-nom">
+              <img class="lcdp-box-card-parc__image" data-lcdp-diaporama-image alt="" loading="lazy" decoding="async">
+              <span class="lcdp-box-card-parc__nom-image" data-lcdp-diaporama-nom></span>
+            </span>
           </button>
         </div>
-        <div class="lcdp-box-card-parc-diaporama__face lcdp-box-card-parc-diaporama__face--verso" data-lcdp-diaporama-dos aria-hidden="true">
+        <div class="lcdp-box-card-parc-diaporama__face lcdp-box-card-parc-diaporama__face--verso lcdp-box-card-parc--reserver" data-lcdp-diaporama-dos aria-hidden="true">
           <button type="button" class="lcdp-box-card-parc-diaporama__fermer" data-lcdp-diaporama-fermer aria-label="Revenir à la photo">×</button>
-          <h3 class="lcdp-box-card-parc-diaporama__nom-dos" data-lcdp-diaporama-nom-dos></h3>
-          <div class="lcdp-box-card-parc-diaporama__actions" data-lcdp-diaporama-actions></div>
-          <p class="lcdp-box-card-parc-diaporama__description" data-lcdp-diaporama-description></p>
+          <div class="lcdp-box-card-parc-diaporama__contenu">
+            <div class="lcdp-box-card-parc__body">
+              <div class="lcdp-box-card-parc__text">
+                <h3 class="lcdp-box-card-parc__title" data-lcdp-diaporama-nom-dos></h3>
+              </div>
+              <div class="lcdp-box-card-parc__actions--reserver" data-lcdp-diaporama-actions></div>
+              <p class="lcdp-box-card-parc__description" data-lcdp-diaporama-description></p>
+            </div>
+          </div>
         </div>
       </div></div>
     </article>`;
