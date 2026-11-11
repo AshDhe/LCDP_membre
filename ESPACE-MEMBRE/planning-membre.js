@@ -675,6 +675,47 @@
         top:10px !important;
         right:10px !important;
       }
+      /* Même emplacement pour les trois onglets, y compris quand le calendrier est affiché. */
+      #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente,
+      #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente.lcdp-box-liste-card--mode-agenda {
+        display:flex !important;
+        flex-direction:column !important;
+        box-sizing:border-box !important;
+        width:100% !important;
+        min-width:0 !important;
+        padding:18px 16px 20px !important;
+        gap:18px !important;
+        background:var(--lcdp-color-surface,#fff) !important;
+        border:1px solid var(--lcdp-color-border,#e7e5e4) !important;
+        border-radius:var(--lcdp-radius-large,18px) !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente .lcdp-box-liste-card__header,
+      #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente.lcdp-box-liste-card--mode-agenda .lcdp-box-liste-card__header {
+        display:block !important;
+        visibility:visible !important;
+        position:relative !important;
+        width:100% !important;
+        min-width:0 !important;
+        padding:0 0 18px !important;
+        margin:0 !important;
+        flex:0 0 auto !important;
+        border-bottom:1px solid var(--lcdp-color-border,#e7e5e4) !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente .lcdp-box-liste-card__commande {
+        display:block !important;
+        width:100% !important;
+        min-width:0 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente .lcdp-box-liste-card__list {
+        box-sizing:border-box !important;
+        width:100% !important;
+        min-width:0 !important;
+        padding-top:0 !important;
+        margin:0 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente .lcdp-planning-membre-periode-tabs {
+        margin:0 !important;
+      }
       @media (max-width: 350px) {
         .lcdp-planning-filtres { grid-template-columns: 1fr; }
       }
@@ -977,6 +1018,8 @@
     etat.slotCommandeAgenda = slotCommandeAgenda;
     etat.commandeBar = commandeBar;
 
+    // Barre de navigation permanente : hors du calendrier et de la zone interchangeable.
+    slotCommande.appendChild(commandeBar);
     installerFiltresPlanningMembre();
     actualiserModeWrapperPlanning();
     afficherChargementCalendrier("Chargement de votre planning...");
@@ -1193,8 +1236,7 @@
         calendrier
       );
 
-      // Navigation segmentée toujours en haut du formulaire : ne pas la déplacer dans le calendrier.
-
+      // Le calendrier remplace uniquement le contenu, jamais la barre de navigation.
       etat.modeAffichage = "agenda";
       actualiserModeWrapperPlanning();
       actualiserBoutonAffichagePlanningMembre();
@@ -1265,15 +1307,6 @@
     );
 
     window.requestAnimationFrame(() => {
-      if (
-        etat.slotCommandeListe &&
-        etat.commandeBar
-      ) {
-        etat.slotCommandeListe.appendChild(
-          etat.commandeBar
-        );
-      }
-
       slotPlanning.replaceChildren(
         fragment
       );
@@ -1585,6 +1618,8 @@
       "lcdp-box-liste-card--mode-agenda",
       !estListe
     );
+    // Le titre/les onglets gardent exactement le même ancrage dans les trois modes.
+    etat.wrapperPlanning.classList.add("lcdp-planning-navigation-permanente");
   }
 
   function actualiserBoutonAffichagePlanningMembre() {
