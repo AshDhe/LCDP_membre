@@ -672,7 +672,7 @@
         elem('strong', 'lcdp-panier-existant__valeur', String(p.formule || '')));
       const date = elem('div', 'lcdp-panier-existant__col lcdp-panier-existant__col--date');
       date.append(elem('span', 'lcdp-panier-existant__legende', 'Début prévu'),
-        elem('strong', 'lcdp-panier-existant__valeur', dateLibelle(p.dateDebut)));
+        elem('strong', 'lcdp-panier-existant__valeur', /^\d{4}-\d{2}-\d{2}$/.test(String(p.dateDebut || '')) ? String(p.dateDebut).slice(8, 10) + '/' + String(p.dateDebut).slice(5, 7) + '/' + String(p.dateDebut).slice(0, 4) : dateLibelle(p.dateDebut)));
       ligne.append(formule, date);
       const nombre = Math.max(0, Number(p.nbSelectionnes) || 0);
       const total = Math.max(0, Number(p.nbAccesRequis) || 0);
