@@ -208,6 +208,7 @@
       aReservationEnCours: valeurBooleenneVraie(resultat.aReservationEnCours || resultat.aReservationValidable),
       reservationEnCours: resultat.reservationEnCours || resultat.reservationValidable || null,
       statutabo: abonnementEnCours?.statutabo || "",
+      typeabo: abonnementEnCours?.typeabo || abonnementEnCours?.typeaboPrix || "",
       debut: abonnementEnCours?.debut || "",
       fin: abonnementEnCours?.fin || "",
       abonnementSuspendu,
@@ -577,13 +578,128 @@
     });
   }
 
+  // PLANIFIER : choix d'action avant l'ouverture du planning existant.
   async function gererBoutonAccueilMembre(action) {
+    if (action === "planifier") {
+      masquerAttenteNavigationAccueil();
+      const permanent = etatMembre.abonne === true &&
+        etatMembre.abonnementSuspendu !== true &&
+        ["1A", "11M", "10M"].includes(String(etatMembre.typeabo || "").trim().toUpperCase());
+      const choix = await ouvrirDialogueBoutons({
+        titre: "PLANIFIER",
+        texte: "Choisissez comment planifier votre visite.",
+        boutons: [
+          { label: "Par PARC", valeur: "parc", style: "lcdp-button-primary" },
+          { label: "Avec alerte", valeur: "alerte", style: "lcdp-button-secondary" },
+          { label: "Avec IA", valeur: "ia", style: "lcdp-button-orange", disabled: !permanent,
+            description: "Réservé aux abonnés permanents (1A, 11M ou 10M)" }
+        ]
+      });
+      if (!choix) return "annule";
+      if (choix === "alerte") {
+        await ouvrirFormulaireAlertePlanning();
+        return "dialogue";
+      }
+      if (choix === "ia") {
+        if (!permanent) return "refuse";
+        // Le contrôle serveur de session et de suspension reste celui de PLANIFIER.
+        const issue = await window.LCDP_AccueilDroits.executer("planifier");
+        if (issue === "non_connecte") redirigerConnexionMembre("inactive");
+        // Le dialogue IA existant s'ouvre dans le tunnel PLANIFIER.
+        if (issue === "ouvert") return issue;
+        return issue;
+      }
+      action = "planifier";
+      afficherAttenteNavigationAccueil();
+    }
     const issue = await window.LCDP_AccueilDroits.executer(action, {
       avantMaCle: preparerIdentiteNavigateurCle,
       surNavigateurNonProprietaire: proposerTransfertNavigateur
     });
     if (issue === "non_connecte") redirigerConnexionMembre("inactive");
     return issue;
+  }
+
+  async function ouvrirFormulaireAlertePlanning() {
+    // Le formulaire exploite la lightbox et les boutons existants.
+    // Aucune alerte ne doit être annoncée comme enregistrée sans confirmation du Worker.
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    if (!slot) throw new Error("Emplacement de lightbox introuvable.");
+    slot.replaceChildren(await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html"));
+    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
+    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
+    const croix = slot.querySelector("[data-lcdp-dialogue-close]");
+    if (!dialogue || !titre || !texte || !actions || !croix) throw new Error("Structure de lightbox incomplète.");
+    titre.textContent = "Alerte planning";
+    texte.textContent = "Définissez vos critères de recherche.";
+    const formulaire = document.createElement("form");
+    formulaire.className = "lcdp-formulaire";
+    const champs = [
+      ["departement", "Département", "text", "Ex. 41"],
+      ["dateDebut", "Du", "date", ""],
+      ["dateFin", "Au", "date", ""]
+    ];
+    for (const [nom, libelle, type, indication] of champs) {
+      const label = document.createElement("label");
+      label.className = "lcdp-form-label";
+      label.textContent = libelle;
+      const input = document.createElement("input");
+      input.className = "lcdp-input";
+      input.name = nom;
+      input.type = type;
+      input.required = true;
+      if (indication) input.placeholder = indication;
+      if (nom === "departement") { input.maxLength = 3; input.pattern = "[0-9ABab]{2,3}"; }
+      label.appendChild(input);
+      formulaire.appendChild(label);
+    }
+    const validation = document.createElement("button");
+    validation.type = "submit";
+    validation.className = "lcdp-button lcdp-button-primary";
+    validation.textContent = "Enregistrer l’alerte";
+    const statut = document.createElement("p");
+    statut.setAttribute("role", "status");
+    formulaire.append(validation, statut);
+    actions.replaceChildren(formulaire);
+    const fermer = () => slot.replaceChildren();
+    croix.addEventListener("click", fermer);
+    dialogue.addEventListener("click", event => { if (event.target === dialogue) fermer(); });
+    const echap = event => { if (event.key === "Escape") { document.removeEventListener("keydown", echap); fermer(); } };
+    document.addEventListener("keydown", echap);
+    formulaire.addEventListener("submit", async event => {
+      event.preventDefault();
+      const donnees = Object.fromEntries(new FormData(formulaire));
+      if (donnees.dateFin < donnees.dateDebut) {
+        statut.textContent = "La date de fin doit être postérieure à la date de début.";
+        return;
+      }
+      const endpoint = String(CONFIG_PAGE.workerAlertePlanningUrl || CONFIG_PAGE.WORKER_ALERTE_PLANNING_URL || "").replace(/\\/+$/, "");
+      if (!endpoint) {
+        statut.textContent = "L’enregistrement des alertes n’est pas encore disponible.";
+        return;
+      }
+      validation.disabled = true;
+      statut.textContent = "Enregistrement…";
+      try {
+        const reponse = await fetch(endpoint + "/alertes", {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(donnees)
+        });
+        const resultat = await reponse.json().catch(() => null);
+        if (!reponse.ok || !(resultat?.success === true || resultat?.ok === true)) {
+          throw new Error(String(resultat?.message || "L’alerte n’a pas été enregistrée."));
+        }
+        fermer();
+        await afficherAlerte("Votre alerte planning a été enregistrée.");
+      } catch (error) {
+        statut.textContent = error.message || "L’alerte n’a pas été enregistrée.";
+      } finally {
+        validation.disabled = false;
+      }
+    });
   }
 
   function preparerIdentiteNavigateurCle() {
@@ -853,6 +969,8 @@
         bouton.type = "button";
         bouton.className = "lcdp-button " + (configuration.style || "lcdp-button-primary");
         bouton.textContent = configuration.label || "Valider";
+        bouton.disabled = configuration.disabled === true;
+        if (configuration.description) bouton.title = configuration.description;
 
         bouton.addEventListener("click", () => {
           fermer(configuration.valeur || configuration.label || true);
