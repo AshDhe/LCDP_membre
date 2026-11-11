@@ -1112,16 +1112,13 @@
     });
     fermer.addEventListener("click", () => {
       fermer.blur();
-      // Pendant ABO-RÉZA, la croix ne doit jamais quitter PLANIFIER.
-      // Le panier reste intact et le calendrier conserve son contexte.
+      // Fermer le mode d'achat revient au planning, sans annuler le panier.
+      // Ne jamais rediriger vers l'accueil membre depuis ABO-RÉZA.
       if (preparationAbonnementPlanifier || window.LCDP_ABOREZA?.actif()) {
-        if (parcSelectionne) {
-          parcSelectionne = null;
-          planningCourant = [];
-          droitsParc = droitsInitiaux;
-          etatPage.calendrierMoisActif = null;
-          etatPage.droitsPlanningParcActifs = droitsInitiaux;
-          generationPlanning++;
+        if (window.LCDP_ABOREZA?.actif()) {
+          window.LCDP_ABOREZA.quitter().catch(erreur => console.error('Fermeture ABO-RÉZA :', erreur));
+        } else {
+          preparationAbonnementPlanifier = false;
           afficher();
           enregistrerContextePlanning();
         }
