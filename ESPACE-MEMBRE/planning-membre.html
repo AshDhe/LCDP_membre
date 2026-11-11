@@ -536,24 +536,28 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-f
     })();
   </script>
   <script>
-    // Le main est la surface de scroll. Permet à la molette de défiler même si
-    // le pointeur se trouve sur une carte qui intercepte l'événement natif.
+    // Surface de défilement unique : même si la molette est actionnée
+    // autour de la carte, l'ensemble du contenu de MES ACCÈS reste parcourable.
     (() => {
-      const init=()=>{
-        const main=document.querySelector('.lcdp-app-wrapper > .lcdp-site-main');
+      const initialiser = () => {
+        const main = document.querySelector('.lcdp-app-wrapper > .lcdp-site-main');
         if (!main) return;
-        main.addEventListener('wheel',e=>{
-          if(e.ctrlKey||e.defaultPrevented||!e.deltaY||main.scrollHeight<=main.clientHeight) return;
-          const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?main.clientHeight:1);
-          const before=main.scrollTop;
-          const next=Math.max(0,Math.min(main.scrollHeight-main.clientHeight,before+delta));
-          if(before===next)return;
-          main.scrollTop=next;
-          e.preventDefault();
-        },{passive:false,capture:true});
+        document.addEventListener('wheel', event => {
+          if (event.ctrlKey || event.defaultPrevented || !event.deltaY) return;
+          if (document.querySelector('[role="dialog"][open], dialog[open], [aria-modal="true"]')) return;
+          const cible = event.target instanceof Element ? event.target : null;
+          if (cible?.closest('select, input, textarea, [data-lcdp-burger-menu], .lcdp-box-menu-burger')) return;
+          const maximum = main.scrollHeight - main.clientHeight;
+          if (maximum <= 1) return;
+          const facteur = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? main.clientHeight : 1;
+          const prochain = Math.max(0, Math.min(maximum, main.scrollTop + event.deltaY * facteur));
+          if (prochain === main.scrollTop) return;
+          event.preventDefault();
+          main.scrollTop = prochain;
+        }, {passive:false,capture:true});
       };
-      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
-      else init();
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',initialiser,{once:true});
+      else initialiser();
     })();
   </script>
   <script src="./mes-acces-membre.js?v=20261111-filtres-compteurs-v10"></script>
