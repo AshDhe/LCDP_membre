@@ -493,7 +493,9 @@
       ligne.querySelector('.lcdp-box-card-abonnement__item--name .lcdp-box-card-abonnement__label').textContent = 'Abonnement';
       ligne.querySelector('.lcdp-box-card-abonnement__item--date .lcdp-box-card-abonnement__label').textContent = 'Date de début';
       nom.textContent = nomFormule(p.formule);
-      debut.textContent = dateLibelle(p.dateDebut);
+      debut.textContent = /^\d{4}-\d{2}-\d{2}$/.test(p.dateDebut)
+        ? p.dateDebut.slice(8, 10) + '/' + p.dateDebut.slice(5, 7) + '/' + p.dateDebut.slice(2, 4)
+        : dateLibelle(p.dateDebut);
       actions.append(resume);
 
       const continuer = bouton('Continuer vers PLANIFIER', true);
