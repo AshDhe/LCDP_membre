@@ -255,10 +255,17 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-b
 }
 html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
   display:block!important;
-  flex:1 1 auto!important;
+  /* Une base flex nulle force le scroll à rester DANS la fenêtre membre,
+     même lorsque la liste des accès dépasse la hauteur disponible. */
+  flex:1 1 0%!important;
+  height:0!important;
   min-height:0!important;
-  overflow-y:auto!important;
+  max-height:100%!important;
+  overflow-y:scroll!important;
   overflow-x:hidden!important;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
 }
 html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot {
   position:relative!important;
