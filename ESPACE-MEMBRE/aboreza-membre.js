@@ -47,7 +47,7 @@
     masque.setAttribute('role', 'status');
     masque.setAttribute('aria-label', libelle);
     masque.append(creerSpinnerAboReza());
-    document.body.append(masque);
+    (document.getElementById('lcdp-planifier-dialogues-slot') || document.querySelector('.lcdp-planifier-wrapper')).append(masque);
     attenteFormules = masque;
   }
   function masquerAttenteFormules() {
