@@ -662,6 +662,47 @@
       #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente .lcdp-planning-membre-periode-tabs {
         margin:0 !important;
       }
+      /* Consultation d'une journée : wrapper existant et cartouches en colonne. */
+      #lcdp-lightbox-slot .lcdp-planning-jour-workflow .lcdp-box-workflow-reservation__card {
+        box-sizing:border-box !important;
+        width:min(94vw,640px) !important;
+        max-width:640px !important;
+        max-height:min(88dvh,850px) !important;
+        overflow-y:auto !important;
+        padding:20px 18px !important;
+        border-radius:22px !important;
+      }
+      #lcdp-lightbox-slot .lcdp-planning-jour-vues,
+      #lcdp-lightbox-slot .lcdp-planning-jour-liste,
+      #lcdp-lightbox-slot .lcdp-planning-jour-item {
+        box-sizing:border-box;min-width:0;width:100%;
+      }
+      #lcdp-lightbox-slot .lcdp-planning-jour-entete {
+        display:flex;align-items:center;justify-content:space-between;
+        gap:14px;margin:0 0 18px;padding:0 0 14px;
+        border-bottom:1px solid var(--lcdp-color-border,#e7e5e4);
+      }
+      #lcdp-lightbox-slot .lcdp-planning-jour-entete h2 {
+        margin:0;font-size:1.05rem;line-height:1.35;
+        color:var(--lcdp-color-text,#1f2a24);
+      }
+      #lcdp-lightbox-slot .lcdp-planning-jour-fermer {
+        flex:0 0 auto;min-height:38px;padding:7px 12px;
+        border:1px solid var(--lcdp-color-border,#d6d3d1);
+        border-radius:999px;background:#fff;
+        color:var(--lcdp-color-text,#1f2a24);cursor:pointer;
+      }
+      #lcdp-lightbox-slot .lcdp-planning-jour-liste {
+        display:flex;flex-direction:column;gap:14px;
+      }
+      #lcdp-lightbox-slot .lcdp-planning-jour-item .lcdp-box-card-reservation-membre {
+        box-sizing:border-box;width:100%;max-width:100%;margin:0;
+      }
+      @media(max-width:520px) {
+        #lcdp-lightbox-slot .lcdp-planning-jour-workflow .lcdp-box-workflow-reservation__card {
+          width:calc(100vw - 24px) !important;padding:16px 12px !important;
+        }
+      }
       @media (max-width: 350px) {
         .lcdp-planning-filtres { grid-template-columns: 1fr; }
       }
@@ -1975,9 +2016,18 @@
         libellePlage(plage);
     });
 
-    // Comme PLANIFIER, les jours passés restent désactivés ; les autres
-    // sont consultables via leurs traits, sans bouton fictif de disponibilité.
-    jour.disabled = estPasse || !jourReservable;
+    // La journée est consultable si elle contient au moins une réservation.
+    // Les traits conservent leur interaction propre sans déclencher celle du jour.
+    jour.disabled = !jourReservable;
+    if (jourReservable) {
+      jour.setAttribute("aria-label", "Afficher tous les accès du " + formaterJourMoisDateIso(jourMois.dateIso));
+      jour.addEventListener("click", () => {
+        ouvrirReservationsJourPlanning(jourMois.dateIso, jour).catch(error => {
+          console.error("Erreur ouverture des accès du jour :", error);
+          afficherAlerte("Impossible d’afficher les accès de cette journée.").catch(console.error);
+        });
+      });
+    }
 
     return jour;
   }
@@ -2007,6 +2057,92 @@
     ouvrirReservationPlanning(
       reservation
     ).catch(console.error);
+  }
+
+  async function ouvrirReservationsJourPlanning(dateIso, declencheur) {
+    const reservations = (etat.reservations || [])
+      .filter(reservation =>
+        extraireDateFranceReservation(reservation.datebookd) === dateIso &&
+        reservationDansPeriodeAgenda(reservation)
+      )
+      .sort((a,b) => {
+        const dateA = new Date(a.datebookd || "").getTime();
+        const dateB = new Date(b.datebookd || "").getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        return PLAGES.indexOf(normaliserPlageReservation(a)) -
+          PLAGES.indexOf(normaliserPlageReservation(b));
+      });
+    if (!reservations.length || !etat.templateReservation) return;
+
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    if (!slot) return;
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-workflow-reservation.html");
+    const workflow = fragment.querySelector("[data-lcdp-box-workflow-reservation]");
+    const contenu = fragment.querySelector("[data-lcdp-workflow-reservation-content]");
+    if (!workflow || !contenu) throw new Error("Gabarit de consultation des accès indisponible.");
+
+    workflow.classList.add("lcdp-box-workflow-reservation--planning-reservation",
+      "lcdp-workflow-reservation-box", "lcdp-planning-jour-workflow");
+    const vues = document.createElement("div");
+    vues.className = "lcdp-planning-reservation-vues lcdp-planning-jour-vues";
+    vues.dataset.lcdpPlanningReservationVues = "true";
+    const vueReservation = document.createElement("section");
+    vueReservation.className = "lcdp-planning-reservation-vue lcdp-planning-reservation-vue--active";
+    vueReservation.dataset.lcdpPlanningVue = "reservation";
+
+    const entete = document.createElement("header");
+    entete.className = "lcdp-planning-jour-entete";
+    const titre = document.createElement("h2");
+    titre.id = "lcdp-planning-jour-titre";
+    titre.textContent = "Accès du " + formaterJourMoisDateIso(dateIso);
+    const fermerBouton = document.createElement("button");
+    fermerBouton.type = "button";
+    fermerBouton.className = "lcdp-planning-jour-fermer";
+    fermerBouton.textContent = "Fermer";
+    fermerBouton.setAttribute("aria-label", "Fermer les accès de la journée");
+    entete.append(titre, fermerBouton);
+    vueReservation.appendChild(entete);
+
+    const liste = document.createElement("div");
+    liste.className = "lcdp-planning-jour-liste";
+    liste.setAttribute("role","list");
+    reservations.forEach(reservation => {
+      const element = document.createElement("div");
+      element.className = "lcdp-planning-jour-item";
+      element.setAttribute("role","listitem");
+      element.appendChild(creerCardReservation(reservation, {contexte:"liste"}));
+      liste.appendChild(element);
+    });
+    vueReservation.appendChild(liste);
+    vues.appendChild(vueReservation);
+    contenu.appendChild(vues);
+    workflow.setAttribute("aria-labelledby", titre.id);
+
+    let ferme = false;
+    function fermer() {
+      if (ferme) return;
+      ferme = true;
+      document.removeEventListener("keydown", gererEchap);
+      if (slot.contains(workflow)) slot.replaceChildren();
+      if (declencheur?.isConnected) declencheur.focus({preventScroll:true});
+    }
+    function gererEchap(event) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      if (workflow.classList.contains("lcdp-box-workflow-reservation--acces-parc-ouvert")) {
+        fermerAccesParcDansReservation(workflow);
+        return;
+      }
+      fermer();
+    }
+    workflow._lcdpFermerReservationPlanning = fermer;
+    fermerBouton.addEventListener("click", fermer);
+    workflow.addEventListener("click", event => {
+      if (event.target === workflow) fermer();
+    });
+    slot.replaceChildren(workflow);
+    document.addEventListener("keydown", gererEchap);
+    fermerBouton.focus({preventScroll:true});
   }
 
   async function ouvrirReservationPlanning(reservation) {
