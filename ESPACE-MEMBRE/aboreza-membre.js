@@ -663,8 +663,7 @@
         .lcdp-panier-existant__progres-ligne{display:flex;justify-content:space-between;gap:10px;font-size:13px;line-height:1.4}
         .lcdp-panier-existant__progres-ligne span{color:#57534e;font-weight:600}
         .lcdp-panier-existant__progres-ligne strong{color:#1c1917;font-weight:850}
-        .lcdp-panier-existant__barre{height:10px;margin-top:10px;overflow:hidden;border-radius:999px;background:#e7e5e4}
-        .lcdp-panier-existant__remplissage{height:100%;border-radius:inherit;background:#4b6333}
+        .lcdp-panier-existant__progres .lcdp-aboreza-suivi__mois{margin-top:10px}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;width:100%}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button{box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-width:0;max-width:none;margin:0;padding:15px 12px;border-radius:18px;font-family:inherit;line-height:1.3;cursor:pointer}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-primary{min-height:58px;border:1px solid #4b6333;background:#4b6333;color:#fff;box-shadow:0 3px 6px #0002;font-size:15px;font-weight:850}
@@ -694,16 +693,32 @@
       const progres = elem('div', 'lcdp-panier-existant__progres');
       const nombres = elem('div', 'lcdp-panier-existant__progres-ligne');
       nombres.append(elem('span', '', 'Accès planifiés'), elem('strong', '', nombre + ' sur ' + total));
-      const barre = elem('div', 'lcdp-panier-existant__barre');
-      barre.setAttribute('role', 'progressbar');
-      barre.setAttribute('aria-label', 'Accès planifiés');
-      barre.setAttribute('aria-valuemin', '0');
-      barre.setAttribute('aria-valuemax', String(total));
-      barre.setAttribute('aria-valuenow', String(Math.min(nombre, total)));
-      const rempli = elem('div', 'lcdp-panier-existant__remplissage');
-      rempli.style.width = (total ? Math.min(100, nombre / total * 100) : 0) + '%';
-      barre.append(rempli);
-      progres.append(nombres, barre);
+      // Mêmes segments et mêmes classes CSS que le suivi dans PLANIFIER.
+      // Chaque accès attendu occupe un segment, regroupé par mois.
+      const groupes = elem('div', 'lcdp-aboreza-suivi__mois');
+      groupes.setAttribute('role', 'group');
+      groupes.setAttribute('aria-label', 'Progression des accès par mois');
+      const mois = Array.isArray(p.mois) ? p.mois : [];
+      mois.forEach(m => {
+        const groupe = elem('div', 'lcdp-aboreza-suivi__mois-groupe');
+        const cases = elem('div', 'lcdp-aboreza-suivi__cases');
+        const attendu = Number(m.attendu || 0);
+        const selectionnes = Number(m.selectionnes || 0);
+        for (let i = 0; i < attendu; i++) {
+          const caseAcces = elem('span', 'lcdp-aboreza-suivi__case' +
+            (i < selectionnes ? ' lcdp-aboreza-suivi__case--faite' : ''));
+          caseAcces.setAttribute('aria-hidden', 'true');
+          cases.append(caseAcces);
+        }
+        const nomMois = new Intl.DateTimeFormat('fr-FR', {
+          timeZone: 'UTC', month: 'short'
+        }).format(new Date(m.mois + '-01T12:00:00Z'));
+        const legende = elem('span', 'lcdp-aboreza-suivi__mois-libelle',
+          nomMois + ' · ' + Math.min(selectionnes, attendu) + '/' + attendu);
+        groupe.append(cases, legende);
+        groupes.append(groupe);
+      });
+      progres.append(nombres, groupes);
       recap.append(ligne, progres);
       carte.insertBefore(recap, actions);
       actions.replaceChildren();
