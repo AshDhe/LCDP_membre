@@ -807,7 +807,8 @@
       input.type = "checkbox";
       input.className = "lcdp-planifier-filtre-categorie__input";
       input.value = type;
-      input.checked = filtresAccesPlanifier.has(type);
+      input.checked = duoPermanent || filtresAccesPlanifier.has(type);
+      input.disabled = duoPermanent;
       input.setAttribute("aria-label", "Afficher " + libelle);
       const carre = document.createElement("span");
       carre.className = "lcdp-box-legende__carre lcdp-box-legende__carre--" + type;
@@ -815,7 +816,7 @@
       const coche = document.createElement("span");
       coche.className = "lcdp-planifier-filtre-categorie__coche";
       coche.textContent = "✓";
-      carre.appendChild(coche);
+      if (!duoPermanent) carre.appendChild(coche);
       const texte = document.createElement("span");
       texte.className = "lcdp-box-legende__libelle";
       texte.textContent = libelle;
@@ -831,12 +832,9 @@
         });
         // Le filtre est exclusivement visuel : aucune écriture ni appel réseau.
       });
-      // DUO SEUL reste visible sans commande à cocher : ce filtre est permanent.
-      if (duoPermanent) {
-        item.append(icone, texte);
-      } else {
-        item.append(icone, texte, input, carre);
-      }
+      // DUO SEUL : même état visuel sélectionné, pastille sans coche.
+      // Le checkbox désactivé conserve :checked pour le CSS existant.
+      item.append(icone, texte, input, carre);
       ligneLegende.appendChild(item);
     }
     contenuLegende.appendChild(ligneLegende);
