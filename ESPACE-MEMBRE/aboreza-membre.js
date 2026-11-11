@@ -564,7 +564,7 @@
     const debut = elem('div', 'lcdp-aboreza-suivi__champ');
     debut.append(
       elem('span', 'lcdp-aboreza-suivi__libelle', 'Début prévu'),
-      elem('strong', 'lcdp-aboreza-suivi__valeur', /^\\d{4}-\\d{2}-\\d{2}$/.test(String(courant.dateDebut || ''))
+      elem('strong', 'lcdp-aboreza-suivi__valeur', /^\d{4}-\d{2}-\d{2}$/.test(String(courant.dateDebut || ''))
         ? courant.dateDebut.slice(8, 10) + '/' + courant.dateDebut.slice(5, 7) + '/' + courant.dateDebut.slice(2, 4)
         : dateLibelle(courant.dateDebut))
     );
