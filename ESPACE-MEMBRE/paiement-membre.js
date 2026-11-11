@@ -35,7 +35,7 @@
   }
 
   async function chargerObjet(chemin, selecteur) {
-    const reponse = await fetch(cheminObjet(chemin), { cache: 'no-store' });
+    const reponse = await fetch(cheminObjet(chemin), { cache: 'no-store', signal: AbortSignal.timeout(15000) });
     if (!reponse.ok) throw new Error('Composant introuvable : ' + chemin);
     const documentObjet = new DOMParser().parseFromString(await reponse.text(), 'text/html');
     const racine = documentObjet.querySelector(selecteur);
@@ -81,7 +81,7 @@
 
   async function apiPaiement(route, options = {}) {
     const reponse = await fetch(endpointPaiement + route, {
-      credentials: 'include', cache: 'no-store',
+      credentials: 'include', cache: 'no-store', signal: AbortSignal.timeout(15000),
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
       ...options
     });
@@ -98,7 +98,7 @@
 
   async function lirePanier(idpanier) {
     const reponse = await fetch(endpoint + '/panier', {
-      credentials: 'include', cache: 'no-store', headers: { Accept: 'application/json' }
+      credentials: 'include', cache: 'no-store', signal: AbortSignal.timeout(15000), headers: { Accept: 'application/json' }
     });
     const retour = await reponse.json().catch(() => null);
     if (!reponse.ok || retour?.ok !== true) {
