@@ -675,30 +675,9 @@
         statut.textContent = "La date de fin doit être postérieure à la date de début.";
         return;
       }
-      const endpoint = String(CONFIG_PAGE.workerAlertePlanningUrl || CONFIG_PAGE.WORKER_ALERTE_PLANNING_URL || "").replace(/\/+$/, "");
-      if (!endpoint) {
-        statut.textContent = "L’enregistrement des alertes n’est pas encore disponible.";
-        return;
-      }
-      validation.disabled = true;
-      statut.textContent = "Enregistrement…";
-      try {
-        const reponse = await fetch(endpoint + "/alertes", {
-          method: "POST", credentials: "include",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify(donnees)
-        });
-        const resultat = await reponse.json().catch(() => null);
-        if (!reponse.ok || !(resultat?.success === true || resultat?.ok === true)) {
-          throw new Error(String(resultat?.message || "L’alerte n’a pas été enregistrée."));
-        }
-        fermer();
-        await afficherAlerte("Votre alerte planning a été enregistrée.");
-      } catch (error) {
-        statut.textContent = error.message || "L’alerte n’a pas été enregistrée.";
-      } finally {
-        validation.disabled = false;
-      }
+      // Aucun contrat d'enregistrement d'alerte planning n'est encore présent
+      // dans les sources GitHub : ne pas simuler une sauvegarde.
+      statut.textContent = "L’enregistrement des alertes n’est pas encore disponible.";
     });
   }
 
