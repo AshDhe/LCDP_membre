@@ -477,7 +477,7 @@
       if (!titre || !texte || !actions) throw Error('Zones du dialogue générique absentes.');
       const etiquette = elem('span', 'lcdp-aboreza-preparation__badge', 'Étape de préparation');
       titre.before(etiquette);
-      texte.textContent = 'Vérifiez votre sélection et les règles de planification avant de choisir vos créneaux.';
+      texte.textContent = 'Voici les règles à connaître avant de choisir vos créneaux.';
       texte.hidden = false;
       actions.replaceChildren();
       actions.classList.add('lcdp-aboreza-preparation__contenu');
