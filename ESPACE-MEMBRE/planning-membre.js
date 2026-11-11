@@ -864,6 +864,7 @@
     }
 
     ajouterActionsPlanningMembre(actionsCommande);
+    actualiserBoutonsPeriodePlanningMembre();
 
     calendrier.removeAttribute("role");
     calendrier.removeAttribute("aria-modal");
@@ -970,60 +971,46 @@
     slotCommande.appendChild(commandeBar);
     installerFiltresPlanningMembre();
     actualiserModeWrapperPlanning();
+    actualiserBoutonAffichagePlanningMembre();
+    actualiserBoutonsPeriodePlanningMembre();
     afficherChargementCalendrier("Chargement de votre planning...");
   }
 
   async function installerLegendeAgendaMembre(meta) {
     if (!meta) return;
-    const fragment = await chargerFragmentObjet(
-      "/HTMLBASE/04-legende.html"
-    );
-    const legende = fragment.querySelector(
-      "[data-lcdp-box-legende]"
-    );
-    const contenu = fragment.querySelector(
-      "[data-lcdp-legende-contenu]"
-    );
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-legende.html");
+    const legende = fragment.querySelector("[data-lcdp-box-legende]");
+    const contenu = fragment.querySelector("[data-lcdp-legende-contenu]");
+    if (!legende || !contenu) throw new Error("Structure Box Légende incomplète.");
 
-    if (!legende || !contenu) {
-      throw new Error(
-        "Structure Box Légende incomplète."
-      );
-    }
-
-    legende.setAttribute(
-      "aria-label",
-      "Légende de Mon agenda"
-    );
-    contenu.innerHTML = "";
-
+    // Libellés et classes de la légende du planning général dans PLANIFIER.
+    legende.className = "lcdp-box-legende lcdp-planifier-legende-planning";
+    legende.setAttribute("role","group");
+    legende.setAttribute("aria-label","Légende du planning");
+    contenu.replaceChildren();
     const ligne = document.createElement("div");
     ligne.className = "lcdp-box-legende__ligne";
-
-    LEGENDE_AGENDA_MEMBRE.forEach((configuration) => {
+    for (const [libelle, classe] of [
+      ["abonnement en cours", "lcdp-planifier-jour--abonnement-couvert"],
+      ["accès planifié dans un parc", "lcdp-box-legende__carre--bleu-fonce"],
+      ["invitation reçue pour un parc", "lcdp-box-legende__carre--bleu-clair"],
+      ["accès de ce parc clos", "lcdp-box-legende__carre--acces-clos"]
+    ]) {
       const item = document.createElement("span");
       item.className = "lcdp-box-legende__item";
-
-      const libelle = document.createElement("span");
-      libelle.className = "lcdp-box-legende__libelle";
-      libelle.textContent = configuration.libelle;
-
       const carre = document.createElement("span");
-      carre.className =
-        "lcdp-box-legende__carre " +
-        configuration.classeCouleur;
-      carre.setAttribute("aria-hidden", "true");
-
-      item.appendChild(libelle);
-      item.appendChild(carre);
+      carre.className = "lcdp-box-legende__carre " + classe;
+      carre.setAttribute("aria-hidden","true");
+      const texte = document.createElement("span");
+      texte.className = "lcdp-box-legende__libelle";
+      texte.textContent = libelle;
+      item.append(carre,document.createTextNode(" "),texte);
+      // Sans parc sélectionné dans MES ACCÈS, « ce parc clos » est inapplicable.
+      if (classe === "lcdp-box-legende__carre--acces-clos") item.hidden = true;
       ligne.appendChild(item);
-    });
-
+    }
     contenu.appendChild(ligne);
-    legende.classList.add("lcdp-planifier-legende-planning");
-    // PLANIFIER place la légende sous la grille, jamais dans l'en-tête.
-    const corps = etat.calendrierMois?.querySelector(".lcdp-box-calendrier-mois__body")
-      || meta.closest("[data-lcdp-box-calendrier-mois]")?.querySelector(".lcdp-box-calendrier-mois__body");
+    const corps = meta.closest("[data-lcdp-box-calendrier-mois]")?.querySelector(".lcdp-box-calendrier-mois__body");
     if (!corps) throw new Error("Corps du calendrier introuvable.");
     corps.querySelector(".lcdp-planifier-legende-planning")?.remove();
     corps.appendChild(legende);
@@ -1654,6 +1641,7 @@
       actualiserOptionsFiltresPlanningMembre();
       actualiserEtatFiltresPlanningMembre();
       etat.reservationsParDate = indexerReservationsParDate(etat.reservations);
+      actualiserBoutonsPeriodePlanningMembre();
       ajusterMoisCourantSelonPeriode();
       afficherCalendrierMois();
 
@@ -1960,6 +1948,7 @@
         gererClicSlotCalendrier
       );
 
+      const nomParcComplet = nomParcReservation(reservation);
       const typeAgenda =
         typeReservationAgenda(reservation);
       const libelleStatut =
