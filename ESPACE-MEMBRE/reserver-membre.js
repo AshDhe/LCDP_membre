@@ -1112,6 +1112,21 @@
     });
     fermer.addEventListener("click", () => {
       fermer.blur();
+      // Pendant ABO-RÉZA, la croix ne doit jamais quitter PLANIFIER.
+      // Le panier reste intact et le calendrier conserve son contexte.
+      if (preparationAbonnementPlanifier || window.LCDP_ABOREZA?.actif()) {
+        if (parcSelectionne) {
+          parcSelectionne = null;
+          planningCourant = [];
+          droitsParc = droitsInitiaux;
+          etatPage.calendrierMoisActif = null;
+          etatPage.droitsPlanningParcActifs = droitsInitiaux;
+          generationPlanning++;
+          afficher();
+          enregistrerContextePlanning();
+        }
+        return;
+      }
       if (parcSelectionne) {
         // Fermer la VUE Parc sans quitter PLANIFIER : calendrier général conservé,
         // même mois, mêmes filtres et réservations membre en mémoire.
