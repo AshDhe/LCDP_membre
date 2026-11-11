@@ -1022,7 +1022,7 @@
       const nomParcEnTete = document.getElementById("lcdp-planifier-parc-en-tete");
       if (nomParcEnTete) {
         nomParcEnTete.textContent = parcSelectionne
-          ? nomParcAvecDepartementPlanifier(parcSelectionne)
+          ? "Parc de " + nomParcAvecDepartementPlanifier(parcSelectionne)
           : "Aucun parc sélectionné";
       }
       courant.textContent = formaterMoisAnnee(etat.annee, etat.mois);
@@ -4954,7 +4954,7 @@
     if (titrePlanifier) titrePlanifier.textContent = "PLANIFIER";
     const identiteParc = enteteJour.querySelector(".lcdp-planifier-nom-parc");
     if (identiteParc) {
-      identiteParc.textContent = nomParc;
+      identiteParc.textContent = "Parc de " + nomParc;
       identiteParc.hidden = false;
       // Sur la vue journalière, le parc apparaît avant PLANIFIER.
       if (titrePlanifier) titrePlanifier.before(identiteParc);
