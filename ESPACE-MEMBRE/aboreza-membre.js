@@ -19,8 +19,6 @@
         const slot = document.getElementById('lcdp-aboreza-workflow-slot');
         if (occupe || courant || (slot && !slot.hidden && slot.childElementCount)) {
           window.history.pushState({ lcdpAboreza: true }, '', window.location.href);
-        } else {
-          gardeRetourNavigateur = false;
         }
       });
       gardeRetourNavigateur = true;
