@@ -309,31 +309,71 @@
       });
     }
     return modalComposant('calendrier', 'Début du nouvel abonnement', (objet, finir) => {
+      const workflow = objet.closest('[data-lcdp-box-workflow-abonnement]');
+      workflow?.classList.add('lcdp-aboreza-demarrage');
+      const carte = objet.querySelector('.lcdp-box-calendrier-an__card');
+      const entete = objet.querySelector('.lcdp-box-calendrier-an__header');
       const meta = objet.querySelector('[data-lcdp-calendrier-an-meta]');
       const annees = objet.querySelector('[data-lcdp-calendrier-an-years]');
       const message = objet.querySelector('[data-lcdp-calendrier-an-message]');
       const precedent = objet.querySelector('[data-lcdp-calendrier-an-back]');
       const suivant = objet.querySelector('[data-lcdp-calendrier-an-next]');
-      meta.textContent = 'Abonnement ' + nomFormule(offre.formule) + ' — sélectionnez son mois de démarrage.';
+      if (!carte || !entete || !meta || !annees || !message || !precedent || !suivant) {
+        throw Error('Structure du calendrier de démarrage ABO-RÉZA incomplète.');
+      }
+
+      const badge = elem('span', 'lcdp-aboreza-demarrage__badge', 'Abonnement ' + nomFormule(offre.formule));
+      entete.prepend(badge);
+      meta.textContent = 'Sélectionnez le mois à partir duquel votre accès sera actif.';
       const dates = Array.isArray(offre.debuts) ? offre.debuts : [];
       const parAnnee = new Map();
       for (const date of dates) {
-        const annee = date.slice(0, 4);
+        const annee = String(date).slice(0, 4);
         if (!parAnnee.has(annee)) parAnnee.set(annee, []);
         parAnnee.get(annee).push(date);
       }
       let selection = dates[0] || null;
       const boutons = [];
+      const recap = elem('div', 'lcdp-aboreza-demarrage__recap');
+      recap.setAttribute('aria-live', 'polite');
+      const recapTitre = elem('strong', 'lcdp-aboreza-demarrage__recap-titre', 'Période de validité estimée');
+      const recapTexte = elem('p', 'lcdp-aboreza-demarrage__recap-texte');
+      recap.append(recapTitre, recapTexte);
+
+      const moisDuree = { '1M': 1, '3M': 3, '5M': 5, '10M': 10, '11M': 11, '12M': 12 }[offre.formule];
+      function actualiserRecap() {
+        if (!selection || !moisDuree || !/^\\d{4}-\\d{2}-\\d{2}$/.test(selection)) {
+          recap.hidden = true;
+          return;
+        }
+        const debut = new Date(selection + 'T12:00:00Z');
+        if (Number.isNaN(debut.getTime())) { recap.hidden = true; return; }
+        const fin = new Date(Date.UTC(debut.getUTCFullYear(), debut.getUTCMonth() + moisDuree, 0, 12));
+        const formater = date => new Intl.DateTimeFormat('fr-FR', {
+          timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric'
+        }).format(date);
+        recapTexte.textContent = 'Du ' + formater(debut) + ' au ' + formater(fin);
+        recap.hidden = false;
+      }
+
       for (const [annee, debuts] of parAnnee) {
-        const bloc = elem('div');
-        bloc.append(elem('h3', 'lcdp-box-calendrier-an__year-title', annee));
+        const bloc = elem('section', 'lcdp-aboreza-demarrage__annee');
+        const titreAnnee = elem('h3', 'lcdp-box-calendrier-an__year-title', annee);
+        bloc.append(titreAnnee);
         const grille = elem('div', 'lcdp-box-calendrier-an__months');
         for (const date of debuts) {
-          const b = elem('button', 'lcdp-box-calendrier-an__month', moisLibelle(date.slice(0, 7)));
-          b.type = 'button'; b.setAttribute('aria-pressed', String(date === selection));
+          const b = elem('button', 'lcdp-box-calendrier-an__month');
+          b.type = 'button';
+          const nomMois = new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', month: 'long' })
+            .format(new Date(date + 'T12:00:00Z'));
+          b.append(elem('span', 'lcdp-aboreza-demarrage__mois-nom',
+            nomMois.charAt(0).toUpperCase() + nomMois.slice(1)));
+          b.append(elem('span', 'lcdp-aboreza-demarrage__mois-annee', annee));
+          b.setAttribute('aria-pressed', String(date === selection));
           b.addEventListener('click', () => {
             selection = date;
             for (const ligne of boutons) ligne.bouton.setAttribute('aria-pressed', String(ligne.date === selection));
+            actualiserRecap();
           });
           boutons.push({ bouton: b, date });
           grille.append(b);
@@ -341,8 +381,14 @@
         bloc.append(grille);
         annees.append(bloc);
       }
-      if (!dates.length) { message.textContent = 'Aucune date de démarrage disponible.'; message.hidden = false; suivant.disabled = true; }
-      precedent.textContent = 'Retour aux abonnements';
+      annees.after(recap);
+      actualiserRecap();
+      if (!dates.length) {
+        message.textContent = 'Aucune date de démarrage disponible.';
+        message.hidden = false;
+        suivant.disabled = true;
+      }
+      precedent.textContent = 'Retour';
       suivant.textContent = 'Continuer';
       precedent.addEventListener('click', () => finir(null));
       suivant.addEventListener('click', () => { if (selection) finir(selection); });
