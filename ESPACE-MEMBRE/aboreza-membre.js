@@ -554,33 +554,55 @@
       bandeau.setAttribute('aria-live', 'polite');
     }
     bandeau.replaceChildren();
+
     const details = elem('div', 'lcdp-aboreza-suivi__details');
     const formule = elem('div', 'lcdp-aboreza-suivi__champ');
-    formule.append(elem('span', 'lcdp-aboreza-suivi__libelle', 'Abonnement choisi'),
-      elem('strong', 'lcdp-aboreza-suivi__valeur', nomFormule(courant.formule)));
+    formule.append(
+      elem('span', 'lcdp-aboreza-suivi__libelle', 'Formule'),
+      elem('strong', 'lcdp-aboreza-suivi__valeur', 'Abonnement ' + nomFormule(courant.formule))
+    );
     const debut = elem('div', 'lcdp-aboreza-suivi__champ');
-    debut.append(elem('span', 'lcdp-aboreza-suivi__libelle', 'Début choisi'),
-      elem('strong', 'lcdp-aboreza-suivi__valeur', dateLibelle(courant.dateDebut)));
+    debut.append(
+      elem('span', 'lcdp-aboreza-suivi__libelle', 'Début prévu'),
+      elem('strong', 'lcdp-aboreza-suivi__valeur', dateLibelle(courant.dateDebut))
+    );
     details.append(formule, debut);
     bandeau.append(details);
 
-    const mois = courant.mois.find(m => m.mois === courant.moisActif);
-    const progression = elem('p', 'lcdp-aboreza-suivi__progression');
-    progression.append(elem('span', '', 'À planifier sur ce mois (à la commande) : '),
-      elem('strong', '', String(mois?.selectionnes || 0) + '/' + String(mois?.attendu || 2)));
-    bandeau.append(progression);
+    const mois = Array.isArray(courant.mois) ? courant.mois : [];
+    const total = Number(courant.nbAccesRequis) || mois.reduce((n, m) => n + Number(m.attendu || 0), 0);
+    const planifies = mois.reduce((n, m) => n + Math.min(Number(m.selectionnes || 0), Number(m.attendu || 0)), 0);
+    const ligne = elem('div', 'lcdp-aboreza-suivi__progression');
+    ligne.append(
+      elem('span', 'lcdp-aboreza-suivi__progression-libelle', 'Accès planifiés'),
+      elem('strong', 'lcdp-aboreza-suivi__progression-valeur', planifies + ' sur ' + total)
+    );
+    bandeau.append(ligne);
 
-    const reprendre = elem('button', 'lcdp-button lcdp-button-secondary lcdp-aboreza-suivi__reprendre',
-      'Reprendre plus tard (enregistrement conservé 15 minutes)');
-    reprendre.type = 'button';
-    reprendre.addEventListener('click', async () => {
-      const accord = await modal('Reprendre plus tard ?',
-        'Enregistrement conservé 15 minutes.', [
-          { texte: 'Confirmer', valeur: true, primaire: true }
-        ]);
-      if (accord === true) await quitterTunnel();
+    const groupes = elem('div', 'lcdp-aboreza-suivi__mois');
+    groupes.setAttribute('role', 'group');
+    groupes.setAttribute('aria-label', 'Progression des accès par mois');
+    mois.forEach(m => {
+      const groupe = elem('div', 'lcdp-aboreza-suivi__mois-groupe');
+      const cases = elem('div', 'lcdp-aboreza-suivi__cases');
+      const attendu = Number(m.attendu || 0);
+      const selectionnes = Number(m.selectionnes || 0);
+      for (let i = 0; i < attendu; i++) {
+        const caseAcces = elem('span', 'lcdp-aboreza-suivi__case' +
+          (i < selectionnes ? ' lcdp-aboreza-suivi__case--faite' : ''));
+        caseAcces.setAttribute('aria-hidden', 'true');
+        cases.append(caseAcces);
+      }
+      const nomMois = new Intl.DateTimeFormat('fr-FR', {
+        timeZone: 'UTC', month: 'short'
+      }).format(new Date(m.mois + '-01T12:00:00Z'));
+      const legende = elem('span', 'lcdp-aboreza-suivi__mois-libelle',
+        nomMois + ' · ' + Math.min(selectionnes, attendu) + '/' + attendu);
+      groupe.append(cases, legende);
+      groupes.append(groupe);
     });
-    bandeau.append(reprendre);
+    bandeau.append(groupes);
+
     const fermeture = hote.querySelector('.lcdp-box-calendrier-mois__close');
     if (fermeture) fermeture.after(bandeau);
     else hote.prepend(bandeau);
