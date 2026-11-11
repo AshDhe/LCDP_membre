@@ -180,7 +180,10 @@
         appliquerVisibiliteCategorie(slot, slot.dataset.autorisation);
       });
     },
-    alerter: (message, options = {}) => afficherAlerteSuperposee(message, "orange", {libelleBouton: options.libelleBouton || "Fermer"}),
+    alerter: (message, options = {}) => afficherAlerteSuperposee(message, "orange", {
+      libelleBouton: options.libelleBouton || "Fermer",
+      onAffiche: options.onAffiche
+    }),
     viderCache: () => cachePlanningParcLecture.clear(),
     choisirParc: () => ouvrirFiltreParcPlanifier(),
     changerMode: actif => { preparationAbonnementPlanifier = Boolean(actif); }
