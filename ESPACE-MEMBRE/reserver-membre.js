@@ -1046,7 +1046,10 @@
         });
         // Calendrier général : les abonnements colorent déjà les jours à venir,
         // sans attendre qu'un parc soit sélectionné.
-        card.classList.add("lcdp-box-card-jour-in-calendrier-mois--planning-lecture");
+        card.classList.add(
+          "lcdp-box-card-jour-in-calendrier-mois--planning-lecture",
+          "lcdp-planifier-jour--sans-parc"
+        );
         if (iso >= aujourdhui && jourCouvertParAbonnementCalendrierPlanifier(iso)) {
           card.classList.add("lcdp-planifier-jour--abonnement-couvert");
         }
