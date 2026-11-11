@@ -1145,7 +1145,7 @@
       )
       .forEach((bouton) => {
         const periode = bouton.dataset.lcdpPlanningPeriode;
-        const actif = periode === etat.periodeAffichage;
+        const actif = etat.modeAffichage === "liste" && periode === etat.periodeAffichage;
         const compte = etat.reservations.filter(r => reservationDansPeriodeAgenda(r,periode)).length;
         bouton.textContent = (periode === "avenir" ? "À venir" : "Passé") + " (" + compte + ")";
 
@@ -1874,14 +1874,21 @@
 
     jour.dataset.date = jourMois.dateIso;
 
+    // Classes et couleurs du calendrier général PLANIFIER.
+    jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--planning-lecture",
+      "lcdp-planifier-jour--sans-parc");
+    if (estAujourdhui) jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--today");
     if (estPasse) jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--past");
-    if (estDansAbonnementAvenir) jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--abonnement-avenir");
+    if (estDansAbonnementAvenir) jour.classList.add("lcdp-planifier-jour--abonnement-couvert");
 
     PLAGES.forEach((plage) => {
       const slot = jour.querySelector(`[data-lcdp-card-jour-mois-slot="${plage}"]`);
       if (!slot) return;
 
-      slot.className = "lcdp-box-card-jour-in-calendrier-mois__slot lcdp-box-card-jour-in-calendrier-mois__slot--gris-clair";
+      // À l'identique de PLANIFIER, un trait n'est visible que si la plage est occupée.
+      slot.className = "lcdp-box-card-jour-in-calendrier-mois__slot";
+      slot.hidden = true;
+      slot.replaceChildren();
       slot.removeAttribute("data-idflux");
       slot.removeAttribute("data-plage");
 
@@ -1911,9 +1918,7 @@
       if (!reservation) return;
 
       jourReservable = true;
-      jour.classList.add(
-        "lcdp-box-card-jour-in-calendrier-mois--reservation-membre"
-      );
+      slot.hidden = false;
 
       const estAnnulee =
         reservationAnnuleePlanning(
@@ -1937,44 +1942,16 @@
           reservation
         );
 
-      if (estInvite) {
-        jour.classList.add(
-          "lcdp-box-card-jour-in-calendrier-mois--reservation-invitation"
-        );
-        slot.classList.add(
-          "lcdp-box-card-jour-in-calendrier-mois__slot--reservation-invitation"
-        );
-      } else if (estInvitation) {
-        jour.classList.add(
-          "lcdp-box-card-jour-in-calendrier-mois--reservation-avec-invites"
-        );
-        slot.classList.add(
-          "lcdp-box-card-jour-in-calendrier-mois__slot--orange-fonce"
-        );
-      } else if (estPasse) {
-        jour.classList.add(
-          "lcdp-box-card-jour-in-calendrier-mois--reservation-membre-passee"
-        );
-        slot.classList.add(
-          "lcdp-box-card-jour-in-calendrier-mois__slot--vert-passe"
-        );
-      } else {
-        slot.classList.add(
-          "lcdp-box-card-jour-in-calendrier-mois__slot--vert"
-        );
-      }
-
-      const nomParcSlot = nomParcCourtReservation(reservation);
-      const nomParcComplet = nomParcReservation(reservation);
-
-      if (nomParcSlot) {
-        const libelleParc = document.createElement("span");
-        libelleParc.className = "lcdp-box-card-jour-in-calendrier-mois__slot-label";
-        libelleParc.textContent = nomParcSlot;
-        libelleParc.setAttribute("aria-hidden", "true");
-        slot.appendChild(libelleParc);
-      }
-
+      const reservationsPersonnelles = reservationsPlage.some(r => !reservationHorsAbonnementMembre(r));
+      const invitationsRecues = reservationsPlage.some(r => reservationHorsAbonnementMembre(r));
+      slot.classList.add(
+        reservationsPersonnelles && invitationsRecues
+          ? "lcdp-planifier-plage--acces-et-invitation"
+          : invitationsRecues
+            ? "lcdp-planifier-plage--invitation-recue"
+            : "lcdp-planifier-plage--acces-personnel"
+      );
+      // Aucune étiquette de parc superposée aux traits de PLANIFIER.
       slot.dataset.idflux =
         String(reservation.idflux || "");
       slot.dataset.plage = plage;
@@ -2012,7 +1989,9 @@
         libellePlage(plage);
     });
 
-    jour.disabled = !jourReservable;
+    // Comme PLANIFIER, les jours passés restent désactivés ; les autres
+    // sont consultables via leurs traits, sans bouton fictif de disponibilité.
+    jour.disabled = estPasse || !jourReservable;
 
     return jour;
   }
