@@ -5025,10 +5025,11 @@
       ligneIdentiteJour.appendChild(actionsJour);
     }
     const boutonChanger = enteteJour.querySelector(".lcdp-planifier-filtre--parc");
-    boutonChanger?.addEventListener("click", () => {
-      fermerVueChoixPlagePlanifier();
-      enteteMois.querySelector(".lcdp-planifier-filtre--parc")?.click();
-    });
+    if (boutonChanger) {
+      // Vue jour : le changement de parc reste accessible uniquement depuis la vue mois.
+      boutonChanger.disabled = true;
+      boutonChanger.setAttribute("aria-label", "Changer de parc (indisponible dans la vue jour)");
+    }
 
     // Les copies des coches pilotent les contrôles originaux : un seul état
     // de filtre partagé entre la vue mensuelle et la vue des horaires.
