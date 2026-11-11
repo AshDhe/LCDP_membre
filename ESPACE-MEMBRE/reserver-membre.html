@@ -113,7 +113,8 @@
       const feuillesCssObjet = [
         "/CSSBASE/cssbase.css",
         "/CSSBASE/lcdp-central-mobile-first.css?v=20261110-statut-exclusif-v2",
-        "/CSSBASE/lcdp-planifier.css?v=20261111-spinner-carte-centre-v1",
+        "/CSSBASE/lcdp-planifier.css?v=20261111-badges-convergence-v1",
+         "/CSSBASE/lcdp-ui-badges.css?v=20261111-convergence-v1",
         "/CSSBASE/lcdp-lightbox-convergence.css?v=20261111-multi-dialogues-v3"
       ];
 
@@ -184,7 +185,7 @@
 
             <header class="lcdp-page-header">
               <p class="lcdp-mention-connexion" id="mention-statut-membre" aria-live="polite"></p>
-              <p class="lcdp-planifier-parc-en-tete" id="lcdp-planifier-parc-en-tete" aria-live="polite">Aucun parc sélectionné</p>
+              <p class="lcdp-planifier-parc-en-tete lcdp-ui-badge lcdp-ui-badge--neutral lcdp-ui-badge--context" id="lcdp-planifier-parc-en-tete" aria-live="polite">Aucun parc sélectionné</p>
             </header>
 
             <!-- Calendrier permanent : dans le corps du wrapper, jamais dans le slot des dialogues. -->
@@ -235,6 +236,6 @@
   <script src="./attente-planifier.js?v=20261110-spinner-membre-espace-v1"></script>
   <script src="./reserver-membre.js?v=20261111-projets-sans-verso-v1"></script>
   <script src="./paiement-membre.js?v=20261111-reprise-stripe-explicite-v1"></script>
-  <script src="./aboreza-membre.js?v=20261111-transition-stripe-sans-planning-v1"></script>
+  <script src="./aboreza-membre.js?v=20261111-badges-convergence-v1"></script>
 </body>
 </html>
