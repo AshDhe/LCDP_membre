@@ -48,6 +48,37 @@
     })();
   </script>
 
+<style>
+/* Mes accès : même rythme visuel que PLANIFIER, sans toucher aux autres pages. */
+#lcdp-mes-acces-page-conteneur { gap: 12px; }
+#lcdp-mes-acces-page-conteneur .lcdp-mes-acces-page-header { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:12px 0 2px; margin:0; }
+#lcdp-mes-acces-page-conteneur .lcdp-mes-acces-page-header .lcdp-etiquette-statut-membre { margin:0; }
+#lcdp-mes-acces-conteneur { min-width:0; width:100%; box-sizing:border-box; }
+#lcdp-mes-acces-conteneur > .lcdp-title-page-center { margin:0 0 12px; font-size:clamp(1.15rem,4vw,1.32rem); line-height:1.2; font-weight:800; color:#1f2a24; }
+#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-tabs { display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; width:100%; margin:0; padding:0; box-sizing:border-box; }
+#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button { display:flex !important; width:100% !important; min-width:0 !important; min-height:38px !important; height:38px !important; padding:6px 4px !important; align-items:center; justify-content:center; border:1px solid #55733f !important; border-radius:9px !important; background:#fff !important; color:#55733f !important; font-family:var(--lcdp-font-main); font-size:.83rem !important; font-weight:700 !important; line-height:1.2 !important; box-shadow:none !important; }
+#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button[aria-selected="true"] { background:#55733f !important; color:#fff !important; }
+#lcdp-mes-acces-planning[hidden], #lcdp-mes-acces-filtres[hidden], #lcdp-mes-acces-liste-conteneur[hidden], #lcdp-mes-acces-resultat[hidden], #lcdp-mes-acces-message[hidden], #mention-statut-membre[hidden] { display:none !important; }
+#lcdp-mes-acces-planning { box-sizing:border-box; padding:10px 7px 8px; width:100%; border:1px solid #e4eae4; border-radius:15px; background:#fff; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__navigation { display:flex; align-items:center; justify-content:space-between; gap:7px; padding:3px 0 10px; margin-bottom:10px; border-bottom:1px solid #f1f5f9; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__nav { width:32px; height:32px; flex:0 0 32px; border:0; border-radius:9px; background:#f1f3f5; color:#64748b; font-size:1.15rem; cursor:pointer; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__mois { margin:0; min-width:0; flex:1; text-align:center; font-size:clamp(.96rem,3.9vw,1.1rem); font-weight:800; color:#1e293b; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__jours-semaine, #lcdp-mes-acces-planning .lcdp-mes-acces-planning__grille { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__jours-semaine { margin-bottom:8px; font-size:.65rem; text-align:center; color:#475569; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__jour { display:flex; flex-direction:column; align-items:center; box-sizing:border-box; min-width:0; height:42px; padding:2px 2px 4px; border:1px solid #dce2e5; border-radius:9px; background:#fff; color:#273238; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__jour--passe { background:#f1f2f2; color:#94a3b8; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__numero { font-size:.64rem; line-height:1.2; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__slots { display:grid; grid-template-rows:repeat(5,2px); align-content:end; gap:2px; flex:1; width:75%; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__slot { display:block; height:2px; border-radius:1px; background:transparent; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__slot--acces { background:#d64b68; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__slot--invitation { background:#f6b7c5; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__slot--mixte { background:linear-gradient(to right,#d64b68 50%,#f6b7c5 50%); }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__legende { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:5px 12px; border-top:1px solid #f1f5f9; padding-top:9px; margin-top:10px; font-family:var(--lcdp-font-main); font-size:.66rem; color:#64748b; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__legende span { display:inline-flex; align-items:center; gap:4px; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__carre { display:inline-block; flex:0 0 8px; width:8px; height:8px; border-radius:2px; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__carre--acces { background:#d64b68; }
+#lcdp-mes-acces-planning .lcdp-mes-acces-planning__carre--invitation { background:#f6b7c5; }
+</style>
 </head>
 <body class="lcdp-app-page">
   <div id="lcdp-attente-arrivee" class="lcdp-attente-plein-ecran" role="status" aria-label="Chargement de la page">
@@ -95,11 +126,12 @@
         <div class="lcdp-page-container">
           <div class="lcdp-page-content lcdp-stack-large lcdp-contenu-editorial lcdp-box-liste-card--encadree"
                id="lcdp-mes-acces-page-conteneur">
-            <header class="lcdp-page-header">
-              <h1 class="lcdp-title-page-center">MES ACCÈS</h1>
+            <header class="lcdp-page-header lcdp-mes-acces-page-header">
+              <p class="lcdp-mention-connexion lcdp-etiquette-statut-membre" id="mention-statut-membre" aria-live="polite" hidden></p>
             </header>
 
             <section class="lcdp-box-liste-card" id="lcdp-mes-acces-conteneur" aria-label="Réservations d'accès planifiés">
+              <h1 class="lcdp-title-page-center">MES ACCÈS</h1>
               <div class="lcdp-box-liste-card__header">
                 <div class="lcdp-box-liste-card__commande">
                   <div class="lcdp-planning-membre-periode-tabs" role="tablist" aria-label="Période de vos accès">
@@ -107,6 +139,8 @@
                             data-lcdp-periode="avenir" role="tab" aria-selected="true">À venir</button>
                     <button type="button" class="lcdp-button lcdp-button-secondary lcdp-planning-membre-periode-button"
                             data-lcdp-periode="passe" role="tab" aria-selected="false">Passé</button>
+                    <button type="button" class="lcdp-button lcdp-button-secondary lcdp-planning-membre-periode-button"
+                            data-lcdp-periode="planning" role="tab" aria-selected="false">Planning</button>
                   </div>
                 </div>
               </div>
@@ -137,9 +171,24 @@
                 </div>
               </section>
 
+              <section id="lcdp-mes-acces-planning" class="lcdp-mes-acces-planning" aria-label="Planning de mes accès tous parcs confondus" hidden>
+                <div class="lcdp-mes-acces-planning__navigation">
+                  <button class="lcdp-mes-acces-planning__nav" type="button" data-lcdp-planning-prev aria-label="Mois précédent">←</button>
+                  <h2 class="lcdp-mes-acces-planning__mois" id="lcdp-mes-acces-mois"></h2>
+                  <button class="lcdp-mes-acces-planning__nav" type="button" data-lcdp-planning-next aria-label="Mois suivant">→</button>
+                </div>
+                <div class="lcdp-mes-acces-planning__jours-semaine" aria-hidden="true">
+                  <span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span>
+                </div>
+                <div class="lcdp-mes-acces-planning__grille" id="lcdp-mes-acces-grille" role="group" aria-label="Accès par date et plage horaire"></div>
+                <div class="lcdp-mes-acces-planning__legende" aria-label="Légende">
+                  <span><i class="lcdp-mes-acces-planning__carre lcdp-mes-acces-planning__carre--acces" aria-hidden="true"></i>accès planifié dans un parc</span>
+                  <span><i class="lcdp-mes-acces-planning__carre lcdp-mes-acces-planning__carre--invitation" aria-hidden="true"></i>invitation reçue pour un parc</span>
+                </div>
+              </section>
               <p id="lcdp-mes-acces-resultat" role="status" aria-live="polite" class="lcdp-mention-connexion"></p>
               <p id="lcdp-mes-acces-message" role="status" aria-live="polite" class="lcdp-box-liste-card__message">Chargement de vos accès…</p>
-              <div class="lcdp-box-liste-card-diaporama" aria-label="Liste des accès">
+              <div class="lcdp-box-liste-card-diaporama" id="lcdp-mes-acces-liste-conteneur" aria-label="Liste des accès">
                 <div class="lcdp-box-liste-card-diaporama__list" id="lcdp-mes-acces-liste"></div>
               </div>
             </section>
