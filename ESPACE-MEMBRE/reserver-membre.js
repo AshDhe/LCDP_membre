@@ -1770,7 +1770,15 @@
         bouton.tabIndex = ouvert ? 0 : -1;
       });
     };
-    retourner?.addEventListener("click", () => mettreAJour(true));
+    // Même carte utilisée dans le diaporama et le cartouche de la carte.
+    // Un parc en préparation ne possède pas de verso interactif.
+    retourner?.addEventListener("click", () => {
+      if (estParcProjet(parc)) {
+        void informerParcProjet();
+        return;
+      }
+      mettreAJour(true);
+    });
     fermer?.addEventListener("click", () => { mettreAJour(false); retourner?.focus(); });
     mettreAJour(false);
     // N’activer la transition 3D qu’après le premier rendu du recto.
@@ -3370,7 +3378,12 @@
   }
 
   async function informerParcProjet() {
-    await afficherAlerteSuperposee("Ce parc n'est pas encore accessible.", "orange", { libelleBouton: "Fermer" });
+    // Information à action unique : le bouton « Fermer » remplace la croix.
+    await afficherAlerteSuperposee("Ce parc n'est pas encore accessible.", "orange", {
+      libelleBouton: "Fermer",
+      sansCroix: true,
+      classe: "lcdp-planifier-alerte-information"
+    });
   }
 
   function creerCardParc(parc, options = {}) {
@@ -5869,6 +5882,7 @@
 
     texte.textContent = message || "";
     if (options.libelleBouton) boutonOk.textContent = options.libelleBouton;
+    if (options.classe) alerte.classList.add(options.classe);
     if (options.sansCroix === true) boutonFermer.remove();
     if (couleurBouton === "vert-plein-partage") {
       alerte.classList.add("lcdp-planifier-partage-confirmation");
