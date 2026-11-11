@@ -783,6 +783,76 @@
         overflow:visible !important;
         line-height:1.45 !important;
       }
+      /* Correction commune aux deux galeries (À venir et consultation d'une journée).
+         Le gabarit retourne une face dont le contenu doit rester dans le flux
+         normal et sous la zone du bouton de fermeture. */
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne
+      .lcdp-box-card-parc-diaporama__face--verso {
+        display:block !important;
+        position:relative !important;
+        box-sizing:border-box !important;
+        padding:44px 18px 22px !important;
+        height:auto !important;
+        min-height:0 !important;
+        overflow:visible !important;
+        transform:none !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne
+      .lcdp-box-card-parc-diaporama__contenu {
+        display:block !important;
+        position:static !important;
+        box-sizing:border-box !important;
+        padding:0 !important;
+        margin:0 !important;
+        width:100% !important;
+        height:auto !important;
+        min-height:0 !important;
+        overflow:visible !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne
+      .lcdp-box-card-reservation-membre,
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne
+      .lcdp-box-card-reservation-membre__body,
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne
+      .lcdp-box-card-reservation-membre__content {
+        position:static !important;
+        box-sizing:border-box !important;
+        margin:0 !important;
+        padding:0 !important;
+        width:100% !important;
+        height:auto !important;
+        min-height:0 !important;
+        max-height:none !important;
+        overflow:visible !important;
+        transform:none !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne
+      .lcdp-box-card-reservation-membre__date,
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne
+      .lcdp-box-card-reservation-membre__place {
+        position:static !important;
+        box-sizing:border-box !important;
+        min-height:0 !important;
+        height:auto !important;
+        overflow:visible !important;
+        padding:2px 0 !important;
+        margin:0 !important;
+        line-height:1.5 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne
+      .lcdp-box-card-reservation-membre__date-label,
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne
+      .lcdp-box-card-reservation-membre__park {
+        height:auto !important;
+        min-height:0 !important;
+        max-height:none !important;
+        line-height:1.5 !important;
+        padding:2px 0 !important;
+        margin:0 !important;
+        overflow:visible !important;
+        white-space:normal !important;
+        text-overflow:clip !important;
+      }
       @media (max-width: 350px) {
         .lcdp-planning-filtres { grid-template-columns: 1fr; }
       }
