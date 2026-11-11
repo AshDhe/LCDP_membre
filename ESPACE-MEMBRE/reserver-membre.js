@@ -106,7 +106,6 @@
   // Le bouton « Abonnement » ouvre la préparation des dates dans PLANIFIER.
   // Le choix d'une date est ensuite permis pour constituer le panier provisoire.
   let preparationAbonnementPlanifier = false;
-  let itemLegendeCouverture = null;
   // Maquette uniquement : aucune table Duo Actif ni persistance réseau.
   const tagsDuoActifMaquette = new Set();
 
@@ -184,10 +183,7 @@
     alerter: (message, options = {}) => afficherAlerteSuperposee(message, "orange", {libelleBouton: options.libelleBouton || "Fermer"}),
     viderCache: () => cachePlanningParcLecture.clear(),
     choisirParc: () => ouvrirFiltreParcPlanifier(),
-    changerMode: actif => {
-      preparationAbonnementPlanifier = Boolean(actif);
-      if (itemLegendeCouverture) itemLegendeCouverture.style.display = preparationAbonnementPlanifier ? 'none' : '';
-    }
+    changerMode: actif => { preparationAbonnementPlanifier = Boolean(actif); }
   };
 
   let attenteListeParcs = null;
@@ -874,10 +870,6 @@
       texte.className = "lcdp-box-legende__libelle";
       texte.textContent = libelle;
       item.append(carre, document.createTextNode(" "), texte);
-      if (etatJour === "lcdp-planifier-jour--abonnement-couvert") {
-        itemLegendeCouverture = item;
-        item.style.display = preparationAbonnementPlanifier ? "none" : "";
-      }
       if (etatJour === "lcdp-box-legende__carre--acces-clos") itemAccesClos = item;
       lignePlanning.appendChild(item);
     }
