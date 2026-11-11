@@ -859,7 +859,7 @@
       ["abonnement en cours", "lcdp-planifier-jour--abonnement-couvert"],
       ["accès planifié dans un parc", "lcdp-box-legende__carre--bleu-fonce"],
       ["invitation reçue pour un parc", "lcdp-box-legende__carre--bleu-clair"],
-      ["accès clos", "lcdp-box-legende__carre--acces-clos"]
+      ["accès de ce parc clos", "lcdp-box-legende__carre--acces-clos"]
     ]) {
       const item = document.createElement("span");
       item.className = "lcdp-box-legende__item";
@@ -4942,40 +4942,65 @@
 
     const modeAboReza = window.LCDP_ABOREZA?.actif() === true;
     const nomParc = nomParcAvecDepartementPlanifier(contexte.parc);
-    titre.textContent = "Choisissez une plage horaire";
-    meta.replaceChildren();
-    const date = document.createElement('span');
-    date.className = 'lcdp-planifier-heure-entete-date';
-    date.textContent = formaterDateFr(contexte.dateIso);
-    const parc = document.createElement('span');
-    parc.className = 'lcdp-planifier-heure-entete-parc';
-    parc.textContent = nomParc;
-    meta.append(date, parc);
-    // Légende conservée sur cet écran pour TOUS les parcours (réservation et ABO-RÉZA).
-    // Elle décrit les mêmes catégories/couleurs que le planning mensuel, sans
-    // ajouter de filtres ni modifier les autorisations renvoyées par le Worker.
-    const legende = document.createElement('div');
-    legende.className = 'lcdp-aboreza-choix-horaire__legende lcdp-planifier-jour-legende';
-    legende.setAttribute('role', 'group');
-    legende.setAttribute('aria-label', 'Légende des autorisations');
-    for (const [type, libelle] of [['duo','DUO'],['famille','+ FAMILLE'],['coach','+ COACH'],['famille-coach','+ FAMILLE + COACH']]) {
-      const item = document.createElement('span');
-      item.className = 'lcdp-aboreza-choix-horaire__legende-item';
-      const pastille = document.createElement('span');
-      pastille.className = 'lcdp-aboreza-choix-horaire__pastille lcdp-aboreza-choix-horaire__pastille--' + type;
-      pastille.setAttribute('aria-hidden', 'true');
-      item.append(pastille, document.createTextNode(libelle));
-      legende.append(item);
+    // Réutiliser la structure exacte de l'en-tête mensuel et ses filtres.
+    const enteteMois = document.querySelector(
+      "#lcdp-planifier-calendrier-slot .lcdp-planifier-entete-filtres"
+    );
+    if (!enteteMois) throw new Error("Filtres PLANIFIER indisponibles.");
+    const enteteJour = enteteMois.cloneNode(true);
+    enteteJour.classList.add("lcdp-planifier-entete-jour");
+    enteteJour.querySelectorAll("[id]").forEach(element => element.removeAttribute("id"));
+    const titrePlanifier = enteteJour.querySelector("[data-lcdp-calendrier-mois-title]");
+    if (titrePlanifier) titrePlanifier.textContent = "PLANIFIER";
+    const identiteParc = enteteJour.querySelector(".lcdp-planifier-nom-parc");
+    if (identiteParc) {
+      identiteParc.textContent = nomParc;
+      identiteParc.hidden = false;
     }
-    grille.before(legende);
+    const boutonChanger = enteteJour.querySelector(".lcdp-planifier-filtre--parc");
+    boutonChanger?.addEventListener("click", () => {
+      fermerVueChoixPlagePlanifier();
+      enteteMois.querySelector(".lcdp-planifier-filtre--parc")?.click();
+    });
+
+    // Les copies des coches pilotent les contrôles originaux : un seul état
+    // de filtre partagé entre la vue mensuelle et la vue des horaires.
+    const actualiserFiltreHoraires = () => {
+      grille.querySelectorAll("[data-lcdp-planifier-autorisation-jour]").forEach(card => {
+        const autorisation = card.dataset.lcdpPlanifierAutorisationJour;
+        card.hidden = autorisation !== "duo" && !filtresAccesPlanifier.has(autorisation);
+      });
+    };
+    enteteJour.querySelectorAll(".lcdp-planifier-filtre-categorie__input").forEach(copie => {
+      const original = [...enteteMois.querySelectorAll(".lcdp-planifier-filtre-categorie__input")]
+        .find(element => element.value === copie.value);
+      if (!original) return;
+      copie.checked = original.checked;
+      copie.disabled = original.disabled;
+      copie.addEventListener("change", () => {
+        if (copie.value === "duo") {
+          copie.checked = true;
+          return;
+        }
+        original.checked = copie.checked;
+        original.dispatchEvent(new Event("change", { bubbles: true }));
+        actualiserFiltreHoraires();
+      });
+    });
+    const header = calendrier.querySelector(".lcdp-box-calendrier-jour__header");
+    header.prepend(enteteJour);
+    titre.textContent = "Choisissez votre horaire d’accès";
+    meta.replaceChildren();
+    const date = document.createElement("span");
+    date.className = "lcdp-planifier-heure-entete-date";
+    date.textContent = formaterDateFr(contexte.dateIso);
+    // Date sélectionnée au-dessus de la consigne, sous les filtres.
+    titre.before(meta);
+    meta.appendChild(date);
     if (modeAboReza) {
-      const consigne = document.createElement('p');
-      consigne.className = 'lcdp-aboreza-choix-horaire__consigne';
-      consigne.textContent = 'À quelle heure voulez-vous être au parc ?';
-      legende.before(consigne);
       // Conserver l'adoption ABO-RÉZA et sa validation métier existantes.
       if (window.LCDP_ABOREZA_UI?.adopterChoixHoraire?.(calendrier)) {
-        calendrier.classList.add('lcdp-aboreza-choix-horaire');
+        calendrier.classList.add("lcdp-aboreza-choix-horaire");
       }
     }
     const fermer = () => {
@@ -4994,6 +5019,7 @@
     // Écouteur limité à cette vue : aucune fermeture parasite d'une étape suivante.
     calendrier.addEventListener('keydown', fermerEchap);
     remplirGrilleHoraires(grille, message, contexte);
+    actualiserFiltreHoraires();
     slot.hidden = false;
     document.body.classList.add("lcdp-planifier-vue-jour-active");
     // Revenir au haut de la nouvelle vue, sans faire défiler le calendrier conservé.
@@ -5042,6 +5068,7 @@
     card.dataset.date = contexte.dateIso;
     card.dataset.heure = heure;
     card.dataset.plagebookd = plage.nom;
+    card.dataset.lcdpPlanifierAutorisationJour = autorisation;
     const periode = formaterHeureAffichee(heure) + " – " + formaterHeureAffichee(plage.fin);
     if (label) label.textContent = periode;
 
