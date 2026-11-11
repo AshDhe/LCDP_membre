@@ -4954,7 +4954,7 @@
     if (titrePlanifier) titrePlanifier.textContent = "PLANIFIER";
     const identiteParc = enteteJour.querySelector(".lcdp-planifier-nom-parc");
     if (identiteParc) {
-      identiteParc.textContent = "Parc de " + nomParc;
+      identiteParc.textContent = "PARC DE " + nomParc.toLocaleUpperCase("fr-FR");
       identiteParc.hidden = false;
     }
     // Une ligne PLANIFIER + CHANGER, distincte du nom du parc.
@@ -4980,7 +4980,9 @@
     const actualiserFiltreHoraires = () => {
       grille.querySelectorAll("[data-lcdp-planifier-autorisation-jour]").forEach(card => {
         const autorisation = card.dataset.lcdpPlanifierAutorisationJour;
-        card.hidden = autorisation !== "duo" && !filtresAccesPlanifier.has(autorisation);
+        // Les accès déjà pris et les plages closes restent visibles quel que soit le filtre.
+        card.hidden = !card.dataset.indisponible &&
+          autorisation !== "duo" && !filtresAccesPlanifier.has(autorisation);
       });
     };
     enteteJour.querySelectorAll(".lcdp-planifier-filtre-categorie__input").forEach(copie => {
@@ -5041,9 +5043,10 @@
       const legendeHoraires = legendeCalendrier.cloneNode(true);
       legendeHoraires.classList.add("lcdp-planifier-legende-horaires");
       // Un parc est nécessairement sélectionné dans cette troisième vue.
-      const accesClos = [...legendeHoraires.querySelectorAll(".lcdp-box-legende__item")]
-        .find(item => item.textContent.trim() === "accès de ce parc clos");
-      if (accesClos) accesClos.style.display = "";
+      legendeHoraires.querySelectorAll(".lcdp-box-legende__item").forEach(item => {
+        if (item.textContent.trim() === "abonnement en cours") item.remove();
+        if (item.textContent.trim() === "accès de ce parc clos") item.style.display = "";
+      });
       grille.after(legendeHoraires);
     }
     slot.hidden = false;
@@ -5134,7 +5137,25 @@
     } else if (heurePassee) {
       card.dataset.indisponible = "passee";
     }
-    card.setAttribute("aria-label", "Plage " + periode + (card.dataset.indisponible ? " : " + card.dataset.indisponible : ""));
+    // Libellé secondaire de chaque créneau, distinct de l'horaire principal.
+    const sousLibellesAutorisation = {
+      duo: "DUO SEUL",
+      famille: "DUO + FAMILLE",
+      coach: "DUO + COACH",
+      "famille-coach": "TOUS"
+    };
+    const sousLibelle = card.dataset.indisponible === "deja-reserve"
+      ? "Accès déjà planifié dans un parc"
+      : card.dataset.indisponible === "invitation"
+        ? "Invitation déjà planifiée dans un parc"
+        : card.dataset.indisponible === "fermee" || card.dataset.indisponible === "passee"
+          ? "Accès clos"
+          : sousLibellesAutorisation[autorisation] || "DUO SEUL";
+    const detail = document.createElement("span");
+    detail.className = "lcdp-planifier-choix-plage__detail";
+    detail.textContent = sousLibelle;
+    card.appendChild(detail);
+    card.setAttribute("aria-label", "Plage " + periode + " : " + sousLibelle);
     card.addEventListener("click", async () => {
       if (choixPlanningEnCours) return;
       try {
