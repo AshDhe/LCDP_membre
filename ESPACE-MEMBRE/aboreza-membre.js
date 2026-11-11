@@ -652,10 +652,10 @@
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__title{margin:0;max-width:none;color:#1c1917;font-size:23px;font-weight:900;letter-spacing:-.5px;line-height:1.2}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__text{margin:7px 0 24px;max-width:none;color:#78716c;font-size:13px;font-weight:600;line-height:1.45}
         .lcdp-panier-existant__recap{box-sizing:border-box;margin-bottom:28px;padding:20px;border:1px solid #e7e5e4;border-radius:20px;background:#fafaf9;text-align:left}
-        .lcdp-panier-existant__ligne{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:17px;border-bottom:1px solid #e7e5e4}
+        .lcdp-panier-existant__ligne{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:start;gap:8px;padding-bottom:17px;border-bottom:1px solid #e7e5e4}
         .lcdp-panier-existant__col{min-width:0}.lcdp-panier-existant__col--date{text-align:right}
-        .lcdp-panier-existant__legende{display:block;margin-bottom:6px;color:#a8a29e;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
-        .lcdp-panier-existant__valeur{display:block;color:#1c1917;font-size:15px;font-weight:850;line-height:1.3}
+        .lcdp-panier-existant__legende{display:block;margin-bottom:6px;color:#a8a29e;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+        .lcdp-panier-existant__valeur{display:block;color:#1c1917;font-size:15px;font-weight:850;line-height:1.3;white-space:nowrap}
         .lcdp-panier-existant__col--date .lcdp-panier-existant__valeur{color:#4b6333}
         .lcdp-panier-existant__progres{padding-top:15px}
         .lcdp-panier-existant__progres-ligne{display:flex;justify-content:space-between;gap:10px;font-size:13px;line-height:1.4}
@@ -682,7 +682,7 @@
       const ligne = elem('div', 'lcdp-panier-existant__ligne');
       const formule = elem('div', 'lcdp-panier-existant__col');
       formule.append(elem('span', 'lcdp-panier-existant__legende', 'Formule'),
-        elem('strong', 'lcdp-panier-existant__valeur', 'Abonnement ' + nomFormule(p.formule)));
+        elem('strong', 'lcdp-panier-existant__valeur', String(p.formule || '')));
       const date = elem('div', 'lcdp-panier-existant__col lcdp-panier-existant__col--date');
       date.append(elem('span', 'lcdp-panier-existant__legende', 'Début prévu'),
         elem('strong', 'lcdp-panier-existant__valeur', dateLibelle(p.dateDebut)));
