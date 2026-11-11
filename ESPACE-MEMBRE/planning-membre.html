@@ -682,6 +682,31 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-f
       else observerPremierAffichage();
     })();
   </script>
+  <script>
+    // MES ACCÈS — secours de défilement à la molette, limité à cette page.
+    // Le panneau conserve son défilement natif au doigt et au clavier.
+    (() => {
+      document.addEventListener('wheel', event => {
+        if (event.defaultPrevented || event.ctrlKey) return;
+        const cible = event.target;
+        if (cible instanceof Element && cible.closest(
+          'select, input, textarea, [role="dialog"], dialog, .lcdp-box-menu-burger__nav, [data-lcdp-burger-menu]'
+        )) return;
+        const main = document.querySelector('.lcdp-app-wrapper > .lcdp-site-main');
+        if (!main || main.scrollHeight <= main.clientHeight + 1) return;
+        const multiplicateur = event.deltaMode === 1 ? 16 :
+          event.deltaMode === 2 ? main.clientHeight : 1;
+        const delta = event.deltaY * multiplicateur;
+        if (!delta) return;
+        const avant = main.scrollTop;
+        const max = main.scrollHeight - main.clientHeight;
+        const apres = Math.min(max, Math.max(0, avant + delta));
+        if (apres === avant) return;
+        event.preventDefault();
+        main.scrollTop = apres;
+      }, { capture:true, passive:false });
+    })();
+  </script>
   <script src="./mes-acces-membre.js?v=20261111-mes-acces-reprise-v8"></script>
 </body>
 </html>
