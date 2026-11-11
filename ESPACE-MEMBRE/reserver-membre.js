@@ -857,7 +857,8 @@
     for (const [libelle, etatJour] of [
       ["abonnement en cours", "lcdp-planifier-jour--abonnement-couvert"],
       ["accès planifié dans un parc", "lcdp-box-legende__carre--bleu-fonce"],
-      ["invitation reçue pour un parc", "lcdp-box-legende__carre--bleu-clair"]
+      ["invitation reçue pour un parc", "lcdp-box-legende__carre--bleu-clair"],
+      ["accès clos", "lcdp-box-legende__carre--acces-clos"]
     ]) {
       const item = document.createElement("span");
       item.className = "lcdp-box-legende__item";
