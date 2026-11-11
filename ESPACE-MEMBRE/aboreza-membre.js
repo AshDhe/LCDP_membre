@@ -481,7 +481,7 @@
       debut.textContent = dateLibelle(p.dateDebut);
       actions.append(resume);
 
-      const continuer = bouton('Continuer vers le planning', true);
+      const continuer = bouton('Continuer vers PLANIFIER', true);
       continuer.classList.add('lcdp-aboreza-preparation__continuer');
       continuer.addEventListener('click', () => finir(true));
       const fleche = elem('span', 'lcdp-aboreza-preparation__fleche', '→');
