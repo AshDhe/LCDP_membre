@@ -4956,9 +4956,19 @@
     if (identiteParc) {
       identiteParc.textContent = "Parc de " + nomParc;
       identiteParc.hidden = false;
-      // Sur la vue journalière, le parc apparaît avant PLANIFIER.
-      if (titrePlanifier) titrePlanifier.before(identiteParc);
     }
+    // Une ligne PLANIFIER + CHANGER, distincte du nom du parc.
+    const informationsJour = enteteJour.querySelector(".lcdp-planifier-entete-parc");
+    const actionsJour = enteteJour.querySelector(".lcdp-planifier-actions-filtres");
+    if (titrePlanifier && informationsJour && actionsJour) {
+      const ligneTitre = document.createElement("div");
+      ligneTitre.className = "lcdp-planifier-jour-ligne-titre";
+      informationsJour.prepend(ligneTitre);
+      ligneTitre.append(titrePlanifier, actionsJour);
+    }
+    // Le nom du parc est placé SOUS les filtres, pas dans la ligne de titre.
+    const filtreJour = enteteJour.querySelector(".lcdp-planifier-legende-autorisations");
+    if (identiteParc && filtreJour) filtreJour.after(identiteParc);
     const boutonChanger = enteteJour.querySelector(".lcdp-planifier-filtre--parc");
     boutonChanger?.addEventListener("click", () => {
       fermerVueChoixPlagePlanifier();
@@ -4991,13 +5001,13 @@
     });
     const header = calendrier.querySelector(".lcdp-box-calendrier-jour__header");
     header.prepend(enteteJour);
-    titre.textContent = "Choisissez votre horaire d’accès";
+    titre.textContent = "Planifiez votre horaire d’accès";
     meta.replaceChildren();
     const date = document.createElement("span");
     date.className = "lcdp-planifier-heure-entete-date";
-    date.textContent = "Date sélectionnée : " + formaterDateFr(contexte.dateIso);
-    // Date sélectionnée au-dessus de la consigne, sous les filtres.
-    titre.before(meta);
+    date.textContent = "Pour le " + formaterDateFr(contexte.dateIso);
+    // Sous le parc : consigne, puis date bien visible.
+    titre.after(meta);
     meta.appendChild(date);
     if (modeAboReza) {
       // Conserver l'adoption ABO-RÉZA et sa validation métier existantes.
