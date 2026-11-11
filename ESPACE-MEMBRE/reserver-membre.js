@@ -5022,6 +5022,20 @@
     calendrier.addEventListener('keydown', fermerEchap);
     remplirGrilleHoraires(grille, message, contexte);
     actualiserFiltreHoraires();
+    // Même légende d'états que sous le calendrier du parc, sans nouvelle
+    // nomenclature : les filtres par invités restent au-dessus des horaires.
+    const legendeCalendrier = document.querySelector(
+      "#lcdp-planifier-calendrier-slot .lcdp-planifier-legende-planning"
+    );
+    if (legendeCalendrier) {
+      const legendeHoraires = legendeCalendrier.cloneNode(true);
+      legendeHoraires.classList.add("lcdp-planifier-legende-horaires");
+      // Un parc est nécessairement sélectionné dans cette troisième vue.
+      const accesClos = [...legendeHoraires.querySelectorAll(".lcdp-box-legende__item")]
+        .find(item => item.textContent.trim() === "accès de ce parc clos");
+      if (accesClos) accesClos.style.display = "";
+      grille.after(legendeHoraires);
+    }
     slot.hidden = false;
     document.body.classList.add("lcdp-planifier-vue-jour-active");
     // Revenir au haut de la nouvelle vue, sans faire défiler le calendrier conservé.
