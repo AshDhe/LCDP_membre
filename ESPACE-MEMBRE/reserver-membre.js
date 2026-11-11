@@ -5180,13 +5180,7 @@
               return "Vous avez déjà reçu une invitation " + horaire +
                 (parcInvitation ? " pour le parc de " + parcInvitation : " sur cette plage") + ".";
             })(),
-            "deja-reserve": (() => {
-              const parcReservation = nomParcReservationPlanifier(reservationPlage);
-              const horaire = "entre " + formaterHeureAffichee(heure) +
-                " et " + formaterHeureAffichee(plage.fin);
-              return "Vous avez déjà un accès planifié " + horaire +
-                (parcReservation ? " au parc de " + parcReservation : " sur cette plage") + ".";
-            })(),
+            "deja-reserve": "Vous avez déjà un accès planifié",
             fermee:"Accès au parc clos",
             passee:"Cette plage a déjà commencé."
           };
@@ -5349,7 +5343,7 @@
     // Blocage trans-parcs : une réservation personnelle existante interdit
     // la même date et plage, indépendamment du département et du parc.
     if (trouverReservationActiveDatePlage(choix.dateIso, choix.plagebookd)) {
-      await afficherAlerteSuperposee("Vous avez déjà un accès planifié sur cette plage.", "vert",
+      await afficherAlerteSuperposee("Vous avez déjà un accès planifié", "vert",
         {libelleBouton:"Fermer", sansCroix:true, fermetureLibre:false});
       return false;
     }
