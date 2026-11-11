@@ -802,7 +802,19 @@
     iconeParc.setAttribute("aria-hidden", "true");
     boutonParc.append(iconeParc, document.createTextNode("CHANGER"));
     actionsFiltres.appendChild(boutonParc);
-    // Réutiliser le bouton CHANGER existant dans la ligne d’identité.
+    // Commande COACH affichée dans les trois vues ; action définie ultérieurement.
+    const boutonCoach = document.createElement("button");
+    boutonCoach.type = "button";
+    boutonCoach.className = "lcdp-planifier-filtre lcdp-planifier-filtre--coach";
+    boutonCoach.disabled = true;
+    boutonCoach.setAttribute("aria-label", "Coach (fonction à venir)");
+    const iconeCoach = document.createElement("span");
+    iconeCoach.className = "lcdp-planifier-filtre-coach__picto";
+    iconeCoach.textContent = "🏋️";
+    iconeCoach.setAttribute("aria-hidden", "true");
+    boutonCoach.append(iconeCoach, document.createTextNode("COACH"));
+    actionsFiltres.appendChild(boutonCoach);
+    // Réutiliser les commandes dans la ligne d’identité.
     ligneIdentite.appendChild(actionsFiltres);
 
     const legende = fragmentLegende?.querySelector("[data-lcdp-box-legende]") || document.createElement("div");
