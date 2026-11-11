@@ -900,6 +900,9 @@
     etatPage.actualiserIndicateursPlanningGeneral = () => {
       grille.querySelectorAll("[data-lcdp-card-jour-mois][data-date]").forEach(card => {
         afficherReservationsSurPlagesPlanifier(card, card.dataset.date);
+        if (window.LCDP_ABOREZA?.actif()) {
+          window.LCDP_ABOREZA.marquerAccesProvisoires(card, card.dataset.date);
+        }
       });
     };
 
@@ -1066,6 +1069,11 @@
         }
         // Les réservations et invitations du membre sont indépendantes du parc choisi.
         afficherReservationsSurPlagesPlanifier(card, iso);
+        // Le calendrier général n'utilise pas creerCardJourCalendrier :
+        // réappliquer ici les accès provisoires du panier après les réservations.
+        if (window.LCDP_ABOREZA?.actif()) {
+          window.LCDP_ABOREZA.marquerAccesProvisoires(card, iso);
+        }
         // Aucune action sur les jours avant définition des filtres.
         grille.appendChild(card);
       }
