@@ -176,20 +176,84 @@
   }
   async function choisirFormuleCatalogue(offres) {
     return modalComposant('dialogue', 'Choisissez votre abonnement', (objet, finir) => {
-      objet.querySelector('[data-lcdp-dialogue-text]').textContent =
-        'Toutes les formules sont affichées. Les abonnements indisponibles sont désactivés.';
+      const workflow = objet.closest('[data-lcdp-box-workflow-abonnement]');
+      workflow?.classList.add('lcdp-aboreza-catalogue');
+      objet.classList.add('lcdp-aboreza-catalogue__dialogue');
+
+      const texte = objet.querySelector('[data-lcdp-dialogue-text]');
       const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
-      const zone = elem('div', 'lcdp-workflow-abonnement__choice-zone');
-      for (const offre of offres) {
-        const actif = offre.disponible !== false;
-        const b = bouton(nomFormule(offre.formule) + (actif ? '' : ' — indisponible'));
-        b.disabled = !actif;
-        b.title = actif ? 'Choisir cette formule' : (offre.motifIndisponibilite || 'Aucune date de démarrage compatible.');
-        if (actif) b.addEventListener('click', () => finir(offre.formule));
-        else b.append(elem('small', '', ' — ' + b.title));
-        zone.append(b);
+      if (!texte || !actions) throw Error('Structure de sélection ABO-RÉZA incomplète.');
+      texte.textContent = 'Toutes les formules sont affichées. Les abonnements non compatibles avec votre planning actuel sont désactivés.';
+      actions.replaceChildren();
+      actions.classList.add('lcdp-aboreza-catalogue__actions');
+
+      const zoneDefilement = elem('div', 'lcdp-aboreza-catalogue__liste');
+      const zoneValidation = elem('div', 'lcdp-aboreza-catalogue__validation');
+      const continuer = bouton('Continuer avec cette formule', true);
+      continuer.classList.add('lcdp-aboreza-catalogue__continuer');
+      continuer.disabled = true;
+      let selection = null;
+
+      const disponibles = offres.filter(offre => offre.disponible !== false);
+      const indisponibles = offres.filter(offre => offre.disponible === false);
+
+      function section(libelle, classe) {
+        const groupe = elem('section', 'lcdp-aboreza-catalogue__section ' + classe);
+        groupe.append(elem('h3', 'lcdp-aboreza-catalogue__section-titre', libelle));
+        const liste = elem('div', 'lcdp-aboreza-catalogue__options');
+        groupe.append(liste);
+        zoneDefilement.append(groupe);
+        return liste;
       }
-      actions.append(zone);
+
+      if (disponibles.length) {
+        const listeDisponibles = section('Formules disponibles', 'lcdp-aboreza-catalogue__section--disponibles');
+        const nomRadio = 'lcdp-aboreza-catalogue-formule';
+        disponibles.forEach((offre, index) => {
+          const option = elem('label', 'lcdp-aboreza-catalogue__option');
+          const radio = elem('input', 'lcdp-aboreza-catalogue__radio');
+          radio.type = 'radio';
+          radio.name = nomRadio;
+          radio.value = offre.formule;
+          radio.checked = index === 0;
+          const contenu = elem('span', 'lcdp-aboreza-catalogue__option-contenu');
+          const ligne = elem('span', 'lcdp-aboreza-catalogue__option-ligne');
+          ligne.append(elem('strong', 'lcdp-aboreza-catalogue__nom', nomFormule(offre.formule)));
+          ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut lcdp-aboreza-catalogue__statut--disponible', 'Disponible'));
+          contenu.append(ligne);
+          contenu.append(elem('span', 'lcdp-aboreza-catalogue__description', 'Formule disponible pour votre planning.'));
+          const indicateur = elem('span', 'lcdp-aboreza-catalogue__indicateur');
+          indicateur.setAttribute('aria-hidden', 'true');
+          option.append(radio, contenu, indicateur);
+          radio.addEventListener('change', () => {
+            if (!radio.checked) return;
+            selection = offre.formule;
+            continuer.disabled = false;
+          });
+          listeDisponibles.append(option);
+          if (index === 0) selection = offre.formule;
+        });
+        continuer.disabled = false;
+      }
+
+      if (indisponibles.length) {
+        const listeIndisponibles = section('Formules indisponibles', 'lcdp-aboreza-catalogue__section--indisponibles');
+        for (const offre of indisponibles) {
+          const option = elem('div', 'lcdp-aboreza-catalogue__option lcdp-aboreza-catalogue__option--indisponible');
+          const ligne = elem('div', 'lcdp-aboreza-catalogue__option-ligne');
+          ligne.append(elem('strong', 'lcdp-aboreza-catalogue__nom', nomFormule(offre.formule)));
+          ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', 'Indisponible'));
+          option.append(ligne);
+          option.append(elem('p', 'lcdp-aboreza-catalogue__description',
+            offre.motifIndisponibilite || 'Aucune date de démarrage compatible.'));
+          listeIndisponibles.append(option);
+        }
+      }
+
+      if (!offres.length) zoneDefilement.append(elem('p', 'lcdp-aboreza-catalogue__vide', 'Aucune formule disponible.'));
+      continuer.addEventListener('click', () => { if (selection) finir(selection); });
+      zoneValidation.append(continuer);
+      actions.append(zoneDefilement, zoneValidation);
     });
   }
   async function choisirDateDemarrage(offre) {
