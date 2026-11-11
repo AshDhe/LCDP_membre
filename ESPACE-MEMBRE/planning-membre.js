@@ -949,6 +949,7 @@
       actualiserModeWrapperPlanning();
       actualiserBoutonAffichagePlanningMembre();
       actualiserBoutonsPeriodePlanningMembre();
+      actualiserEtatFiltresPlanningMembre();
 
       window.requestAnimationFrame(() => {
         slotPlanning.classList.remove(
@@ -1030,6 +1031,7 @@
       actualiserModeWrapperPlanning();
       actualiserBoutonAffichagePlanningMembre();
       actualiserBoutonsPeriodePlanningMembre();
+      actualiserEtatFiltresPlanningMembre();
 
       window.requestAnimationFrame(() => {
         slotPlanning.classList.remove(
