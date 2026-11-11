@@ -5180,7 +5180,7 @@
               return "Vous avez déjà reçu une invitation " + horaire +
                 (parcInvitation ? " pour le parc de " + parcInvitation : " sur cette plage") + ".";
             })(),
-            "deja-reserve": "Vous avez déjà un accès planifié",
+            "deja-reserve": libelleAccesDejaPlanifie(reservationPlage),
             fermee:"Accès au parc clos",
             passee:"Cette plage a déjà commencé."
           };
@@ -5314,6 +5314,25 @@
     return String(Number(match[1])) + "h" + match[2];
   }
 
+  // Reprend les données affichées par ouvrirPlanningEnCours : date, plage et parc
+  // de la réservation réellement existante, sans déduire le parc du créneau consulté.
+  function libelleAccesDejaPlanifie(reservation) {
+    const dateIso = extraireDateFranceReservation(reservation?.datebookd);
+    const date = dateIso
+      ? new Intl.DateTimeFormat('fr-FR', {
+          timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+        }).format(new Date(dateIso + 'T12:00:00Z'))
+      : '';
+    const plage = libellePlageReservation(String(reservation?.plagebookd || ''));
+    const parc = nomParcReservationPlanifier(reservation);
+    return [
+      reservation?.invitation === true ? 'Vous avez déjà une invitation' : 'Vous avez déjà un accès planifié',
+      date ? 'le ' + date : '',
+      plage,
+      parc ? 'au parc de ' + parc : ''
+    ].filter(Boolean).join(' · ');
+  }
+
   function libellePlageReservation(plagebookd) {
     if (plagebookd === "plage1") return "la plage de 6 h à 10 h";
     if (plagebookd === "plage2") return "la plage de 10 h à 13 h";
@@ -5342,8 +5361,9 @@
     }
     // Blocage trans-parcs : une réservation personnelle existante interdit
     // la même date et plage, indépendamment du département et du parc.
-    if (trouverReservationActiveDatePlage(choix.dateIso, choix.plagebookd)) {
-      await afficherAlerteSuperposee("Vous avez déjà un accès planifié", "vert",
+    const accesExistant = trouverReservationActiveDatePlage(choix.dateIso, choix.plagebookd);
+    if (accesExistant) {
+      await afficherAlerteSuperposee(libelleAccesDejaPlanifie(accesExistant), "vert",
         {libelleBouton:"Fermer", sansCroix:true, fermetureLibre:false});
       return false;
     }
