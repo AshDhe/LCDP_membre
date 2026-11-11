@@ -47,7 +47,7 @@
     commandeBar: null,
     modeAffichage: "liste",
     periodeAffichage: "avenir",
-    filtres: {date: "", parc: "", departement: "", invitation: "toutes"},
+    filtres: {date: "", parc: "", departement: "", recues: false, envoyees: false},
     formulaireFiltres: null,
     membre: {
       abonne: false,
@@ -325,50 +325,14 @@
         font: inherit;
         font-size: .8rem;
       }
-      .lcdp-planning-filtres__choix {
-        grid-column: 1 / -1;
-        display: grid;
-        grid-template-columns: repeat(2,minmax(0,1fr));
-        gap: 8px;
-        margin: 0;
-        border: 0;
-        padding: 0;
-        min-width: 0;
+      .lcdp-planning-filtres__invitations {
+        grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
       }
-      .lcdp-planning-filtres__choix legend {
-        padding: 0 0 8px;
-        color: #31472d;
-        font-size: .75rem;
-        font-weight: 700;
+      .lcdp-planning-filtres__invitation {
+        min-width:0;max-width:100%;white-space:normal;
+        font-size:.75rem;display:flex;align-items:center;justify-content:center;gap:5px;
       }
-      .lcdp-planning-filtres__option {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        padding: 9px;
-        min-width: 0;
-        background: white;
-        border: 1px solid #d7e0d1;
-        border-radius: 10px;
-        color: #43543c;
-        font-size: .76rem;
-        line-height: 1.25;
-        cursor: pointer;
-      }
-      .lcdp-planning-filtres__option:has(input:checked) {
-        color: #fff;
-        background: #526c3f;
-        border-color: #526c3f;
-        font-weight: 700;
-      }
-      .lcdp-planning-filtres__option input {
-        flex: 0 0 auto;
-        width: 16px;
-        height: 16px;
-        min-height: 0;
-        margin: 0;
-        accent-color: #526c3f;
-      }
+      .lcdp-planning-filtres__resultat {font-size:.75rem;font-weight:700;color:#526248;}
       .lcdp-planning-filtres__actions {
         grid-column: 1 / -1;
         display: flex;
@@ -935,9 +899,10 @@
         "[data-lcdp-planning-periode]"
       )
       .forEach((bouton) => {
-        const actif =
-          bouton.dataset.lcdpPlanningPeriode ===
-          etat.periodeAffichage;
+        const periode = bouton.dataset.lcdpPlanningPeriode;
+        const actif = periode === etat.periodeAffichage;
+        const compte = etat.reservations.filter(r => reservationDansPeriodeAgenda(r,periode)).length;
+        bouton.textContent = (periode === "avenir" ? "À venir" : "Passé") + " (" + compte + ")";
 
         bouton.classList.toggle(
           "lcdp-button-primary",
@@ -1020,6 +985,9 @@
     const reservations = filtrerReservationsPlanningMembre(
       filtrerEtTrierReservationsAgenda(etat.reservations)
     );
+    const resultats = etat.formulaireFiltres?.querySelector("[data-lcdp-filtres-resultat]");
+    if(resultats)resultats.textContent=reservations.length+" accès affiché"+(reservations.length>1?"s":"");
+    actualiserEtatFiltresPlanningMembre();
 
     if (!reservations.length) {
       const message =
@@ -1028,8 +996,8 @@
         "lcdp-box-liste-card__message";
       message.textContent =
         etat.periodeAffichage === "avenir"
-          ? "Vous n’avez aucune date à venir."
-          : "Vous n’avez aucune date passée ou annulée.";
+          ? (filtresPlanningActifs() ? "Aucun accès ne correspond aux filtres sélectionnés." : "Vous n’avez aucun accès à venir.")
+          : "Vous n’avez aucun accès passé ou annulé.";
       zoneCartes.appendChild(message);
     } else {
       reservations.forEach(
@@ -1177,44 +1145,43 @@
       formulaire.appendChild(enveloppe);
     }
 
-    const groupeInvitations = document.createElement("fieldset");
-    groupeInvitations.className = "lcdp-planning-filtres__choix";
-    const legende = document.createElement("legend");
-    legende.textContent = "Invitations";
-    groupeInvitations.appendChild(legende);
-    for (const [valeur, libelle] of [
-      ["toutes", "Toutes les visites"],
-      ["recue", "Invitations reçues"],
-      ["envoyee", "Invitations envoyées"],
-      ["aucune", "Sans invitation"]
-    ]) {
-      const option = document.createElement("label");
-      option.className = "lcdp-planning-filtres__option";
-      const input = document.createElement("input");
-      input.type = "radio";
-      input.name = "lcdp-planning-type-invitation";
-      input.value = valeur;
-      input.dataset.lcdpFiltreInvitation = "true";
-      input.checked = valeur === etat.filtres.invitation;
-      input.addEventListener("change", () => {
-        if (!input.checked) return;
-        etat.filtres.invitation = valeur;
+
+    const groupeInvitations = document.createElement("div");
+    groupeInvitations.className = "lcdp-planning-filtres__invitations";
+    for (const [cle, libelle] of [["recues","Invitations reçues"],["envoyees","Invitations envoyées"]]) {
+      const bouton = document.createElement("button");
+      bouton.type = "button";
+      bouton.className = "lcdp-button lcdp-button-secondary lcdp-button-mini lcdp-planning-filtres__invitation";
+      bouton.dataset.lcdpFiltreInvitation = cle;
+      bouton.setAttribute("aria-pressed", "false");
+      const titre = document.createElement("span");
+      titre.textContent = libelle;
+      const nombre = document.createElement("strong");
+      nombre.dataset.lcdpFiltreCompteur = cle;
+      bouton.append(titre,nombre);
+      bouton.addEventListener("click", () => {
+        etat.filtres[cle] = !etat.filtres[cle];
+        actualiserEtatFiltresPlanningMembre();
         if (etat.modeAffichage === "liste") afficherPlanningMembreEnListe();
         else afficherCalendrierMois();
       });
-      option.append(input, document.createTextNode(libelle));
-      groupeInvitations.appendChild(option);
+      groupeInvitations.appendChild(bouton);
     }
     formulaire.appendChild(groupeInvitations);
-
     const actions = document.createElement("div");
     actions.className = "lcdp-planning-filtres__actions";
+    const resultat = document.createElement("span");
+    resultat.className = "lcdp-planning-filtres__resultat";
+    resultat.dataset.lcdpFiltresResultat = "true";
+    resultat.setAttribute("role","status");
+    actions.appendChild(resultat);
     const reinitialiser = document.createElement("button");
     reinitialiser.type = "button";
     reinitialiser.className = "lcdp-button lcdp-button-secondary lcdp-button-mini";
-    reinitialiser.textContent = "Effacer les filtres";
+    reinitialiser.dataset.lcdpEffacerFiltres = "true";
+    reinitialiser.textContent = "Effacer";
     reinitialiser.addEventListener("click", () => {
-      etat.filtres = { date: "", parc: "", departement: "", invitation: "toutes" };
+      etat.filtres = {date:"",parc:"",departement:"",recues:false,envoyees:false};
       actualiserEtatFiltresPlanningMembre();
       if (etat.modeAffichage === "liste") afficherPlanningMembreEnListe();
       else afficherCalendrierMois();
@@ -1249,6 +1216,17 @@
     }
   }
 
+
+  function nombreInvitesEnvoyesPlanning(reservation) {
+    if (reservationHorsAbonnementMembre(reservation)) return 0;
+    const stats = reservation?.invitationStats || reservation?.invitationsStats || {};
+    const n = Number(stats.in ?? stats.actifs ?? stats.invites ?? 0);
+    return Number.isFinite(n) ? Math.max(0,n) : 0;
+  }
+  function filtresPlanningActifs() {
+    const f = etat.filtres;
+    return Boolean(f.date || f.parc || f.departement || f.recues || f.envoyees);
+  }
   function actualiserEtatFiltresPlanningMembre() {
     const formulaire = etat.formulaireFiltres;
     if (!formulaire) return;
@@ -1256,27 +1234,40 @@
     for (const input of formulaire.querySelectorAll("input,select,button")) {
       input.disabled = inactif;
       if (input.dataset.lcdpFiltre) input.value = etat.filtres[input.dataset.lcdpFiltre] || "";
-      if (input.dataset.lcdpFiltreInvitation) input.checked = input.value === etat.filtres.invitation;
     }
-    formulaire.setAttribute("aria-disabled", String(inactif));
+    for (const cle of ["recues","envoyees"]) {
+      const bouton = formulaire.querySelector('[data-lcdp-filtre-invitation="' + cle + '"]');
+      if(bouton) {
+        bouton.setAttribute("aria-pressed",String(etat.filtres[cle]));
+        bouton.classList.toggle("lcdp-button-primary",Boolean(etat.filtres[cle]));
+        bouton.classList.toggle("lcdp-button-secondary",!etat.filtres[cle]);
+      }
+    }
+    const futures = filtrerEtTrierReservationsAgenda(etat.reservations,"avenir");
+    const comptes = {
+      recues:futures.filter(reservationHorsAbonnementMembre).length,
+      envoyees:futures.reduce((n,r)=>n+nombreInvitesEnvoyesPlanning(r),0)
+    };
+    for(const cle of ["recues","envoyees"]) {
+      const nombre=formulaire.querySelector('[data-lcdp-filtre-compteur="' + cle + '"]');
+      if(nombre) nombre.textContent="("+comptes[cle]+")";
+    }
+    const effacer=formulaire.querySelector("[data-lcdp-effacer-filtres]");
+    if(effacer) effacer.disabled=inactif || !filtresPlanningActifs();
+    formulaire.setAttribute("aria-disabled",String(inactif));
   }
-
   function filtrerReservationsPlanningMembre(reservations) {
-    if (etat.periodeAffichage !== "avenir") return reservations;
-    const f = etat.filtres;
-    return reservations.filter(reservation => {
-      const parc = reservation.parc || {};
-      const departement = String(parc.dptmt || parc.departement || reservation.dptmt || "").trim();
-      const nom = String(parc.nom || parc.nomparc || reservation.nomparc || "").trim();
-      const date = extraireDateFranceReservation(reservation.datebookd);
-      if (f.date && date !== f.date) return false;
-      if (f.departement && departement !== f.departement) return false;
-      if (f.parc && nom !== f.parc) return false;
-      const recue = reservationHorsAbonnementMembre(reservation);
-      const envoyee = reservationAvecInvitesPlanning(reservation);
-      if (f.invitation === "recue" && !recue) return false;
-      if (f.invitation === "envoyee" && !envoyee) return false;
-      if (f.invitation === "aucune" && (recue || envoyee)) return false;
+    if(etat.periodeAffichage !== "avenir")return reservations;
+    const f=etat.filtres;
+    return reservations.filter(reservation=>{
+      const parc=reservation.parc||{};
+      const departement=String(parc.dptmt||parc.departement||reservation.dptmt||"").trim();
+      const nom=String(parc.nom||parc.nomparc||reservation.nomparc||"").trim();
+      const date=extraireDateFranceReservation(reservation.datebookd);
+      if(f.date && date!==f.date)return false;
+      if(f.departement && departement!==f.departement)return false;
+      if(f.parc && nom!==f.parc)return false;
+      if((f.recues||f.envoyees)&&!((f.recues&&reservationHorsAbonnementMembre(reservation))||(f.envoyees&&nombreInvitesEnvoyesPlanning(reservation)>0)))return false;
       return true;
     });
   }
@@ -1400,6 +1391,7 @@
       etat.abonnements = normaliserAbonnementsMembre(data.abonnements || data.abos || []);
       await chargerStatutsInvitationsPlanning();
       actualiserOptionsFiltresPlanningMembre();
+      actualiserEtatFiltresPlanningMembre();
       etat.reservationsParDate = indexerReservationsParDate(etat.reservations);
       ajusterMoisCourantSelonPeriode();
       afficherCalendrierMois();
