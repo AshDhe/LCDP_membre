@@ -1,22 +1,10 @@
 <!doctype html>
 <html lang="fr" data-lcdp-css="c085 c034 c038 c037 c058 c072">
 <head>
-  <style>
-    #lcdp-attente-arrivee { position:fixed; inset:0; z-index:2147483646; display:flex; align-items:center; justify-content:center; background:#fff; }
-    #lcdp-attente-arrivee .lcdp-loading-spinner { position:relative; box-sizing:border-box; width:64px; height:64px; display:flex; align-items:center; justify-content:center; }
-    #lcdp-attente-arrivee .lcdp-loading-spinner > svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
-    #lcdp-attente-arrivee .lcdp-loading-spinner__track { color:rgba(6,95,70,.10); }
-    #lcdp-attente-arrivee .lcdp-loading-spinner__arc { color:#e59834; animation:lcdp-arrivee-rotation .8s linear infinite; }
-    #lcdp-attente-arrivee .lcdp-loading-spinner__dot { width:8px; height:8px; border-radius:50%; background:#4e6838; }
-    @keyframes lcdp-arrivee-rotation { to { transform:rotate(360deg); } }
-    @media (prefers-reduced-motion: reduce) { #lcdp-attente-arrivee .lcdp-loading-spinner__arc { animation:none; } }
-  </style>
-  <noscript><style>#lcdp-attente-arrivee { display:none !important; }</style></noscript>
-  <meta charset="utf-8">
-  <title>MES ACCÈS - La Clé du Parc</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Mes accès - espace membre La Clé du Parc.">
-
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MES ACCÈS - La Clé du Parc</title>
+<meta name="description" content="Vos accès, invitations et planning du réseau La Clé du Parc.">
   <script src="../config.js"></script>
   <script>
     (() => {
@@ -48,303 +36,138 @@
     })();
   </script>
 
+
 <style>
-/* MES ACCÈS — gabarit membre d'origine (c085, c034, c037).
-   Aucun style structurel redéfini pour le body, le wrapper, le bandeau ou le footer. */
-#lcdp-mes-acces-page-conteneur { display:flex; flex-direction:column; gap:12px; width:100%; min-width:0; }
-#lcdp-mes-acces-page-conteneur .lcdp-mes-acces-page-header { display:flex; justify-content:center; margin:0; padding:4px 0 0; }
-#lcdp-mes-acces-page-conteneur .lcdp-mes-acces-page-header .lcdp-etiquette-statut-membre { margin:0; }
-#mention-statut-membre[hidden], #lcdp-mes-acces-planning[hidden],
-#lcdp-mes-acces-filtres[hidden], #lcdp-mes-acces-liste-conteneur[hidden],
-#lcdp-mes-acces-resultat[hidden], #lcdp-mes-acces-message[hidden] { display:none!important; }
-#lcdp-mes-acces-conteneur { display:flex; flex-direction:column; box-sizing:border-box; width:100%; min-width:0;
-  padding:14px 12px 16px; gap:14px; border:1px solid #e7e5e4; border-radius:18px; background:#fff; }
-#lcdp-mes-acces-conteneur > .lcdp-title-page-center { font-size:1.35rem; line-height:1.2; font-weight:800; margin:0; }
-#lcdp-mes-acces-conteneur .lcdp-box-liste-card__header,
-#lcdp-mes-acces-conteneur .lcdp-box-liste-card__commande { width:100%; min-width:0; margin:0; }
-#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:4px; box-sizing:border-box; width:100%; border:1px solid #e7e5e4; background:#f5f5f4; border-radius:16px; padding:5px; }
-#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button { display:flex; align-items:center; justify-content:center;
-  width:100%; min-width:0; max-width:none; height:44px; min-height:44px; padding:8px 3px;
-  border:0; border-radius:11px; margin:0; background:transparent; color:#78716c;
-  font:600 .82rem/1.2 var(--lcdp-font-main); box-shadow:none; }
-#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button[aria-selected="true"] {
-  background:#4e6838; color:#fff; font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,.12); }
-#lcdp-mes-acces-filtres { display:flex; flex-direction:column; gap:14px; box-sizing:border-box; width:100%; min-width:0;
-  margin:0; padding:16px; border:1px solid #e7e5e4; border-radius:16px; background:#fafaf9; }
-#lcdp-mes-acces-filtres .lcdp-box-commande-bar { display:block; width:100%; margin:0; padding:0; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-champs .lcdp-box-commande-bar__actions,
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations .lcdp-box-commande-bar__actions {
-  display:flex; flex-direction:column; align-items:stretch; flex-wrap:nowrap; gap:12px; width:100%; min-width:0; }
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire { display:flex; flex-direction:column; flex:0 0 auto;
-  width:100%; min-width:0; gap:5px; margin:0; }
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire__label { font-size:.76rem; color:#57534e; font-weight:700; }
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire :is(input,select) { box-sizing:border-box; width:100%; min-width:0; max-width:100%;
-  min-height:43px; padding:9px 13px; margin:0; border:1px solid #e7e5e4; border-radius:12px; background:#fff;
-  color:#44403c; font:500 .84rem/1.3 var(--lcdp-font-main); }
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire :is(input,select):focus-visible { outline:2px solid rgba(78,104,56,.35); outline-offset:2px; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations .lcdp-box-commande-bar__actions { gap:9px; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button { display:flex; align-items:center; justify-content:space-between;
-  gap:10px; box-sizing:border-box; width:100%; min-height:43px; margin:0; padding:9px 13px;
-  border:1px solid #e7e5e4; border-radius:12px; background:#fff; color:#44403c;
-  font:700 .8rem/1.3 var(--lcdp-font-main); }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button[aria-pressed="true"] {
-  background:#eef3ea; border-color:#55733f; color:#4e6838; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button:disabled { opacity:.55; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations .lcdp-mes-acces-compteur {
-  display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:21px;
-  padding:1px 7px; background:#f5f5f4; border-radius:999px; color:#78716c; font-size:.71rem; font-weight:800; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations #lcdp-mes-acces-recues .lcdp-mes-acces-compteur {
-  background:#ffe4e6; color:#be123c; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied { display:flex; align-items:center; justify-content:space-between; gap:8px;
-  border-top:1px solid #e7e5e4; padding-top:12px; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied #lcdp-mes-acces-resultat { display:block; flex:1 1 auto;
-  width:auto; min-width:0; margin:0; color:#78716c; text-align:left; font:600 .72rem/1.3 var(--lcdp-font-main); }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied #lcdp-mes-acces-effacer {
-  flex:0 0 auto; min-height:0; width:auto; margin:0; padding:3px 0;
-  border:0; border-radius:0; background:transparent; box-shadow:none; color:#78716c;
-  font:700 .72rem/1.3 var(--lcdp-font-main); text-decoration:underline;
-  text-decoration-color:#d6d3d1; text-underline-offset:3px; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied #lcdp-mes-acces-effacer:disabled { opacity:.55; }
-#lcdp-mes-acces-liste { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; width:100%; min-width:0; }
-#lcdp-mes-acces-liste > .lcdp-box-card-parc-diaporama.is-retourne { grid-column:1/-1; }
-#lcdp-mes-acces-planning { width:100%; min-width:0; }
-
-
-/* Restaurer le flux du gabarit membre validé, sans dépendre des styles de PLANIFIER. */
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper {
-  display: flex !important;
-  flex-direction: column !important;
-  width: 100% !important;
-  max-width: 448px !important;
-  min-height: 0 !important;
-  background: #fff !important;
-  overflow: hidden !important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
-  display: block !important;
-  flex: 0 0 auto !important;
-  width: 100% !important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
-  display: block !important;
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-page-conteneur {
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: flex-start !important;
-  align-items: stretch !important;
-  gap: 12px !important;
-  height: auto !important;
-  min-height: 0 !important;
-  width: 100% !important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-conteneur {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 12px !important;
-  position: static !important;
-  width: 100% !important;
-  height: auto !important;
-  min-height: 0 !important;
-  flex: 0 0 auto !important;
-  visibility: visible !important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-conteneur > .lcdp-title-page-center,
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-conteneur > .lcdp-box-liste-card__header {
-  display: block !important;
-  position: static !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  width: 100% !important;
-  height: auto !important;
-  flex: 0 0 auto !important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-filtres:not([hidden]) {
-  display: block !important;
-  position: static !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  width: 100% !important;
-  height: auto !important;
-  flex: 0 0 auto !important;
-}
-
-/* MES ACCÈS : coque complète identique à l'espace membre, header/footer inclus.
-   Ces règles ciblent exclusivement cette page et n'affectent pas PLANIFIER. */
+/* MES ACCÈS : nouveau document indépendant, coque commune c085.
+   Aucun script de molette et aucun gestionnaire de scroll concurrent. */
 html[data-lcdp-css~="c085"] body.lcdp-app-page.lcdp-mes-acces-page {
-  display:flex!important;
-  flex-direction:row!important;
-  justify-content:center!important;
-  align-items:center!important;
+  justify-content:center;
+  align-items:center;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
   box-sizing:border-box;
+  flex:0 1 448px;
   width:100%;
-  min-height:100dvh;
-  padding:16px!important;
-  margin:0!important;
+  min-width:0;
+  max-width:448px;
+  height:calc(100dvh - 32px);
+  max-height:850px;
+  min-height:0;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
 }
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
-  position:relative!important;
-  display:flex!important;
-  flex-direction:column!important;
-  flex:0 1 448px!important;
-  width:100%!important;
-  max-width:448px!important;
-  min-width:0!important;
-  height:calc(100dvh - 32px)!important;
-  max-height:850px!important;
-  min-height:0!important;
-  margin:0 auto!important;
-  padding:0!important;
-  border:1px solid #dce4dc!important;
-  border-radius:24px!important;
-  background:#fff!important;
-  overflow:hidden!important;
-  box-shadow:0 12px 32px rgba(31,50,31,.12),0 2px 8px rgba(31,50,31,.05)!important;
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-bandeau-slot {
+  flex:0 0 68px; height:68px; min-height:68px; width:100%;
 }
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
-  display:block!important;
-  position:relative!important;
-  visibility:visible!important;
-  opacity:1!important;
-  flex:0 0 68px!important;
-  height:68px!important;
-  min-height:68px!important;
-  width:100%!important;
-  background:#4e6838!important;
-  overflow:visible!important;
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-bandeau-slot > .lcdp-box-bandeau-nav {
+  height:68px; min-height:68px; border-radius:23px 23px 0 0;
 }
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot > .lcdp-box-bandeau-nav {
-  position:relative!important;
-  top:auto!important;
-  left:auto!important;
-  right:auto!important;
-  inset:auto!important;
-  display:block!important;
-  visibility:visible!important;
-  opacity:1!important;
-  box-sizing:border-box!important;
-  width:100%!important;
-  height:68px!important;
-  min-height:68px!important;
-  border-radius:23px 23px 0 0!important;
-  background:#4e6838!important;
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
+  display:block; flex:1 1 0px; height:auto; min-height:0; min-width:0;
+  overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#b7c2b7 transparent;
 }
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot .lcdp-box-bandeau-nav__inner {
-  display:flex!important;
-  align-items:center!important;
-  justify-content:space-between!important;
-  box-sizing:border-box!important;
-  width:100%!important;
-  min-height:68px!important;
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-footer-slot {
+  display:block; flex:0 0 50px; height:50px; min-height:50px; width:100%;
+  background:#fff; border-top:1px solid #edf1ed;
 }
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot {
-  position:relative!important;
-  display:block!important;
-  visibility:visible!important;
-  opacity:1!important;
-  flex:0 0 50px!important;
-  box-sizing:border-box!important;
-  width:100%!important;
-  height:50px!important;
-  min-height:50px!important;
-  margin:0!important;
-  padding:0!important;
-  border-top:1px solid #f1f5f9!important;
-  background:#fff!important;
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-footer-slot .lcdp-box-footer {
+  width:100%; min-height:49px; height:49px;
 }
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot > .lcdp-box-footer {
-  display:block!important;
-  position:relative!important;
-  inset:auto!important;
-  visibility:visible!important;
-  opacity:1!important;
-  width:100%!important;
-  height:49px!important;
-  min-height:49px!important;
+#lcdp-mes-acces-page-conteneur {display:flex; flex-direction:column; gap:12px; width:100%; min-width:0;}
+#lcdp-mes-acces-page-conteneur .lcdp-mes-acces-page-header {
+ display:flex; justify-content:center; padding:0; margin:0;
 }
+#lcdp-mes-acces-page-conteneur .lcdp-mes-acces-page-header .lcdp-etiquette-statut-membre { margin:0; }
+#lcdp-mes-acces-conteneur {
+ display:flex; flex-direction:column; gap:14px; box-sizing:border-box; width:100%; min-width:0;
+ padding:15px 12px 17px; border:1px solid #e2e7e2; border-radius:19px; background:#fff;
+}
+#lcdp-mes-acces-conteneur > .lcdp-title-page-center {
+ margin:0; text-align:center; font:800 1.35rem/1.25 var(--lcdp-font-main);
+}
+#lcdp-mes-acces-conteneur .lcdp-box-liste-card__header,
+#lcdp-mes-acces-conteneur .lcdp-box-liste-card__commande {width:100%; margin:0; padding:0; min-width:0;}
+#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-tabs {
+ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; width:100%;
+ padding:5px; border:1px solid #e7e5e4; border-radius:16px; background:#f5f5f4;
+}
+#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button {
+ display:flex; justify-content:center; align-items:center; box-sizing:border-box;
+ flex:none; width:100%; min-width:0; height:44px; min-height:44px; padding:7px 2px;
+ border:0; border-radius:11px; margin:0; transform:none; box-shadow:none;
+ background:transparent; color:#78716c; font:600 .82rem/1.2 var(--lcdp-font-main);
+}
+#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button[aria-selected="true"] {
+ background:#4e6838; color:#fff; font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,.12);
+}
+#lcdp-mes-acces-filtres {
+ display:flex; flex-direction:column; gap:14px; box-sizing:border-box; width:100%; min-width:0;
+ padding:16px; margin:0; border:1px solid #e7e5e4; border-radius:16px; background:#fafaf9;
+}
+#lcdp-mes-acces-filtres .lcdp-box-commande-bar {display:block; width:100%; margin:0; padding:0;}
+#lcdp-mes-acces-filtres .lcdp-box-commande-bar__actions {
+ display:flex; flex-direction:column; gap:13px; width:100%; flex-wrap:nowrap; align-items:stretch;
+}
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire {
+ display:flex; flex:0 0 auto; flex-direction:column; gap:6px; width:100%; min-width:0; margin:0;
+}
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire__label {font-size:.77rem; font-weight:700; color:#57534e;}
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire :is(input,select) {
+ box-sizing:border-box; width:100%; max-width:100%; min-width:0; height:45px; min-height:45px;
+ padding:10px 12px; margin:0; border:1px solid #e7e5e4; border-radius:12px;
+ background:white; color:#44403c; font:500 .84rem/1.2 var(--lcdp-font-main);
+}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations {margin-top:4px;}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations .lcdp-box-commande-bar__actions {gap:10px;}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button {
+ display:flex; justify-content:center; align-items:center; gap:10px;
+ box-sizing:border-box; width:100%; min-height:43px; margin:0; padding:9px 12px;
+ border:1px solid #e7e5e4; border-radius:12px; background:#fff; color:#44403c;
+ font:700 .8rem/1.2 var(--lcdp-font-main);
+}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button[aria-pressed="true"] {
+ background:#eef3ea; border-color:#55733f; color:#4e6838;
+}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button:disabled {opacity:.55;}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-compteur {
+ display:inline-flex; justify-content:center; align-items:center;
+ min-width:24px; height:22px; padding:1px 7px;
+ border-radius:999px; background:#f5f5f4; color:#78716c; font-size:.71rem; font-weight:800;
+}
+#lcdp-mes-acces-filtres #lcdp-mes-acces-recues .lcdp-mes-acces-compteur {background:#ffe4e6; color:#be123c;}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied {
+ display:flex; align-items:center; justify-content:space-between; gap:8px;
+ padding-top:12px; border-top:1px solid #e7e5e4;
+}
+#lcdp-mes-acces-filtres #lcdp-mes-acces-resultat {
+ flex:1 1 auto; min-width:0; width:auto; margin:0; text-align:left; color:#78716c;
+ font:600 .72rem/1.3 var(--lcdp-font-main);
+}
+#lcdp-mes-acces-filtres #lcdp-mes-acces-effacer {
+ flex:0 0 auto; width:auto; min-height:0; margin:0; padding:3px 0;
+ border:0; background:transparent; color:#78716c; box-shadow:none;
+ font:700 .72rem/1.3 var(--lcdp-font-main); text-decoration:underline;
+ text-decoration-color:#d6d3d1; text-underline-offset:3px;
+}
+#lcdp-mes-acces-filtres #lcdp-mes-acces-effacer:disabled {opacity:.55;}
+#lcdp-mes-acces-planning {min-width:0; width:100%;}
+#lcdp-mes-acces-liste {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; min-width:0; width:100%;}
+#lcdp-mes-acces-liste > .lcdp-box-card-parc-diaporama.is-retourne {grid-column:1/-1;}
+#mention-statut-membre[hidden],#lcdp-mes-acces-planning[hidden],#lcdp-mes-acces-filtres[hidden],
+#lcdp-mes-acces-liste-conteneur[hidden],#lcdp-mes-acces-resultat[hidden],
+#lcdp-mes-acces-message[hidden],.lcdp-mes-acces-compteur[hidden] {display:none!important;}
 @media(max-width:767px) {
-  html[data-lcdp-css~="c085"] body.lcdp-app-page.lcdp-mes-acces-page { align-items:flex-start!important; padding:12px!important; }
-  html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper { height:calc(100dvh - 24px)!important; }
+ html[data-lcdp-css~="c085"] body.lcdp-app-page.lcdp-mes-acces-page {align-items:flex-start;}
+ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {height:calc(100dvh - 24px);}
 }
-
-/* Neutraliser le min-height:100vh de cssbase.css sur .lcdp-site-page :
-   il empêchait .lcdp-site-main de se réduire dans le wrapper limité à 850px. */
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
-  min-height:0!important;
-  flex-shrink:0!important;
-  margin-left:auto!important;
-  margin-right:auto!important;
-}
-
-/* Wrapper conforme au gabarit membre : bandeau et footer hors de la zone scrollable.
-   La seule zone défilante est le main, sans défilement concurrent sur le wrapper. */
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
-  display:flex!important;
-  flex-direction:column!important;
-  overflow:hidden!important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
-  position:relative!important;
-  flex:0 0 68px!important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
-  display:block!important;
-  flex:1 1 0px!important;
-  height:auto!important;
-  min-height:0!important;
-  min-width:0!important;
-  overflow-x:hidden!important;
-  overflow-y:scroll!important;
-  overscroll-behavior-y:contain;
-  scrollbar-width:auto;
-  scrollbar-color:#a7b0a7 #f1f3f1;
-  scrollbar-gutter:stable both-edges;
-  -webkit-overflow-scrolling:touch;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot {
-  position:relative!important;
-  flex:0 0 50px!important;
-  margin-top:0!important;
-}
-/* Fond continu du cadre membre, y compris autour de la carte MES ACCÈS.
-   La surface centrale conserve son scroll et le bandeau/footer restent fixes. */
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
-  background:#fff!important;
-}
-/* Filtres : respiration entre champs, commandes et pied de formulaire. */
-#lcdp-mes-acces-filtres .lcdp-mes-acces-champs .lcdp-box-commande-bar__actions { gap:15px!important; }
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire { gap:7px!important; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations { margin-top:7px!important; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations .lcdp-box-commande-bar__actions { gap:10px!important; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied { margin-top:3px; }
 </style>
 </head>
 <body class="lcdp-app-page lcdp-mes-acces-page">
-  <div id="lcdp-attente-arrivee" class="lcdp-attente-plein-ecran" role="status" aria-label="Chargement de la page">
-    <div class="lcdp-loading-spinner" aria-hidden="true">
-      <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
-      <svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg>
-      <span class="lcdp-loading-spinner__dot"></span>
-    </div>
-  </div>
-  <script>
-    (() => {
-      const terminer = () => document.getElementById('lcdp-attente-arrivee')?.remove();
-      window.LCDP_terminerAttenteArrivee = terminer;
-      // Sécurité : ne pas bloquer définitivement l'accès en cas d'échec d'un fragment/API.
-      window.setTimeout(terminer, 15000);
-      window.addEventListener('pageshow', event => { if (event.persisted) terminer(); });
-    })();
-  </script>
-
-  <div class="lcdp-site-page lcdp-app-wrapper">
-
-    <!-- Bandeau existant intégré dès le rendu HTML : visible même en cas d'échec du chargement des fragments. -->
+<div class="lcdp-site-page lcdp-app-wrapper">
     <div id="lcdp-bandeau-slot">
       <header class="lcdp-box-bandeau-nav" data-lcdp-box-bandeau-nav>
         <div class="lcdp-box-bandeau-nav__inner">
@@ -363,13 +186,10 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-s
         </div>
       </header>
     </div>
-
-    <!-- MES ACCÈS : enveloppe de page et composants existants, sans calendrier. -->
-    <main class="lcdp-site-main" aria-label="Mes accès" tabindex="0">
-      <section class="lcdp-page-section" aria-label="Contenu de Mes accès">
-        <div class="lcdp-page-container">
-          <div class="lcdp-page-content lcdp-stack-large lcdp-contenu-editorial lcdp-box-liste-card--encadree"
-               id="lcdp-mes-acces-page-conteneur">
+<main class="lcdp-site-main" aria-label="Mes accès" tabindex="0">
+ <section class="lcdp-page-section" aria-label="Contenu de Mes accès">
+  <div class="lcdp-page-container">
+   <div class="lcdp-page-content lcdp-stack-large" id="lcdp-mes-acces-page-conteneur">
             <header class="lcdp-page-header lcdp-mes-acces-page-header">
               <p class="lcdp-mention-connexion lcdp-etiquette-statut-membre" id="mention-statut-membre" aria-live="polite" hidden></p>
             </header>
@@ -425,12 +245,10 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-s
                 <div class="lcdp-box-liste-card-diaporama__list" id="lcdp-mes-acces-liste"></div>
               </div>
             </section>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <!-- Footer existant, avec version minimale de secours. -->
+   </div>
+  </div>
+ </section>
+</main>
     <div id="lcdp-footer-slot">
       <footer class="lcdp-box-footer" data-lcdp-box-footer>
         <div class="lcdp-box-footer__inner">
@@ -438,9 +256,9 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-s
         </div>
       </footer>
     </div>
-    <div id="lcdp-lightbox-slot"></div>
-  </div>
 
+<div id="lcdp-lightbox-slot"></div>
+</div>
   <script>
     (() => {
       "use strict";
@@ -518,58 +336,7 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-s
     })();
   </script>
 
-  <script>
-    (() => {
-      function observerPremierAffichage() {
-        const message = document.getElementById('lcdp-mes-acces-message');
-        if (!message) { window.LCDP_terminerAttenteArrivee(); return; }
-        const observer = new MutationObserver(verifier);
-        function verifier() {
-          if (!document.getElementById('lcdp-attente-arrivee')) { observer.disconnect(); return; }
-          const texte = (message.textContent || '').trim();
-          const termine = message.hidden || (texte && !/^Chargement\b/i.test(texte));
-          const bandeauPret = Boolean(document.querySelector('#lcdp-bandeau-slot [data-lcdp-burger-button]'));
-          const footerPret = Boolean(document.querySelector('#lcdp-footer-slot [data-lcdp-box-footer]'));
-          if (termine && bandeauPret && footerPret) {
-            observer.disconnect();
-            window.LCDP_terminerAttenteArrivee();
-          }
-        }
-        observer.observe(document.body, {subtree:true,childList:true,attributes:true,characterData:true});
-        verifier();
-      }
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', observerPremierAffichage, {once:true});
-      else observerPremierAffichage();
-    })();
-  </script>
-  <script>
-    // Surface de défilement unique : même si la molette est actionnée
-    // autour de la carte, l'ensemble du contenu de MES ACCÈS reste parcourable.
-    (() => {
-      const initialiser = () => {
-        const main = document.querySelector('.lcdp-app-wrapper > .lcdp-site-main');
-        if (!main) return;
-        document.addEventListener('wheel', event => {
-          if (event.ctrlKey || event.defaultPrevented || !event.deltaY) return;
-          if (document.querySelector('[role="dialog"][open], dialog[open], [aria-modal="true"]')) return;
-          const cible = event.target instanceof Element ? event.target : null;
-          // Les champs du formulaire ne doivent pas bloquer le défilement
-          // du panneau : la capture Chrome confirmait le blocage sur SELECT.
-          // Préserver en revanche les menus burger et les dialogues.
-          if (cible?.closest('[data-lcdp-burger-menu], .lcdp-box-menu-burger')) return;
-          const maximum = main.scrollHeight - main.clientHeight;
-          if (maximum <= 1) return;
-          const facteur = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? main.clientHeight : 1;
-          const prochain = Math.max(0, Math.min(maximum, main.scrollTop + event.deltaY * facteur));
-          if (prochain === main.scrollTop) return;
-          event.preventDefault();
-          main.scrollTop = prochain;
-        }, {passive:false,capture:true});
-      };
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',initialiser,{once:true});
-      else initialiser();
-    })();
-  </script>
-  <script src="./mes-acces-membre.js?v=20261111-filtres-compteurs-v10"></script>
+
+<script src="./mes-acces-membre.js?v=20261111-refonte-propre-v11"></script>
 </body>
 </html>
