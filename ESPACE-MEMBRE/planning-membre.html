@@ -200,11 +200,11 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-
   min-height:0!important;
   margin:0 auto!important;
   padding:0!important;
-  border:1px solid #f1f5f9!important;
+  border:1px solid #dce4dc!important;
   border-radius:24px!important;
   background:#fff!important;
   overflow:hidden!important;
-  box-shadow:0 20px 25px -5px rgb(226 232 240 / 50%),0 8px 10px -6px rgb(226 232 240 / 50%)!important;
+  box-shadow:0 12px 32px rgba(31,50,31,.12),0 2px 8px rgba(31,50,31,.05)!important;
 }
 html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
   display:block!important;
@@ -310,6 +310,11 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-f
   position:relative!important;
   flex:0 0 50px!important;
   margin-top:0!important;
+}
+/* Fond continu du cadre membre, y compris autour de la carte MES ACCÈS.
+   La surface centrale conserve son scroll et le bandeau/footer restent fixes. */
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
+  background:#fff!important;
 }
 /* Filtres : respiration entre champs, commandes et pied de formulaire. */
 #lcdp-mes-acces-filtres .lcdp-mes-acces-champs .lcdp-box-commande-bar__actions { gap:15px!important; }
