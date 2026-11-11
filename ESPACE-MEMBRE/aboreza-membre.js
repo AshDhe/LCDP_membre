@@ -60,7 +60,7 @@
 
   async function api(path, method = 'GET', body) {
     const res = await fetch(ENDPOINT + path, {
-      method, credentials: 'include', cache: 'no-store',
+      method, credentials: 'include', cache: 'no-store', signal: AbortSignal.timeout(15000),
       headers: { Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body)
     });
