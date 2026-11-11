@@ -841,7 +841,7 @@
       if(slot){slot.classList.add('lcdp-planifier-plage--acces-personnel');slot.title+=' · Accès provisoire ABO-RÉZA';}
     });
   }
-  window.LCDP_ABOREZA={actif:()=>Boolean(courant),panier:()=>courant,demarrer,selectionnerAcces,datePossible,accesDejaChoisi,marquerAccesProvisoires};
+  window.LCDP_ABOREZA={actif:()=>Boolean(courant),panier:()=>courant,demarrer,quitter:quitterTunnel,selectionnerAcces,datePossible,accesDejaChoisi,marquerAccesProvisoires};
   window.LCDP_ouvrirAboReza=demarrer;
 
   // Présentation de l'étape 2 : seul le texte défile. Le bouton PLANIFIER et
