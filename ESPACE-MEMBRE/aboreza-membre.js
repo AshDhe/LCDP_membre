@@ -745,9 +745,26 @@
         masquerAttenteFormules();
         const decision=await reprendreOuRecommencer(enCours);
         if(decision==='reprendre'){
+          if(enCours.statut==='transmis_paiement'){
+            // Paiement déjà engagé : ne pas recalculer le devis du panier.
+            const action=await modal('Commande en cours',
+              'Votre commande a déjà été transmise au paiement. Vous pouvez reprendre le règlement ou revenir au planning sans perdre votre sélection.',
+              [{texte:'Reprendre le paiement',valeur:'payer',primaire:true},
+               {texte:'Retour au planning',valeur:'planning'}]);
+            if(action==='payer'){
+              afficherAttenteFormules('Vérification de votre commande…');
+              try{
+                await window.LCDP_PAIEMENT.reprendrePaiementTransmis(enCours.idpanier);
+              }catch(erreur){
+                masquerAttenteFormules();
+                await modal('Paiement à vérifier',
+                  erreur.message||'Le paiement ne peut pas être repris pour le moment. Votre commande est conservée.',
+                  [{texte:'Fermer',valeur:'fermer',primaire:true}]);
+              }finally{masquerAttenteFormules();}
+            }
+            return;
+          }
           if(enCours.complet){
-            // Une commande déjà envoyée au paiement n'a pas à recharger
-            // le calendrier avant de rouvrir son bon de commande.
             courant=enCours;
             await afficherRecap(enCours);
           }else{
