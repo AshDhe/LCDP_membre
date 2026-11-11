@@ -35,6 +35,8 @@
     moisCourant: debutMois(dateAujourdhuiParis()),
     templateJour: null,
     templateReservation: null,
+    templateCardParcDiaporama: null,
+    templateListeParcsDiaporama: null,
     workflowPlanning: null,
     contenuWorkflowPlanning: null,
     calendrierMois: null,
@@ -252,6 +254,29 @@
 
 
       /* Planning membre : mise en page des filtres et des cartouches existants. */
+      .lcdp-planning-filtres__actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
+      .lcdp-planning-carte-visite { width: 100% !important; max-width: 100% !important; min-width: 0 !important; margin: 0 !important; }
+      .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__ouvrir { position: relative; width: 100%; height: 100%; overflow: hidden; }
+      .lcdp-planning-carte-visite__image { display: block; width: 100%; height: 100%; object-fit: cover; }
+      .lcdp-planning-carte-visite__legende {
+        position: absolute; bottom: 0; left: 0; right: 0;
+        padding: 14px; background: linear-gradient(transparent,rgba(0,0,0,.78));
+        color: #fff; font-weight: 750; font-size: .85rem; line-height: 1.4;
+        text-align: left; overflow-wrap: anywhere;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__contenu {
+        width: 100%; height: 100%; max-width: 100%; overflow-y: auto; box-sizing: border-box;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre {
+        border: 0 !important; box-shadow: none !important;
+        width: 100% !important; max-width: 100% !important; margin: 0 !important;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__media { display: none !important; }
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__body { padding: 12px !important; }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card-diaporama__list {
+        display: grid !important; grid-template-columns: 1fr !important; gap: 14px !important;
+        width: 100% !important; min-width: 0 !important; max-width: 100% !important;
+      }
       #lcdp-planning-calendrier-slot,
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card,
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card__list,
@@ -611,7 +636,14 @@
       throw new Error("Template jour calendrier mois introuvable.");
     }
 
-    const fragmentReservation = await chargerFragmentObjet("/HTMLBASE/04-card-reservation-membre.html");
+    const [fragmentCardParc, fragmentListeParcs, fragmentReservation] = await Promise.all([
+      chargerFragmentObjet("/HTMLBASE/04-card-parc-diaporama.html"),
+      chargerFragmentObjet("/HTMLBASE/04-liste-card-diaporama.html"),
+      chargerFragmentObjet("/HTMLBASE/04-card-reservation-membre.html")
+    ]);
+    etat.templateCardParcDiaporama = fragmentCardParc.querySelector("[data-lcdp-card-parc-diaporama]");
+    etat.templateListeParcsDiaporama = fragmentListeParcs.querySelector("[data-lcdp-liste-card-diaporama]");
+    if (!etat.templateCardParcDiaporama || !etat.templateListeParcsDiaporama) throw new Error("Gabarits diaporama Parc indisponibles.");
     etat.templateReservation = fragmentReservation.querySelector("[data-lcdp-box-card-reservation-membre]");
 
     if (!etat.templateReservation) {
@@ -890,8 +922,10 @@
       return;
     }
 
-    const fragment =
-      document.createDocumentFragment();
+    const fragment = etat.templateListeParcsDiaporama
+      ? etat.templateListeParcsDiaporama.cloneNode(true)
+      : document.createDocumentFragment();
+    const zoneCartes = fragment.querySelector?.("[data-lcdp-liste-card-diaporama-list]") || fragment;
     const reservations = filtrerReservationsPlanningMembre(
       filtrerEtTrierReservationsAgenda(etat.reservations)
     );
@@ -905,7 +939,7 @@
         etat.periodeAffichage === "avenir"
           ? "Vous n’avez aucune date à venir."
           : "Vous n’avez aucune date passée ou annulée.";
-      fragment.appendChild(message);
+      zoneCartes.appendChild(message);
     } else {
       reservations.forEach(
         (reservation, index) => {
@@ -920,10 +954,8 @@
             }
           );
 
-          card.classList.add(
-            "lcdp-box-card-reservation-membre--liste"
-          );
-          fragment.appendChild(card);
+          card.classList.add("lcdp-box-card-reservation-membre--liste");
+          zoneCartes.appendChild(creerCarteVisiteDiaporama(card, reservation));
         }
       );
     }
@@ -956,6 +988,50 @@
         );
       });
     });
+  }
+
+  function creerCarteVisiteDiaporama(cardReservation, reservation) {
+    if (!etat.templateCardParcDiaporama) return cardReservation;
+    const carte = etat.templateCardParcDiaporama.cloneNode(true);
+    carte.classList.add("lcdp-box-card-parc--reserver", "lcdp-planning-carte-visite");
+    carte.dataset.idflux = String(reservation.idflux || "");
+    const ouvrir = carte.querySelector("[data-lcdp-diaporama-retourner]");
+    const fermer = carte.querySelector("[data-lcdp-diaporama-fermer]");
+    const dos = carte.querySelector("[data-lcdp-diaporama-dos]");
+    const contenu = carte.querySelector("[data-lcdp-diaporama-dos-contenu]");
+    const parc = reservation.parc || {};
+    const nom = String(parc.nom || parc.nomparc || reservation.nomparc || "Parc");
+    const date = formaterDateCourte(reservation.datebookd);
+    const heure = formaterHeureReservation(reservation.datebookd);
+    const media = cardReservation.querySelector("[data-lcdp-card-reservation-media]");
+    if (media && !media.hidden) {
+      const img = media.querySelector("img");
+      if (img) {
+        const image = img.cloneNode(true);
+        image.className = "lcdp-planning-carte-visite__image";
+        ouvrir.appendChild(image);
+      }
+    }
+    const titre = document.createElement("span");
+    titre.className = "lcdp-planning-carte-visite__legende";
+    titre.textContent = "Parc de " + nom + " · " + date + (heure ? " · " + heure : "");
+    ouvrir.appendChild(titre);
+    ouvrir.setAttribute("aria-label", "Voir les détails de la visite au parc " + nom + " le " + date);
+    contenu.appendChild(cardReservation);
+    const basculer = ouvert => {
+      carte.classList.toggle("is-retourne", ouvert);
+      ouvrir.setAttribute("aria-expanded", String(ouvert));
+      dos.setAttribute("aria-hidden", String(!ouvert));
+      fermer.tabIndex = ouvert ? 0 : -1;
+      contenu.querySelectorAll("button").forEach(bouton => { bouton.tabIndex = ouvert ? 0 : -1; });
+    };
+    ouvrir.addEventListener("click", () => basculer(true));
+    fermer.addEventListener("click", () => { basculer(false); ouvrir.focus(); });
+    basculer(false);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (carte.isConnected) carte.classList.add("is-ready");
+    }));
+    return carte;
   }
 
   function installerFiltresPlanningMembre() {
@@ -1007,6 +1083,19 @@
       enveloppe.append(etiquette, input);
       formulaire.appendChild(enveloppe);
     }
+    const actions = document.createElement("div");
+    actions.className = "lcdp-planning-filtres__actions";
+    const reinitialiser = document.createElement("button");
+    reinitialiser.type = "button";
+    reinitialiser.className = "lcdp-button lcdp-button-secondary lcdp-button-mini";
+    reinitialiser.textContent = "Réinitialiser les filtres";
+    reinitialiser.addEventListener("click", () => {
+      etat.filtres = {date:"",parc:"",departement:"",invitation:"toutes"};
+      actualiserEtatFiltresPlanningMembre();
+      afficherPlanningMembreEnListe();
+    });
+    actions.appendChild(reinitialiser);
+    formulaire.appendChild(actions);
     tools.replaceChildren(formulaire);
     tools.hidden = false;
     etat.formulaireFiltres = formulaire;
@@ -1039,9 +1128,9 @@
     const formulaire = etat.formulaireFiltres;
     if (!formulaire) return;
     const inactif = etat.periodeAffichage !== "avenir";
-    for (const input of formulaire.querySelectorAll("input,select")) {
+    for (const input of formulaire.querySelectorAll("input,select,button")) {
       input.disabled = inactif;
-      input.value = etat.filtres[input.dataset.lcdpFiltre] || "";
+      if (input.dataset.lcdpFiltre) input.value = etat.filtres[input.dataset.lcdpFiltre] || "";
     }
     formulaire.setAttribute("aria-disabled", String(inactif));
   }
