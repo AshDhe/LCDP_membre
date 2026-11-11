@@ -4727,15 +4727,6 @@
       modeLecture ? "lecture" : "reservation"
     );
 
-    // Les flux sont déjà présents dans planningJour.plages.*.planningMembre.
-    // Une marque corail signale un accès PERSONNEL dans ce parc ; un corail
-    // plus clair signale une invitation reçue dans ce même parc.
-    if (modeLecture && ouvert && !estPasse) {
-      if (window.LCDP_ABOREZA?.actif()) {
-        window.LCDP_ABOREZA.marquerAccesProvisoires(card, dateIso);
-      }
-    }
-
     // Aucun slot sur un jour passé ou sur une journée entièrement fermée.
     // L'attribut hidden est également protégé en CSS contre les anciennes règles.
     if (modeLecture && (estPasse || !ouvert)) {
@@ -4744,7 +4735,15 @@
       });
     }
 
-    if (modeLecture) afficherReservationsSurPlagesPlanifier(card, dateIso);
+    if (modeLecture) {
+      // D'abord les réservations existantes, puis les accès provisoires ABO-RÉZA.
+      // Le rendu des réservations existantes efface les classes de repérage :
+      // inverser cet ordre faisait disparaître l'accès pourtant retenu au panier.
+      afficherReservationsSurPlagesPlanifier(card, dateIso);
+      if (window.LCDP_ABOREZA?.actif() && !estPasse) {
+        window.LCDP_ABOREZA.marquerAccesProvisoires(card, dateIso);
+      }
+    }
     return card;
   }
 
