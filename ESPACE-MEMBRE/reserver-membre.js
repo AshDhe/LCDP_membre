@@ -687,6 +687,80 @@
     );
   }
 
+  let modeCoachPlanifierActif = false;
+
+  function abonnementPermanentActifCoach(etat) {
+    return etat?.abonne === true &&
+      etat.abonnementSuspendu !== true &&
+      etat.abonnementAnnuleNonPaye !== true &&
+      ["1A", "11M", "10M"].includes(String(etat.typeabo || "").trim().toUpperCase());
+  }
+
+  function periodeSouscriptionPermanenteCoach() {
+    const morceaux = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris", year: "numeric", month: "numeric"
+    }).formatToParts(new Date());
+    const mois = Number(morceaux.find(part => part.type === "month")?.value);
+    return mois >= 10 && mois <= 12 ? "1A" : mois === 1 ? "11M" : mois === 2 ? "10M" : null;
+  }
+
+  function afficherModeCoachPlanifier() {
+    const entete = document.querySelector("#lcdp-planifier-calendrier-slot .lcdp-planifier-entete-filtres");
+    if (!entete) return;
+    const titre = entete.querySelector(".lcdp-box-legende__titre");
+    const filtreInvites = entete.querySelector(".lcdp-box-legende__ligne:not([data-lcdp-filtres-coach])");
+    const filtreCoach = entete.querySelector("[data-lcdp-filtres-coach]");
+    const informationCoach = entete.querySelector("[data-lcdp-information-coach]");
+    const grille = document.querySelector("#lcdp-planifier-calendrier-slot [data-lcdp-calendrier-mois-grid]");
+    if (titre) titre.textContent = modeCoachPlanifierActif ? "FILTRE COACH" : "FILTRE INVITÉS";
+    if (filtreInvites) {
+      filtreInvites.hidden = modeCoachPlanifierActif;
+      filtreInvites.style.display = modeCoachPlanifierActif ? "none" : "";
+    }
+    if (filtreCoach) {
+      filtreCoach.hidden = !modeCoachPlanifierActif;
+      filtreCoach.style.display = modeCoachPlanifierActif ? "" : "none";
+    }
+    if (informationCoach) {
+      informationCoach.hidden = !modeCoachPlanifierActif;
+      informationCoach.style.display = modeCoachPlanifierActif ? "" : "none";
+    }
+    // Aucun créneau Coach n'est actuellement renseigné dans FluxM :
+    // ne jamais présenter les accès membres comme des présences de coachs.
+    if (grille) grille.style.display = modeCoachPlanifierActif ? "none" : "";
+    document.querySelectorAll(".lcdp-planifier-filtre--coach").forEach(bouton => {
+      bouton.setAttribute("aria-pressed", String(modeCoachPlanifierActif));
+    });
+  }
+
+  async function ouvrirModeCoachPlanifier() {
+    try {
+      etatMembre = await chargerEtatMembre();
+    } catch (erreur) {
+      await afficherAlerteSuperposee(erreur.message || "Impossible de vérifier votre abonnement.");
+      return;
+    }
+    if (abonnementPermanentActifCoach(etatMembre)) {
+      if (document.body.classList.contains("lcdp-planifier-vue-jour-active")) {
+        fermerVueChoixPlagePlanifier();
+      }
+      modeCoachPlanifierActif = !modeCoachPlanifierActif;
+      afficherModeCoachPlanifier();
+      return;
+    }
+    const message = "Vous devez être abonné permanent (1A, 11M, 10M) pour suivre les coachs.";
+    const formule = periodeSouscriptionPermanenteCoach();
+    if (!formule) {
+      await ouvrirDialogueBoutonsSuperpose({titre:"COACH", texte:message, boutons:[]});
+      return;
+    }
+    const choix = await afficherAlerteSuperposee(message, "orange", {libelleBouton:"M'abonner"});
+    if (choix !== true) return;
+    // Le catalogue ABO-RÉZA décide des formules réellement disponibles.
+    // Aucun paiement ni réservation n'est créé directement ici.
+    await ouvrirAbonnementDepuisPlanning({origine:"sans_abonnement", formule:null});
+  }
+
   async function ouvrirAbonnementDepuisPlanning(contexte) {
     // Point de transfert unique. ABO-RÉZA n'existe pas encore : ne pas ouvrir
     // l'ancien panier et ne pas simuler une souscription.
@@ -803,14 +877,15 @@
     const boutonCoach = document.createElement("button");
     boutonCoach.type = "button";
     boutonCoach.className = "lcdp-planifier-filtre lcdp-planifier-filtre--coach";
-    boutonCoach.disabled = true;
-    boutonCoach.setAttribute("aria-label", "Coach (fonction à venir)");
+    boutonCoach.setAttribute("aria-label", "Consulter le planning Coach");
+    boutonCoach.setAttribute("aria-disabled", "true");
     const iconeCoach = document.createElement("span");
     iconeCoach.className = "lcdp-planifier-filtre-coach__picto";
     iconeCoach.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 20v-2.2a5.5 5.5 0 0 1 11 0V20M16 5.5a3 3 0 0 1 0 6M17 14a4 4 0 0 1 3.5 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     iconeCoach.setAttribute("aria-hidden", "true");
     boutonCoach.append(iconeCoach, document.createTextNode("COACH"));
     actionsFiltres.appendChild(boutonCoach);
+    boutonCoach.addEventListener("click", () => ouvrirModeCoachPlanifier().catch(console.error));
     // Réutiliser les commandes dans la ligne d’identité.
     ligneIdentite.appendChild(actionsFiltres);
 
@@ -872,7 +947,44 @@
       ligneLegende.appendChild(item);
     }
     contenuLegende.appendChild(ligneLegende);
+    // Le filtre Coach se substitue visuellement au filtre Invités, sans modifier ses états.
+    const ligneCoach = document.createElement("div");
+    ligneCoach.className = "lcdp-box-legende__ligne";
+    ligneCoach.dataset.lcdpFiltresCoach = "true";
+    ligneCoach.hidden = true;
+    ligneCoach.style.display = "none";
+    for (const [categorie, picto] of [["sport","🏃"],["art","🎨"],["culture","🎭"],["recre","🎲"]]) {
+      const etiquette = document.createElement("label");
+      etiquette.className = "lcdp-box-legende__item lcdp-planifier-filtre-categorie";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "lcdp-planifier-filtre-categorie__input";
+      input.value = categorie;
+      input.checked = true;
+      const pastille = document.createElement("span");
+      pastille.className = "lcdp-box-legende__carre";
+      const coche = document.createElement("span");
+      coche.className = "lcdp-planifier-filtre-categorie__coche";
+      coche.textContent = "✓";
+      pastille.appendChild(coche);
+      const icone = document.createElement("span");
+      icone.className = "lcdp-planifier-filtre-categorie__picto";
+      icone.textContent = picto;
+      icone.setAttribute("aria-hidden","true");
+      const texte = document.createElement("span");
+      texte.className = "lcdp-box-legende__libelle";
+      texte.textContent = categorie === "recre" ? "RÉCRÉ" : categorie.toLocaleUpperCase("fr-FR");
+      etiquette.append(icone, texte, input, pastille);
+      ligneCoach.appendChild(etiquette);
+    }
+    contenuLegende.appendChild(ligneCoach);
     enteteFiltres.appendChild(legende);
+    const informationCoach = document.createElement("p");
+    informationCoach.dataset.lcdpInformationCoach = "true";
+    informationCoach.textContent = "Les présences des coachs seront affichées ici dès que les réservations Coach seront disponibles.";
+    informationCoach.hidden = true;
+    informationCoach.style.display = "none";
+    enteteFiltres.appendChild(informationCoach);
 
     // Légende sous le planning, construite avec le composant et les états CSS existants.
     // Les accès planifiés, invitations et jauges seront ajoutés ultérieurement.
@@ -5033,6 +5145,8 @@
       informationsJour.replaceChildren(titrePlanifier);
       ligneIdentiteJour.appendChild(actionsJour);
     }
+    const boutonCoachJour = enteteJour.querySelector(".lcdp-planifier-filtre--coach");
+    boutonCoachJour?.addEventListener("click", () => ouvrirModeCoachPlanifier().catch(console.error));
     const boutonChanger = enteteJour.querySelector(".lcdp-planifier-filtre--parc");
     if (boutonChanger) {
       // Vue jour : le changement de parc reste accessible uniquement depuis la vue mois.
