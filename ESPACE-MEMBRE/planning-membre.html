@@ -253,19 +253,36 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-b
   width:100%!important;
   min-height:68px!important;
 }
+/* Le wrapper fonctionne en trois rangées : bandeau, zone scrollable, footer.
+   Ne pas donner height:0 à la zone de contenu. */
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:68px minmax(0,1fr) 50px!important;
+  align-content:stretch!important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
+  grid-row:1!important;
+  min-height:0!important;
+  height:68px!important;
+}
 html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
   display:block!important;
-  /* Une base flex nulle force le scroll à rester DANS la fenêtre membre,
-     même lorsque la liste des accès dépasse la hauteur disponible. */
-  flex:1 1 0%!important;
-  height:0!important;
+  grid-row:2!important;
   min-height:0!important;
-  max-height:100%!important;
-  overflow-y:scroll!important;
+  height:100%!important;
+  width:100%!important;
   overflow-x:hidden!important;
+  overflow-y:auto!important;
   overscroll-behavior-y:contain;
   -webkit-overflow-scrolling:touch;
-  scrollbar-width:thin;
+  scrollbar-width:auto;
+  scrollbar-gutter:stable;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot {
+  grid-row:3!important;
+  height:50px!important;
+  min-height:0!important;
 }
 html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot {
   position:relative!important;
@@ -339,7 +356,7 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-f
     </div>
 
     <!-- MES ACCÈS : enveloppe de page et composants existants, sans calendrier. -->
-    <main class="lcdp-site-main" aria-label="Mes accès">
+    <main class="lcdp-site-main" aria-label="Mes accès" tabindex="0">
       <section class="lcdp-page-section" aria-label="Contenu de Mes accès">
         <div class="lcdp-page-container">
           <div class="lcdp-page-content lcdp-stack-large lcdp-contenu-editorial lcdp-box-liste-card--encadree"
