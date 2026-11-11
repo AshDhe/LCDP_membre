@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" data-lcdp-css="c085 c034 c038 c037">
+<html lang="fr" data-lcdp-css="c085 c034 c038 c037 c058 c072">
 <head>
   <style>
     #lcdp-attente-arrivee { position:fixed; inset:0; z-index:2147483646; display:flex; align-items:center; justify-content:center; background:#fff; }
@@ -62,10 +62,25 @@
 #lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button[aria-selected="true"] { background:#55733f !important; color:#fff !important; }
 #lcdp-mes-acces-planning[hidden], #lcdp-mes-acces-filtres[hidden], #lcdp-mes-acces-liste-conteneur[hidden], #lcdp-mes-acces-resultat[hidden], #lcdp-mes-acces-message[hidden], #mention-statut-membre[hidden] { display:none !important; }
 #lcdp-mes-acces-planning { width:100%; min-width:0; box-sizing:border-box; }
+#lcdp-mes-acces-conteneur { border:1px solid #e4eae4; border-radius:20px; padding:14px 13px 16px; background:#fff; box-shadow:0 2px 5px rgba(15,23,42,.06); }
+#lcdp-mes-acces-conteneur .lcdp-box-liste-card__header,
+#lcdp-mes-acces-conteneur .lcdp-box-liste-card__commande { box-sizing:border-box; display:block; width:100% !important; min-width:0; margin:0 0 12px; padding:0; }
+#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-tabs > button { box-sizing:border-box; flex:none !important; margin:0 !important; transform:none !important; }
+#lcdp-mes-acces-filtres { box-sizing:border-box; width:100%; min-width:0; padding:14px 12px; margin:6px 0 14px; border:1px solid #e4eae4; border-radius:16px; background:#f8faf8; }
+#lcdp-mes-acces-filtres .lcdp-box-commande-bar { width:100%; min-width:0; box-sizing:border-box; margin:0 0 13px; padding:0; }
+#lcdp-mes-acces-filtres .lcdp-box-commande-bar:last-child { margin-bottom:0; }
+#lcdp-mes-acces-filtres .lcdp-box-commande-bar__actions { display:flex; flex-wrap:wrap; gap:12px !important; align-items:flex-end; width:100%; min-width:0; }
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire { display:flex; flex-direction:column; gap:6px; margin:0; }
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire input,
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire select { box-sizing:border-box; width:100%; min-width:0; min-height:40px; padding:8px 10px; border:1px solid #d6ded6; border-radius:10px; background:#fff; }
+#lcdp-mes-acces-filtres .lcdp-box-commande-bar__actions > button { min-height:36px; padding:7px 11px; border-radius:9px; }
+#lcdp-mes-acces-liste { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-items:start; min-width:0; }
+#lcdp-mes-acces-liste > .lcdp-box-card-parc-diaporama.is-retourne { grid-column:1 / -1; }
+
 /* Les commandes et cases du calendrier sont stylées exclusivement dans lcdp-planifier.css. */
 </style>
 </head>
-<body class="lcdp-app-page">
+<body class="lcdp-app-page lcdp-page-reserver">
   <div id="lcdp-attente-arrivee" class="lcdp-attente-plein-ecran" role="status" aria-label="Chargement de la page">
     <div class="lcdp-loading-spinner" aria-hidden="true">
       <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
@@ -83,7 +98,7 @@
     })();
   </script>
 
-  <div class="lcdp-site-page lcdp-app-wrapper">
+  <div class="lcdp-site-page lcdp-app-wrapper lcdp-planifier-wrapper">
 
     <!-- Bandeau existant intégré dès le rendu HTML : visible même en cas d'échec du chargement des fragments. -->
     <div id="lcdp-bandeau-slot">
@@ -109,7 +124,7 @@
     <main class="lcdp-site-main" aria-label="Mes accès">
       <section class="lcdp-page-section" aria-label="Contenu de Mes accès">
         <div class="lcdp-page-container">
-          <div class="lcdp-page-content lcdp-stack-large lcdp-contenu-editorial lcdp-box-liste-card--encadree"
+          <div class="lcdp-page-content lcdp-page-content--avec-entete lcdp-stack-large"
                id="lcdp-mes-acces-page-conteneur">
             <header class="lcdp-page-header lcdp-mes-acces-page-header">
               <p class="lcdp-mention-connexion lcdp-etiquette-statut-membre" id="mention-statut-membre" aria-live="polite" hidden></p>
