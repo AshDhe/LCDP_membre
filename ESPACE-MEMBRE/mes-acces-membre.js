@@ -304,7 +304,7 @@
     if (r.parc?.adresse1 || r.parc?.entreeparc) {
       const infos = [r.parc?.adresse1, r.parc?.adresse2, r.parc?.adresse3, r.parc?.entreeparc]
         .map(v => String(v || '').trim()).filter(Boolean).join(' — ');
-      if (infos) verso.appendChild(textEl('p', 'lcdp-box-card-parc-diaporama__description', infos));
+      if (infos) description.appendChild(textEl('span', '', ' · ' + infos));
     }
     const ajouterBouton = (libelle, action, style='lcdp-button-secondary') => {
       const b = textEl('button', 'lcdp-button lcdp-box-card-parc__action ' + style, libelle);
@@ -485,7 +485,8 @@
       const texte=iso+(info.length?' · '+info.join(' · '):' · aucun accès');
       card.title=texte;
       card.setAttribute('aria-label',texte);
-      card.disabled=true;
+      // Lecture seule sans griser artificiellement les jours futurs.
+      card.tabIndex=-1;
       ui.grillePlanning.appendChild(card);
     }
   }
