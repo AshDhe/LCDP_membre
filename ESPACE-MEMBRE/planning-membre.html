@@ -121,6 +121,69 @@ html[data-lcdp-css~="c085"] body.lcdp-app-page > .lcdp-site-page.lcdp-app-wrappe
 #lcdp-mes-acces-planning { width:100%; min-width:0; box-sizing:border-box; }
 #lcdp-mes-acces-liste { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr))!important; gap:12px!important; align-items:start; width:100%; min-width:0; }
 #lcdp-mes-acces-liste > .lcdp-box-card-parc-diaporama.is-retourne { grid-column:1/-1; }
+
+/* Restaurer le flux du gabarit membre validé, sans dépendre des styles de PLANIFIER. */
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  max-width: 448px !important;
+  min-height: 0 !important;
+  background: #fff !important;
+  overflow: hidden !important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
+  display: block !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-page-conteneur {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  width: 100% !important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-conteneur {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  flex: 0 0 auto !important;
+  visibility: visible !important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-conteneur > .lcdp-title-page-center,
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-conteneur > .lcdp-box-liste-card__header {
+  display: block !important;
+  position: static !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100% !important;
+  height: auto !important;
+  flex: 0 0 auto !important;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-filtres:not([hidden]) {
+  display: block !important;
+  position: static !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100% !important;
+  height: auto !important;
+  flex: 0 0 auto !important;
+}
 </style>
 </head>
 <body class="lcdp-app-page lcdp-mes-acces-page">
@@ -167,7 +230,7 @@ html[data-lcdp-css~="c085"] body.lcdp-app-page > .lcdp-site-page.lcdp-app-wrappe
     <main class="lcdp-site-main" aria-label="Mes accès">
       <section class="lcdp-page-section" aria-label="Contenu de Mes accès">
         <div class="lcdp-page-container">
-          <div class="lcdp-page-content lcdp-page-content--avec-entete lcdp-stack-large"
+          <div class="lcdp-page-content lcdp-stack-large lcdp-contenu-editorial lcdp-box-liste-card--encadree"
                id="lcdp-mes-acces-page-conteneur">
             <header class="lcdp-page-header lcdp-mes-acces-page-header">
               <p class="lcdp-mention-connexion lcdp-etiquette-statut-membre" id="mention-statut-membre" aria-live="polite" hidden></p>
