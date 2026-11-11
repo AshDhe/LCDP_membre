@@ -4660,16 +4660,16 @@
     // Les flux sont déjà présents dans planningJour.plages.*.planningMembre.
     // Une marque corail signale un accès PERSONNEL dans ce parc ; un corail
     // plus clair signale une invitation reçue dans ce même parc.
-    if (modeLecture && ouvert) {
+    if (modeLecture && ouvert && !estPasse) {
       marquerAccesPersonnelPlanifier(card, planningJour);
       if (window.LCDP_ABOREZA?.actif()) {
         window.LCDP_ABOREZA.marquerAccesProvisoires(card, dateIso);
       }
     }
 
-    // Jour fermé : aucun emplacement horaire visible, même si une règle CSS
-    // impose visibility:visible sur les liserés des plages non ouvertes.
-    if (modeLecture && !ouvert) {
+    // Aucun slot sur un jour passé ou sur une journée entièrement fermée.
+    // L'attribut hidden est également protégé en CSS contre les anciennes règles.
+    if (modeLecture && (estPasse || !ouvert)) {
       card.querySelectorAll("[data-lcdp-card-jour-mois-slot]").forEach((slot) => {
         slot.hidden = true;
       });
