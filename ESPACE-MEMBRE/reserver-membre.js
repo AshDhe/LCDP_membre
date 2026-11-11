@@ -1045,6 +1045,8 @@
         nomParcEnTete.textContent = parcSelectionne
           ? "Parc de " + nomParcAvecDepartementPlanifier(parcSelectionne)
           : "Aucun parc sélectionné";
+        nomParcEnTete.classList.toggle("lcdp-ui-badge--green", Boolean(parcSelectionne));
+        nomParcEnTete.classList.toggle("lcdp-ui-badge--neutral", !parcSelectionne);
       }
       courant.textContent = formaterMoisAnnee(etat.annee, etat.mois);
       grille.replaceChildren();
