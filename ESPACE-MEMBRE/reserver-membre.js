@@ -1188,6 +1188,7 @@
     }
 
     const reponse = await fetch(ENDPOINT_INDEX_MEMBRE + "/index", {
+      signal: AbortSignal.timeout(12000),
       method: "GET",
       credentials: "include",
       cache: "no-store",
@@ -4133,6 +4134,7 @@
       throw new Error("Le service Rézabo n’est pas configuré.");
     }
     const reponse = await fetch(ENDPOINT_REZABO + "/droits", {
+      signal: AbortSignal.timeout(12000),
       method: "GET", credentials: "include", cache: "no-store",
       headers: { Accept: "application/json" }
     });
@@ -6213,6 +6215,7 @@
 
   async function chargerFragmentObjet(chemin) {
     const reponse = await fetch(construireUrlObjet(chemin), {
+      signal: AbortSignal.timeout(12000),
       method: "GET",
       credentials: "omit",
       cache: "no-cache"
