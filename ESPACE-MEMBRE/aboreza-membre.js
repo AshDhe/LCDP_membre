@@ -559,12 +559,14 @@
     const formule = elem('div', 'lcdp-aboreza-suivi__champ');
     formule.append(
       elem('span', 'lcdp-aboreza-suivi__libelle', 'Formule'),
-      elem('strong', 'lcdp-aboreza-suivi__valeur', 'Abonnement ' + nomFormule(courant.formule))
+      elem('strong', 'lcdp-aboreza-suivi__valeur', String(courant.formule || '').toUpperCase() === '12M' ? '1A' : String(courant.formule || '').toUpperCase())
     );
     const debut = elem('div', 'lcdp-aboreza-suivi__champ');
     debut.append(
       elem('span', 'lcdp-aboreza-suivi__libelle', 'Début prévu'),
-      elem('strong', 'lcdp-aboreza-suivi__valeur', dateLibelle(courant.dateDebut))
+      elem('strong', 'lcdp-aboreza-suivi__valeur', /^\\d{4}-\\d{2}-\\d{2}$/.test(String(courant.dateDebut || ''))
+        ? courant.dateDebut.slice(8, 10) + '/' + courant.dateDebut.slice(5, 7) + '/' + courant.dateDebut.slice(2, 4)
+        : dateLibelle(courant.dateDebut))
     );
     details.append(formule, debut);
     bandeau.append(details);
@@ -578,6 +580,19 @@
       elem('strong', 'lcdp-aboreza-suivi__progression-valeur', planifies + ' sur ' + total)
     );
     bandeau.append(ligne);
+
+    const pourcentage = total > 0 ? Math.max(0, Math.min(100, Math.round(planifies / total * 100))) : 0;
+    const piste = elem('div', 'lcdp-aboreza-suivi__barre');
+    piste.setAttribute('role', 'progressbar');
+    piste.setAttribute('aria-label', 'Accès planifiés');
+    piste.setAttribute('aria-valuemin', '0');
+    piste.setAttribute('aria-valuemax', String(total));
+    piste.setAttribute('aria-valuenow', String(planifies));
+    piste.setAttribute('aria-valuetext', planifies + ' accès planifiés sur ' + total);
+    const remplissage = elem('div', 'lcdp-aboreza-suivi__barre-remplissage');
+    remplissage.style.width = pourcentage + '%';
+    piste.append(remplissage);
+    bandeau.append(piste);
 
     const groupes = elem('div', 'lcdp-aboreza-suivi__mois');
     groupes.setAttribute('role', 'group');
