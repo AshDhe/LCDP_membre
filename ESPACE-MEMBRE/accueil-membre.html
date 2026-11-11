@@ -113,7 +113,13 @@
       document.write('<script src="' + window.LCDP_urlObjet("/JSBASE/02-footer.js") + '" data-lcdp-footer-autonome defer><\/script>');
     })();
   </script>
-  <link rel="stylesheet" href="./planifier-choix.css?v=20261111-maquette-v1">
+  <script>
+    (() => {
+      const href = window.LCDP_urlObjet("/CSSBASE/lcdp-lightbox-convergence.css?v=20261111-phase1");
+      document.write('<link rel="stylesheet" href="' + href.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">');
+    })();
+  </script>
+  <link rel="stylesheet" href="./planifier-choix.css?v=20261111-convergence-v2">
   <style>
     /* Uniquement l'état hidden et le formulaire sécurité conservé du membre. */
     #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden], #lcdp-navigation-attente[hidden] { display: none !important; }
