@@ -5885,7 +5885,10 @@
     texte.textContent = message || "";
     if (options.libelleBouton) boutonOk.textContent = options.libelleBouton;
     if (options.classe) alerte.classList.add(options.classe);
-    if (options.sansCroix === true) boutonFermer.remove();
+    // Une alerte informative avec « Fermer » utilise une seule commande.
+    const fermetureUnique = options.sansCroix === true ||
+      String(boutonOk.textContent || "").trim().toLocaleLowerCase("fr-FR") === "fermer";
+    if (fermetureUnique) boutonFermer.remove();
     if (couleurBouton === "vert-plein-partage") {
       alerte.classList.add("lcdp-planifier-partage-confirmation");
     }
@@ -5916,7 +5919,7 @@
         resolve(valeur);
       }
 
-      boutonFermer.addEventListener("click", () => fermer(false));
+      if (!fermetureUnique) boutonFermer.addEventListener("click", () => fermer(false));
       boutonOk.addEventListener("click", () => fermer(true));
       alerte.addEventListener("click", (event) => {
         if (event.target === alerte && options.fermetureLibre !== false) fermer(false);
