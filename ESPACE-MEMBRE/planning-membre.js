@@ -297,65 +297,164 @@
         border: 0;
         background: transparent;
       }
-      /* Structure compacte des filtres ; les composants graphiques sont conservés. */
+      /* Filtres MES ACCÈS — traduction CSS du modèle Tailwind fourni.
+         Mise en forme limitée au composant : ni wrapper, ni logique JS modifiés. */
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres {
         box-sizing:border-box !important;
         display:flex !important;
         flex-direction:column !important;
         width:100% !important;
-        gap:12px !important;
-        padding:14px !important;
-        border:1px solid var(--lcdp-color-border,#e7e5e4);
-        border-radius:16px;
-        background:var(--lcdp-color-surface-soft,#fafaf9);
+        max-width:100% !important;
+        min-width:0 !important;
+        margin:0 !important;
+        padding:16px !important;
+        gap:14px !important;
+        border:1px solid rgba(231,229,228,.8) !important;
+        border-radius:16px !important;
+        background:rgba(250,250,249,.9) !important;
+        box-shadow:none !important;
+        font-family:var(--lcdp-font-main,Arial,system-ui,sans-serif);
+        color:#292524;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champs {
-        display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:10px;width:100%;min-width:0;
+        box-sizing:border-box;
+        display:grid !important;
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+        grid-template-rows:auto auto;
+        gap:12px 10px !important;
+        width:100% !important;
+        min-width:0;
+        align-items:stretch;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__select {
         box-sizing:border-box !important;
-        width:100% !important;max-width:100% !important;min-width:0 !important;
-        height:42px !important;min-height:42px !important;
-        margin:0 !important;padding:8px 10px !important;
-        border:1px solid var(--lcdp-color-border,#e7e5e4);
-        border-radius:11px;background:#fff;
-        color:var(--lcdp-color-text,#292524);
-        font:inherit;font-size:.85rem;
+        appearance:none !important;
+        -webkit-appearance:none !important;
+        display:block !important;
+        width:100% !important;
+        min-width:0 !important;
+        max-width:100% !important;
+        height:46px !important;
+        min-height:46px !important;
+        padding:10px 32px 10px 13px !important;
+        margin:0 !important;
+        border:1px solid #e7e5e4 !important;
+        border-radius:12px !important;
+        background-color:#fff !important;
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m19 9-7 7-7-7'/%3E%3C/svg%3E") !important;
+        background-repeat:no-repeat !important;
+        background-size:16px 16px !important;
+        background-position:right 10px center !important;
+        color:#292524 !important;
+        font-family:inherit !important;
+        font-size:12px !important;
+        font-weight:700 !important;
+        line-height:1.4 !important;
+        box-shadow:none !important;
+        cursor:pointer;
+        transition:border-color .15s,box-shadow .15s;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__select:focus-visible {
+        outline:none !important;
+        border-color:#4b6333 !important;
+        box-shadow:0 0 0 3px rgba(75,99,51,.15) !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__select[data-lcdp-filtre="mois"] {
+        grid-row:1;
+        grid-column:1;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__select[data-lcdp-filtre="parc"] {
-        grid-column:1/-1;
+        grid-row:1;
+        grid-column:2;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__select[data-lcdp-filtre="departement"] {
+        grid-row:2;
+        grid-column:1 / -1;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitations {
-        display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:10px;width:100%;min-width:0;
+        box-sizing:border-box;
+        display:grid !important;
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+        gap:10px !important;
+        width:100% !important;
+        min-width:0 !important;
+        margin:4px 0 0 !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__option {
-        display:flex;align-items:center;justify-content:center;gap:8px;
-        box-sizing:border-box;min-width:0;min-height:38px;
-        padding:8px 6px;border:1px solid var(--lcdp-color-border,#e7e5e4);
-        border-radius:10px;background:#fff;font-size:.8rem;cursor:pointer;
+        box-sizing:border-box;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        gap:8px !important;
+        min-width:0 !important;
+        width:100% !important;
+        min-height:46px !important;
+        margin:0 !important;
+        padding:10px 9px !important;
+        border:1px solid rgba(75,99,51,.3) !important;
+        border-radius:12px !important;
+        background:rgba(236,253,245,.5) !important;
+        color:#292524 !important;
+        font:700 12px/1.3 var(--lcdp-font-main,Arial,system-ui,sans-serif) !important;
+        cursor:pointer;
+        transition:background-color .15s;
       }
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__option input {
-        width:16px;height:16px;min-height:0;
-        flex:0 0 16px;margin:0;accent-color:var(--lcdp-color-primary,#4e6838);
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__option:hover {
+        background:#ecfdf5 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__option input[type="checkbox"] {
+        box-sizing:border-box;
+        appearance:auto !important;
+        display:block !important;
+        flex:0 0 16px !important;
+        width:16px !important;
+        height:16px !important;
+        min-height:16px !important;
+        margin:0 !important;
+        padding:0 !important;
+        accent-color:#4b6333 !important;
+        cursor:pointer;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__actions {
-        display:flex;align-items:center;justify-content:space-between;
-        gap:10px;padding-top:10px;margin:0;
-        border-top:1px solid var(--lcdp-color-border,#e7e5e4);
+        box-sizing:border-box;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:space-between !important;
+        gap:10px !important;
+        margin:0 !important;
+        padding:12px 0 0 !important;
+        border-top:1px solid rgba(231,229,228,.7) !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__resultat {
-        font-size:.75rem;color:var(--lcdp-color-text-muted,#78716c);
+        min-width:0 !important;
+        color:#78716c !important;
+        font:600 12px/1.4 var(--lcdp-font-main,Arial,system-ui,sans-serif) !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__effacer {
-        width:auto;min-width:0;padding:3px 0;margin:0;
-        border:0;background:transparent;box-shadow:none;
-        color:var(--lcdp-color-text-muted,#78716c);
-        font:inherit;font-size:.75rem;text-decoration:underline;
+        flex:0 0 auto !important;
+        width:auto !important;
+        min-width:0 !important;
+        height:auto !important;
+        min-height:0 !important;
+        margin:0 !important;
+        padding:2px 0 !important;
+        border:0 !important;
+        border-radius:0 !important;
+        background:none !important;
+        box-shadow:none !important;
+        color:#a8a29e !important;
+        font:700 12px/1.4 var(--lcdp-font-main,Arial,system-ui,sans-serif) !important;
+        text-decoration:underline !important;
+        text-decoration-color:#d6d3d1 !important;
+        text-underline-offset:2px !important;
+        cursor:pointer;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__effacer:hover:not(:disabled) {
+        color:#4b6333 !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__effacer:disabled {
-        opacity:.5;cursor:not-allowed;
+        opacity:.5 !important;
+        cursor:not-allowed;
       }
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card-diaporama__list {
         display: grid;
@@ -452,10 +551,6 @@
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card__tools:not([hidden]) {
         box-sizing:border-box;padding:0 !important;margin:0 !important;
         width:100% !important;max-width:100% !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres {
-        box-sizing:border-box;width:100% !important;max-width:100% !important;
-        margin:0 !important;padding:14px !important;gap:12px !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card__list {
         box-sizing:border-box;padding-top:12px !important;
@@ -853,9 +948,7 @@
         white-space:normal !important;
         text-overflow:clip !important;
       }
-      @media (max-width: 350px) {
-        .lcdp-planning-filtres { grid-template-columns: 1fr; }
-      }
+
     `;
 
     document.head.appendChild(style);
