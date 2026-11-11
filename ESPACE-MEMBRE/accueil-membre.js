@@ -675,7 +675,7 @@
         statut.textContent = "La date de fin doit être postérieure à la date de début.";
         return;
       }
-      const endpoint = String(CONFIG_PAGE.workerAlertePlanningUrl || CONFIG_PAGE.WORKER_ALERTE_PLANNING_URL || "").replace(/\\/+$/, "");
+      const endpoint = String(CONFIG_PAGE.workerAlertePlanningUrl || CONFIG_PAGE.WORKER_ALERTE_PLANNING_URL || "").replace(/\/+$/, "");
       if (!endpoint) {
         statut.textContent = "L’enregistrement des alertes n’est pas encore disponible.";
         return;
