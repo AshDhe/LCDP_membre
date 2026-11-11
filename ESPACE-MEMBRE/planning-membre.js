@@ -933,49 +933,20 @@
     const boutonSuivant = calendrier.querySelector("[data-lcdp-calendrier-mois-next]");
 
     if (boutonPrecedent) {
-      boutonPrecedent.addEventListener(
-        "click",
-        () => {
-          const moisPrecedent = ajouterMois(
-            etat.moisCourant,
-            -1
-          );
-
-          if (
-            !moisDansLimitesPeriodePlanning(
-              moisPrecedent
-            )
-          ) {
-            return;
-          }
-
-          etat.moisCourant = moisPrecedent;
-          afficherCalendrierMois();
-        }
-      );
+      boutonPrecedent.addEventListener("click", () => {
+        const mois = moisAdjacentAvecAccesPlanning(-1);
+        if (!mois) return;
+        etat.moisCourant = mois;
+        afficherCalendrierMois();
+      });
     }
-
     if (boutonSuivant) {
-      boutonSuivant.addEventListener(
-        "click",
-        () => {
-          const prochainMois = ajouterMois(
-            etat.moisCourant,
-            1
-          );
-
-          if (
-            !moisDansLimitesPeriodePlanning(
-              prochainMois
-            )
-          ) {
-            return;
-          }
-
-          etat.moisCourant = prochainMois;
-          afficherCalendrierMois();
-        }
-      );
+      boutonSuivant.addEventListener("click", () => {
+        const mois = moisAdjacentAvecAccesPlanning(1);
+        if (!mois) return;
+        etat.moisCourant = mois;
+        afficherCalendrierMois();
+      });
     }
 
     const fragmentJour = await chargerFragmentObjet("/HTMLBASE/04-card-jour-in-calendrier-mois.html");
@@ -4128,191 +4099,59 @@
       .replace(/\s+/g, "");
   }
 
+  // Navigation uniquement entre les mois contenant des accès ou invitations
+  // pour la période affichée ; aucun mois intercalaire sans rendez-vous.
+  function moisAvecAccesPlanning() {
+    return [...new Set(
+      filtrerEtTrierReservationsAgenda(etat.reservations)
+        .map(reservation => extraireDateFranceReservation(reservation.datebookd))
+        .filter(Boolean)
+        .map(dateIso => debutMois(dateIso))
+    )].sort();
+  }
+
   function moisMinimumPlanning() {
-    const aujourdHui =
-      debutMois(dateAujourdhuiParis());
-
-    if (
-      etat.periodeAffichage === "avenir"
-    ) {
-      return aujourdHui;
-    }
-
-    const reservationsPassees =
-      filtrerEtTrierReservationsAgenda(
-        etat.reservations,
-        "passe"
-      );
-    const dates = reservationsPassees
-      .map((reservation) =>
-        extraireDateFranceReservation(
-          reservation.datebookd
-        )
-      )
-      .filter(Boolean)
-      .sort();
-
-    if (!dates.length) {
-      return aujourdHui;
-    }
-
-    return ajouterMois(
-      debutMois(dates[0]),
-      -1
-    );
+    return moisAvecAccesPlanning()[0] || debutMois(dateAujourdhuiParis());
   }
 
   function moisMaximumPlanning() {
-    const aujourdHui =
-      debutMois(dateAujourdhuiParis());
-
-    if (
-      etat.periodeAffichage === "passe"
-    ) {
-      const reservationsPassees =
-        filtrerEtTrierReservationsAgenda(
-          etat.reservations,
-          "passe"
-        );
-      const dates = reservationsPassees
-        .map((reservation) =>
-          extraireDateFranceReservation(
-            reservation.datebookd
-          )
-        )
-        .filter(Boolean)
-        .sort();
-
-      if (!dates.length) {
-        return aujourdHui;
-      }
-
-      const dernierMois =
-        debutMois(
-          dates[dates.length - 1]
-        );
-
-      return dernierMois > aujourdHui
-        ? dernierMois
-        : aujourdHui;
-    }
-
-    const reservationsAvenir =
-      filtrerEtTrierReservationsAgenda(
-        etat.reservations,
-        "avenir"
-      );
-    const dates = reservationsAvenir
-      .map((reservation) =>
-        extraireDateFranceReservation(
-          reservation.datebookd
-        )
-      )
-      .filter(Boolean)
-      .sort();
-
-    if (!dates.length) {
-      return aujourdHui;
-    }
-
-    return ajouterMois(
-      debutMois(
-        dates[dates.length - 1]
-      ),
-      1
-    );
+    const mois = moisAvecAccesPlanning();
+    return mois[mois.length - 1] || debutMois(dateAujourdhuiParis());
   }
 
-  function moisDansLimitesPeriodePlanning(
-    moisIso
-  ) {
-    const mois = debutMois(
-      moisIso ||
-      dateAujourdhuiParis()
-    );
-
-    return (
-      mois >= moisMinimumPlanning() &&
-      mois <= moisMaximumPlanning()
-    );
+  function moisDansLimitesPeriodePlanning(moisIso) {
+    return moisAvecAccesPlanning().includes(debutMois(moisIso || dateAujourdhuiParis()));
   }
 
-  function limiterMoisSelonPeriodePlanning(
-    moisIso
-  ) {
-    const mois = debutMois(
-      moisIso ||
-      dateAujourdhuiParis()
-    );
-    const minimum =
-      moisMinimumPlanning();
-    const maximum =
-      moisMaximumPlanning();
+  function moisAdjacentAvecAccesPlanning(direction, moisIso = etat.moisCourant) {
+    const mois = moisAvecAccesPlanning();
+    const courant = debutMois(moisIso || dateAujourdhuiParis());
+    if (direction < 0) return [...mois].reverse().find(value => value < courant) || null;
+    return mois.find(value => value > courant) || null;
+  }
 
-    if (mois < minimum) return minimum;
-    if (mois > maximum) return maximum;
-
-    return mois;
+  function limiterMoisSelonPeriodePlanning(moisIso) {
+    const mois = moisAvecAccesPlanning();
+    const cible = debutMois(moisIso || dateAujourdhuiParis());
+    if (!mois.length) return debutMois(dateAujourdhuiParis());
+    if (mois.includes(cible)) return cible;
+    return mois.find(value => value > cible) || mois[mois.length - 1];
   }
 
   function actualiserNavigationMoisPlanning() {
-    const calendrier =
-      etat.calendrierMois;
-
+    const calendrier = etat.calendrierMois;
     if (!calendrier) return;
-
-    const boutonPrecedent =
-      calendrier.querySelector(
-        "[data-lcdp-calendrier-mois-prev]"
-      );
-    const boutonSuivant =
-      calendrier.querySelector(
-        "[data-lcdp-calendrier-mois-next]"
-      );
-    const moisActuel =
-      etat.moisCourant ||
-      dateAujourdhuiParis();
-
-    if (boutonPrecedent) {
-      const moisPrecedent =
-        ajouterMois(
-          moisActuel,
-          -1
-        );
-      const autorise =
-        moisDansLimitesPeriodePlanning(
-          moisPrecedent
-        );
-
-      boutonPrecedent.disabled =
-        !autorise;
-      boutonPrecedent.setAttribute(
-        "aria-disabled",
-        autorise
-          ? "false"
-          : "true"
-      );
+    const precedent = calendrier.querySelector("[data-lcdp-calendrier-mois-prev]");
+    const suivant = calendrier.querySelector("[data-lcdp-calendrier-mois-next]");
+    if (precedent) {
+      const actif = Boolean(moisAdjacentAvecAccesPlanning(-1));
+      precedent.disabled = !actif;
+      precedent.setAttribute("aria-disabled", String(!actif));
     }
-
-    if (boutonSuivant) {
-      const prochainMois =
-        ajouterMois(
-          moisActuel,
-          1
-        );
-      const autorise =
-        moisDansLimitesPeriodePlanning(
-          prochainMois
-        );
-
-      boutonSuivant.disabled =
-        !autorise;
-      boutonSuivant.setAttribute(
-        "aria-disabled",
-        autorise
-          ? "false"
-          : "true"
-      );
+    if (suivant) {
+      const actif = Boolean(moisAdjacentAvecAccesPlanning(1));
+      suivant.disabled = !actif;
+      suivant.setAttribute("aria-disabled", String(!actif));
     }
   }
 
