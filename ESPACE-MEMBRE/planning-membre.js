@@ -993,8 +993,7 @@
     for (const [libelle, classe] of [
       ["abonnement en cours", "lcdp-planifier-jour--abonnement-couvert"],
       ["accès planifié dans un parc", "lcdp-box-legende__carre--bleu-fonce"],
-      ["invitation reçue pour un parc", "lcdp-box-legende__carre--bleu-clair"],
-      ["accès de ce parc clos", "lcdp-box-legende__carre--acces-clos"]
+      ["invitation reçue pour un parc", "lcdp-box-legende__carre--bleu-clair"]
     ]) {
       const item = document.createElement("span");
       item.className = "lcdp-box-legende__item";
@@ -1005,8 +1004,6 @@
       texte.className = "lcdp-box-legende__libelle";
       texte.textContent = libelle;
       item.append(carre,document.createTextNode(" "),texte);
-      // Sans parc sélectionné dans MES ACCÈS, « ce parc clos » est inapplicable.
-      if (classe === "lcdp-box-legende__carre--acces-clos") item.hidden = true;
       ligne.appendChild(item);
     }
     contenu.appendChild(ligne);
