@@ -837,6 +837,8 @@
     const fragmentCalendrier = await chargerFragmentObjet("/HTMLBASE/04-calendrier-mois.html");
     slotPlanning.appendChild(fragmentCalendrier);
 
+    // Même hôte CSS que le calendrier permanent de PLANIFIER.
+    slotPlanning.id = "lcdp-planifier-calendrier-slot";
     const calendrier = slotPlanning.querySelector("[data-lcdp-box-calendrier-mois]");
 
     if (!calendrier) {
@@ -1018,8 +1020,15 @@
     });
 
     contenu.appendChild(ligne);
-    meta.replaceChildren(legende);
-    meta.hidden = false;
+    legende.classList.add("lcdp-planifier-legende-planning");
+    // PLANIFIER place la légende sous la grille, jamais dans l'en-tête.
+    const corps = etat.calendrierMois?.querySelector(".lcdp-box-calendrier-mois__body")
+      || meta.closest("[data-lcdp-box-calendrier-mois]")?.querySelector(".lcdp-box-calendrier-mois__body");
+    if (!corps) throw new Error("Corps du calendrier introuvable.");
+    corps.querySelector(".lcdp-planifier-legende-planning")?.remove();
+    corps.appendChild(legende);
+    meta.replaceChildren();
+    meta.hidden = true;
   }
 
   function ajouterActionsPlanningMembre(actionsWrapper) {
