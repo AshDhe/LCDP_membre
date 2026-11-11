@@ -745,8 +745,14 @@
         masquerAttenteFormules();
         const decision=await reprendreOuRecommencer(enCours);
         if(decision==='reprendre'){
-          await entrerDansCalendrier(enCours);
-          if(enCours.complet)await afficherRecap(enCours);
+          if(enCours.complet){
+            // Une commande déjà envoyée au paiement n'a pas à recharger
+            // le calendrier avant de rouvrir son bon de commande.
+            courant=enCours;
+            await afficherRecap(enCours);
+          }else{
+            await entrerDansCalendrier(enCours);
+          }
           return;
         }
         if(decision!=='recommencer')return;
