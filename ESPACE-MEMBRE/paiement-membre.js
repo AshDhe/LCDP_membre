@@ -437,6 +437,33 @@
     return workflow;
   }
 
+  // Reprise d'une commande déjà transmise à Stripe : ne pas redemander
+  // un devis sur un panier en état transmis_paiement.
+  // L'API Paiement décide si la session existante est encore utilisable.
+  async function reprendrePaiementTransmis(idpanier) {
+    const etat = await apiPaiement('/etat?idpanier=' + encodeURIComponent(idpanier));
+    if (etat.commande?.statut === 'paye') {
+      window.location.assign(urlMembre('/ESPACE-MEMBRE/accueil-membre.html'));
+      return 'paye';
+    }
+    if (etat.commande?.statut === 'annule') {
+      throw new Error('Cette commande est annulée. Revenez au parcours abonnement pour recommencer.');
+    }
+    const retour = await apiPaiement('/valider', {
+      method: 'POST',
+      body: JSON.stringify({ idpanier, echeancier: 'comptant' })
+    });
+    if (retour.termine && retour.commande?.statut === 'paye') {
+      window.location.assign(urlMembre('/ESPACE-MEMBRE/accueil-membre.html'));
+      return 'paye';
+    }
+    if (!/^https:\/\//.test(retour.checkoutUrl || '')) {
+      throw new Error(retour.message || 'La session Stripe ne peut pas encore être reprise. Votre commande est conservée.');
+    }
+    window.location.assign(retour.checkoutUrl);
+    return 'checkout';
+  }
+
   async function ouvrirBonCommande(idpanier, surOuverture) {
     if (ouverture) {
       if (typeof surOuverture === 'function') surOuverture();
@@ -556,5 +583,5 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',traiterRetourStripe);
   else traiterRetourStripe();
-  window.LCDP_PAIEMENT = Object.freeze({ ouvrirBonCommande });
+  window.LCDP_PAIEMENT = Object.freeze({ ouvrirBonCommande, reprendrePaiementTransmis });
 })();
