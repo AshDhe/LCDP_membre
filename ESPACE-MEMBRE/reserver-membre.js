@@ -222,6 +222,9 @@
       ]);
       etatMembre = etat;
       afficherEtatMembre(etatMembre);
+      document.querySelectorAll(".lcdp-planifier-filtre--coach").forEach(bouton => {
+        bouton.setAttribute("aria-disabled", String(!abonnementPermanentActifCoach(etatMembre)));
+      });
       masquerAttenteInitialePlanifier();
       // Ouverture IA depuis le sélecteur de l'accueil membre uniquement.
       const parametresPlanifier = new URL(window.location.href);
@@ -740,6 +743,9 @@
       await afficherAlerteSuperposee(erreur.message || "Impossible de vérifier votre abonnement.");
       return;
     }
+    document.querySelectorAll(".lcdp-planifier-filtre--coach").forEach(bouton => {
+      bouton.setAttribute("aria-disabled", String(!abonnementPermanentActifCoach(etatMembre)));
+    });
     if (abonnementPermanentActifCoach(etatMembre)) {
       if (document.body.classList.contains("lcdp-planifier-vue-jour-active")) {
         fermerVueChoixPlagePlanifier();
