@@ -253,119 +253,203 @@
       }
 
 
-      /* Planning membre : mise en page des filtres et des cartouches existants. */
-      .lcdp-planning-filtres__actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
-      .lcdp-planning-carte-visite { width: 100% !important; max-width: 100% !important; min-width: 0 !important; margin: 0 !important; }
-      .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__ouvrir { position: relative; width: 100%; height: 100%; overflow: hidden; }
-      .lcdp-planning-carte-visite__image { display: block; width: 100%; height: 100%; object-fit: cover; }
-      .lcdp-planning-carte-visite__legende {
-        position: absolute; bottom: 0; left: 0; right: 0;
-        padding: 14px; background: linear-gradient(transparent,rgba(0,0,0,.78));
-        color: #fff; font-weight: 750; font-size: .85rem; line-height: 1.4;
-        text-align: left; overflow-wrap: anywhere;
-      }
-      .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__contenu {
-        width: 100%; height: 100%; max-width: 100%; overflow-y: auto; box-sizing: border-box;
-      }
-      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre {
-        border: 0 !important; box-shadow: none !important;
-        width: 100% !important; max-width: 100% !important; margin: 0 !important;
-      }
-      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__media { display: none !important; }
-      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__body { padding: 12px !important; }
-      #lcdp-planning-calendrier-slot .lcdp-box-liste-card-diaporama__list {
-        display: grid !important; grid-template-columns: 1fr !important; gap: 14px !important;
-        width: 100% !important; min-width: 0 !important; max-width: 100% !important;
-      }
+      /* Mise en page locale uniquement ; gabarits et couleurs depuis CSSBASE. */
       #lcdp-planning-calendrier-slot,
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card,
-      #lcdp-planning-calendrier-slot .lcdp-box-liste-card__list,
-      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre {
-        box-sizing: border-box !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card__list {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
       }
-      #lcdp-planning-calendrier-slot .lcdp-box-liste-card__header,
-      #lcdp-planning-calendrier-slot .lcdp-box-commande-bar__actions {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        gap: 8px !important;
-        min-width: 0 !important;
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card__header {
+        min-width: 0;
       }
-      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste {
-        display: flex !important;
-        flex-direction: column !important;
-        overflow: hidden !important;
+      #lcdp-planning-calendrier-slot [data-lcdp-commande-bar-actions] {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 9px;
+        width: 100%;
+        min-width: 0;
       }
-      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__media:not([hidden]) {
-        display: block !important;
-        width: 100% !important;
-        height: 172px !important;
-        flex: none !important;
-        overflow: hidden !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__image {
-        display: block !important;
-        width: 100% !important;
-        height: 100% !important;
-        object-fit: cover !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__body {
-        box-sizing: border-box !important;
-        width: 100% !important;
-        min-width: 0 !important;
-        padding: 14px !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__content,
-      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__actions {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        gap: 10px !important;
-        min-width: 0 !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__date,
-      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__place {
-        flex: 1 1 155px !important;
-        min-width: 0 !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__micro-action {
-        max-width: 100% !important;
-        white-space: normal !important;
-        overflow-wrap: anywhere !important;
+      #lcdp-planning-calendrier-slot .lcdp-planning-membre-periode-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
       }
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card__tools:not([hidden]) {
-        display: block !important;
-        margin: 12px 0 16px !important;
+        display: block;
+        padding: 0;
+        border: 0;
+        background: transparent;
       }
       .lcdp-planning-filtres {
         display: grid;
         grid-template-columns: repeat(2,minmax(0,1fr));
-        gap: 9px;
-        padding: 12px;
-        margin: 0;
-        border: 1px solid #dce3d7;
+        gap: 12px;
+        padding: 14px;
+        border: 1px solid #dfe6da;
         border-radius: 16px;
-        background: #f7f8f5;
+        background: #f7f9f5;
       }
       .lcdp-planning-filtres__titre {
         grid-column: 1 / -1;
-        margin: 0 0 2px;
+        margin: 0;
+        color: #476238;
+        font-weight: 800;
+        font-size: .86rem;
+        line-height: 1.35;
+      }
+      .lcdp-planning-filtres__champ {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        gap: 5px;
+      }
+      .lcdp-planning-filtres__champ label {
+        font-size: .75rem;
+        font-weight: 700;
+        color: #31472d;
+      }
+      .lcdp-planning-filtres__champ select,
+      .lcdp-planning-filtres__champ input {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        min-height: 42px;
+        padding: 9px 10px;
+        border: 1px solid #bdcbb6;
+        border-radius: 10px;
+        background: white;
+        color: #28362a;
+        font: inherit;
+        font-size: .8rem;
+      }
+      .lcdp-planning-filtres__choix {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(2,minmax(0,1fr));
+        gap: 8px;
+        margin: 0;
+        border: 0;
+        padding: 0;
+        min-width: 0;
+      }
+      .lcdp-planning-filtres__choix legend {
+        padding: 0 0 8px;
+        color: #31472d;
+        font-size: .75rem;
+        font-weight: 700;
+      }
+      .lcdp-planning-filtres__option {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px;
+        min-width: 0;
+        background: white;
+        border: 1px solid #d7e0d1;
+        border-radius: 10px;
+        color: #43543c;
         font-size: .76rem;
-        font-weight: 750;
-        color: #4e6838;
+        line-height: 1.25;
+        cursor: pointer;
       }
-      .lcdp-planning-filtres__champ { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
-      .lcdp-planning-filtres__champ label { font-size: .7rem; font-weight: 650; color: #455244; }
-      .lcdp-planning-filtres__champ input,
-      .lcdp-planning-filtres__champ select {
-        box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0;
-        min-height: 38px; padding: 7px 8px;
-        border: 1px solid #cbd5c5; border-radius: 10px;
-        background: white; color: #253428; font: inherit; font-size: .8rem;
+      .lcdp-planning-filtres__option:has(input:checked) {
+        color: #fff;
+        background: #526c3f;
+        border-color: #526c3f;
+        font-weight: 700;
       }
-      .lcdp-planning-filtres__champ :disabled { opacity: .52; cursor: not-allowed; }
-      @media(max-width:350px) { .lcdp-planning-filtres {grid-template-columns: 1fr;} }
+      .lcdp-planning-filtres__option input {
+        flex: 0 0 auto;
+        width: 16px;
+        height: 16px;
+        min-height: 0;
+        margin: 0;
+        accent-color: #526c3f;
+      }
+      .lcdp-planning-filtres__actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+      }
+      .lcdp-planning-filtres[aria-disabled="true"] { opacity: .55; }
+      .lcdp-planning-filtres :disabled { cursor: not-allowed; }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card-diaporama__list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+        width: 100%;
+        min-width: 0;
+      }
+      .lcdp-planning-carte-visite {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        margin: 0;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__scene { aspect-ratio: 4 / 3; }
+      .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__scene {
+        aspect-ratio: auto; height: auto; min-height: 320px;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__ouvrir {
+        display: flex; flex-direction: column; width: 100%; height: 100%;
+      }
+      .lcdp-planning-carte-visite__image {
+        width: 100%; height: 100%; object-fit: cover; display: block;
+        border-radius: 11px;
+      }
+      .lcdp-planning-carte-visite__legende {
+        position: absolute; bottom: 0; left: 0; right: 0;
+        padding: 24px 12px 12px;
+        background: linear-gradient(transparent, rgba(0,0,0,.85));
+        color: white; font-weight: 750;
+        font-size: .86rem; line-height: 1.4; text-align: left;
+        overflow-wrap: anywhere;
+      }
+      .lcdp-planning-carte-visite__sans-image {
+        display: flex; align-items: center; justify-content: center;
+        flex: 1; background: #e9eee6; color: #526c3f;
+        font-weight: 750; font-size: 1.1rem;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__contenu {
+        min-height: 0; height: auto; width: 100%;
+        box-sizing: border-box;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__face--verso {
+        overflow-y: auto;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre {
+        display: flex; flex-direction: column; gap: 10px;
+        width: 100%; min-width: 0; max-width: 100%;
+        margin: 0; padding: 9px; border: 0; box-shadow: none;
+        background: transparent;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__media { display: none !important; }
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__body,
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__content {
+        width: 100%; min-width: 0; gap: 8px;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__date,
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__place {
+        flex-wrap: wrap; justify-content: flex-start;
+        min-width: 0; gap: 6px;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__park {
+        white-space: normal; overflow-wrap: anywhere;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__actions {
+        display: flex; flex-wrap: wrap; gap: 8px;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__micro-action {
+        max-width: 100%; white-space: normal; overflow-wrap: anywhere;
+      }
+      @media (max-width: 350px) {
+        .lcdp-planning-filtres { grid-template-columns: 1fr; }
+      }
     `;
 
     document.head.appendChild(style);
@@ -1015,6 +1099,12 @@
     const titre = document.createElement("span");
     titre.className = "lcdp-planning-carte-visite__legende";
     titre.textContent = "Parc de " + nom + " · " + date + (heure ? " · " + heure : "");
+    if (!ouvrir.querySelector("img")) {
+      const imageAbsente = document.createElement("span");
+      imageAbsente.className = "lcdp-planning-carte-visite__sans-image";
+      imageAbsente.textContent = "Parc de " + nom;
+      ouvrir.appendChild(imageAbsente);
+    }
     ouvrir.appendChild(titre);
     ouvrir.setAttribute("aria-label", "Voir les détails de la visite au parc " + nom + " le " + date);
     contenu.appendChild(cardReservation);
@@ -1050,31 +1140,19 @@
     const champs = [
       ["date", "Date", "date"],
       ["departement", "Département", "select"],
-      ["parc", "Parc", "select"],
-      ["invitation", "Invitations", "select"]
+      ["parc", "Parc", "select"]
     ];
-    const optionsInvitation = [
-      ["toutes", "Toutes"],
-      ["recue", "Reçues"],
-      ["envoyee", "Envoyées"],
-      ["aucune", "Sans invitation"]
-    ];
-    for (const [cle, label, type] of champs) {
+    for (const [cle, libelle, type] of champs) {
       const enveloppe = document.createElement("div");
       enveloppe.className = "lcdp-planning-filtres__champ";
-      const id = "lcdp-planning-filtre-" + cle;
       const etiquette = document.createElement("label");
+      const id = "lcdp-planning-filtre-" + cle;
       etiquette.htmlFor = id;
-      etiquette.textContent = label;
+      etiquette.textContent = libelle;
       const input = document.createElement(type === "date" ? "input" : "select");
       input.id = id;
       input.dataset.lcdpFiltre = cle;
       if (type === "date") input.type = "date";
-      if (cle === "invitation") {
-        for (const [valeur, texte] of optionsInvitation) {
-          input.add(new Option(texte, valeur));
-        }
-      }
       input.addEventListener("change", () => {
         etat.filtres[cle] = input.value;
         if (etat.modeAffichage === "liste") afficherPlanningMembreEnListe();
@@ -1083,16 +1161,48 @@
       enveloppe.append(etiquette, input);
       formulaire.appendChild(enveloppe);
     }
+
+    const groupeInvitations = document.createElement("fieldset");
+    groupeInvitations.className = "lcdp-planning-filtres__choix";
+    const legende = document.createElement("legend");
+    legende.textContent = "Invitations";
+    groupeInvitations.appendChild(legende);
+    for (const [valeur, libelle] of [
+      ["toutes", "Toutes les visites"],
+      ["recue", "Invitations reçues"],
+      ["envoyee", "Invitations envoyées"],
+      ["aucune", "Sans invitation"]
+    ]) {
+      const option = document.createElement("label");
+      option.className = "lcdp-planning-filtres__option";
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "lcdp-planning-type-invitation";
+      input.value = valeur;
+      input.dataset.lcdpFiltreInvitation = "true";
+      input.checked = valeur === etat.filtres.invitation;
+      input.addEventListener("change", () => {
+        if (!input.checked) return;
+        etat.filtres.invitation = valeur;
+        if (etat.modeAffichage === "liste") afficherPlanningMembreEnListe();
+        else afficherCalendrierMois();
+      });
+      option.append(input, document.createTextNode(libelle));
+      groupeInvitations.appendChild(option);
+    }
+    formulaire.appendChild(groupeInvitations);
+
     const actions = document.createElement("div");
     actions.className = "lcdp-planning-filtres__actions";
     const reinitialiser = document.createElement("button");
     reinitialiser.type = "button";
     reinitialiser.className = "lcdp-button lcdp-button-secondary lcdp-button-mini";
-    reinitialiser.textContent = "Réinitialiser les filtres";
+    reinitialiser.textContent = "Effacer les filtres";
     reinitialiser.addEventListener("click", () => {
-      etat.filtres = {date:"",parc:"",departement:"",invitation:"toutes"};
+      etat.filtres = { date: "", parc: "", departement: "", invitation: "toutes" };
       actualiserEtatFiltresPlanningMembre();
-      afficherPlanningMembreEnListe();
+      if (etat.modeAffichage === "liste") afficherPlanningMembreEnListe();
+      else afficherCalendrierMois();
     });
     actions.appendChild(reinitialiser);
     formulaire.appendChild(actions);
@@ -1131,6 +1241,7 @@
     for (const input of formulaire.querySelectorAll("input,select,button")) {
       input.disabled = inactif;
       if (input.dataset.lcdpFiltre) input.value = etat.filtres[input.dataset.lcdpFiltre] || "";
+      if (input.dataset.lcdpFiltreInvitation) input.checked = input.value === etat.filtres.invitation;
     }
     formulaire.setAttribute("aria-disabled", String(inactif));
   }
