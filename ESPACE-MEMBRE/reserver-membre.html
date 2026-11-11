@@ -113,7 +113,7 @@
       const feuillesCssObjet = [
         "/CSSBASE/cssbase.css",
         "/CSSBASE/lcdp-central-mobile-first.css?v=20261110-statut-exclusif-v2",
-        "/CSSBASE/lcdp-planifier.css?v=20261111-date-hierarchie-v56"
+        "/CSSBASE/lcdp-planifier.css?v=20261111-aboreza-wrapper-v1"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -165,6 +165,9 @@
             <!-- Calendrier permanent : dans le corps du wrapper, jamais dans le slot des dialogues. -->
             <div id="lcdp-planifier-calendrier-slot" aria-label="Planning mensuel"></div>
 
+            <!-- ABO-RÉZA : étapes internes au wrapper permanent ; header/footer conservés. -->
+            <div id="lcdp-aboreza-workflow-slot" aria-label="Parcours abonnement ABO-RÉZA" hidden></div>
+
             <!-- Vue Parcs : même wrapper, même largeur, calendrier toujours monté. -->
             <div id="lcdp-planifier-parcs-vue" aria-label="Parcs du département" hidden></div>
 
@@ -207,6 +210,6 @@
   <script src="./attente-planifier.js?v=20261110-spinner-membre-espace-v1"></script>
   <script src="./reserver-membre.js?v=20261111-entete-repris-v29"></script>
   <script src="./paiement-membre.js?v=20261105-sortie-protegee-v3"></script>
-  <script src="./aboreza-membre.js?v=20261110-spinner-membre-espace-v1"></script>
+  <script src="./aboreza-membre.js?v=20261111-wrapper-interne-v1"></script>
 </body>
 </html>
