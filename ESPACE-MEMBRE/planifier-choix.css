@@ -2,6 +2,8 @@
    Composant découpé selon les conventions Tailwind : backdrop, card, heading,
    action-card, state, hover et focus. Pas de modification des objets globaux. */
 #lcdp-lightbox-slot .lcdp-planifier-choix {
+  --lcdp-modal-shadow:0 25px 50px -12px rgba(0,0,0,.28);
+  --lcdp-modal-backdrop:rgba(28,25,23,.50);
   position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;
   box-sizing:border-box;padding:16px;background:var(--lcdp-modal-backdrop,rgba(28,25,23,.50));
   backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
