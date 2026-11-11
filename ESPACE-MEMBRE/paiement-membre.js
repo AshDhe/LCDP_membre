@@ -118,6 +118,141 @@
     return panier;
   }
 
+  // Présentation uniquement : conserve les nœuds portant les valeurs du devis
+  // et les boutons déjà raccordés au paiement Stripe.
+  function presenterBonCommande(recap, panier, devis, zone, liste, message, boutonPayer) {
+    const carte = recap.querySelector('.lcdp-box-card-recaporder__card');
+    const titre = recap.querySelector('.lcdp-box-card-recaporder__title');
+    const liens = recap.querySelector('.lcdp-box-card-recaporder__links');
+    const actions = recap.querySelector('.lcdp-box-card-recaporder__actions');
+    if (!carte || !titre || !liens || !actions) throw new Error('Structure du bon de commande incomplète.');
+    recap.classList.add('lcdp-paiement-refonte');
+
+    const creer = (tag, classe, texte) => {
+      const noeud = document.createElement(tag);
+      if (classe) noeud.className = classe;
+      if (texte !== undefined) noeud.textContent = String(texte);
+      return noeud;
+    };
+    const entete = creer('header', 'lcdp-paiement-refonte__entete');
+    const surTitre = creer('div', 'lcdp-paiement-refonte__surtitre');
+    surTitre.append(
+      creer('span', 'lcdp-paiement-refonte__pastille', 'Récapitulatif'),
+      creer('span', 'lcdp-paiement-refonte__quantite',
+        String(panier.nbSelectionnes) + ' accès sélectionnés')
+    );
+    titre.textContent = 'Validation de votre commande';
+    entete.append(surTitre, titre);
+
+    const contenu = creer('div', 'lcdp-paiement-refonte__contenu');
+    const resume = creer('section', 'lcdp-paiement-refonte__resume');
+    const donnees = [
+      ['Formule', nomFormule[panier.formule] || panier.formule || '—'],
+      ['Début prévu', dateLisible(panier.dateDebut)],
+      ['Fin prévue', dateLisible(panier.dateFin)],
+      ['Accès', String(panier.nbSelectionnes) + ' / ' + String(panier.nbAccesRequis)]
+    ];
+    for (const [intitule, valeur] of donnees) {
+      const champ = creer('div', 'lcdp-paiement-refonte__resume-champ');
+      champ.append(creer('span', '', intitule), creer('strong', '', valeur));
+      resume.append(champ);
+    }
+    contenu.append(resume);
+
+    const sectionAcces = creer('section', 'lcdp-paiement-refonte__section');
+    sectionAcces.append(creer('h3', 'lcdp-paiement-refonte__rubrique', 'Créneaux planifiés'));
+    const listeAcces = creer('div', 'lcdp-paiement-refonte__acces');
+    (Array.isArray(panier.acces) ? panier.acces : []).forEach((acces, index) => {
+      const ligne = creer('div', 'lcdp-paiement-refonte__acces-ligne');
+      const detail = creer('div', 'lcdp-paiement-refonte__acces-detail');
+      const haut = creer('div', 'lcdp-paiement-refonte__acces-haut');
+      haut.append(
+        creer('strong', 'lcdp-paiement-refonte__numero', 'Accès ' + (index + 1)),
+        creer('span', 'lcdp-paiement-refonte__point', '•'),
+        creer('strong', 'lcdp-paiement-refonte__date', dateLisible(acces.dateacces))
+      );
+      const horaire = plages[acces.plagebookd] || acces.plagebookd || 'Horaire non renseigné';
+      const parc = acces.nomparc || ('Parc ' + (acces.idparc || 'non renseigné'));
+      detail.append(haut, creer('p', 'lcdp-paiement-refonte__acces-sousligne', horaire + ' · ' + parc));
+      const badge = creer('span', 'lcdp-paiement-refonte__statut' +
+        (acces.origine === 'existant' ? ' lcdp-paiement-refonte__statut--existant' : ''),
+        acces.origine === 'existant' ? 'Déjà réservé' : 'Provisoire');
+      ligne.append(detail, badge);
+      listeAcces.append(ligne);
+    });
+    sectionAcces.append(listeAcces);
+    contenu.append(sectionAcces);
+
+    // Les abonnements intégrés sont explicitement conservés lorsqu'ils existent.
+    const inclus = [...liste.querySelectorAll('.lcdp-box-card-recaporder__row')].filter(row =>
+      row.querySelector('dt')?.textContent?.trim() === 'Abonnement existant inclus');
+    if (inclus.length) {
+      const sectionInclus = creer('section', 'lcdp-paiement-refonte__section');
+      sectionInclus.append(creer('h3', 'lcdp-paiement-refonte__rubrique', 'Abonnements inclus'));
+      const listeInclus = creer('div', 'lcdp-paiement-refonte__inclusions');
+      inclus.forEach(row => {
+        listeInclus.append(creer('p', '', row.querySelector('dd')?.textContent || 'Détails non disponibles'));
+      });
+      sectionInclus.append(listeInclus);
+      contenu.append(sectionInclus);
+    }
+
+    const prix = creer('section', 'lcdp-paiement-refonte__prix');
+    const masquerDansPrix = row => {
+      const intitule = row.querySelector('dt')?.textContent?.trim() || '';
+      return intitule === 'Abonnement choisi' || intitule === 'Début' ||
+        intitule === 'Fin' || intitule === 'Accès obligatoires' ||
+        intitule === 'Abonnement existant inclus' || /^Accès \d+$/.test(intitule);
+    };
+    [...liste.children].forEach(row => { if (masquerDansPrix(row)) row.remove(); });
+    prix.append(liste);
+    contenu.append(prix);
+
+    const paiement = creer('section', 'lcdp-paiement-refonte__section lcdp-paiement-refonte__paiement');
+    paiement.append(creer('h3', 'lcdp-paiement-refonte__rubrique', 'Mode de règlement'));
+    zone.querySelectorAll('.lcdp-workflow-paiement__option').forEach(label => {
+      const input = label.querySelector('input');
+      const valeur = input?.value;
+      const texte = label.querySelector('.lcdp-workflow-paiement__option-text');
+      if (!input || !texte) return;
+      const details = creer('span', 'lcdp-paiement-refonte__option-details');
+      texte.textContent = valeur === 'comptant'
+        ? (devis.totalTtc === 0 ? 'Aucun règlement supplémentaire' : 'Règlement en une fois')
+        : 'Paiement échelonné';
+      details.append(texte);
+      if (valeur === 'comptant' && devis.remiseComptantTtc > 0) {
+        details.append(creer('small', '', 'Économisez ' + EURO.format(devis.remiseComptantTtc) + ' immédiatement'));
+      } else if (valeur === 'echeances' && Array.isArray(devis.echeances) && devis.echeances.length) {
+        details.append(creer('small', '', 'Première échéance aujourd’hui'));
+      }
+      const montant = valeur === 'echeances' && Array.isArray(devis.echeances)
+        ? devis.echeances[0] : devis.totalTtc;
+      const prixOption = creer('strong', 'lcdp-paiement-refonte__option-prix',
+        EURO.format(Number(montant) || 0));
+      const boutonRadio = creer('span', 'lcdp-paiement-refonte__radio');
+      boutonRadio.setAttribute('aria-hidden', 'true');
+      label.replaceChildren(input, boutonRadio, details, prixOption);
+      input.addEventListener('change', () => {
+        boutonPayer.textContent = (devis.totalTtc === 0 && valeur === 'comptant')
+          ? 'Valider la commande'
+          : 'Payer ' + EURO.format(valeur === 'echeances' ? devis.echeances[0] : devis.totalTtc);
+      });
+    });
+    if (devis.totalTtc !== 0) boutonPayer.textContent = 'Payer ' + EURO.format(devis.totalTtc);
+    paiement.append(zone);
+    contenu.append(paiement);
+    contenu.append(liens);
+
+    const pied = creer('footer', 'lcdp-paiement-refonte__pied');
+    pied.append(actions);
+    carte.replaceChildren(entete);
+    if (message) {
+      message.classList.add('lcdp-paiement-refonte__message');
+      entete.after(message);
+    }
+    carte.append(contenu, pied);
+  }
+
   function monterBon(workflowModele, recapModele, panier, devis, paiement) {
     const workflow = workflowModele.cloneNode(true);
     const recap = recapModele.cloneNode(true);
@@ -289,6 +424,8 @@
       // Afficher la durée de validité AVANT le détail de la commande.
       liste.before(message);
     }
+
+    presenterBonCommande(recap, panier, devis, zone, liste, message, boutonPayer);
 
     const emplacement = workflow.querySelector('[data-lcdp-workflow-abonnement-content]');
     if (!emplacement) throw new Error('Emplacement du workflow abonnement manquant.');
