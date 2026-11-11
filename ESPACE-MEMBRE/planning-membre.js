@@ -393,7 +393,7 @@
       }
       .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__scene { aspect-ratio: 4 / 3; }
       .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__scene {
-        aspect-ratio: auto; height: auto; min-height: 320px;
+        aspect-ratio: auto; height: 370px; min-height: 370px;
       }
       .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__ouvrir {
         display: flex; flex-direction: column; width: 100%; height: 100%;
@@ -416,16 +416,16 @@
         font-weight: 750; font-size: 1.1rem;
       }
       .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__contenu {
-        min-height: 0; height: auto; width: 100%;
+        min-height: 0; height: 100%; width: 100%; padding: 28px 4px 8px;
         box-sizing: border-box;
       }
       .lcdp-planning-carte-visite .lcdp-box-card-parc-diaporama__face--verso {
-        overflow-y: auto;
+        overflow-y: auto; padding: 12px;
       }
       .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre {
         display: flex; flex-direction: column; gap: 10px;
         width: 100%; min-width: 0; max-width: 100%;
-        margin: 0; padding: 9px; border: 0; box-shadow: none;
+        margin: 0; padding: 0; border: 0 !important; box-shadow: none !important;
         background: transparent;
       }
       .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__media { display: none !important; }
@@ -435,8 +435,15 @@
       }
       .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__date,
       .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__place {
-        flex-wrap: wrap; justify-content: flex-start;
-        min-width: 0; gap: 6px;
+        display: flex; flex-wrap: wrap; justify-content: flex-start;
+        align-items: baseline; width: 100%;
+        min-width: 0; gap: 7px;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__date-label {
+        font-size: .95rem; line-height: 1.35; font-weight: 750;
+      }
+      .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__hour {
+        font-size: .85rem; font-weight: 650;
       }
       .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__park {
         white-space: normal; overflow-wrap: anywhere;
@@ -1091,8 +1098,16 @@
     if (media && !media.hidden) {
       const img = media.querySelector("img");
       if (img) {
-        const image = img.cloneNode(true);
+        const image = document.createElement("img");
+        image.src = img.src;
+        image.alt = img.alt;
+        image.loading = "lazy";
+        image.decoding = "async";
         image.className = "lcdp-planning-carte-visite__image";
+        image.addEventListener("error", () => {
+          const secours = construireUrlObjet("/IMAG/PARC/cardlogo.webp");
+          if (image.src !== secours) image.src = secours;
+        }, { once: true });
         ouvrir.appendChild(image);
       }
     }
@@ -1860,10 +1875,7 @@
     const departement = parc.dptmt || parc.departement || reservation.dptmt || "";
     const idParc = parc.idparc || reservation.idparc || "";
     const idFlux = reservation.idflux || "";
-    const cheminImageCard = construireCheminImageParcParDefaut(
-      nomParc,
-      departement
-    );
+    const cheminImageCard = construireCheminImageParcParDefaut(nomParc, departement);
 
     const media = card.querySelector("[data-lcdp-card-reservation-media]");
     const image = card.querySelector("[data-lcdp-card-reservation-image]");
@@ -1944,6 +1956,10 @@
       if (srcImage) {
         image.src = srcImage;
         image.alt = "Parc de " + nomParc;
+        image.addEventListener("error", () => {
+          const secours = construireUrlObjet("/IMAG/PARC/cardlogo.webp");
+          if (image.src !== secours) image.src = secours;
+        }, { once: true });
         media.hidden = false;
         card.classList.add("lcdp-box-card-reservation-membre--avec-image");
       } else {
@@ -4529,9 +4545,15 @@
   }
 
   function normaliserSegmentCheminImageParc(value) {
+    // Même normalisation que la galerie Parc de PLANIFIER.
     return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       .trim()
-      .replace(/[ -]/g, "_");
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .replace(/_+/g, "_");
   }
 
   function normaliserDepartementCheminImageParc(value) {
