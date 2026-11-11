@@ -855,7 +855,9 @@
     const lignePlanning = document.createElement("div");
     lignePlanning.className = "lcdp-box-legende__ligne";
     for (const [libelle, etatJour] of [
-      ["Abonnement en cours", "lcdp-planifier-jour--abonnement-couvert"]
+      ["abonnement en cours", "lcdp-planifier-jour--abonnement-couvert"],
+      ["accès planifié", "lcdp-box-legende__carre--bleu-fonce"],
+      ["invitation reçue", "lcdp-box-legende__carre--bleu-clair"]
     ]) {
       const item = document.createElement("span");
       item.className = "lcdp-box-legende__item";
@@ -889,6 +891,15 @@
     let planningCourant = [];
     let generationPlanning = 0;
     let chargementsCalendrierEnCours = 0;
+
+    // Le calendrier général affiche les accès du membre, indépendamment du parc.
+    // La récupération des réservations est déjà assurée par /mes-reservations.
+    etatPage.actualiserIndicateursPlanningGeneral = () => {
+      if (parcSelectionne) return;
+      grille.querySelectorAll("[data-lcdp-card-jour-mois][data-date]").forEach(card => {
+        afficherIndicateursAccesPlanifier(card, card.dataset.date);
+      });
+    };
 
     function commencerAttenteCalendrierMois() {
       const carte = calendrier.querySelector(".lcdp-box-calendrier-mois__card");
@@ -1046,6 +1057,8 @@
         } else if (iso === aujourdhui) {
           card.classList.add("lcdp-box-card-jour-in-calendrier-mois--today");
         }
+        // Les réservations et invitations du membre sont indépendantes du parc choisi.
+        afficherIndicateursAccesPlanifier(card, iso);
         // Aucune action sur les jours avant définition des filtres.
         grille.appendChild(card);
       }
@@ -2865,6 +2878,7 @@
       }
 
       etatPage.reservationsMembre = Array.isArray(data.reservations) ? data.reservations : [];
+      etatPage.actualiserIndicateursPlanningGeneral?.();
     } catch (error) {
       etatPage.reservationsMembre = [];
       console.warn("Réservations membre indisponibles pour le blocage front.", error);
@@ -5069,6 +5083,37 @@
       }
     });
     return card;
+  }
+
+  function afficherIndicateursAccesPlanifier(card, dateIso) {
+    card.querySelector("[data-lcdp-planifier-indicateurs-acces]")?.remove();
+    const reservations = (Array.isArray(etatPage.reservationsMembre) ? etatPage.reservationsMembre : [])
+      .filter(reservation =>
+        reservation && String(reservation.statut || "").toLowerCase() !== "cancd" &&
+        extraireDateFranceReservation(reservation.datebookd) === dateIso
+      );
+    if (!reservations.length) return;
+
+    const indicateurs = document.createElement("span");
+    indicateurs.className = "lcdp-planifier-indicateurs-acces";
+    indicateurs.dataset.lcdpPlanifierIndicateursAcces = "";
+    const types = [
+      ["lcdp-planifier-indicateur-acces--planifie", "Accès planifié", reservations.some(reservation => reservation.invitation !== true)],
+      ["lcdp-planifier-indicateur-acces--invitation", "Invitation reçue", reservations.some(reservation => reservation.invitation === true)]
+    ];
+    const libelles = [];
+    for (const [classe, libelle, present] of types) {
+      if (!present) continue;
+      const marque = document.createElement("span");
+      marque.className = "lcdp-planifier-indicateur-acces " + classe;
+      marque.setAttribute("aria-hidden", "true");
+      indicateurs.appendChild(marque);
+      libelles.push(libelle);
+    }
+    if (!libelles.length) return;
+    card.appendChild(indicateurs);
+    card.setAttribute("aria-label", dateIso + " · " + libelles.join(" · "));
+    card.title = libelles.join(" · ");
   }
 
   function trouverReservationActiveDatePlage(dateIso, plagebookd) {
