@@ -45,6 +45,8 @@
     commandeBar: null,
     modeAffichage: "liste",
     periodeAffichage: "avenir",
+    filtres: {date: "", parc: "", departement: "", invitation: "toutes"},
+    formulaireFiltres: null,
     membre: {
       abonne: false,
       abonnementSuspendu: false,
@@ -248,6 +250,97 @@
         grid-row: 2 !important;
       }
 
+
+      /* Planning membre : mise en page des filtres et des cartouches existants. */
+      #lcdp-planning-calendrier-slot,
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card,
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card__list,
+      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre {
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card__header,
+      #lcdp-planning-calendrier-slot .lcdp-box-commande-bar__actions {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        min-width: 0 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste {
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__media:not([hidden]) {
+        display: block !important;
+        width: 100% !important;
+        height: 172px !important;
+        flex: none !important;
+        overflow: hidden !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__image {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__body {
+        box-sizing: border-box !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        padding: 14px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__content,
+      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__actions {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+        min-width: 0 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__date,
+      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__place {
+        flex: 1 1 155px !important;
+        min-width: 0 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-card-reservation-membre--liste .lcdp-box-card-reservation-membre__micro-action {
+        max-width: 100% !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card__tools:not([hidden]) {
+        display: block !important;
+        margin: 12px 0 16px !important;
+      }
+      .lcdp-planning-filtres {
+        display: grid;
+        grid-template-columns: repeat(2,minmax(0,1fr));
+        gap: 9px;
+        padding: 12px;
+        margin: 0;
+        border: 1px solid #dce3d7;
+        border-radius: 16px;
+        background: #f7f8f5;
+      }
+      .lcdp-planning-filtres__titre {
+        grid-column: 1 / -1;
+        margin: 0 0 2px;
+        font-size: .76rem;
+        font-weight: 750;
+        color: #4e6838;
+      }
+      .lcdp-planning-filtres__champ { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
+      .lcdp-planning-filtres__champ label { font-size: .7rem; font-weight: 650; color: #455244; }
+      .lcdp-planning-filtres__champ input,
+      .lcdp-planning-filtres__champ select {
+        box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0;
+        min-height: 38px; padding: 7px 8px;
+        border: 1px solid #cbd5c5; border-radius: 10px;
+        background: white; color: #253428; font: inherit; font-size: .8rem;
+      }
+      .lcdp-planning-filtres__champ :disabled { opacity: .52; cursor: not-allowed; }
+      @media(max-width:350px) { .lcdp-planning-filtres {grid-template-columns: 1fr;} }
     `;
 
     document.head.appendChild(style);
@@ -534,6 +627,7 @@
     etat.slotCommandeAgenda = slotCommandeAgenda;
     etat.commandeBar = commandeBar;
 
+    installerFiltresPlanningMembre();
     actualiserModeWrapperPlanning();
     afficherChargementCalendrier("Chargement de votre planning...");
   }
@@ -616,7 +710,7 @@
     groupePeriodes.appendChild(
       creerBoutonPeriodePlanningMembre(
         "passe",
-        "Passés"
+        "Passé"
       )
     );
 
@@ -700,6 +794,7 @@
 
     ajusterMoisCourantSelonPeriode();
     actualiserBoutonsPeriodePlanningMembre();
+    actualiserEtatFiltresPlanningMembre();
 
     if (etat.modeAffichage === "liste") {
       afficherPlanningMembreEnListe();
@@ -797,10 +892,9 @@
 
     const fragment =
       document.createDocumentFragment();
-    const reservations =
-      filtrerEtTrierReservationsAgenda(
-        etat.reservations
-      );
+    const reservations = filtrerReservationsPlanningMembre(
+      filtrerEtTrierReservationsAgenda(etat.reservations)
+    );
 
     if (!reservations.length) {
       const message =
@@ -861,6 +955,114 @@
           "lcdp-box-liste-card__list--transition"
         );
       });
+    });
+  }
+
+  function installerFiltresPlanningMembre() {
+    const tools = etat.wrapperPlanning?.querySelector("[data-lcdp-liste-card-tools]");
+    if (!tools) return;
+    const formulaire = document.createElement("form");
+    formulaire.className = "lcdp-planning-filtres";
+    formulaire.setAttribute("aria-label", "Filtrer les visites de parc");
+    formulaire.addEventListener("submit", event => event.preventDefault());
+
+    const titre = document.createElement("p");
+    titre.className = "lcdp-planning-filtres__titre";
+    titre.textContent = "FILTRER LES VISITES";
+    formulaire.appendChild(titre);
+
+    const champs = [
+      ["date", "Date", "date"],
+      ["departement", "Département", "select"],
+      ["parc", "Parc", "select"],
+      ["invitation", "Invitations", "select"]
+    ];
+    const optionsInvitation = [
+      ["toutes", "Toutes"],
+      ["recue", "Reçues"],
+      ["envoyee", "Envoyées"],
+      ["aucune", "Sans invitation"]
+    ];
+    for (const [cle, label, type] of champs) {
+      const enveloppe = document.createElement("div");
+      enveloppe.className = "lcdp-planning-filtres__champ";
+      const id = "lcdp-planning-filtre-" + cle;
+      const etiquette = document.createElement("label");
+      etiquette.htmlFor = id;
+      etiquette.textContent = label;
+      const input = document.createElement(type === "date" ? "input" : "select");
+      input.id = id;
+      input.dataset.lcdpFiltre = cle;
+      if (type === "date") input.type = "date";
+      if (cle === "invitation") {
+        for (const [valeur, texte] of optionsInvitation) {
+          input.add(new Option(texte, valeur));
+        }
+      }
+      input.addEventListener("change", () => {
+        etat.filtres[cle] = input.value;
+        if (etat.modeAffichage === "liste") afficherPlanningMembreEnListe();
+        else afficherCalendrierMois();
+      });
+      enveloppe.append(etiquette, input);
+      formulaire.appendChild(enveloppe);
+    }
+    tools.replaceChildren(formulaire);
+    tools.hidden = false;
+    etat.formulaireFiltres = formulaire;
+    actualiserOptionsFiltresPlanningMembre();
+    actualiserEtatFiltresPlanningMembre();
+  }
+
+  function actualiserOptionsFiltresPlanningMembre() {
+    const formulaire = etat.formulaireFiltres;
+    if (!formulaire) return;
+    const champs = [
+      ["departement", "Tous les départements", reservation =>
+        String(reservation.parc?.dptmt || reservation.parc?.departement || reservation.dptmt || "").trim()],
+      ["parc", "Tous les parcs", reservation =>
+        String(reservation.parc?.nom || reservation.parc?.nomparc || reservation.nomparc || "").trim()]
+    ];
+    for (const [cle, tout, extraire] of champs) {
+      const select = formulaire.querySelector('[data-lcdp-filtre="' + cle + '"]');
+      if (!select) continue;
+      const valeurs = [...new Set(etat.reservations.map(extraire).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "fr", {numeric:true}));
+      select.replaceChildren(new Option(tout, ""));
+      valeurs.forEach(valeur => select.add(new Option(valeur, valeur)));
+      if (!valeurs.includes(etat.filtres[cle])) etat.filtres[cle] = "";
+      select.value = etat.filtres[cle];
+    }
+  }
+
+  function actualiserEtatFiltresPlanningMembre() {
+    const formulaire = etat.formulaireFiltres;
+    if (!formulaire) return;
+    const inactif = etat.periodeAffichage !== "avenir";
+    for (const input of formulaire.querySelectorAll("input,select")) {
+      input.disabled = inactif;
+      input.value = etat.filtres[input.dataset.lcdpFiltre] || "";
+    }
+    formulaire.setAttribute("aria-disabled", String(inactif));
+  }
+
+  function filtrerReservationsPlanningMembre(reservations) {
+    if (etat.periodeAffichage !== "avenir") return reservations;
+    const f = etat.filtres;
+    return reservations.filter(reservation => {
+      const parc = reservation.parc || {};
+      const departement = String(parc.dptmt || parc.departement || reservation.dptmt || "").trim();
+      const nom = String(parc.nom || parc.nomparc || reservation.nomparc || "").trim();
+      const date = extraireDateFranceReservation(reservation.datebookd);
+      if (f.date && date !== f.date) return false;
+      if (f.departement && departement !== f.departement) return false;
+      if (f.parc && nom !== f.parc) return false;
+      const recue = reservationHorsAbonnementMembre(reservation);
+      const envoyee = reservationAvecInvitesPlanning(reservation);
+      if (f.invitation === "recue" && !recue) return false;
+      if (f.invitation === "envoyee" && !envoyee) return false;
+      if (f.invitation === "aucune" && (recue || envoyee)) return false;
+      return true;
     });
   }
 
@@ -982,6 +1184,7 @@
       etat.reservations = Array.isArray(data.reservations) ? data.reservations : [];
       etat.abonnements = normaliserAbonnementsMembre(data.abonnements || data.abos || []);
       await chargerStatutsInvitationsPlanning();
+      actualiserOptionsFiltresPlanningMembre();
       etat.reservationsParDate = indexerReservationsParDate(etat.reservations);
       ajusterMoisCourantSelonPeriode();
       afficherCalendrierMois();
