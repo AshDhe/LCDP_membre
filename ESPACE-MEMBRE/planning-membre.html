@@ -83,40 +83,189 @@ html[data-lcdp-css~="c085"] body.lcdp-app-page > .lcdp-site-page.lcdp-app-wrappe
 }
 #lcdp-mes-acces-conteneur .lcdp-box-liste-card__header,
 #lcdp-mes-acces-conteneur .lcdp-box-liste-card__commande { display:block; box-sizing:border-box; width:100%; min-width:0; margin:0; padding:0; }
+/* MES ACCÈS — présentation reprise de la maquette fournie.
+   Les trois onglets conservent leurs contrôles et leur état métier existants. */
 #lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-tabs {
-  display:grid!important; grid-template-columns:repeat(3,minmax(0,1fr))!important;
-  width:100%; gap:8px; margin:0 0 14px; padding:0;
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  align-items:stretch!important;
+  box-sizing:border-box;
+  width:100%;
+  gap:4px!important;
+  margin:0 0 16px;
+  padding:5px!important;
+  border:1px solid #e7e5e4;
+  border-radius:16px;
+  background:#f5f5f4;
 }
 #lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button {
-  display:flex!important; align-items:center; justify-content:center;
-  box-sizing:border-box; flex:none!important; width:100%!important; min-width:0!important;
-  min-height:38px!important; height:38px!important; margin:0!important; padding:6px 4px!important;
-  border:1px solid #55733f!important; border-radius:10px!important;
-  background:#fff!important; color:#55733f!important;
-  font-family:var(--lcdp-font-main); font-size:.82rem!important; font-weight:700!important;
-  line-height:1.2; transform:none!important; box-shadow:none!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:none!important;
+  box-sizing:border-box;
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  height:44px!important;
+  min-height:44px!important;
+  margin:0!important;
+  padding:8px 3px!important;
+  border:0!important;
+  border-radius:11px!important;
+  background:transparent!important;
+  color:#78716c!important;
+  font:600 .82rem/1.2 var(--lcdp-font-main)!important;
+  box-shadow:none!important;
+  transform:none!important;
 }
 #lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button[aria-selected="true"] {
-  background:#55733f!important; color:#fff!important;
+  background:#4e6838!important;
+  color:#fff!important;
+  font-weight:700!important;
+  box-shadow:0 1px 2px rgba(0,0,0,.12)!important;
 }
 #lcdp-mes-acces-filtres {
-  display:block; box-sizing:border-box; width:100%; min-width:0;
-  padding:12px; margin:0 0 14px; border:1px solid #e4eae4;
-  border-radius:15px; background:#f8faf8;
+  display:flex;
+  flex-direction:column;
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  gap:13px;
+  padding:16px!important;
+  margin:0 0 14px!important;
+  border:1px solid #e7e5e4!important;
+  border-radius:16px!important;
+  background:#fafaf9!important;
 }
-#lcdp-mes-acces-filtres .lcdp-box-commande-bar { width:100%; margin:0 0 14px; padding:0; }
-#lcdp-mes-acces-filtres .lcdp-box-commande-bar:last-child { margin-bottom:0; }
-#lcdp-mes-acces-filtres .lcdp-box-commande-bar__actions {
-  display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px!important; width:100%; min-width:0;
+#lcdp-mes-acces-filtres .lcdp-box-commande-bar {
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0!important;
 }
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire { display:flex; flex-direction:column; gap:5px; min-width:0; margin:0; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-champs .lcdp-box-commande-bar__actions {
+  display:flex!important;
+  flex-direction:column!important;
+  flex-wrap:nowrap!important;
+  align-items:stretch!important;
+  width:100%!important;
+  gap:12px!important;
+}
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire {
+  display:flex!important;
+  flex:0 0 auto!important;
+  flex-direction:column!important;
+  gap:5px!important;
+  box-sizing:border-box;
+  width:100%!important;
+  min-width:0!important;
+  margin:0!important;
+  font-family:var(--lcdp-font-main);
+}
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire__label {
+  display:block;
+  margin:0!important;
+  color:#57534e;
+  font-size:.76rem!important;
+  font-weight:700!important;
+  line-height:1.3;
+}
 #lcdp-mes-acces-filtres .lcdp-box-champ-formulaire input,
 #lcdp-mes-acces-filtres .lcdp-box-champ-formulaire select {
-  box-sizing:border-box; width:100%; min-height:40px; min-width:0;
-  padding:8px 9px; border:1px solid #d6ded6; border-radius:10px; background:#fff;
+  display:block;
+  box-sizing:border-box;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  min-height:43px!important;
+  margin:0!important;
+  padding:9px 13px!important;
+  border:1px solid #e7e5e4!important;
+  border-radius:12px!important;
+  background:#fff!important;
+  color:#44403c!important;
+  font:500 .84rem/1.3 var(--lcdp-font-main)!important;
 }
-#lcdp-mes-acces-filtres .lcdp-box-commande-bar__actions > button {
-  min-height:36px; padding:7px 10px; border-radius:9px;
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire :is(input,select):focus-visible {
+  outline:2px solid rgba(78,104,56,.35)!important;
+  outline-offset:2px;
+}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations .lcdp-box-commande-bar__actions {
+  display:flex!important;
+  flex-direction:column!important;
+  flex-wrap:nowrap!important;
+  gap:9px!important;
+  align-items:stretch!important;
+  width:100%!important;
+}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button {
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-sizing:border-box;
+  width:100%!important;
+  min-height:42px!important;
+  padding:9px 12px!important;
+  margin:0!important;
+  border:1px solid #e7e5e4!important;
+  border-radius:12px!important;
+  background:#fff!important;
+  color:#44403c!important;
+  font:700 .79rem/1.3 var(--lcdp-font-main)!important;
+}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button[aria-pressed="true"] {
+  border-color:#55733f!important;
+  background:#eef3ea!important;
+  color:#4e6838!important;
+}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button:disabled {
+  opacity:.55;
+  cursor:not-allowed;
+}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied {
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding-top:12px;
+  border-top:1px solid #e7e5e4;
+}
+#lcdp-mes-acces-filtres-pied { min-width:0; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied #lcdp-mes-acces-resultat {
+  display:block;
+  width:auto!important;
+  min-width:0;
+  flex:1 1 auto;
+  margin:0!important;
+  text-align:left!important;
+  color:#78716c!important;
+  font:600 .72rem/1.3 var(--lcdp-font-main)!important;
+}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied #lcdp-mes-acces-effacer {
+  display:inline-block;
+  flex:0 0 auto;
+  width:auto!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:auto!important;
+  margin:0!important;
+  padding:3px 0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#78716c!important;
+  font:700 .72rem/1.3 var(--lcdp-font-main)!important;
+  text-decoration:underline;
+  text-decoration-color:#d6d3d1;
+  text-underline-offset:3px;
+}
+#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied #lcdp-mes-acces-effacer:disabled {
+  opacity:.55;
+  cursor:not-allowed;
 }
 #lcdp-mes-acces-planning { width:100%; min-width:0; box-sizing:border-box; }
 #lcdp-mes-acces-liste { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr))!important; gap:12px!important; align-items:start; width:100%; min-width:0; }
