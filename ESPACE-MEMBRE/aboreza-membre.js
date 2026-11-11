@@ -495,7 +495,7 @@
       const texte = objet.querySelector('[data-lcdp-dialogue-text]');
       const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
       if (!titre || !texte || !actions) throw Error('Zones du dialogue générique absentes.');
-      const etiquette = elem('span', 'lcdp-aboreza-preparation__badge', 'Étape de préparation');
+      const etiquette = elem('span', 'lcdp-ui-badge lcdp-ui-badge--green lcdp-ui-badge--step lcdp-aboreza-preparation__badge', 'Étape de préparation');
       titre.before(etiquette);
       texte.textContent = 'Voici les règles à connaître avant de choisir vos créneaux.';
       texte.hidden = false;
