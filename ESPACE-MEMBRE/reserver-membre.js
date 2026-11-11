@@ -841,6 +841,40 @@
     }
     contenuLegende.appendChild(ligneLegende);
     enteteFiltres.appendChild(legende);
+
+    // Légende sous le planning, construite avec le composant et les états CSS existants.
+    // Les accès planifiés, invitations et jauges seront ajoutés ultérieurement.
+    const legendePlanning = fragmentLegende?.querySelector("[data-lcdp-box-legende]")?.cloneNode(true)
+      || document.createElement("div");
+    legendePlanning.className = "lcdp-box-legende";
+    legendePlanning.setAttribute("role", "group");
+    legendePlanning.setAttribute("aria-label", "Légende du planning");
+    const contenuPlanning = legendePlanning.querySelector("[data-lcdp-legende-contenu]")
+      || document.createElement("div");
+    contenuPlanning.className = "lcdp-box-legende__contenu";
+    if (!contenuPlanning.parentNode) legendePlanning.appendChild(contenuPlanning);
+    contenuPlanning.replaceChildren();
+    const lignePlanning = document.createElement("div");
+    lignePlanning.className = "lcdp-box-legende__ligne";
+    for (const [libelle, etatJour] of [
+      ["Abonnement en cours", "lcdp-planifier-jour--abonnement-couvert"],
+      ["Aucun abonnement", "lcdp-box-card-jour-in-calendrier-mois--closed"],
+      ["Parc fermé", "lcdp-box-card-jour-in-calendrier-mois--closed"]
+    ]) {
+      const item = document.createElement("span");
+      item.className = "lcdp-box-legende__item";
+      const carre = document.createElement("span");
+      carre.className = "lcdp-box-legende__carre " + etatJour;
+      carre.setAttribute("aria-hidden", "true");
+      const texte = document.createElement("span");
+      texte.className = "lcdp-box-legende__libelle";
+      texte.textContent = libelle;
+      item.append(carre, document.createTextNode(" "), texte);
+      lignePlanning.appendChild(item);
+    }
+    contenuPlanning.appendChild(lignePlanning);
+    grille.parentNode.appendChild(legendePlanning);
+
     meta.textContent = "";
     meta.hidden = true;
     message.hidden = true;
