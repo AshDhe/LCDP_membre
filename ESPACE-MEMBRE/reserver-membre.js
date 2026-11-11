@@ -5088,6 +5088,9 @@
   }
 
   function afficherReservationsSurPlagesPlanifier(card, dateIso) {
+    // Aucun accès historique dans le calendrier PLANIFIER : celui-ci présente
+    // uniquement les accès encore à venir, tous parcs confondus.
+    if (!dateIso || dateIso < dateAujourdhuiIso()) return;
     // Les accès du membre sont indépendants du parc consulté.
     // Le numéro plagebookd correspond directement à la position du trait.
     const reservations = (Array.isArray(etatPage.reservationsMembre) ? etatPage.reservationsMembre : [])
