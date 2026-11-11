@@ -453,40 +453,80 @@
   }
   async function informerContrainte(p) {
     return modalComposant('dialogue', 'Préparez vos accès', (objet, finir) => {
+      const workflow = objet.closest('[data-lcdp-box-workflow-abonnement]');
+      workflow?.classList.add('lcdp-aboreza-preparation');
+      objet.classList.add('lcdp-aboreza-preparation__dialogue');
+      const titre = objet.querySelector('[data-lcdp-dialogue-title]');
       const texte = objet.querySelector('[data-lcdp-dialogue-text]');
       const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
-      if (!texte || !actions) throw Error('Zones du dialogue générique absentes.');
-      texte.hidden = true;
+      if (!titre || !texte || !actions) throw Error('Zones du dialogue générique absentes.');
+      const etiquette = elem('span', 'lcdp-aboreza-preparation__badge', 'Étape de préparation');
+      titre.before(etiquette);
+      texte.textContent = 'Vérifiez votre sélection et les règles de planification avant de choisir vos créneaux.';
+      texte.hidden = false;
+      actions.replaceChildren();
+      actions.classList.add('lcdp-aboreza-preparation__contenu');
 
-      // La carte de présentation d'abonnement fournie sert de récapitulatif compact.
+      // Récapitulatif issu de la sélection effective, sans dates ni formules figées.
       const resume = composants.carte.cloneNode(true);
       const ligne = resume.querySelector('.lcdp-box-card-abonnement__row--main');
       const nom = resume.querySelector('[data-lcdp-card-abonnement-type]');
       const debut = resume.querySelector('[data-lcdp-card-abonnement-debut]');
       if (!ligne || !nom || !debut) throw Error('Carte d’abonnement générique incomplète.');
       resume.replaceChildren(ligne);
-      ligne.querySelector('.lcdp-box-card-abonnement__item--name .lcdp-box-card-abonnement__label').textContent = 'Abonnement choisi : ';
-      ligne.querySelector('.lcdp-box-card-abonnement__item--date .lcdp-box-card-abonnement__label').textContent = 'Date de début : ';
+      resume.classList.add('lcdp-aboreza-preparation__resume');
+      ligne.querySelector('.lcdp-box-card-abonnement__item--name .lcdp-box-card-abonnement__label').textContent = 'Abonnement';
+      ligne.querySelector('.lcdp-box-card-abonnement__item--date .lcdp-box-card-abonnement__label').textContent = 'Date de début';
       nom.textContent = nomFormule(p.formule);
       debut.textContent = dateLibelle(p.dateDebut);
       actions.append(resume);
 
-      const informations = [
-        'Si vous devez planifier plusieurs accès, vous pouvez changer de parc chaque fois que vous revenez sur le planning.',
-        'Pour les abonnements supérieurs à un jour, vous devez planifier deux accès par mois, chaque mois, dans la limite de cinq mois consécutifs. Le planning évolue de mois en mois pour vous assister dans cette planification.',
-        'À chaque accès planifié, vous disposez de 15 minutes jusqu’à l’étape suivante (nouvel accès ou paiement de l’abonnement).'
-      ];
-      if (p.nbDejaReserves > 0) informations.push(
-        `${p.nbSelectionnes} accès requis déjà couverts ; il reste ${Math.max(0, p.nbAccesRequis - p.nbSelectionnes)} accès à planifier.`
-      );
-      for (const information of informations) {
-        actions.append(elem('p', 'lcdp-box-champ-formulaire__description', information));
+      const regles = elem('section', 'lcdp-aboreza-preparation__regles');
+      regles.append(elem('h3', 'lcdp-aboreza-preparation__section-titre', 'Comment fonctionne la planification'));
+      const icones = {
+        parc: '<path d="M12 22s7-4.4 7-11a7 7 0 1 0-14 0c0 6.6 7 11 7 11Z"/><circle cx="12" cy="11" r="2.5"/>',
+        calendrier: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h3"/>',
+        temps: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>'
+      };
+      function ajouterRegle(icone, titreRegle, description, alerte = false) {
+        const ligneRegle = elem('div', 'lcdp-aboreza-preparation__regle' +
+          (alerte ? ' lcdp-aboreza-preparation__regle--alerte' : ''));
+        const picto = elem('span', 'lcdp-aboreza-preparation__icone');
+        picto.setAttribute('aria-hidden', 'true');
+        picto.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+          icones[icone] + '</svg>';
+        const paragraphe = elem('p');
+        paragraphe.append(elem('strong', '', titreRegle + ' : '), document.createTextNode(description));
+        ligneRegle.append(picto, paragraphe);
+        regles.append(ligneRegle);
       }
-      const continuer = bouton('Continuer', true);
+      ajouterRegle('parc', 'Multi-parcs autorisé',
+        'si vous planifiez plusieurs accès, vous pouvez changer de parc à chaque retour sur le planning.');
+      if (p.formule === '1J') {
+        ajouterRegle('calendrier', 'Accès à planifier',
+          'vous devez sélectionner au moins un créneau pour votre abonnement d’un jour.');
+      } else {
+        ajouterRegle('calendrier', '2 accès par mois',
+          'planifiez deux créneaux chaque mois (dans la limite de 5 mois consécutifs). Le planning avance automatiquement de mois en mois.');
+      }
+      ajouterRegle('temps', 'Délai de 15 minutes',
+        'à chaque accès planifié, vous disposez de 15 min pour passer à l’étape suivante (nouvel accès ou paiement).', true);
+      if (p.nbDejaReserves > 0) {
+        regles.append(elem('p', 'lcdp-aboreza-preparation__deja-reserves',
+          p.nbSelectionnes + ' accès requis déjà couverts ; il reste ' +
+          Math.max(0, p.nbAccesRequis - p.nbSelectionnes) + ' accès à planifier.'));
+      }
+      actions.append(regles);
+      const continuer = bouton('Continuer vers le planning', true);
+      continuer.classList.add('lcdp-aboreza-preparation__continuer');
       continuer.addEventListener('click', () => finir(true));
+      const fleche = elem('span', 'lcdp-aboreza-preparation__fleche', '→');
+      fleche.setAttribute('aria-hidden', 'true');
+      continuer.append(fleche);
       actions.append(continuer);
     });
   }
+
   function miseAJourBandeau() {
     const hote = bridge()?.hoteBandeau?.();
     if (!hote) return;
