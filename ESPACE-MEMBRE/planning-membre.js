@@ -47,7 +47,8 @@
     commandeBar: null,
     modeAffichage: "liste",
     periodeAffichage: "avenir",
-    filtres: {date: "", parc: "", departement: "", recues: false, envoyees: false},
+    filtres: {mois: "", parc: "", departement: "", recues: true, envoyees: true},
+    filtresInitialises: false,
     formulaireFiltres: null,
     membre: {
       abonne: false,
@@ -296,65 +297,66 @@
         border: 0;
         background: transparent;
       }
-      /* Formulaire : valeurs reprises du modèle MES ACCÈS historique 34045ac7d. */
-      .lcdp-planning-filtres {
-        display:flex;flex-direction:column;box-sizing:border-box;width:100%;min-width:0;
-        gap:13px;padding:16px;margin:0 0 14px;
-        border:1px solid #e7e5e4;border-radius:16px;background:#fafaf9;
+      /* Structure compacte des filtres ; les composants graphiques sont conservés. */
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres {
+        box-sizing:border-box !important;
+        display:flex !important;
+        flex-direction:column !important;
+        width:100% !important;
+        gap:12px !important;
+        padding:14px !important;
+        border:1px solid var(--lcdp-color-border,#e7e5e4);
+        border-radius:16px;
+        background:var(--lcdp-color-surface-soft,#fafaf9);
       }
-      .lcdp-planning-filtres__titre {display:none;}
-      .lcdp-planning-filtres__champ {
-        display:flex;flex:0 0 auto;flex-direction:column;gap:5px;
-        box-sizing:border-box;width:100%;min-width:0;margin:0;font-family:var(--lcdp-font-main);
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champs {
+        display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:10px;width:100%;min-width:0;
       }
-      .lcdp-planning-filtres__champ label {
-        display:block;margin:0;color:#57534e;font-size:.76rem;font-weight:700;line-height:1.3;
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__select {
+        box-sizing:border-box !important;
+        width:100% !important;max-width:100% !important;min-width:0 !important;
+        height:42px !important;min-height:42px !important;
+        margin:0 !important;padding:8px 10px !important;
+        border:1px solid var(--lcdp-color-border,#e7e5e4);
+        border-radius:11px;background:#fff;
+        color:var(--lcdp-color-text,#292524);
+        font:inherit;font-size:.85rem;
       }
-      .lcdp-planning-filtres__champ input,.lcdp-planning-filtres__champ select {
-        display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;
-        min-height:43px;margin:0;padding:9px 13px;
-        border:1px solid #e7e5e4;border-radius:12px;background:#fff;color:#44403c;
-        font:500 .84rem/1.3 var(--lcdp-font-main);
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__select[data-lcdp-filtre="parc"] {
+        grid-column:1/-1;
       }
-      .lcdp-planning-filtres__champ :is(input,select):focus-visible {
-        outline:2px solid rgba(78,104,56,.35);outline-offset:2px;
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitations {
+        display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:10px;width:100%;min-width:0;
       }
-      .lcdp-planning-filtres__invitations {
-        display:flex;flex-direction:column;gap:9px;align-items:stretch;width:100%;
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__option {
+        display:flex;align-items:center;justify-content:center;gap:8px;
+        box-sizing:border-box;min-width:0;min-height:38px;
+        padding:8px 6px;border:1px solid var(--lcdp-color-border,#e7e5e4);
+        border-radius:10px;background:#fff;font-size:.8rem;cursor:pointer;
       }
-      .lcdp-planning-filtres__invitation {
-        display:flex;align-items:center;justify-content:center;gap:9px;
-        box-sizing:border-box;width:100%;min-height:42px;padding:9px 12px;margin:0;
-        border:1px solid #e7e5e4;border-radius:12px;
-        background:#fff;color:#44403c;font:700 .79rem/1.3 var(--lcdp-font-main);
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__option input {
+        width:16px;height:16px;min-height:0;
+        flex:0 0 16px;margin:0;accent-color:var(--lcdp-color-primary,#4e6838);
       }
-      .lcdp-planning-filtres__invitation[aria-pressed="true"] {
-        border-color:#55733f;background:#eef3ea;color:#4e6838;
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__actions {
+        display:flex;align-items:center;justify-content:space-between;
+        gap:10px;padding-top:10px;margin:0;
+        border-top:1px solid var(--lcdp-color-border,#e7e5e4);
       }
-      .lcdp-planning-filtres__invitation:disabled {opacity:.55;cursor:not-allowed;}
-      .lcdp-planning-filtres__compteur {
-        display:inline-flex;align-items:center;justify-content:center;
-        min-width:24px;height:22px;padding:1px 7px;
-        border-radius:999px;background:#e7e5e4;color:#57534e;font-size:.7rem;
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__resultat {
+        font-size:.75rem;color:var(--lcdp-color-text-muted,#78716c);
       }
-      .lcdp-planning-filtres__invitations [data-lcdp-filtre-invitation="recues"] .lcdp-planning-filtres__compteur {
-        background:#ffe4e6;color:#be123c;
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__effacer {
+        width:auto;min-width:0;padding:3px 0;margin:0;
+        border:0;background:transparent;box-shadow:none;
+        color:var(--lcdp-color-text-muted,#78716c);
+        font:inherit;font-size:.75rem;text-decoration:underline;
       }
-      .lcdp-planning-filtres__actions {
-        display:flex;align-items:center;justify-content:space-between;gap:8px;
-        padding-top:12px;border-top:1px solid #e7e5e4;
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__effacer:disabled {
+        opacity:.5;cursor:not-allowed;
       }
-      .lcdp-planning-filtres__resultat {
-        flex:1 1 auto;min-width:0;margin:0;color:#78716c;text-align:left;
-        font:600 .72rem/1.3 var(--lcdp-font-main);
-      }
-      .lcdp-planning-filtres__actions button {
-        flex:0 0 auto;width:auto;min-height:0;height:auto;margin:0;padding:3px 0;
-        border:0;border-radius:0;background:transparent;box-shadow:none;
-        color:#78716c;font:700 .72rem/1.3 var(--lcdp-font-main);
-        text-decoration:underline;text-decoration-color:#d6d3d1;text-underline-offset:3px;
-      }
-      .lcdp-planning-filtres__actions button:disabled {opacity:.55;cursor:not-allowed;}
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card-diaporama__list {
         display: grid;
         grid-template-columns: 1fr;
@@ -529,47 +531,6 @@
         min-width:0 !important;
         width:100% !important;
       }
-      /* Cohérence des largeurs : formulaire, champs et boutons utilisent 100 % du parent. */
-      #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-liste .lcdp-box-liste-card__header,
-      #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-liste .lcdp-box-liste-card__tools,
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres,
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champ,
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitations,
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitation {
-        box-sizing:border-box !important;
-        width:100% !important;
-        max-width:100% !important;
-        min-width:0 !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres {
-        gap:16px !important;
-        padding:18px 16px !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champ {
-        gap:7px !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champ input,
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champ select {
-        box-sizing:border-box !important;
-        display:block !important;
-        width:100% !important;
-        min-width:0 !important;
-        min-height:46px !important;
-        margin:0 !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitations {
-        gap:12px !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitation {
-        display:flex !important;
-        min-height:46px !important;
-        margin:0 !important;
-        padding:10px 12px !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__actions {
-        margin-top:2px !important;
-        padding-top:16px !important;
-      }
       /* Espacements du gabarit : le statut, les onglets et les filtres ne se touchent pas. */
       #lcdp-planning-calendrier-slot {
         box-sizing:border-box;
@@ -605,21 +566,6 @@
         padding:0 0 18px !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-liste .lcdp-box-liste-card__list {
-        padding-top:18px !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres {
-        padding:18px 16px 20px !important;
-        gap:18px !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champ {
-        gap:8px !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitations {
-        margin-top:4px;
-        gap:12px !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__actions {
-        margin-top:4px !important;
         padding-top:18px !important;
       }
       /* Recto/verso ouvert : neutraliser les effets 3D qui rognent les textes. */
@@ -1382,87 +1328,96 @@
     return carte;
   }
 
+  function rafraichirListeFiltreePlanningMembre() {
+    if (etat.modeAffichage === "liste") afficherPlanningMembreEnListe();
+    else afficherCalendrierMois();
+  }
+
+  function moisReservationPlanningMembre(reservation) {
+    return extraireDateFranceReservation(reservation.datebookd).slice(0,7);
+  }
+
+  function futursPourFiltresPlanningMembre() {
+    return filtrerEtTrierReservationsAgenda(etat.reservations,"avenir");
+  }
+
+  function premierMoisRendezVousPlanningMembre() {
+    const prochain = futursPourFiltresPlanningMembre()[0];
+    return prochain ? moisReservationPlanningMembre(prochain) : "";
+  }
+
   function installerFiltresPlanningMembre() {
     const tools = etat.wrapperPlanning?.querySelector("[data-lcdp-liste-card-tools]");
     if (!tools) return;
     const formulaire = document.createElement("form");
     formulaire.className = "lcdp-planning-filtres";
-    formulaire.setAttribute("aria-label", "Filtrer les visites de parc");
+    formulaire.setAttribute("aria-label","Filtres des accès à venir");
     formulaire.addEventListener("submit", event => event.preventDefault());
 
-    const titre = document.createElement("p");
-    titre.className = "lcdp-planning-filtres__titre";
-    titre.textContent = "FILTRER LES VISITES";
-    formulaire.appendChild(titre);
-
-    const champs = [
-      ["date", "Date", "date"],
-      ["departement", "Département", "select"],
-      ["parc", "Parc", "select"]
-    ];
-    for (const [cle, libelle, type] of champs) {
-      const enveloppe = document.createElement("div");
-      enveloppe.className = "lcdp-planning-filtres__champ";
-      const etiquette = document.createElement("label");
-      const id = "lcdp-planning-filtre-" + cle;
-      etiquette.htmlFor = id;
-      etiquette.textContent = libelle;
-      const input = document.createElement(type === "date" ? "input" : "select");
-      input.id = id;
-      input.dataset.lcdpFiltre = cle;
-      if (type === "date") input.type = "date";
-      input.addEventListener("change", () => {
-        etat.filtres[cle] = input.value;
-        if (etat.modeAffichage === "liste") afficherPlanningMembreEnListe();
-        else afficherCalendrierMois();
-      });
-      enveloppe.append(etiquette, input);
-      formulaire.appendChild(enveloppe);
-    }
-
-
-    const groupeInvitations = document.createElement("div");
-    groupeInvitations.className = "lcdp-planning-filtres__invitations";
-    for (const [cle, libelle] of [["recues","Invitations reçues"],["envoyees","Invitations envoyées"]]) {
-      const bouton = document.createElement("button");
-      bouton.type = "button";
-      bouton.className = "lcdp-button lcdp-button-secondary lcdp-button-mini lcdp-planning-filtres__invitation";
-      bouton.dataset.lcdpFiltreInvitation = cle;
-      bouton.setAttribute("aria-pressed", "false");
-      const titre = document.createElement("span");
-      titre.textContent = libelle;
-      const nombre = document.createElement("strong");
-      nombre.dataset.lcdpFiltreCompteur = cle;
-      bouton.append(titre,nombre);
-      bouton.addEventListener("click", () => {
-        etat.filtres[cle] = !etat.filtres[cle];
+    const champs = document.createElement("div");
+    champs.className = "lcdp-planning-filtres__champs";
+    for (const [cle, nom] of [["mois","Mois"],["departement","Département"],["parc","Parc"]]) {
+      const select = document.createElement("select");
+      select.id = "lcdp-planning-filtre-" + cle;
+      select.className = "lcdp-planning-filtres__select";
+      select.dataset.lcdpFiltre = cle;
+      select.setAttribute("aria-label","Filtrer par " + nom.toLowerCase());
+      select.appendChild(new Option("Tous",""));
+      select.addEventListener("change", () => {
+        etat.filtres[cle] = select.value;
+        if (cle === "departement" || cle === "mois") actualiserOptionsFiltresPlanningMembre();
         actualiserEtatFiltresPlanningMembre();
-        if (etat.modeAffichage === "liste") afficherPlanningMembreEnListe();
-        else afficherCalendrierMois();
+        rafraichirListeFiltreePlanningMembre();
       });
-      groupeInvitations.appendChild(bouton);
+      champs.appendChild(select);
     }
-    formulaire.appendChild(groupeInvitations);
-    const actions = document.createElement("div");
-    actions.className = "lcdp-planning-filtres__actions";
+    formulaire.appendChild(champs);
+
+    const groupe = document.createElement("div");
+    groupe.className = "lcdp-planning-filtres__invitations";
+    for (const [cle, libelle] of [["recues","Invitations"],["envoyees","Invités"]]) {
+      const label = document.createElement("label");
+      label.className = "lcdp-planning-filtres__option";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = true;
+      input.dataset.lcdpFiltreInvitation = cle;
+      input.setAttribute("aria-label",libelle);
+      const texte = document.createElement("span");
+      texte.textContent = libelle;
+      label.append(input,texte);
+      input.addEventListener("change", () => {
+        etat.filtres[cle] = input.checked;
+        actualiserEtatFiltresPlanningMembre();
+        rafraichirListeFiltreePlanningMembre();
+      });
+      groupe.appendChild(label);
+    }
+    formulaire.appendChild(groupe);
+
+    const pied = document.createElement("div");
+    pied.className = "lcdp-planning-filtres__actions";
     const resultat = document.createElement("span");
     resultat.className = "lcdp-planning-filtres__resultat";
     resultat.dataset.lcdpFiltresResultat = "true";
     resultat.setAttribute("role","status");
-    actions.appendChild(resultat);
-    const reinitialiser = document.createElement("button");
-    reinitialiser.type = "button";
-    reinitialiser.className = "lcdp-button lcdp-button-secondary lcdp-button-mini";
-    reinitialiser.dataset.lcdpEffacerFiltres = "true";
-    reinitialiser.textContent = "Effacer";
-    reinitialiser.addEventListener("click", () => {
-      etat.filtres = {date:"",parc:"",departement:"",recues:false,envoyees:false};
+    resultat.setAttribute("aria-live","polite");
+    const effacer = document.createElement("button");
+    effacer.type = "button";
+    effacer.className = "lcdp-planning-filtres__effacer";
+    effacer.dataset.lcdpEffacerFiltres = "true";
+    effacer.textContent = "Effacer";
+    effacer.addEventListener("click", () => {
+      etat.filtres = {
+        mois: premierMoisRendezVousPlanningMembre(),
+        departement: "", parc: "", recues: true, envoyees: true
+      };
+      actualiserOptionsFiltresPlanningMembre();
       actualiserEtatFiltresPlanningMembre();
-      if (etat.modeAffichage === "liste") afficherPlanningMembreEnListe();
-      else afficherCalendrierMois();
+      rafraichirListeFiltreePlanningMembre();
     });
-    actions.appendChild(reinitialiser);
-    formulaire.appendChild(actions);
+    pied.append(resultat,effacer);
+    formulaire.appendChild(pied);
     tools.replaceChildren(formulaire);
     tools.hidden = false;
     etat.formulaireFiltres = formulaire;
@@ -1472,25 +1427,48 @@
 
   function actualiserOptionsFiltresPlanningMembre() {
     const formulaire = etat.formulaireFiltres;
-    if (!formulaire) return;
-    const champs = [
-      ["departement", "Tous les départements", reservation =>
-        String(reservation.parc?.dptmt || reservation.parc?.departement || reservation.dptmt || "").trim()],
-      ["parc", "Tous les parcs", reservation =>
-        String(reservation.parc?.nom || reservation.parc?.nomparc || reservation.nomparc || "").trim()]
-    ];
-    for (const [cle, tout, extraire] of champs) {
-      const select = formulaire.querySelector('[data-lcdp-filtre="' + cle + '"]');
-      if (!select) continue;
-      const valeurs = [...new Set(etat.reservations.map(extraire).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b, "fr", {numeric:true}));
-      select.replaceChildren(new Option(tout, ""));
-      valeurs.forEach(valeur => select.add(new Option(valeur, valeur)));
-      if (!valeurs.includes(etat.filtres[cle])) etat.filtres[cle] = "";
-      select.value = etat.filtres[cle];
+    if(!formulaire) return;
+    const futures = futursPourFiltresPlanningMembre();
+    const mois = [...new Set(futures.map(moisReservationPlanningMembre).filter(Boolean))].sort();
+    if(!etat.filtresInitialises && futures.length) {
+      etat.filtres.mois = mois[0] || "";
+      etat.filtresInitialises = true;
     }
-  }
 
+    const selectMois = formulaire.querySelector('[data-lcdp-filtre="mois"]');
+    const selectionMois = etat.filtres.mois;
+    selectMois.replaceChildren(new Option("Tous",""));
+    for(const valeur of mois) {
+      const [annee,numMois] = valeur.split("-").map(Number);
+      const libelle = new Intl.DateTimeFormat("fr-FR", {month:"long",year:"numeric"})
+        .format(new Date(annee,numMois-1,1));
+      selectMois.add(new Option(libelle.charAt(0).toUpperCase()+libelle.slice(1),valeur));
+    }
+    if(selectionMois && !mois.includes(selectionMois)) etat.filtres.mois = "";
+    selectMois.value = etat.filtres.mois;
+
+    const dansMois = futures.filter(r => !etat.filtres.mois ||
+      moisReservationPlanningMembre(r) === etat.filtres.mois);
+    const dpts = [...new Set(dansMois.map(r=>
+      String(r.parc?.dptmt||r.parc?.departement||r.dptmt||"").trim()).filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b,"fr",{numeric:true}));
+    const selectDpt = formulaire.querySelector('[data-lcdp-filtre="departement"]');
+    selectDpt.replaceChildren(new Option("Tous",""));
+    dpts.forEach(value=>selectDpt.add(new Option(value,value)));
+    if(etat.filtres.departement && !dpts.includes(etat.filtres.departement)) etat.filtres.departement="";
+    selectDpt.value = etat.filtres.departement;
+
+    const dansDpt = dansMois.filter(r => !etat.filtres.departement ||
+      String(r.parc?.dptmt||r.parc?.departement||r.dptmt||"").trim()===etat.filtres.departement);
+    const parcs = [...new Set(dansDpt.map(r=>
+      String(r.parc?.nom||r.parc?.nomparc||r.nomparc||"").trim()).filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b,"fr",{numeric:true}));
+    const selectParc = formulaire.querySelector('[data-lcdp-filtre="parc"]');
+    selectParc.replaceChildren(new Option("Tous",""));
+    parcs.forEach(value=>selectParc.add(new Option(value,value)));
+    if(etat.filtres.parc && !parcs.includes(etat.filtres.parc)) etat.filtres.parc="";
+    selectParc.value = etat.filtres.parc;
+  }
 
   function nombreInvitesEnvoyesPlanning(reservation) {
     if (reservationHorsAbonnementMembre(reservation)) return 0;
@@ -1499,51 +1477,47 @@
     return Number.isFinite(n) ? Math.max(0,n) : 0;
   }
   function filtresPlanningActifs() {
-    const f = etat.filtres;
-    return Boolean(f.date || f.parc || f.departement || f.recues || f.envoyees);
+    const f=etat.filtres;
+    return Boolean(f.mois || f.parc || f.departement || !f.recues || !f.envoyees);
   }
+
   function actualiserEtatFiltresPlanningMembre() {
-    const formulaire = etat.formulaireFiltres;
-    if (!formulaire) return;
-    const inactif = etat.periodeAffichage !== "avenir";
-    formulaire.closest("[data-lcdp-liste-card-tools]").hidden = inactif || etat.modeAffichage === "agenda";
-    for (const input of formulaire.querySelectorAll("input,select,button")) {
-      input.disabled = inactif;
-      if (input.dataset.lcdpFiltre) input.value = etat.filtres[input.dataset.lcdpFiltre] || "";
+    const formulaire=etat.formulaireFiltres;
+    if(!formulaire)return;
+    const inactif=etat.periodeAffichage!=="avenir";
+    const conteneur=formulaire.closest("[data-lcdp-liste-card-tools]");
+    if(conteneur)conteneur.hidden=inactif||etat.modeAffichage==="agenda";
+    for(const select of formulaire.querySelectorAll("select[data-lcdp-filtre]")) {
+      select.disabled=inactif;
+      select.value=etat.filtres[select.dataset.lcdpFiltre]||"";
     }
-    for (const cle of ["recues","envoyees"]) {
-      const bouton = formulaire.querySelector('[data-lcdp-filtre-invitation="' + cle + '"]');
-      if(bouton) {
-        bouton.setAttribute("aria-pressed",String(etat.filtres[cle]));
-        bouton.classList.toggle("lcdp-button-primary",Boolean(etat.filtres[cle]));
-        bouton.classList.toggle("lcdp-button-secondary",!etat.filtres[cle]);
-      }
-    }
-    const futures = filtrerEtTrierReservationsAgenda(etat.reservations,"avenir");
-    const comptes = {
-      recues:futures.filter(reservationHorsAbonnementMembre).length,
-      envoyees:futures.reduce((n,r)=>n+nombreInvitesEnvoyesPlanning(r),0)
-    };
-    for(const cle of ["recues","envoyees"]) {
-      const nombre=formulaire.querySelector('[data-lcdp-filtre-compteur="' + cle + '"]');
-      if(nombre) nombre.textContent="("+comptes[cle]+")";
+    for(const caseACocher of formulaire.querySelectorAll("input[data-lcdp-filtre-invitation]")) {
+      caseACocher.disabled=inactif;
+      caseACocher.checked=Boolean(etat.filtres[caseACocher.dataset.lcdpFiltreInvitation]);
     }
     const effacer=formulaire.querySelector("[data-lcdp-effacer-filtres]");
-    if(effacer) effacer.disabled=inactif || !filtresPlanningActifs();
+    if(effacer)effacer.disabled=inactif || (
+      etat.filtres.mois===premierMoisRendezVousPlanningMembre() &&
+      !etat.filtres.parc && !etat.filtres.departement &&
+      etat.filtres.recues && etat.filtres.envoyees
+    );
     formulaire.setAttribute("aria-disabled",String(inactif));
   }
+
   function filtrerReservationsPlanningMembre(reservations) {
-    if(etat.periodeAffichage !== "avenir")return reservations;
+    if(etat.periodeAffichage!=="avenir")return reservations;
     const f=etat.filtres;
     return reservations.filter(reservation=>{
       const parc=reservation.parc||{};
       const departement=String(parc.dptmt||parc.departement||reservation.dptmt||"").trim();
       const nom=String(parc.nom||parc.nomparc||reservation.nomparc||"").trim();
-      const date=extraireDateFranceReservation(reservation.datebookd);
-      if(f.date && date!==f.date)return false;
+      if(f.mois && moisReservationPlanningMembre(reservation)!==f.mois)return false;
       if(f.departement && departement!==f.departement)return false;
       if(f.parc && nom!==f.parc)return false;
-      if((f.recues||f.envoyees)&&!((f.recues&&reservationHorsAbonnementMembre(reservation))||(f.envoyees&&nombreInvitesEnvoyesPlanning(reservation)>0)))return false;
+      if(!f.recues && reservationHorsAbonnementMembre(reservation))return false;
+      if(!f.envoyees && !reservationHorsAbonnementMembre(reservation) &&
+        (nombreInvitesEnvoyesPlanning(reservation)>0 ||
+         etat.reservationsAvecInvites.has(String(reservation.idflux||""))))return false;
       return true;
     });
   }
