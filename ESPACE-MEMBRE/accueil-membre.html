@@ -119,7 +119,7 @@
       document.write('<link rel="stylesheet" href="' + href.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">');
     })();
   </script>
-  <link rel="stylesheet" href="./planifier-choix.css?v=20261111-convergence-v2">
+  <link rel="stylesheet" href="./planifier-choix.css?v=20261111-wrapper-app-v1">
   <style>
     /* Uniquement l'état hidden et le formulaire sécurité conservé du membre. */
     #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden], #lcdp-navigation-attente[hidden] { display: none !important; }
@@ -198,6 +198,8 @@
     </div>
     </footer>
     </div>
+    <!-- Les dialogues de l’accueil résident dans le wrapper applicatif. -->
+    <div id="lcdp-lightbox-slot"></div>
   </div>
 
   <!-- Ces deux conteneurs sont pilotés exclusivement par accueil-membre.js. -->
@@ -210,7 +212,6 @@
   </div>
   </div>
   </div>
-  <div id="lcdp-lightbox-slot"></div>
   <noscript>Activez JavaScript pour accéder à votre espace membre.</noscript>
 
   <script>
