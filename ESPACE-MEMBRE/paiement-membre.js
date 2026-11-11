@@ -376,9 +376,9 @@
           window.location.assign(urlMembre('/ESPACE-MEMBRE/accueil-membre.html'));
           return;
         }
-        if (!/^https:\/\//.test(retour.checkoutUrl || ''))
+        if (!/^https:\/\//.test((retour.paymentPageUrl || retour.checkoutUrl) || ''))
           throw new Error('Adresse de paiement sécurisée indisponible.');
-        window.location.assign(retour.checkoutUrl);
+        window.location.assign((retour.paymentPageUrl || retour.checkoutUrl));
       } catch(erreur) {
         afficherMessage(recap,erreur.message);
         boutonPayer.disabled = false;
@@ -457,10 +457,10 @@
       window.location.assign(urlMembre('/ESPACE-MEMBRE/accueil-membre.html'));
       return 'paye';
     }
-    if (!/^https:\/\//.test(retour.checkoutUrl || '')) {
+    if (!/^https:\/\//.test((retour.paymentPageUrl || retour.checkoutUrl) || '')) {
       throw new Error(retour.message || 'La session Stripe ne peut pas encore être reprise. Votre commande est conservée.');
     }
-    window.location.assign(retour.checkoutUrl);
+    window.location.assign((retour.paymentPageUrl || retour.checkoutUrl));
     return 'checkout';
   }
 
@@ -566,8 +566,8 @@
           try{
             const reponse=await apiPaiement('/valider',{method:'POST',
               body:JSON.stringify({idpanier:panierAReprendre,echeancier:'comptant'})});
-            if(reponse.checkoutUrl && /^https:\/\//.test(reponse.checkoutUrl))
-              window.location.assign(reponse.checkoutUrl);
+            if((reponse.paymentPageUrl || reponse.checkoutUrl) && /^https:\/\//.test((reponse.paymentPageUrl || reponse.checkoutUrl)))
+              window.location.assign((reponse.paymentPageUrl || reponse.checkoutUrl));
             else if(reponse.commande?.statut==='paye')fermer();
             else throw new Error('Paiement non repris.');
           }catch(e){
