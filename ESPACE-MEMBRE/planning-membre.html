@@ -32,12 +32,44 @@
       });
     })();
   </script>
-
-
-
-
+  <style>
+    /* Masquer toute la coque tant que les fragments et données ne sont pas prêts. */
+    html:not(.lcdp-planning-membre-ready) body.lcdp-app-page > .lcdp-app-wrapper {
+      visibility: hidden !important;
+    }
+    #lcdp-planning-attente {
+      position: fixed; inset: 0; z-index: 2147483000;
+      display: flex; justify-content: center; align-items: center;
+      background: #fff;
+    }
+    html.lcdp-planning-membre-ready #lcdp-planning-attente { display: none; }
+    #lcdp-planning-attente .lcdp-loading-spinner {
+      width: 64px; height: 64px; display:flex; position:relative; align-items:center; justify-content:center;
+    }
+    #lcdp-planning-attente .lcdp-loading-spinner > svg {
+      position:absolute; inset:0; width:100%; height:100%;
+    }
+    #lcdp-planning-attente .lcdp-loading-spinner__track { color:rgba(6,95,70,.1); }
+    #lcdp-planning-attente .lcdp-loading-spinner__arc {
+      color:#e59834; animation:lcdp-planning-attente-tourne .8s linear infinite;
+    }
+    #lcdp-planning-attente .lcdp-loading-spinner__dot {
+      width:8px;height:8px;border-radius:50%;background:#4e6838;
+    }
+    @keyframes lcdp-planning-attente-tourne { to { transform:rotate(360deg); } }
+    @media (prefers-reduced-motion:reduce) {
+      #lcdp-planning-attente .lcdp-loading-spinner__arc { animation:none; }
+    }
+  </style>
 </head>
 <body class="lcdp-app-page">
+  <div id="lcdp-planning-attente" role="status" aria-label="Chargement du planning">
+    <div class="lcdp-loading-spinner" aria-hidden="true">
+      <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3"></circle></svg>
+      <svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg>
+      <span class="lcdp-loading-spinner__dot"></span>
+    </div>
+  </div>
   <div class="lcdp-app-wrapper">
     <div id="lcdp-bandeau-slot"></div>
 
