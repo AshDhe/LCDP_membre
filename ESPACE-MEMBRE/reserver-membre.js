@@ -293,7 +293,7 @@
   }
 
   // Filtres d'affichage : les catégories ne valent pas autorisation de réserver.
-  const filtresAccesPlanifier = new Set(["duo", "famille", "coach", "famille-coach"]);
+  const filtresAccesPlanifier = new Set(["duo"]);
   let filtreParcOuvert = false;
   let parcInitialise = false;
   // Les fragments d'une liste sont préparés une seule fois et clonés à l'utilisation.
@@ -808,7 +808,7 @@
     contenuLegende.replaceChildren();
     const titreFiltres = document.createElement("span");
     titreFiltres.className = "lcdp-box-legende__titre";
-    titreFiltres.textContent = "FILTRER PAR INVITÉS";
+    titreFiltres.textContent = "FILTRE INVITÉS";
     contenuLegende.appendChild(titreFiltres);
     const ligneLegende = document.createElement("div");
     ligneLegende.className = "lcdp-box-legende__ligne";
