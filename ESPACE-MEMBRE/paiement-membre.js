@@ -108,7 +108,11 @@
     if (!panier || panier.idpanier !== idpanier) {
       throw new Error('Le panier demandé ne correspond pas au panier actif.');
     }
-    if (panier.statut !== 'pret_paiement' || panier.complet !== true ||
+    // Une commande déjà transmise à Stripe reste reprenable tant que ses
+    // retenues sont valides. Le serveur Paiement reste seul juge de l'état
+    // de la session et du règlement lors de /valider.
+    if (!['pret_paiement', 'transmis_paiement'].includes(panier.statut) ||
+        panier.complet !== true ||
         Number(panier.nbSelectionnes) < Number(panier.nbAccesRequis)) {
       throw new Error('Le panier doit être complété avant la synthèse.');
     }
