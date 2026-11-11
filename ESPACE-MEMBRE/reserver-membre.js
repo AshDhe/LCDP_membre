@@ -5104,6 +5104,10 @@
       const estInvitation = reservationPlage.invitation === true;
       card.dataset.indisponible = estInvitation ? "invitation" : "deja-reserve";
       card.classList.add(estInvitation ? "lcdp-planifier-heure--invitation" : "lcdp-planifier-heure--reservation");
+    } else if (plage.ouverte && normaliserLargeurJauge(plage.data?.jauge) === 100) {
+      // Jauge complète : même indisponibilité et même gris que la plage fermée.
+      card.dataset.indisponible = "fermee";
+      card.classList.add("lcdp-planifier-heure--fermee");
     } else if (heurePassee) {
       card.dataset.indisponible = "passee";
     }
@@ -5115,7 +5119,7 @@
           const motifs = {
             invitation:"Vous avez déjà une invitation pour cette plage.",
             "deja-reserve":"Vous avez déjà un accès planifié sur cette plage.",
-            fermee:"Cette plage est fermée dans ce parc.",
+            fermee:"Accès au parc clos",
             passee:"Cette plage a déjà commencé."
           };
           await afficherAlerteSuperposee(motifs[card.dataset.indisponible], "vert", {
