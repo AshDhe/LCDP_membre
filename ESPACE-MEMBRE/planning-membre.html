@@ -62,9 +62,49 @@
 #lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button[aria-selected="true"] { background:#55733f !important; color:#fff !important; }
 #lcdp-mes-acces-planning[hidden], #lcdp-mes-acces-filtres[hidden], #lcdp-mes-acces-liste-conteneur[hidden], #lcdp-mes-acces-resultat[hidden], #lcdp-mes-acces-message[hidden], #mention-statut-membre[hidden] { display:none !important; }
 #lcdp-mes-acces-planning { width:100%; min-width:0; box-sizing:border-box; }
+/* Reprise explicite de la coque mobile existante, même lorsque le module
+   principal charge après la feuille de page. */
+html[data-lcdp-css~="c085"] body.lcdp-app-page.lcdp-mes-acces-page {
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 12px;
+  background: #f8fafc;
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 448px;
+  width: 100%;
+  max-width: 448px;
+  height: calc(100dvh - 24px);
+  max-height: 850px;
+  min-height: 0;
+  margin: 0 auto;
+  border: 1px solid #f1f5f9;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 20px 25px -5px rgb(226 232 240 / 50%), 0 8px 10px -6px rgb(226 232 240 / 50%);
+}
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper > .lcdp-site-main {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0;
+}
 /* La coque de MES ACCÈS reste l'application membre (448px) ;
    le wrapper PLANIFIER est réservé au seul calendrier. */
-body.lcdp-page-reserver .lcdp-app-wrapper {
+body.lcdp-mes-acces-page .lcdp-app-wrapper {
   display:flex;
   flex-direction:column;
   width:100%;
@@ -74,7 +114,7 @@ body.lcdp-page-reserver .lcdp-app-wrapper {
   min-height:0;
   overflow:hidden;
 }
-body.lcdp-page-reserver .lcdp-app-wrapper > .lcdp-site-main {
+body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
   display:block;
   flex:1 1 auto;
   min-height:0;
@@ -83,7 +123,7 @@ body.lcdp-page-reserver .lcdp-app-wrapper > .lcdp-site-main {
   overflow-y:auto;
   padding:0;
 }
-body.lcdp-page-reserver .lcdp-app-wrapper > .lcdp-site-main > .lcdp-page-section {
+body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main > .lcdp-page-section {
   width:100%;
   box-sizing:border-box;
   padding:14px 12px 24px;
