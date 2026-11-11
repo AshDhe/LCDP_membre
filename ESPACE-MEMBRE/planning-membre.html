@@ -546,7 +546,10 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-f
           if (event.ctrlKey || event.defaultPrevented || !event.deltaY) return;
           if (document.querySelector('[role="dialog"][open], dialog[open], [aria-modal="true"]')) return;
           const cible = event.target instanceof Element ? event.target : null;
-          if (cible?.closest('select, input, textarea, [data-lcdp-burger-menu], .lcdp-box-menu-burger')) return;
+          // Les champs du formulaire ne doivent pas bloquer le défilement
+          // du panneau : la capture Chrome confirmait le blocage sur SELECT.
+          // Préserver en revanche les menus burger et les dialogues.
+          if (cible?.closest('[data-lcdp-burger-menu], .lcdp-box-menu-burger')) return;
           const maximum = main.scrollHeight - main.clientHeight;
           if (maximum <= 1) return;
           const facteur = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? main.clientHeight : 1;
