@@ -5329,7 +5329,7 @@
       reservation?.invitation === true ? 'Vous avez déjà une invitation' : 'Vous avez déjà un accès planifié',
       date ? 'le ' + date : '',
       plage,
-      parc ? 'au parc de ' + parc : ''
+      parc ? 'au parc « ' + parc + ' »' : ''
     ].filter(Boolean).join(' · ');
   }
 
