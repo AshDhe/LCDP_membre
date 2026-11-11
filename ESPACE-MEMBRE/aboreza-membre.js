@@ -342,7 +342,7 @@
 
       const moisDuree = { '1M': 1, '3M': 3, '5M': 5, '10M': 10, '11M': 11, '12M': 12 }[offre.formule];
       function actualiserRecap() {
-        if (!selection || !moisDuree || !/^\\d{4}-\\d{2}-\\d{2}$/.test(selection)) {
+        if (!selection || !moisDuree || !/^\d{4}-\d{2}-\d{2}$/.test(selection)) {
           recap.hidden = true;
           return;
         }
