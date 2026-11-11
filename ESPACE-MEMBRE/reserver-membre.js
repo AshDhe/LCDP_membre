@@ -730,7 +730,11 @@
     }
     // Aucun créneau Coach n'est actuellement renseigné dans FluxM :
     // ne jamais présenter les accès membres comme des présences de coachs.
-    if (grille) grille.style.display = modeCoachPlanifierActif ? "none" : "";
+    // hidden prévaut aussi sur les règles display:grid!important du calendrier.
+    if (grille) {
+      grille.hidden = modeCoachPlanifierActif;
+      grille.style.display = modeCoachPlanifierActif ? "none" : "";
+    }
     document.querySelectorAll(".lcdp-planifier-filtre--coach").forEach(bouton => {
       bouton.setAttribute("aria-pressed", String(modeCoachPlanifierActif));
     });
