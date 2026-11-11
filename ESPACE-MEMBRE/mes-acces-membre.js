@@ -233,6 +233,14 @@
     return true;
   }
   function majOngletsEtFiltres() {
+    // Même compteur que la maquette : valeurs réelles des réservations chargées.
+    for (const b of ui.onglets) {
+      if (b.dataset.lcdpPeriode === 'avenir') {
+        b.textContent = 'À venir (' + toutesFutures().length + ')';
+      } else if (b.dataset.lcdpPeriode === 'passe') {
+        b.textContent = 'Passé (' + etat.reservations.filter(estPasse).length + ')';
+      }
+    }
     for (const b of ui.onglets) {
       const actif = b.dataset.lcdpPeriode === etat.periode;
       b.setAttribute('aria-selected', String(actif));
