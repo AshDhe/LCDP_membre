@@ -702,11 +702,16 @@
 
     // RÉZABO est la source des droits de réservation : l'abonnement
     // permanent doit lui-même être payé, pas simplement visible au calendrier.
+    const statutEnCours = String(etat.statutaboEnCours || "").trim().toLowerCase();
+    if (statutEnCours && statutEnCours !== "paye") return false;
     const abonnements = droits?.abonnements;
     return Array.isArray(abonnements) && abonnements.some(abo => {
       const statut = String(abo?.statutabo || "").trim().toLowerCase();
       const type = String(abo?.typeabo || abo?.typeaboPrix || abo?.formule || "").trim().toUpperCase();
-      return statut === "paye" && (type ? type === typeMembre : false);
+      // Si le type n'est pas exposé par RÉZABO, il faut que l'index
+      // certifie explicitement « paye » pour l'abonnement en cours.
+      return statut === "paye" &&
+        (type ? type === typeMembre : statutEnCours === "paye");
     });
   }
 
@@ -1403,6 +1408,7 @@
     return {
       abonne: valeurBooleenneVraie(resultat.abonne),
       typeabo: resultat.abonnementEnCours?.typeabo || resultat.abonnementEnCours?.typeaboPrix || "",
+      statutaboEnCours: resultat.abonnementEnCours?.statutabo || "",
       abonnementSuspendu: valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu),
       abonnementAnnuleNonPaye: valeurBooleenneVraie(resultat.abonnementAnnuleNonPaye || resultat.abonnementAnnule || resultat.annuleNonPaye),
       paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null,
