@@ -50,418 +50,66 @@
   </script>
 
 <style>
-/* Coque : même gabarit membre que la version stable, indépendant de PLANIFIER. */
-html[data-lcdp-css~="c085"] body.lcdp-app-page {
-  display:flex; align-items:flex-start; justify-content:center;
-  min-height:100dvh; margin:0; padding:12px; background:#f8fafc;
-}
-html[data-lcdp-css~="c085"] body.lcdp-app-page > .lcdp-site-page.lcdp-app-wrapper {
-  display:flex; flex-direction:column; flex:0 1 448px; box-sizing:border-box;
-  width:100%; max-width:448px; height:calc(100dvh - 24px); max-height:850px;
-  min-height:0; margin:0 auto; border:1px solid #f1f5f9; border-radius:24px;
-  background:#fff; overflow:hidden;
-  box-shadow:0 20px 25px -5px rgb(226 232 240 / 50%),0 8px 10px -6px rgb(226 232 240 / 50%);
-}
-html[data-lcdp-css~="c085"] body.lcdp-app-page > .lcdp-site-page.lcdp-app-wrapper > .lcdp-site-main {
-  display:block; flex:1 1 auto; width:100%; min-width:0; min-height:0;
-  overflow-x:hidden; overflow-y:auto; padding:0;
-}
-#lcdp-mes-acces-page-conteneur { display:flex; flex-direction:column; gap:12px; min-width:0; width:100%; }
-#lcdp-mes-acces-page-conteneur .lcdp-mes-acces-page-header { display:flex; justify-content:center; padding:8px 0 0; margin:0; }
+/* MES ACCÈS — gabarit membre d'origine (c085, c034, c037).
+   Aucun style structurel redéfini pour le body, le wrapper, le bandeau ou le footer. */
+#lcdp-mes-acces-page-conteneur { display:flex; flex-direction:column; gap:12px; width:100%; min-width:0; }
+#lcdp-mes-acces-page-conteneur .lcdp-mes-acces-page-header { display:flex; justify-content:center; margin:0; padding:4px 0 0; }
 #lcdp-mes-acces-page-conteneur .lcdp-mes-acces-page-header .lcdp-etiquette-statut-membre { margin:0; }
 #mention-statut-membre[hidden], #lcdp-mes-acces-planning[hidden],
 #lcdp-mes-acces-filtres[hidden], #lcdp-mes-acces-liste-conteneur[hidden],
 #lcdp-mes-acces-resultat[hidden], #lcdp-mes-acces-message[hidden] { display:none!important; }
-#lcdp-mes-acces-conteneur {
-  display:block; box-sizing:border-box; width:100%; min-width:0; min-height:0; flex:0 0 auto;
-  background:#fff; padding:13px 12px 16px; border:1px solid #e4eae4;
-  border-radius:18px; box-shadow:0 2px 5px rgba(15,23,42,.05);
-}
-#lcdp-mes-acces-conteneur > .lcdp-title-page-center {
-  text-align:center; font-size:1.3rem; line-height:1.25; font-weight:800;
-  color:#1f2a24; margin:0 0 13px; letter-spacing:0;
-}
+#lcdp-mes-acces-conteneur { display:flex; flex-direction:column; box-sizing:border-box; width:100%; min-width:0;
+  padding:14px 12px 16px; gap:14px; border:1px solid #e7e5e4; border-radius:18px; background:#fff; }
+#lcdp-mes-acces-conteneur > .lcdp-title-page-center { font-size:1.35rem; line-height:1.2; font-weight:800; margin:0; }
 #lcdp-mes-acces-conteneur .lcdp-box-liste-card__header,
-#lcdp-mes-acces-conteneur .lcdp-box-liste-card__commande { display:block; box-sizing:border-box; width:100%; min-width:0; margin:0; padding:0; }
-/* MES ACCÈS — présentation reprise de la maquette fournie.
-   Les trois onglets conservent leurs contrôles et leur état métier existants. */
-#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-tabs {
-  display:grid!important;
-  grid-template-columns:repeat(3,minmax(0,1fr))!important;
-  align-items:stretch!important;
-  box-sizing:border-box;
-  width:100%;
-  gap:4px!important;
-  margin:0 0 16px;
-  padding:5px!important;
-  border:1px solid #e7e5e4;
-  border-radius:16px;
-  background:#f5f5f4;
-}
-#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button {
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  flex:none!important;
-  box-sizing:border-box;
-  width:100%!important;
-  max-width:none!important;
-  min-width:0!important;
-  height:44px!important;
-  min-height:44px!important;
-  margin:0!important;
-  padding:8px 3px!important;
-  border:0!important;
-  border-radius:11px!important;
-  background:transparent!important;
-  color:#78716c!important;
-  font:600 .82rem/1.2 var(--lcdp-font-main)!important;
-  box-shadow:none!important;
-  transform:none!important;
-}
+#lcdp-mes-acces-conteneur .lcdp-box-liste-card__commande { width:100%; min-width:0; margin:0; }
+#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:4px; box-sizing:border-box; width:100%; border:1px solid #e7e5e4; background:#f5f5f4; border-radius:16px; padding:5px; }
+#lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button { display:flex; align-items:center; justify-content:center;
+  width:100%; min-width:0; max-width:none; height:44px; min-height:44px; padding:8px 3px;
+  border:0; border-radius:11px; margin:0; background:transparent; color:#78716c;
+  font:600 .82rem/1.2 var(--lcdp-font-main); box-shadow:none; }
 #lcdp-mes-acces-conteneur .lcdp-planning-membre-periode-button[aria-selected="true"] {
-  background:#4e6838!important;
-  color:#fff!important;
-  font-weight:700!important;
-  box-shadow:0 1px 2px rgba(0,0,0,.12)!important;
-}
-#lcdp-mes-acces-filtres {
-  display:flex;
-  flex-direction:column;
-  box-sizing:border-box;
-  width:100%;
-  min-width:0;
-  gap:13px;
-  padding:16px!important;
-  margin:0 0 14px!important;
-  border:1px solid #e7e5e4!important;
-  border-radius:16px!important;
-  background:#fafaf9!important;
-}
-#lcdp-mes-acces-filtres .lcdp-box-commande-bar {
-  display:block!important;
-  width:100%!important;
-  min-width:0!important;
-  margin:0!important;
-  padding:0!important;
-}
-#lcdp-mes-acces-filtres .lcdp-mes-acces-champs .lcdp-box-commande-bar__actions {
-  display:flex!important;
-  flex-direction:column!important;
-  flex-wrap:nowrap!important;
-  align-items:stretch!important;
-  width:100%!important;
-  gap:12px!important;
-}
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire {
-  display:flex!important;
-  flex:0 0 auto!important;
-  flex-direction:column!important;
-  gap:5px!important;
-  box-sizing:border-box;
-  width:100%!important;
-  min-width:0!important;
-  margin:0!important;
-  font-family:var(--lcdp-font-main);
-}
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire__label {
-  display:block;
-  margin:0!important;
-  color:#57534e;
-  font-size:.76rem!important;
-  font-weight:700!important;
-  line-height:1.3;
-}
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire input,
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire select {
-  display:block;
-  box-sizing:border-box;
-  width:100%!important;
-  max-width:100%!important;
-  min-width:0!important;
-  min-height:43px!important;
-  margin:0!important;
-  padding:9px 13px!important;
-  border:1px solid #e7e5e4!important;
-  border-radius:12px!important;
-  background:#fff!important;
-  color:#44403c!important;
-  font:500 .84rem/1.3 var(--lcdp-font-main)!important;
-}
-#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire :is(input,select):focus-visible {
-  outline:2px solid rgba(78,104,56,.35)!important;
-  outline-offset:2px;
-}
+  background:#4e6838; color:#fff; font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,.12); }
+#lcdp-mes-acces-filtres { display:flex; flex-direction:column; gap:14px; box-sizing:border-box; width:100%; min-width:0;
+  margin:0; padding:16px; border:1px solid #e7e5e4; border-radius:16px; background:#fafaf9; }
+#lcdp-mes-acces-filtres .lcdp-box-commande-bar { display:block; width:100%; margin:0; padding:0; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-champs .lcdp-box-commande-bar__actions,
 #lcdp-mes-acces-filtres .lcdp-mes-acces-invitations .lcdp-box-commande-bar__actions {
-  display:flex!important;
-  flex-direction:column!important;
-  flex-wrap:nowrap!important;
-  gap:9px!important;
-  align-items:stretch!important;
-  width:100%!important;
-}
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button {
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  box-sizing:border-box;
-  width:100%!important;
-  min-height:42px!important;
-  padding:9px 12px!important;
-  margin:0!important;
-  border:1px solid #e7e5e4!important;
-  border-radius:12px!important;
-  background:#fff!important;
-  color:#44403c!important;
-  font:700 .79rem/1.3 var(--lcdp-font-main)!important;
-}
+  display:flex; flex-direction:column; align-items:stretch; flex-wrap:nowrap; gap:12px; width:100%; min-width:0; }
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire { display:flex; flex-direction:column; flex:0 0 auto;
+  width:100%; min-width:0; gap:5px; margin:0; }
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire__label { font-size:.76rem; color:#57534e; font-weight:700; }
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire :is(input,select) { box-sizing:border-box; width:100%; min-width:0; max-width:100%;
+  min-height:43px; padding:9px 13px; margin:0; border:1px solid #e7e5e4; border-radius:12px; background:#fff;
+  color:#44403c; font:500 .84rem/1.3 var(--lcdp-font-main); }
+#lcdp-mes-acces-filtres .lcdp-box-champ-formulaire :is(input,select):focus-visible { outline:2px solid rgba(78,104,56,.35); outline-offset:2px; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations .lcdp-box-commande-bar__actions { gap:9px; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button { display:flex; align-items:center; justify-content:space-between;
+  gap:10px; box-sizing:border-box; width:100%; min-height:43px; margin:0; padding:9px 13px;
+  border:1px solid #e7e5e4; border-radius:12px; background:#fff; color:#44403c;
+  font:700 .8rem/1.3 var(--lcdp-font-main); }
 #lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button[aria-pressed="true"] {
-  border-color:#55733f!important;
-  background:#eef3ea!important;
-  color:#4e6838!important;
-}
-#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button:disabled {
-  opacity:.55;
-  cursor:not-allowed;
-}
-#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied {
-  display:flex;
-  flex-direction:row;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  padding-top:12px;
-  border-top:1px solid #e7e5e4;
-}
-#lcdp-mes-acces-filtres-pied { min-width:0; }
-#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied #lcdp-mes-acces-resultat {
-  display:block;
-  width:auto!important;
-  min-width:0;
-  flex:1 1 auto;
-  margin:0!important;
-  text-align:left!important;
-  color:#78716c!important;
-  font:600 .72rem/1.3 var(--lcdp-font-main)!important;
-}
+  background:#eef3ea; border-color:#55733f; color:#4e6838; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations button:disabled { opacity:.55; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations .lcdp-mes-acces-compteur {
+  display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:21px;
+  padding:1px 7px; background:#f5f5f4; border-radius:999px; color:#78716c; font-size:.71rem; font-weight:800; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-invitations #lcdp-mes-acces-recues .lcdp-mes-acces-compteur {
+  background:#ffe4e6; color:#be123c; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied { display:flex; align-items:center; justify-content:space-between; gap:8px;
+  border-top:1px solid #e7e5e4; padding-top:12px; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied #lcdp-mes-acces-resultat { display:block; flex:1 1 auto;
+  width:auto; min-width:0; margin:0; color:#78716c; text-align:left; font:600 .72rem/1.3 var(--lcdp-font-main); }
 #lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied #lcdp-mes-acces-effacer {
-  display:inline-block;
-  flex:0 0 auto;
-  width:auto!important;
-  min-width:0!important;
-  min-height:0!important;
-  height:auto!important;
-  margin:0!important;
-  padding:3px 0!important;
-  border:0!important;
-  border-radius:0!important;
-  background:transparent!important;
-  box-shadow:none!important;
-  color:#78716c!important;
-  font:700 .72rem/1.3 var(--lcdp-font-main)!important;
-  text-decoration:underline;
-  text-decoration-color:#d6d3d1;
-  text-underline-offset:3px;
-}
-#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied #lcdp-mes-acces-effacer:disabled {
-  opacity:.55;
-  cursor:not-allowed;
-}
-#lcdp-mes-acces-planning { width:100%; min-width:0; box-sizing:border-box; }
-#lcdp-mes-acces-liste { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr))!important; gap:12px!important; align-items:start; width:100%; min-width:0; }
+  flex:0 0 auto; min-height:0; width:auto; margin:0; padding:3px 0;
+  border:0; border-radius:0; background:transparent; box-shadow:none; color:#78716c;
+  font:700 .72rem/1.3 var(--lcdp-font-main); text-decoration:underline;
+  text-decoration-color:#d6d3d1; text-underline-offset:3px; }
+#lcdp-mes-acces-filtres .lcdp-mes-acces-filtres-pied #lcdp-mes-acces-effacer:disabled { opacity:.55; }
+#lcdp-mes-acces-liste { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; width:100%; min-width:0; }
 #lcdp-mes-acces-liste > .lcdp-box-card-parc-diaporama.is-retourne { grid-column:1/-1; }
-
-/* Restaurer le flux du gabarit membre validé, sans dépendre des styles de PLANIFIER. */
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper {
-  display: flex !important;
-  flex-direction: column !important;
-  width: 100% !important;
-  max-width: 448px !important;
-  min-height: 0 !important;
-  background: #fff !important;
-  overflow: hidden !important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
-  display: block !important;
-  flex: 0 0 auto !important;
-  width: 100% !important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
-  display: block !important;
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-page-conteneur {
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: flex-start !important;
-  align-items: stretch !important;
-  gap: 12px !important;
-  height: auto !important;
-  min-height: 0 !important;
-  width: 100% !important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-conteneur {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 12px !important;
-  position: static !important;
-  width: 100% !important;
-  height: auto !important;
-  min-height: 0 !important;
-  flex: 0 0 auto !important;
-  visibility: visible !important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-conteneur > .lcdp-title-page-center,
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-conteneur > .lcdp-box-liste-card__header {
-  display: block !important;
-  position: static !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  width: 100% !important;
-  height: auto !important;
-  flex: 0 0 auto !important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page #lcdp-mes-acces-filtres:not([hidden]) {
-  display: block !important;
-  position: static !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  width: 100% !important;
-  height: auto !important;
-  flex: 0 0 auto !important;
-}
-
-/* MES ACCÈS : coque complète identique à l'espace membre, header/footer inclus.
-   Ces règles ciblent exclusivement cette page et n'affectent pas PLANIFIER. */
-html[data-lcdp-css~="c085"] body.lcdp-app-page.lcdp-mes-acces-page {
-  display:flex!important;
-  flex-direction:row!important;
-  justify-content:center!important;
-  align-items:center!important;
-  box-sizing:border-box;
-  width:100%;
-  min-height:100dvh;
-  padding:16px!important;
-  margin:0!important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
-  position:relative!important;
-  display:flex!important;
-  flex-direction:column!important;
-  flex:0 1 448px!important;
-  width:100%!important;
-  max-width:448px!important;
-  min-width:0!important;
-  height:calc(100dvh - 32px)!important;
-  max-height:850px!important;
-  min-height:0!important;
-  margin:0 auto!important;
-  padding:0!important;
-  border:1px solid #f1f5f9!important;
-  border-radius:24px!important;
-  background:#fff!important;
-  overflow:hidden!important;
-  box-shadow:0 20px 25px -5px rgb(226 232 240 / 50%),0 8px 10px -6px rgb(226 232 240 / 50%)!important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
-  display:block!important;
-  position:relative!important;
-  visibility:visible!important;
-  opacity:1!important;
-  flex:0 0 68px!important;
-  height:68px!important;
-  min-height:68px!important;
-  width:100%!important;
-  background:#4e6838!important;
-  overflow:visible!important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot > .lcdp-box-bandeau-nav {
-  position:relative!important;
-  top:auto!important;
-  left:auto!important;
-  right:auto!important;
-  inset:auto!important;
-  display:block!important;
-  visibility:visible!important;
-  opacity:1!important;
-  box-sizing:border-box!important;
-  width:100%!important;
-  height:68px!important;
-  min-height:68px!important;
-  border-radius:23px 23px 0 0!important;
-  background:#4e6838!important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot .lcdp-box-bandeau-nav__inner {
-  display:flex!important;
-  align-items:center!important;
-  justify-content:space-between!important;
-  box-sizing:border-box!important;
-  width:100%!important;
-  min-height:68px!important;
-}
-/* Le wrapper fonctionne en trois rangées : bandeau, zone scrollable, footer.
-   Ne pas donner height:0 à la zone de contenu. */
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
-  display:grid!important;
-  grid-template-columns:minmax(0,1fr)!important;
-  grid-template-rows:68px minmax(0,1fr) 50px!important;
-  align-content:stretch!important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-bandeau-slot {
-  grid-row:1!important;
-  min-height:0!important;
-  height:68px!important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > .lcdp-site-main {
-  display:block!important;
-  grid-row:2!important;
-  min-height:0!important;
-  height:100%!important;
-  width:100%!important;
-  overflow-x:hidden!important;
-  overflow-y:auto!important;
-  overscroll-behavior-y:contain;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:auto;
-  scrollbar-gutter:stable;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot {
-  grid-row:3!important;
-  height:50px!important;
-  min-height:0!important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot {
-  position:relative!important;
-  display:block!important;
-  visibility:visible!important;
-  opacity:1!important;
-  flex:0 0 50px!important;
-  box-sizing:border-box!important;
-  width:100%!important;
-  height:50px!important;
-  min-height:50px!important;
-  margin:0!important;
-  padding:0!important;
-  border-top:1px solid #f1f5f9!important;
-  background:#fff!important;
-}
-html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-footer-slot > .lcdp-box-footer {
-  display:block!important;
-  position:relative!important;
-  inset:auto!important;
-  visibility:visible!important;
-  opacity:1!important;
-  width:100%!important;
-  height:49px!important;
-  min-height:49px!important;
-}
-@media(max-width:767px) {
-  html[data-lcdp-css~="c085"] body.lcdp-app-page.lcdp-mes-acces-page { align-items:flex-start!important; padding:12px!important; }
-  html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper { height:calc(100dvh - 24px)!important; }
-}
+#lcdp-mes-acces-planning { width:100%; min-width:0; }
 </style>
 </head>
 <body class="lcdp-app-page lcdp-mes-acces-page">
@@ -680,31 +328,6 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-f
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', observerPremierAffichage, {once:true});
       else observerPremierAffichage();
-    })();
-  </script>
-  <script>
-    // MES ACCÈS — secours de défilement à la molette, limité à cette page.
-    // Le panneau conserve son défilement natif au doigt et au clavier.
-    (() => {
-      document.addEventListener('wheel', event => {
-        if (event.defaultPrevented || event.ctrlKey) return;
-        const cible = event.target;
-        if (cible instanceof Element && cible.closest(
-          'select, input, textarea, [role="dialog"], dialog, .lcdp-box-menu-burger__nav, [data-lcdp-burger-menu]'
-        )) return;
-        const main = document.querySelector('.lcdp-app-wrapper > .lcdp-site-main');
-        if (!main || main.scrollHeight <= main.clientHeight + 1) return;
-        const multiplicateur = event.deltaMode === 1 ? 16 :
-          event.deltaMode === 2 ? main.clientHeight : 1;
-        const delta = event.deltaY * multiplicateur;
-        if (!delta) return;
-        const avant = main.scrollTop;
-        const max = main.scrollHeight - main.clientHeight;
-        const apres = Math.min(max, Math.max(0, avant + delta));
-        if (apres === avant) return;
-        event.preventDefault();
-        main.scrollTop = apres;
-      }, { capture:true, passive:false });
     })();
   </script>
   <script src="./mes-acces-membre.js?v=20261111-mes-acces-reprise-v8"></script>
