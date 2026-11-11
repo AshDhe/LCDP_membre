@@ -481,6 +481,14 @@
       debut.textContent = dateLibelle(p.dateDebut);
       actions.append(resume);
 
+      const continuer = bouton('Continuer vers le planning', true);
+      continuer.classList.add('lcdp-aboreza-preparation__continuer');
+      continuer.addEventListener('click', () => finir(true));
+      const fleche = elem('span', 'lcdp-aboreza-preparation__fleche', '→');
+      fleche.setAttribute('aria-hidden', 'true');
+      continuer.append(fleche);
+      actions.append(continuer);
+
       const regles = elem('section', 'lcdp-aboreza-preparation__regles');
       regles.append(elem('h3', 'lcdp-aboreza-preparation__section-titre', 'Comment fonctionne la planification ?'));
       const icones = {
@@ -517,13 +525,6 @@
           Math.max(0, p.nbAccesRequis - p.nbSelectionnes) + ' accès à planifier.'));
       }
       actions.append(regles);
-      const continuer = bouton('Continuer vers le planning', true);
-      continuer.classList.add('lcdp-aboreza-preparation__continuer');
-      continuer.addEventListener('click', () => finir(true));
-      const fleche = elem('span', 'lcdp-aboreza-preparation__fleche', '→');
-      fleche.setAttribute('aria-hidden', 'true');
-      continuer.append(fleche);
-      actions.append(continuer);
     });
   }
 
