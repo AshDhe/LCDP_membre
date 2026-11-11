@@ -272,6 +272,15 @@ html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page .lcdp-app-wrapper > #lcdp-f
   html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper { height:calc(100dvh - 24px)!important; }
 }
 
+/* Neutraliser le min-height:100vh de cssbase.css sur .lcdp-site-page :
+   il empêchait .lcdp-site-main de se réduire dans le wrapper limité à 850px. */
+html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
+  min-height:0!important;
+  flex-shrink:0!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+
 /* Wrapper conforme au gabarit membre : bandeau et footer hors de la zone scrollable.
    La seule zone défilante est le main, sans défilement concurrent sur le wrapper. */
 html[data-lcdp-css~="c085"] body.lcdp-mes-acces-page > .lcdp-site-page.lcdp-app-wrapper {
