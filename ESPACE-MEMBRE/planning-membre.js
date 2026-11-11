@@ -517,13 +517,58 @@
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__micro-action {
         box-sizing:border-box;max-width:100% !important;
       }
-      @media (min-width:460px) {
-        #lcdp-planning-calendrier-slot .lcdp-box-liste-card-diaporama__list {
-          grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-        }
-        #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne {
-          grid-column:1/-1;
-        }
+      /* Régression corrigée : une seule carte par ligne à toutes les largeurs. */
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card-diaporama__list {
+        display:grid !important;
+        grid-template-columns:minmax(0,1fr) !important;
+        gap:16px !important;
+        align-items:stretch !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card-diaporama__list > .lcdp-planning-carte-visite {
+        grid-column:1 / -1 !important;
+        min-width:0 !important;
+        width:100% !important;
+      }
+      /* Cohérence des largeurs : formulaire, champs et boutons utilisent 100 % du parent. */
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-liste .lcdp-box-liste-card__header,
+      #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-liste .lcdp-box-liste-card__tools,
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres,
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champ,
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitations,
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitation {
+        box-sizing:border-box !important;
+        width:100% !important;
+        max-width:100% !important;
+        min-width:0 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres {
+        gap:16px !important;
+        padding:18px 16px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champ {
+        gap:7px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champ input,
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champ select {
+        box-sizing:border-box !important;
+        display:block !important;
+        width:100% !important;
+        min-width:0 !important;
+        min-height:46px !important;
+        margin:0 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitations {
+        gap:12px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitation {
+        display:flex !important;
+        min-height:46px !important;
+        margin:0 !important;
+        padding:10px 12px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-filtres__actions {
+        margin-top:2px !important;
+        padding-top:16px !important;
       }
       @media (max-width: 350px) {
         .lcdp-planning-filtres { grid-template-columns: 1fr; }
@@ -543,14 +588,16 @@
       await initialiserBandeau();
       await initialiserFooter();
 
+      // Un seul affichage du statut, après vérification : pas de badge provisoire.
       etat.membre = creerEtatMembreFallback();
-      afficherStatutMembrePlanning(etat.membre);
-
       await initialiserPlanningCalendrier();
       document.addEventListener("click", gererClicDocument);
 
-      lancerActualisationEtatMembrePlanning();
-      await chargerReservations();
+      await Promise.all([
+        chargerReservations(),
+        lancerActualisationEtatMembrePlanning()
+      ]);
+      afficherStatutMembrePlanning(etat.membre);
     } catch (error) {
       console.error("Erreur planning membre :", error);
       afficherErreurCalendrier(error.message || "Erreur technique. Merci de réessayer.");
@@ -648,6 +695,7 @@
     mention.textContent = membre && membre.abonne
       ? "MEMBRE ABONNÉ"
       : "MEMBRE INVITÉ";
+    mention.hidden = false;
   }
 
   async function initialiserPlanningCalendrier() {
