@@ -36,9 +36,106 @@
 
 
 
+<style>
+/* Masque membre : container fixe au centre, styles exclusifs à cette page. */
+html body#lcdp-masque-membre {
+  display:flex!important;
+  flex-direction:row!important;
+  justify-content:center!important;
+  align-items:center!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  min-height:100dvh!important;
+  padding:16px!important;
+  margin:0!important;
+  background:#f8fafc!important;
+}
+html body#lcdp-masque-membre > #lcdp-masque-wrapper.lcdp-app-wrapper {
+  position:relative!important;
+  display:flex!important;
+  flex-direction:column!important;
+  flex:0 1 448px!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  max-width:448px!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:calc(100dvh - 32px)!important;
+  max-height:850px!important;
+  margin:0 auto!important;
+  padding:0!important;
+  border:1px solid #e6ece6!important;
+  border-radius:24px!important;
+  background:#fff!important;
+  overflow:hidden!important;
+  box-shadow:0 20px 25px -5px rgb(226 232 240 / 50%), 0 8px 10px -6px rgb(226 232 240 / 50%)!important;
+}
+html body#lcdp-masque-membre #lcdp-bandeau-slot {
+  position:relative!important;
+  display:block!important;
+  flex:0 0 68px!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  height:68px!important;
+  min-height:68px!important;
+  background:#4e6838!important;
+  overflow:hidden!important;
+}
+html body#lcdp-masque-membre #lcdp-bandeau-slot > .lcdp-box-bandeau-nav {
+  position:relative!important;
+  inset:auto!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  height:68px!important;
+  min-height:68px!important;
+  border-radius:23px 23px 0 0!important;
+}
+html body#lcdp-masque-membre #lcdp-masque-wrapper > .lcdp-site-main {
+  display:block!important;
+  position:relative!important;
+  flex:1 1 0px!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+  padding:0!important;
+  margin:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:contain;
+  background:#fff!important;
+}
+html body#lcdp-masque-membre #lcdp-footer-slot {
+  position:relative!important;
+  display:block!important;
+  flex:0 0 50px!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  height:50px!important;
+  min-height:50px!important;
+  padding:0!important;
+  margin:0!important;
+  background:#fff!important;
+  overflow:hidden!important;
+  border-top:1px solid #f1f5f9!important;
+}
+html body#lcdp-masque-membre #lcdp-footer-slot > .lcdp-box-footer {
+  position:relative!important;
+  inset:auto!important;
+  width:100%!important;
+  height:49px!important;
+  min-height:49px!important;
+}
+@media(max-width:767px) {
+  html body#lcdp-masque-membre {align-items:flex-start!important;padding:12px!important;}
+  html body#lcdp-masque-membre > #lcdp-masque-wrapper.lcdp-app-wrapper {height:calc(100dvh - 24px)!important;}
+}
+</style>
 </head>
-<body class="lcdp-app-page">
-  <div class="lcdp-site-page lcdp-app-wrapper">
+<body class="lcdp-app-page" id="lcdp-masque-membre">
+  <div class="lcdp-site-page lcdp-app-wrapper" id="lcdp-masque-wrapper">
     <div id="lcdp-bandeau-slot">
       <header class="lcdp-box-bandeau-nav" data-lcdp-box-bandeau-nav>
         <div class="lcdp-box-bandeau-nav__inner">
