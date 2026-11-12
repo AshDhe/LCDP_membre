@@ -188,6 +188,7 @@
       titre: options.titre || "Information",
       message,
       libelleAction: options.libelleBouton || "Fermer",
+      valeurAction: options.valeurAction ?? "fermer",
       onAffiche: options.onAffiche,
       classe: "lcdp-aboreza-confirmation-information"
     }),
