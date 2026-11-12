@@ -190,7 +190,9 @@
       libelleAction: options.libelleBouton || "Fermer",
       valeurAction: options.valeurAction ?? "fermer",
       onAffiche: options.onAffiche,
-      classe: options.classe || "lcdp-aboreza-confirmation-information"
+      classe: options.classe || "lcdp-aboreza-confirmation-information",
+      lignes: options.lignes,
+      lienSecondaire: options.lienSecondaire
     }),
     confirmerAnnulationPanier: () => afficherConfirmationSuppressionPanier(),
     viderCache: () => cachePlanningParcLecture.clear(),
@@ -5773,7 +5775,7 @@
 
   // Migration pilote vers l'objet INFORMATION générique.
   // Le rendu est toujours celui du profil INFORMATION ; seuls les contenus varient.
-  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null, classe = "" }) {
+  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null, classe = "", lignes = null, lienSecondaire = "" }) {
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
@@ -5789,6 +5791,31 @@
       if (classe) dialogue.classList.add(classe);
       titre.textContent = libelleTitre;
       message.textContent = contenu;
+      if (Array.isArray(lignes) && lignes.length) {
+        // Utiliser les marqueurs verts des listes du règlement application LCDP.
+        const liste = document.createElement('ul');
+        liste.className = 'lcdp-aboreza-privileges-liste';
+        for (const ligne of lignes) {
+          const item = document.createElement('li');
+          item.textContent = String(ligne);
+          liste.appendChild(item);
+        }
+        message.replaceWith(liste);
+      }
+      if (lienSecondaire) {
+        const lien = document.createElement('a');
+        lien.href = '#';
+        lien.className = 'lcdp-aboreza-privileges-ajouter';
+        lien.textContent = lienSecondaire;
+        lien.addEventListener('click', event => {
+          event.preventDefault();
+          // Aucune route d'achat de privilèges n'est encore raccordée.
+          // Ne pas inventer une transaction ou modifier le panier.
+          window.alert('L’ajout de privilèges n’est pas encore disponible.');
+        });
+        const actions = fermer.closest('.lcdp-dialogue-ref__actions');
+        if (actions) actions.before(lien);
+      }
       fermer.textContent = libelleAction;
       // Retirer l'attente dès que la boîte d'information est réellement visible.
       if (typeof onAffiche === "function") {
