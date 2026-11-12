@@ -183,6 +183,23 @@
       invites.textContent = nbInvites > 0 ? String(nbInvites) : "";
     }
 
+    // Options facturées avec la commande PLANIFIER : détail TTC par ligne.
+    const options = Array.isArray(produit.options) ? produit.options : [];
+    const liste = fragment.querySelector('.lcdp-box-card-facture__list');
+    if (liste) {
+      for (const option of options) {
+        const ligne = document.createElement('div');
+        ligne.className = 'lcdp-box-card-facture__row';
+        const titre = document.createElement('dt');
+        titre.textContent = option.code +
+          (Number(option.multiplicateur) > 1 ? ' × ' + option.multiplicateur : '');
+        const valeur = document.createElement('dd');
+        valeur.textContent = formaterMontant(option.totalTtc) + ' € TTC';
+        ligne.append(titre, valeur);
+        liste.append(ligne);
+      }
+    }
+
     return fragment;
   }
 
