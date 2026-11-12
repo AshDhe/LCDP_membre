@@ -231,7 +231,7 @@
   // Les cinq rubriques viennent exclusivement de prixabo via le Worker.
   // La lightbox INFORMATION est montée dans le slot de dialogues du wrapper.
   async function afficherPrivilegesAbonnement(formule) {
-    const titre = 'Privilèges de l’abonnement ' + nomFormule(formule);
+    let titre = 'Privilège de l’abonnement ' + formule;
     let texte;
     try {
       const reponse = await api('/privileges?formule=' + encodeURIComponent(formule));
@@ -239,20 +239,23 @@
       if (!p) {
         texte = 'Les privilèges de cet abonnement ne sont pas encore configurés.';
       } else {
-        const nombre = v => v === null || v === undefined ? 'Non renseigné' : String(v);
-        const supplement = (v, libelle) => v === null || v === undefined ? '' : ' (' + libelle + ' : ' + v + ')';
+        titre = 'Privilège de l’abonnement ' + String(p.typeabo || formule);
+        const nombre = valeur => valeur === null || valeur === undefined
+          ? 'Non renseigné' : String(valeur);
         texte = [
-          'DUO : maximum ' + nombre(p.maxduo),
-          'DUO+ : ' + nombre(p.duoplus) + supplement(p.freqduoplus, 'fréquence'),
-          'Famille : ' + nombre(p.famille),
-          'Coach : ' + nombre(p.coach) + supplement(p.maxcoach, 'maximum'),
-          'Recherche IA : ' + (p.rechercheia === true ? 'Incluse' : p.rechercheia === false ? 'Non incluse' : 'Non renseignée')
-        ].join('\n');
+          '• Planifier illimité selon CGV',
+          '• ' + nombre(p.maxduo) + ' invités DUO différents',
+          '• DUO+ ' + nombre(p.freqduoplus) + ' x par mois (' + nombre(p.duoplus) + ' invités simultanés)',
+          '• ' + nombre(p.famille) + ' invités FAMILLE',
+          '• Payable en ' + nombre(p.ech) + ' échéances'
+        ].join('\\n');
       }
     } catch (erreur) {
       texte = erreur?.message || 'Impossible de consulter les privilèges de cet abonnement.';
     }
-    await bridge()?.informer?.(texte, { titre, libelleBouton: 'Fermer' });
+    await bridge()?.informer?.(texte, {
+      titre, libelleBouton: 'Fermer', classe: 'lcdp-aboreza-privileges-information'
+    });
   }
   function lienPrivilegesAbonnement(formule) {
     const lien = elem('a', 'lcdp-aboreza-catalogue__privileges', 'Voir les privilèges');
