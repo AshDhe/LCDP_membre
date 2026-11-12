@@ -2869,7 +2869,7 @@
 
     if (invitationReservationCreee(resultat)) {
       marquerReservationAvecInvitesPlanning(idReservation, declencheur);
-      await afficherAlerteInvitationReservation(resultat.message || "Invitation envoyée.", declencheur);
+      await afficherAlerteInvitationReservation(resultat.message || "Invitation envoyée.", declencheur, { profil: "information" });
     }
   }
 
@@ -2885,7 +2885,7 @@
     const message = formaterParrainInvitationRecue(reservation);
 
     try {
-      await afficherAlerteOkParDessusLightbox(message);
+      await afficherInformationPlanning(message, { superposition: true });
     } catch (error) {
       console.error("[LCDP invitation reçue] alerte objet impossible", error);
       window.alert(message);
@@ -3386,7 +3386,7 @@
         }
 
         actualiserBoutonsInvitationPlanning(idReservation, declencheur);
-        await afficherAlerteInvitationReservation(resultat.message || "Liste des invités mise à jour.", declencheur);
+        await afficherAlerteInvitationReservation(resultat.message || "Liste des invités mise à jour.", declencheur, { profil: "information" });
         fermer(resultat);
       }
 
@@ -3624,7 +3624,59 @@
     }) || null;
   }
 
-  async function afficherAlerteInvitationReservation(message, declencheur) {
+  async function afficherInformationPlanning(message, options = {}) {
+    const superposition = options.superposition === true;
+    const slot = superposition
+      ? document.createElement("div")
+      : document.getElementById("lcdp-lightbox-slot");
+    if (!slot) return null;
+    if (superposition) {
+      slot.dataset.lcdpInformationPlanningOverlay = "true";
+      slot.style.position = "fixed";
+      slot.style.inset = "0";
+      slot.style.zIndex = "12000";
+      document.body.appendChild(slot);
+    } else {
+      slot.replaceChildren();
+    }
+    try {
+      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html"));
+      const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="information"]');
+      const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+      const bouton = slot.querySelector('[data-lcdp-dialogue-action="compris"]');
+      if (!dialogue || !titre || !texte || !bouton) {
+        throw new Error("Structure INFORMATION incomplète.");
+      }
+      titre.textContent = options.titre || "Information";
+      texte.textContent = String(message || "");
+      bouton.textContent = "Fermer";
+      return await new Promise(resolve => {
+        let resolu = false;
+        function fermer() {
+          if (resolu) return;
+          resolu = true;
+          if (superposition) slot.remove();
+          else slot.replaceChildren();
+          resolve(true);
+        }
+        bouton.addEventListener("click", fermer, { once: true });
+        bouton.focus();
+      });
+    } catch (error) {
+      if (superposition) slot.remove();
+      else slot.replaceChildren();
+      throw error;
+    }
+  }
+
+  async function afficherAlerteInvitationReservation(message, declencheur, options = {}) {
+    if (options.profil === "information") {
+      const workflow = declencheur
+        ? declencheur.closest("[data-lcdp-box-workflow-reservation]")
+        : document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
+      return afficherInformationPlanning(message, { superposition: Boolean(workflow) });
+    }
     const workflow = declencheur
       ? declencheur.closest("[data-lcdp-box-workflow-reservation]")
       : document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
@@ -3879,7 +3931,7 @@
   async function envoyerInvitationReservation(idflux, emails, declencheur) {
     try {
       const data = await posterInvitationReservation(idflux, emails);
-      await afficherAlerteInvitationReservation(data.message || "Invitation envoyée.", declencheur);
+      await afficherAlerteInvitationReservation(data.message || "Invitation envoyée.", declencheur, { profil: "information" });
       return data;
     } catch (error) {
       await afficherAlerteInvitationReservation(error.message || "Impossible d’envoyer l’invitation.", declencheur);
@@ -3954,7 +4006,7 @@
 
     try {
       await annulerReservation(idflux);
-      await afficherAlerte(
+      await afficherInformationPlanning(
         estInvite
           ? "Votre invite est annulée."
           : "Votre réservation est annulée."
