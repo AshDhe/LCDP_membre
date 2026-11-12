@@ -13,15 +13,15 @@
       const base = String(c.objetBaseUrl || c.OBJET_BASE || 
         (String(c.publicBaseUrl || c.PUBLIC_BASE || '').replace(/\/+$/, '') + '/OBJET')).replace(/\/+$/, '');
       const url = typeof c.objetUrl === 'function'
-        ? c.objetUrl('/CSSBASE/lcdp-planifier.css?v=20261111-stripe-elements-v1')
-        : base + '/CSSBASE/lcdp-planifier.css?v=20261111-stripe-elements-v1';
+        ? c.objetUrl('/CSSBASE/lcdp-planifier.css')
+        : base + '/CSSBASE/lcdp-planifier.css';
       const link = document.createElement('link');
       link.rel = 'stylesheet'; link.href = url; document.head.appendChild(link);
       window.LCDP_urlObjet = typeof c.objetUrl === 'function' ? c.objetUrl : (p => base + '/' + p.replace(/^\/+/, ''));
     })();
   </script>
   <script defer src="https://js.stripe.com/endive/stripe.js"></script>
-  <script defer src="./paiement-stripe-membre.js?v=20261111-stripe-elements-v1"></script>
+  <script defer src="./paiement-stripe-membre.js"></script>
 </head>
 <body class="lcdp-page-reserver lcdp-stripe-page">
   <main class="lcdp-stripe" aria-labelledby="paiement-titre">

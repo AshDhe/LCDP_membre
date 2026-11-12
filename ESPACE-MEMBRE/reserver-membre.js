@@ -838,7 +838,7 @@
     const terminerAttenteDa = () => masqueDa.remove();
     try {
       if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
-        await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js?v=20261110-spinner-membre-espace-v1");
+        await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js");
       }
       if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
         throw new Error("Le formulaire de demande d'abonnement est indisponible.");
@@ -6425,11 +6425,7 @@
     const urlScript = chemin.startsWith("/ESPACE-MEMBRE/")
       ? construireUrlMembre(chemin)
       : construireUrlPublic(chemin);
-    const versionScript = chemin === "/ESPACE-MEMBRE/carte-diaporama.js"
-      ? "20261112-selection-marqueur-v1"
-      : "20261110-plages-card-cartouche-v4";
-    const src = urlScript + "?v=" + versionScript +
-      (forcer ? "&actualisation=" + Date.now() : "");
+    const src = urlScript;
     const promesse = new Promise((resolve, reject) => {
       const script = document.createElement("script");
       let termine = false;

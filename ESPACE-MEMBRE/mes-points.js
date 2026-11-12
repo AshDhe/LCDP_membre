@@ -45,7 +45,7 @@
 
     slot.innerHTML = "";
     slot.appendChild(
-      await chargerFragmentObjet("/HTMLBASE/05-wraper-onglets.html?v=20260803-0838")
+      await chargerFragmentObjet("/HTMLBASE/05-wraper-onglets.html")
     );
 
     const racine = slot.querySelector("[data-lcdp-wraper-onglets]");

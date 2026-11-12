@@ -112,10 +112,10 @@
 
       const feuillesCssObjet = [
         "/CSSBASE/cssbase.css",
-        "/CSSBASE/lcdp-central-mobile-first.css?v=20261110-statut-exclusif-v2",
-        "/CSSBASE/lcdp-planifier.css?v=20261112-alerte-acces-ligne-v1",
-         "/CSSBASE/lcdp-ui-badges.css?v=20261111-convergence-v1",
-        "/CSSBASE/lcdp-lightbox-convergence.css?v=20261111-wrapper-planifier-v5"
+        "/CSSBASE/lcdp-central-mobile-first.css",
+        "/CSSBASE/lcdp-planifier.css",
+         "/CSSBASE/lcdp-ui-badges.css",
+        "/CSSBASE/lcdp-lightbox-convergence.css"
       ];
 
       feuillesCssObjet.forEach((chemin) => {
@@ -132,7 +132,7 @@
         '"><\/script>'
       );
       document.write(
-        '<script src="' + window.LCDP_urlObjet("/JSBASE/07-diginum.js?v=20261029-compact-sans-logo-v3") + '"><\/script>'
+        '<script src="' + window.LCDP_urlObjet("/JSBASE/07-diginum.js") + '"><\/script>'
       );
     })();
     document.write('<script data-lcdp-footer-autonome src="' + window.LCDP_urlObjet('/JSBASE/02-footer.js') + '"><\/script>');
@@ -235,9 +235,9 @@
 
   </div>
 
-  <script src="./attente-planifier.js?v=20261111-wrapper-dialogues-v2"></script>
-  <script src="./reserver-membre.js?v=20261112-nom-parc-majuscules-v1"></script>
-  <script src="./paiement-membre.js?v=20261111-wrapper-dialogues-v2"></script>
-  <script src="./aboreza-membre.js?v=20261111-wrapper-dialogues-v2"></script>
+  <script src="./attente-planifier.js"></script>
+  <script src="./reserver-membre.js"></script>
+  <script src="./paiement-membre.js"></script>
+  <script src="./aboreza-membre.js"></script>
 </body>
 </html>
