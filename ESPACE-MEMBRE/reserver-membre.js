@@ -191,6 +191,7 @@
       onAffiche: options.onAffiche,
       classe: "lcdp-aboreza-confirmation-information"
     }),
+    confirmerAnnulationPanier: () => afficherConfirmationSuppressionPanier(),
     viderCache: () => cachePlanningParcLecture.clear(),
     choisirParc: () => ouvrirFiltreParcPlanifier(),
     changerMode: actif => {
@@ -5737,6 +5738,53 @@
       plage
     ].filter(Boolean).join(' · ');
     return parc ? description + '\nPARC DE ' + parc : description;
+  }
+
+  // Confirmation de l'abandon du panier : objet SUPPRESSION normalisé.
+  // Aucune requête de suppression n'est effectuée par ce dialogue.
+  async function afficherConfirmationSuppressionPanier() {
+    const enveloppe = document.createElement('div');
+    hoteDialoguesPlanifier().appendChild(enveloppe);
+    try {
+      enveloppe.appendChild(await chargerFragmentObjet('/HTMLBASE/02-dialogue-reference-suppression.html'));
+      const dialogue = enveloppe.querySelector('[data-lcdp-dialogue-reference="suppression"]');
+      const titre = dialogue?.querySelector('[data-lcdp-dialogue-titre]');
+      const message = dialogue?.querySelector('[data-lcdp-dialogue-message]');
+      const conserver = dialogue?.querySelector('[data-lcdp-dialogue-action="conserver"]');
+      const supprimer = dialogue?.querySelector('[data-lcdp-dialogue-action="supprimer"]');
+      if (![dialogue, titre, message, conserver, supprimer].every(Boolean)) {
+        throw new Error('Structure du dialogue SUPPRESSION incomplète.');
+      }
+      dialogue.dataset.lcdpDialogueContext = 'conteneur';
+      titre.textContent = 'Annuler ce panier ?';
+      message.textContent = 'Les accès planifiés dans ce panier seront annulés. Cette action est irréversible.';
+      conserver.textContent = 'Conserver le panier';
+      supprimer.textContent = 'Oui, annuler et recommencer';
+      return await new Promise(resolve => {
+        let termine = false;
+        const fermer = confirme => {
+          if (termine) return;
+          termine = true;
+          document.removeEventListener('keydown', echap, true);
+          enveloppe.remove();
+          resolve(confirme);
+        };
+        const echap = evenement => {
+          if (evenement.key === 'Escape') {
+            evenement.preventDefault();
+            evenement.stopPropagation();
+            fermer(false);
+          }
+        };
+        conserver.addEventListener('click', () => fermer(false), { once: true });
+        supprimer.addEventListener('click', () => fermer(true), { once: true });
+        document.addEventListener('keydown', echap, true);
+        conserver.focus();
+      });
+    } catch (erreur) {
+      enveloppe.remove();
+      throw erreur;
+    }
   }
 
   // Migration pilote vers l'objet INFORMATION générique.
