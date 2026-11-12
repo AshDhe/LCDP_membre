@@ -5776,12 +5776,42 @@
 
   // Migration pilote vers l'objet INFORMATION générique.
   // Le rendu est toujours celui du profil INFORMATION ; seuls les contenus varient.
+  // Les deux modèles de la séquence privilèges sont préchargés une seule fois
+  // pour éviter un écran vide pendant les transitions CHOIX / INFORMATION.
+  const modelesDialoguesPrivileges = new Map();
+  function modeleDialoguePrivileges(type) {
+    const chemin = '/HTMLBASE/02-dialogue-reference-' + type + '.html';
+    if (!modelesDialoguesPrivileges.has(type)) {
+      modelesDialoguesPrivileges.set(type, chargerFragmentObjet(chemin)
+        .catch(erreur => { modelesDialoguesPrivileges.delete(type); throw erreur; }));
+    }
+    return modelesDialoguesPrivileges.get(type).then(fragment => fragment.cloneNode(true));
+  }
+  function preparerDialoguesPrivileges() {
+    Promise.all([modeleDialoguePrivileges('choix'), modeleDialoguePrivileges('information')])
+      .catch(erreur => console.warn('Préchargement dialogues privilèges', erreur));
+  }
+  function refermerDialoguePrivileges(enveloppe, dialogue, terminer) {
+    if (dialogue.classList.contains('lcdp-aboreza-dialogue-sortie')) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      enveloppe.remove();
+      terminer();
+      return;
+    }
+    dialogue.classList.add('lcdp-aboreza-dialogue-sortie');
+    window.setTimeout(() => {
+      enveloppe.remove();
+      terminer();
+    }, 130);
+  }
+
   // Dialogues CHOIX génériques, affichés exclusivement dans le wrapper PLANIFIER.
   async function afficherChoixPrivilegesPlanifier({ options = [], confirmation = false } = {}) {
+    preparerDialoguesPrivileges();
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
-      enveloppe.appendChild(await chargerFragmentObjet('/HTMLBASE/02-dialogue-reference-choix.html'));
+      enveloppe.appendChild(await modeleDialoguePrivileges('choix'));
       const dialogue = enveloppe.querySelector('[data-lcdp-dialogue-reference="choix"]');
       const titre = enveloppe.querySelector('[data-lcdp-dialogue-titre]');
       const message = enveloppe.querySelector('[data-lcdp-dialogue-message]');
@@ -5790,7 +5820,7 @@
       if (!dialogue || !titre || !message || !secondaire || !principal)
         throw new Error('Structure du dialogue CHOIX incomplète.');
       dialogue.dataset.lcdpDialogueContext = 'conteneur';
-      dialogue.classList.add('lcdp-aboreza-options-choix');
+      dialogue.classList.add('lcdp-aboreza-options-choix', 'lcdp-aboreza-dialogue-transition');
       titre.textContent = confirmation ? 'Ajouter les privilèges ?' : 'Ajouter des privilèges';
       secondaire.textContent = confirmation ? 'Ne pas ajouter' : 'Plus tard';
       principal.textContent = 'Ajouter';
@@ -5833,7 +5863,7 @@
         cases.forEach(c => c.addEventListener('change', actualiser));
       }
       return await new Promise(resolve => {
-        const terminer = valeur => { enveloppe.remove(); resolve(valeur); };
+        const terminer = valeur => refermerDialoguePrivileges(enveloppe, dialogue, () => resolve(valeur));
         secondaire.addEventListener('click', () => terminer(confirmation ? 'ne_pas_ajouter' : 'plus_tard'), { once: true });
         principal.addEventListener('click', () => terminer(confirmation ? 'ajouter' : cases.filter(c => c.checked).map(c => c.value)), { once: true });
         secondaire.focus();
@@ -5848,7 +5878,9 @@
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
-      enveloppe.appendChild(await chargerFragmentObjet('/HTMLBASE/02-dialogue-reference-information.html'));
+      enveloppe.appendChild(classe === 'lcdp-aboreza-privileges-information' || classe === 'lcdp-aboreza-confirmation-information'
+        ? await modeleDialoguePrivileges('information')
+        : await chargerFragmentObjet('/HTMLBASE/02-dialogue-reference-information.html'));
       const dialogue = enveloppe.querySelector('[data-lcdp-dialogue-reference="information"]');
       const titre = enveloppe.querySelector('[data-lcdp-dialogue-titre]');
       const message = enveloppe.querySelector('[data-lcdp-dialogue-message]');
@@ -5858,6 +5890,8 @@
       }
       dialogue.dataset.lcdpDialogueContext = 'conteneur';
       if (classe) dialogue.classList.add(classe);
+      if (classe === 'lcdp-aboreza-privileges-information' || classe === 'lcdp-aboreza-confirmation-information')
+        dialogue.classList.add('lcdp-aboreza-dialogue-transition');
       titre.textContent = libelleTitre;
       message.textContent = contenu;
       if (Array.isArray(lignes) && lignes.length) {
@@ -5893,8 +5927,12 @@
         const clore = () => {
           if (termine) return;
           termine = true;
-          enveloppe.remove();
-          resolve(valeurAction);
+          if (dialogue.classList.contains('lcdp-aboreza-dialogue-transition'))
+            refermerDialoguePrivileges(enveloppe, dialogue, () => resolve(valeurAction));
+          else {
+            enveloppe.remove();
+            resolve(valeurAction);
+          }
         };
         fermer.addEventListener('click', clore, { once: true });
         if (fermetureLibre) {
