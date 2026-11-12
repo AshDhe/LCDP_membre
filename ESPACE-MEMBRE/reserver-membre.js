@@ -567,7 +567,9 @@
             etatPage.departement="";
             etatPage.nomDepartement="";
             navigationParcs.mode="diaporama";
-            titre.textContent="RÉSULTAT DE L'ALERTE";
+            // Badge générique identique à celui du parc sélectionné dans PLANIFIER.
+            titre.className="lcdp-ui-badge lcdp-ui-badge--green lcdp-ui-badge--context";
+            titre.textContent="RÉSULTAT DE L’ALERTE";
             publierListeParcs(construireListeParcsPreparee(etatPage.parcs,""));
             // Pas de filtres département/carte supplémentaires dans la recherche.
             barre.hidden=true;
