@@ -5432,8 +5432,13 @@
             fermee:"Accès au parc clos",
             passee:"Cette plage a déjà commencé."
           };
-          if (card.dataset.indisponible === 'deja-reserve') {
-            await afficherDialogueAccesDejaPlanifie(reservationPlage);
+          if (card.dataset.indisponible === 'deja-reserve' ||
+              card.dataset.indisponible === 'invitation') {
+            await afficherDialogueAccesDejaPlanifie(
+              card.dataset.indisponible === 'invitation'
+                ? { ...reservationPlage, invitation: true }
+                : reservationPlage
+            );
           } else {
             await afficherAlerteSuperposee(motifs[card.dataset.indisponible], "vert", {
               libelleBouton: 'Fermer', sansCroix: card.dataset.indisponible === 'fermee',
