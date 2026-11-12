@@ -55,7 +55,8 @@
     majEmailMembre: "https://maj-email-membre-api.lacleduparc.fr",
     majParrainMembre: "https://maj-parrain-membre-api.lacleduparc.fr",
     majDepartementMembre: "https://maj-dptmt-membre-api.lacleduparc.fr",
-    mesPoints: "https://mes-points-api.lacleduparc.fr"
+    mesPoints: "https://mes-points-api.lacleduparc.fr",
+    alertePlanifier: "https://alerte-planifier-api.lacleduparc.fr"
   };
 
   function nettoyerBaseUrl(value) {
@@ -103,6 +104,7 @@
     workerMajParrainMembreUrl: WORKERS.majParrainMembre,
     workerMajDepartementMembreUrl: WORKERS.majDepartementMembre,
     workerMesPointsUrl: WORKERS.mesPoints,
+    workerAlertePlanifierUrl: WORKERS.alertePlanifier,
 
     PUBLIC_BASE: active.publicBase,
     MEMBRE_BASE: active.membreBase,
@@ -137,6 +139,7 @@
     WORKER_MAJ_PARRAIN_MEMBRE_URL: WORKERS.majParrainMembre,
     WORKER_MAJ_DEPARTEMENT_MEMBRE_URL: WORKERS.majDepartementMembre,
     WORKER_MES_POINTS_URL: WORKERS.mesPoints,
+    WORKER_ALERTE_PLANIFIER_URL: WORKERS.alertePlanifier,
 
     publicUrl(path) {
       return buildUrl(active.publicBase, path);
