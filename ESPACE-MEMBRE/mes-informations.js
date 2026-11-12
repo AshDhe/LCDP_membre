@@ -1206,7 +1206,7 @@
       return;
     }
 
-    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
+    const ok = await afficherChoixMesInformations("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.", { titre: "Régulariser l’abonnement", libelleConfirmer: "Continuer vers le paiement" });
     if (!ok) return;
 
     const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
@@ -2666,6 +2666,43 @@ function afficherResumePointsPassion(compte) {
       console.error("Erreur alerte superposée :", error);
       conteneur.remove();
       alert(message || "");
+    }
+  }
+
+  async function afficherChoixMesInformations(message, options = {}) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    if (!slot) return false;
+    slot.replaceChildren();
+    try {
+      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html"));
+      const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="choix"]');
+      const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+      const annuler = slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
+      const confirmer = slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+      if (!dialogue || !titre || !texte || !annuler || !confirmer) throw new Error("Structure CHOIX incomplète.");
+      titre.textContent = options.titre || "Confirmation";
+      texte.textContent = String(message || "");
+      annuler.textContent = options.libelleAnnuler || "Annuler";
+      confirmer.textContent = options.libelleConfirmer || "Confirmer";
+      return await new Promise(resolve => {
+        let termine = false;
+        const fermer = valeur => {
+          if (termine) return;
+          termine = true;
+          slot.replaceChildren();
+          resolve(valeur);
+        };
+        annuler.addEventListener("click", () => fermer(false), { once: true });
+        confirmer.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => {
+          if (event.target === dialogue) fermer(false);
+        });
+        confirmer.focus();
+      });
+    } catch (erreur) {
+      slot.replaceChildren();
+      throw erreur;
     }
   }
 
