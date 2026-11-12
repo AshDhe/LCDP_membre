@@ -643,24 +643,132 @@
     const securite = fields.querySelector('[data-lcdp-compte-section="securite"]');
     if (securite) fields.appendChild(securite);
 
-    // Services : même carte que les autres rubriques de MON COMPTE.
-    const services = document.createElement("section");
-    services.className = "lcdp-mon-compte-section";
-    services.dataset.lcdpCompteSection = "services";
-    services.setAttribute("aria-labelledby", "lcdp-mon-compte-titre-services");
-    const titreServices = document.createElement("h2");
-    titreServices.id = "lcdp-mon-compte-titre-services";
-    titreServices.className = "lcdp-title-section";
-    titreServices.textContent = "Services";
-    const lienAlertes = document.createElement("a");
-    lienAlertes.className = "lcdp-button lcdp-button-secondary";
-    lienAlertes.href = construireUrlMembre("/ESPACE-MEMBRE/alerte-planifier.html");
-    lienAlertes.textContent = "ALERTE PLANIFIER · Mes alertes";
-    services.append(titreServices, lienAlertes);
-    const statutMembre = fields.querySelector('[data-lcdp-compte-section="participation"]');
-    if (statutMembre) statutMembre.insertAdjacentElement("afterend", services);
-    else fields.insertBefore(services, securite || null);
+    // Service : liste membre, sans bouton de navigation vers une seconde page.
+    const services=document.createElement("section");
+    services.className="lcdp-mon-compte-section lcdp-compte-service";
+    services.dataset.lcdpCompteSection="service";
+    services.setAttribute("aria-labelledby","lcdp-mon-compte-titre-service");
+    const titreServices=document.createElement("h2");
+    titreServices.id="lcdp-mon-compte-titre-service";
+    titreServices.className="lcdp-title-section";
+    titreServices.textContent="Service";
+    const listeAlertes=document.createElement("div");
+    listeAlertes.id="lcdp-compte-alertes-liste";
+    listeAlertes.className="lcdp-compte-alertes-liste";
+    listeAlertes.setAttribute("aria-live","polite");
+    listeAlertes.textContent="Chargement des alertes…";
+    services.append(titreServices,listeAlertes);
+    const statutMembre=fields.querySelector('[data-lcdp-compte-section="participation"]');
+    if(statutMembre)statutMembre.insertAdjacentElement("afterend",services);
+    else fields.insertBefore(services,securite||null);
+    chargerAlertesCompte().catch(err=>{
+      console.error("SERVICE : alertes indisponibles",err);
+      listeAlertes.textContent="Impossible de charger les alertes.";
+    });
     fields.classList.add("lcdp-mon-compte-sections");
+  }
+
+  const ENDPOINT_ALERTES_COMPTE=String(CONFIG_PAGE.workerAlertePlanifierUrl||
+    CONFIG_PAGE.WORKER_ALERTE_PLANIFIER_URL||"").replace(/\/+$/,"");
+
+  async function apiAlertesCompte(path,methode="GET") {
+    if(!ENDPOINT_ALERTES_COMPTE)throw new Error("Service d'alertes non configuré.");
+    const response=await fetch(ENDPOINT_ALERTES_COMPTE+path,{
+      method:methode,credentials:"include",cache:"no-store",
+      headers:{"Accept":"application/json"}
+    });
+    const data=await response.json().catch(()=>null);
+    if(!response.ok||data?.ok!==true)throw new Error(data?.message||"Service d'alertes indisponible.");
+    return data;
+  }
+
+  async function demanderSuppressionAlerte(titre) {
+    const slot=document.getElementById("lcdp-lightbox-slot");
+    if(!slot)throw new Error("Emplacement du dialogue introuvable.");
+    const fragment=await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html");
+    slot.replaceChildren(fragment);
+    const dialogue=slot.querySelector('[data-lcdp-dialogue-reference="suppression"]');
+    if(!dialogue)throw new Error("Dialogue de suppression indisponible.");
+    dialogue.querySelector("[data-lcdp-dialogue-titre]").textContent="Supprimer cette alerte ?";
+    dialogue.querySelector("[data-lcdp-dialogue-message]").textContent=
+      "Supprimer définitivement l’alerte « "+titre+" » ?";
+    const conserver=dialogue.querySelector('[data-lcdp-dialogue-action="conserver"]');
+    const supprimer=dialogue.querySelector('[data-lcdp-dialogue-action="supprimer"]');
+    supprimer.textContent="Supprimer";
+    return new Promise(resolve=>{
+      let done=false;
+      const terminer=confirmation=>{
+        if(done)return;done=true;
+        document.removeEventListener("keydown",echap);
+        slot.replaceChildren();resolve(confirmation);
+      };
+      const echap=e=>{if(e.key==="Escape")terminer(false);};
+      document.addEventListener("keydown",echap);
+      conserver.addEventListener("click",()=>terminer(false),{once:true});
+      supprimer.addEventListener("click",()=>terminer(true),{once:true});
+      conserver.focus();
+    });
+  }
+
+  async function chargerAlertesCompte() {
+    const liste=document.getElementById("lcdp-compte-alertes-liste");
+    if(!liste)return;
+    const data=await apiAlertesCompte("/alertes");
+    liste.replaceChildren();
+    if(!Array.isArray(data.alertes)||!data.alertes.length){
+      const vide=document.createElement("p");
+      vide.className="lcdp-compte-alertes-vide";
+      vide.textContent="Aucune alerte enregistrée.";
+      liste.append(vide);
+      return;
+    }
+    for(const alerte of data.alertes){
+      const ligne=document.createElement("div");
+      ligne.className="lcdp-compte-alerte";
+      const ouvrir=document.createElement("button");
+      ouvrir.type="button";
+      ouvrir.className="lcdp-compte-alerte__nom";
+      ouvrir.textContent=alerte.titre;
+      ouvrir.setAttribute("aria-label","Modifier l’alerte "+alerte.titre);
+      const modifier=document.createElement("button");
+      modifier.type="button";
+      modifier.className="lcdp-box-champ-formulaire__action-edit lcdp-compte-alerte__action";
+      modifier.title="Modifier l’alerte";
+      modifier.setAttribute("aria-label","Modifier l’alerte "+alerte.titre);
+      modifier.innerHTML='<svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M4 16.8V20h3.2L17.9 9.3l-3.2-3.2L4 16.8Z"></path><path d="M19.2 8 16 4.8l1.1-1.1a1.7 1.7 0 0 1 2.4 0l.8.8a1.7 1.7 0 0 1 0 2.4L19.2 8Z"></path></svg>';
+      const supprimer=document.createElement("button");
+      supprimer.type="button";
+      supprimer.className="lcdp-compte-alerte__action lcdp-compte-alerte__supprimer";
+      supprimer.title="Supprimer l’alerte";
+      supprimer.setAttribute("aria-label","Supprimer l’alerte "+alerte.titre);
+      supprimer.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7"/></svg>';
+      const edit=async()=>{
+        if(typeof window.LCDP_ouvrirFormulaireAlertePlanifier!=="function"){
+          await afficherInformationMembre("Formulaire de modification indisponible.");
+          return;
+        }
+        await window.LCDP_ouvrirFormulaireAlertePlanifier({
+          alerte,onEnregistre:async()=>{
+            await chargerAlertesCompte();
+            await afficherInformationMembre("L’alerte a été modifiée.","SERVICE");
+          }
+        });
+      };
+      ouvrir.addEventListener("click",()=>edit().catch(err=>afficherInformationMembre(err.message)));
+      modifier.addEventListener("click",()=>edit().catch(err=>afficherInformationMembre(err.message)));
+      supprimer.addEventListener("click",async()=>{
+        try{
+          if(!await demanderSuppressionAlerte(alerte.titre))return;
+          await apiAlertesCompte("/alertes/"+encodeURIComponent(alerte.idalerte),"DELETE");
+          await chargerAlertesCompte();
+        }catch(err){await afficherInformationMembre(err.message||"Suppression impossible.");}
+      });
+      const actions=document.createElement("div");
+      actions.className="lcdp-compte-alerte__actions";
+      actions.append(supprimer,modifier);
+      ligne.append(ouvrir,actions);
+      liste.append(ligne);
+    }
   }
 
   function marquerChampLectureSeuleInfo(champId) {
