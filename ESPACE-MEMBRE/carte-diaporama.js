@@ -162,6 +162,10 @@
           // La propriété CSS r peut primer sur l'attribut SVG :
           // imposer la même dimension uniquement sur les marqueurs des parcs.
           marker.style.setProperty("r", rayon + "px", "important");
+          if (options.carteNavigation) {
+            marker.style.setProperty("stroke", estParcActif ? "#254630" : "#234438", "important");
+            marker.style.setProperty("stroke-width", (uniteEcran * (estParcActif ? 2.5 : 1.2)) + "px", "important");
+          }
         });
 
       // Taille et couleurs volontairement identiques sur la carte du diaporama
@@ -496,6 +500,15 @@
       }
       const card = await options.creerCardParcCarte(parcCarte);
       if (carteDetruite || numero !== numeroCard || !card) return;
+      if (options.carteNavigation) {
+        const idSelectionne = nettoyerTexte(parcCarte.idparc || parcCarte.id);
+        coucheParcs.querySelectorAll(".lcdp-carte-dynamique__marker").forEach((marker) => {
+          const estSelectionne = nettoyerTexte(marker.dataset.idparc) === idSelectionne;
+          marker.classList.toggle("lcdp-carte-dynamique__marker--parc-actif", estSelectionne);
+          marker.setAttribute("aria-pressed", String(estSelectionne));
+        });
+        actualiserTailleElementsCarte();
+      }
       cardSlot.replaceChildren(card);
       cardSlot.hidden = false;
       cardSlot.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
