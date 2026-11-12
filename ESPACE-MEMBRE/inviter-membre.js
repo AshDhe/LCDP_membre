@@ -425,7 +425,7 @@
     const boutonAnnuler = event.target.closest("[data-action='annuler']");
 
     if (boutonAdresse) {
-      await afficherAlerte("L’adresse sera raccordée ensuite.");
+      await afficherAlerte("L’adresse sera raccordée ensuite.", { profil: "information" });
       return;
     }
 
@@ -440,7 +440,7 @@
     }
 
     if (boutonAnnuler) {
-      await afficherAlerte("L’annulation se fait depuis votre planning.");
+      await afficherAlerte("L’annulation se fait depuis votre planning.", { profil: "information" });
     }
   }
 
@@ -690,24 +690,38 @@
       encodeURIComponent(motif || "inactive");
   }
 
-  async function afficherAlerte(message) {
+  async function afficherAlerte(message, options = {}) {
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) return null;
 
     slot.innerHTML = "";
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
+    const information = options.profil === "information";
+    const fragment = await chargerFragmentObjet(information
+      ? "/HTMLBASE/02-dialogue-reference-information.html"
+      : "/HTMLBASE/02-alerte.html");
     slot.appendChild(fragment);
 
-    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-    const texte = slot.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
+    const alerte = slot.querySelector(information
+      ? '[data-lcdp-dialogue-reference="information"]'
+      : "[data-lcdp-box-alerte]");
+    const texte = slot.querySelector(information
+      ? "[data-lcdp-dialogue-message]"
+      : "[data-lcdp-alerte-message]");
+    const boutonFermer = information ? null : slot.querySelector("[data-lcdp-alerte-close]");
+    const boutonOk = slot.querySelector(information
+      ? '[data-lcdp-dialogue-action="compris"]'
+      : "[data-lcdp-alerte-ok]");
 
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      throw new Error("Structure de l’alerte incomplète.");
+    if (!alerte || !texte || !boutonOk || (!information && !boutonFermer)) {
+      throw new Error("Structure du dialogue incomplète.");
     }
 
     texte.textContent = message;
+    if (information) {
+      const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+      if (titre) titre.textContent = options.titre || "Information";
+      boutonOk.textContent = "Fermer";
+    }
 
     return new Promise((resolve) => {
       let resolu = false;
@@ -719,7 +733,7 @@
         resolve(valeur);
       }
 
-      boutonFermer.addEventListener("click", () => fermer(false));
+      boutonFermer?.addEventListener("click", () => fermer(false));
       boutonOk.addEventListener("click", () => fermer(true));
       alerte.addEventListener("click", (event) => {
         if (event.target === alerte) fermer(false);
@@ -1048,7 +1062,7 @@
       try {
         await envoyerInvitations(idflux, emails);
         fermer();
-        await afficherAlerte("Invitation envoyée.");
+        await afficherAlerte("Invitation envoyée.", { profil: "information" });
         await chargerReservations();
       } catch (error) {
         await afficherAlerte(error.message || "Impossible d'envoyer l'invitation.");
