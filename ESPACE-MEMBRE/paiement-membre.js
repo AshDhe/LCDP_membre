@@ -219,7 +219,9 @@
     (Array.isArray(panier.acces) ? panier.acces : []).forEach(acces => {
       const ligne = creer('div', 'lcdp-paiement-refonte__acces-ligne');
       const horaire = plages[acces.plagebookd] || acces.plagebookd || 'Horaire non renseigné';
-      const parc = acces.nomparc || ('Parc ' + (acces.idparc || 'non renseigné'));
+      const nomParc = String(acces.nomparc || acces.idparc || 'non renseigné').trim();
+      const parc = /^(parc\\s+d(?:e|u|es)?\\s+)/i.test(nomParc)
+        ? nomParc : 'Parc de ' + nomParc;
       ligne.append(
         creer('strong', 'lcdp-paiement-refonte__date', dateLisible(acces.dateacces)),
         creer('span', 'lcdp-paiement-refonte__acces-heure', horaire),
@@ -436,7 +438,17 @@
           throw new Error('Adresse de paiement sécurisée indisponible.');
         window.location.assign((retour.paymentPageUrl || retour.checkoutUrl));
       } catch(erreur) {
-        afficherMessage(recap,erreur.message);
+        // Afficher la raison de l'échec à proximité immédiate du paiement.
+        let alerte = recap.querySelector('.lcdp-paiement-refonte__erreur-paiement');
+        if (!alerte) {
+          alerte = document.createElement('p');
+          alerte.className = 'lcdp-paiement-refonte__erreur-paiement';
+          alerte.setAttribute('role', 'alert');
+          boutonPayer.closest('.lcdp-paiement-refonte__pied, .lcdp-box-card-recaporder__actions')
+            ?.before(alerte);
+        }
+        alerte.textContent = erreur?.message || 'Paiement indisponible.';
+        alerte.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         boutonPayer.disabled = false;
         boutonPayer.textContent = precedent;
       }
