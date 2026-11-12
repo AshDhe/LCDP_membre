@@ -57,7 +57,7 @@
         uniques.set(id,{idparc:id,nom:String(r.parc||"Parc"),dptmt:String(r.dptmt||""),date,statut:"oui"});
       }
     }
-    const parcs=[...uniques.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.nom.localeCompare(b.nom,"fr"));
+    const parcs=[...uniques.values()].sort((a,b)=>a.nom.localeCompare(b.nom,"fr",{sensitivity:"base"})||a.idparc.localeCompare(b.idparc));
     sessionStorage.setItem(cle,JSON.stringify({version:1,created:Date.now(),idalerte:alerte.idalerte,parcs}));
     const page=window.LCDP_urlMembre("/ESPACE-MEMBRE/reserver-membre.html");
     window.location.assign(page+"?mode=alerte");
