@@ -848,7 +848,7 @@
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__close{position:absolute;top:20px;right:20px;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:50%;background:#f5f5f4;color:#a8a29e;font-size:23px;cursor:pointer}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__close:hover{background:#e7e5e4;color:#44403c}
         .lcdp-panier-existant__icone{display:grid;place-items:center;box-sizing:border-box;width:60px;height:60px;margin:0 auto 9px;border:1px solid #c7dcc3;border-radius:20px;background:#f0f7ef;color:#4e6838}
-        .lcdp-panier-existant .lcdp-box-dialogue-bouton__title{margin:0;max-width:none;color:#4e6838!important;font-size:20px;font-weight:900;letter-spacing:-.5px;line-height:1.2}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__title{box-sizing:border-box;display:block;width:fit-content;max-width:100%;margin:0 auto;padding:7px 13px;border:1px solid #bfd8bd;border-radius:14px;background:#e3f1e2;color:#1c1917!important;font-size:20px;font-weight:900;letter-spacing:-.5px;line-height:1.2;text-align:center}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__text{margin:4px 0 11px;max-width:none;color:#78716c;font-size:13px;font-weight:600;line-height:1.45}
         .lcdp-panier-existant .lcdp-panier-existant__recap{box-sizing:border-box;display:block;align-self:stretch;width:100%;min-width:0;max-width:none;margin:0 0 11px;padding:17px;border:1px solid #e7e5e4;border-radius:20px;background:#fafaf9;text-align:left}
         .lcdp-panier-existant__ligne{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:8px;padding-bottom:13px;border-bottom:1px solid #e7e5e4}
