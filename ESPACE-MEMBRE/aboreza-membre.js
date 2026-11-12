@@ -368,7 +368,7 @@
 
       const badge = elem('span', 'lcdp-aboreza-demarrage__badge', 'Abonnement ' + nomFormule(offre.formule));
       entete.prepend(badge);
-      meta.textContent = 'Sélectionnez le mois à partir duquel votre accès sera actif.';
+      meta.textContent = 'Choisissez le début de votre abonnement.';
       const dates = Array.isArray(offre.debuts) ? offre.debuts : [];
       const parAnnee = new Map();
       for (const date of dates) {
@@ -376,11 +376,11 @@
         if (!parAnnee.has(annee)) parAnnee.set(annee, []);
         parAnnee.get(annee).push(date);
       }
-      let selection = dates[0] || null;
+      let selection = null;
       const boutons = [];
       const recap = elem('div', 'lcdp-aboreza-demarrage__recap');
       recap.setAttribute('aria-live', 'polite');
-      const recapTitre = elem('strong', 'lcdp-aboreza-demarrage__recap-titre', 'Période de validité estimée');
+      const recapTitre = elem('strong', 'lcdp-aboreza-demarrage__recap-titre', 'Durée de l’abonnement');
       const recapTexte = elem('p', 'lcdp-aboreza-demarrage__recap-texte');
       recap.append(recapTitre, recapTexte);
 
@@ -411,13 +411,14 @@
           const nomMois = new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', month: 'long' })
             .format(new Date(date + 'T12:00:00Z'));
           b.append(elem('span', 'lcdp-aboreza-demarrage__mois-nom',
-            nomMois.charAt(0).toUpperCase() + nomMois.slice(1)));
+            '1er ' + nomMois.charAt(0).toUpperCase() + nomMois.slice(1)));
           b.append(elem('span', 'lcdp-aboreza-demarrage__mois-annee', annee));
           b.setAttribute('aria-pressed', String(date === selection));
           b.addEventListener('click', () => {
             selection = date;
             for (const ligne of boutons) ligne.bouton.setAttribute('aria-pressed', String(ligne.date === selection));
             actualiserRecap();
+            suivant.disabled = false;
           });
           boutons.push({ bouton: b, date });
           grille.append(b);
@@ -427,6 +428,7 @@
       }
       annees.after(recap);
       actualiserRecap();
+      suivant.disabled = true;
       if (!dates.length) {
         message.textContent = 'Aucune date de démarrage disponible.';
         message.hidden = false;
