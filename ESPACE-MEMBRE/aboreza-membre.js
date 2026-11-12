@@ -73,7 +73,7 @@
   // Les paniers existants peuvent toujours être consultés et repris.
   async function verifierHorairesNouvelleCommande() {
     const endpointPaiement = String(cfg.workerPaiementUrl || cfg.WORKER_PAIEMENT_URL ||
-      (typeof cfg.apiUrl === 'function' ? cfg.apiUrl('paiement-api') : 'https://paiement-api.lacleduparc.fr')).replace(/\\/+$/, '');
+      (typeof cfg.apiUrl === 'function' ? cfg.apiUrl('paiement-api') : 'https://paiement-api.lacleduparc.fr')).replace(/\/+$/, '');
     const reponse = await fetch(endpointPaiement + '/ouverture-commande', {
       method: 'GET', credentials: 'include', cache: 'no-store',
       signal: AbortSignal.timeout(15000), headers: { Accept: 'application/json' }
