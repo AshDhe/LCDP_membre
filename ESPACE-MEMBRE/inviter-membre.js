@@ -694,21 +694,24 @@
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) return null;
 
-    slot.innerHTML = "";
     const information = options.profil === "information";
+    const superposition = information && options.superposition === true;
+    const hote = superposition ? document.createElement("div") : slot;
+    if (superposition) document.body.appendChild(hote);
+    else slot.innerHTML = "";
     const fragment = await chargerFragmentObjet(information
       ? "/HTMLBASE/02-dialogue-reference-information.html"
       : "/HTMLBASE/02-alerte.html");
-    slot.appendChild(fragment);
+    hote.appendChild(fragment);
 
-    const alerte = slot.querySelector(information
+    const alerte = hote.querySelector(information
       ? '[data-lcdp-dialogue-reference="information"]'
       : "[data-lcdp-box-alerte]");
-    const texte = slot.querySelector(information
+    const texte = hote.querySelector(information
       ? "[data-lcdp-dialogue-message]"
       : "[data-lcdp-alerte-message]");
-    const boutonFermer = information ? null : slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector(information
+    const boutonFermer = information ? null : hote.querySelector("[data-lcdp-alerte-close]");
+    const boutonOk = hote.querySelector(information
       ? '[data-lcdp-dialogue-action="compris"]'
       : "[data-lcdp-alerte-ok]");
 
@@ -718,7 +721,7 @@
 
     texte.textContent = message;
     if (information) {
-      const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+      const titre = hote.querySelector("[data-lcdp-dialogue-titre]");
       if (titre) titre.textContent = options.titre || "Information";
       boutonOk.textContent = "Fermer";
     }
@@ -729,7 +732,8 @@
       function fermer(valeur) {
         if (resolu) return;
         resolu = true;
-        slot.innerHTML = "";
+        if (superposition) hote.remove();
+        else slot.innerHTML = "";
         resolve(valeur);
       }
 
@@ -1012,7 +1016,7 @@
       const nombre = zoneFields.querySelectorAll("input[type='email']").length;
 
       if (nombre >= maxinvit) {
-        await afficherAlerte("Votre maxinvit est atteint.");
+        await afficherAlerte("Votre maxinvit est atteint.", { profil: "information", titre: "Limite d’invitations", superposition: true });
         return;
       }
 
