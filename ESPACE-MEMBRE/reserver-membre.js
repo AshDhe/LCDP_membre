@@ -5432,11 +5432,14 @@
             fermee:"Accès au parc clos",
             passee:"Cette plage a déjà commencé."
           };
-          await afficherAlerteSuperposee(motifs[card.dataset.indisponible], "vert", {
-            libelleBouton: 'Fermer', sansCroix: ['fermee', 'deja-reserve'].includes(card.dataset.indisponible),
-            fermetureLibre: !['fermee', 'deja-reserve'].includes(card.dataset.indisponible),
-            classe: card.dataset.indisponible === 'deja-reserve' ? 'lcdp-planifier-alerte-acces-existant' : ''
-          });
+          if (card.dataset.indisponible === 'deja-reserve') {
+            await afficherDialogueAccesDejaPlanifie(reservationPlage);
+          } else {
+            await afficherAlerteSuperposee(motifs[card.dataset.indisponible], "vert", {
+              libelleBouton: 'Fermer', sansCroix: card.dataset.indisponible === 'fermee',
+              fermetureLibre: card.dataset.indisponible !== 'fermee'
+            });
+          }
           return;
         }
         await traiterChoixReservationDepuisFicheParc({
@@ -5582,6 +5585,21 @@
     return parc ? description + '\nPARC DE ' + parc : description;
   }
 
+  // Pilote d'harmonisation : dialogue structuré EXISTANT (c036), sans CSS
+  // supplémentaire et sans changer les contrôles de réservation.
+  async function afficherDialogueAccesDejaPlanifie(reservation) {
+    const invitation = reservation?.invitation === true;
+    const prefixe = invitation ? 'Vous avez déjà une invitation' : 'Vous avez déjà un accès planifié';
+    const libelle = libelleAccesDejaPlanifie(reservation);
+    const detail = libelle.startsWith(prefixe) ? libelle.slice(prefixe.length).replace(/^\\s*·\\s*/, '') : libelle;
+    return ouvrirDialogueBoutonsSuperpose({
+      titre: invitation ? 'Invitation déjà reçue' : 'Accès déjà planifié',
+      texte: detail,
+      fermetureLibre: false,
+      boutons: [{ label: 'Fermer', valeur: 'fermer', style: 'lcdp-button-primary' }]
+    });
+  }
+
   function libellePlageReservation(plagebookd) {
     if (plagebookd === "plage1") return "06h00–10h00";
     if (plagebookd === "plage2") return "10h00–13h00";
@@ -5612,8 +5630,7 @@
     // la même date et plage, indépendamment du département et du parc.
     const accesExistant = trouverReservationActiveDatePlage(choix.dateIso, choix.plagebookd);
     if (accesExistant) {
-      await afficherAlerteSuperposee(libelleAccesDejaPlanifie(accesExistant), "vert",
-        {libelleBouton:"Fermer", sansCroix:true, fermetureLibre:false});
+      await afficherDialogueAccesDejaPlanifie(accesExistant);
       return false;
     }
     // Une plage est indivisible, y compris si l'ancienne fiche parc envoie
