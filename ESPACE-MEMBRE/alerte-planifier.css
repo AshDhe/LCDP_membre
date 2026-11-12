@@ -8,7 +8,7 @@
         min-width:0;
         gap:14px;
         margin:0;
-        padding:16px;
+        padding:9.6px 16px;
         border:1px solid #e7e5e4;
         border-radius:var(--lcdp-radius-medium,16px);
         background:#fafaf9;
