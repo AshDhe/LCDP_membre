@@ -853,8 +853,7 @@
     if (!slot) return false;
     slot.innerHTML = "";
 
-    // Les informations simples partagent exclusivement le profil INFORMATION.
-    // Les confirmations restent sur leur mécanisme existant jusqu'au lot CHOIX.
+    // Les profils INFORMATION et CHOIX partagent les dialogues de référence.
     if (options.mode !== "confirmation" && options.profil === "information") {
       const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
       slot.appendChild(fragment);
@@ -879,6 +878,43 @@
         }, { once: true });
         fermer.focus();
       });
+    }
+
+    if (options.mode === "confirmation") {
+      try {
+        const fragmentChoix = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html");
+        slot.appendChild(fragmentChoix);
+        const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="choix"]');
+        const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+        const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+        const annuler = slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
+        const confirmer = slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+        if (!dialogue || !titre || !texte || !annuler || !confirmer) throw new Error("Structure CHOIX incomplète.");
+        titre.textContent = options.titre || "Confirmation";
+        texte.textContent = normaliserPonctuationAlerte(message);
+        annuler.textContent = options.libelleAnnuler || "Annuler";
+        confirmer.textContent = options.libelleConfirmer || "Confirmer";
+        return await new Promise(resolve => {
+          let resolu = false;
+          const fermer = valeur => {
+            if (resolu) return;
+            resolu = true;
+            slot.replaceChildren();
+            resolve(valeur);
+          };
+          annuler.addEventListener("click", () => fermer(false), { once: true });
+          confirmer.addEventListener("click", () => fermer(true), { once: true });
+          if (options.sansCroix !== true) {
+            dialogue.addEventListener("click", event => {
+              if (event.target === dialogue) fermer(false);
+            });
+          }
+          confirmer.focus();
+        });
+      } catch (erreur) {
+        slot.replaceChildren();
+        throw erreur;
+      }
     }
 
     const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
