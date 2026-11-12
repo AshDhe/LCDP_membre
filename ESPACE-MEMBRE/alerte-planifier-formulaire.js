@@ -59,6 +59,19 @@
     const initial=source?.criteres||{};
     const etat={departements:[...(initial.departements||[])],periodes:(initial.periodes||[]).map(p=>({...p})),plages:[...(initial.plages||[])],categories:[...(initial.categories||["duo"])]};
     const limites={departements:2,periodes:2,plages:2};
+    // Horizon de saisie ALERTE : du jour courant jusqu'au dernier jour de M+6,
+    // indépendamment du droit de consultation du planning du membre.
+    const horizonRecherche=()=>{
+      const parts=new Intl.DateTimeFormat("en-CA",{
+        timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"
+      }).formatToParts(new Date());
+      const valeur=type=>Number(parts.find(p=>p.type===type)?.value);
+      const y=valeur("year"),m=valeur("month"),d=valeur("day");
+      const today=[y,String(m).padStart(2,"0"),String(d).padStart(2,"0")].join("-");
+      const fin=new Date(Date.UTC(y,m+6,0)).toISOString().slice(0,10);
+      return {today,fin,moisMax:fin.slice(0,7)};
+    };
+
     const controller=new AbortController();
     let ferme=false,modeCalendrier=false;
     const noeud=(tag,classe,libelle)=>{
@@ -230,7 +243,7 @@
             jour.querySelector("[data-lcdp-card-jour-mois-number]").textContent=String(d);
             jour.querySelectorAll("[data-lcdp-card-jour-mois-slot]").forEach(el=>el.hidden=true);
             jour.setAttribute("aria-label",new Date(iso+"T12:00:00Z").toLocaleDateString("fr-FR"));
-            jour.disabled=iso<today||(dateDebut&&iso<dateDebut);
+            jour.disabled=iso<today||iso>horizonRecherche().fin||(dateDebut&&iso<dateDebut);
             if(jour.disabled)jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--past");
             jour.addEventListener("click",()=>{
               if(!dateDebut){dateDebut=iso;dessin();}
@@ -241,7 +254,9 @@
             },{signal:controller.signal});
             grille.append(jour);
           }
-          prev.disabled=month.getFullYear()===new Date().getFullYear()&&month.getMonth()<=new Date().getMonth();
+          const horizon=horizonRecherche();
+          prev.disabled=an*12+(mo+1)<=Number(horizon.today.slice(0,4))*12+Number(horizon.today.slice(5,7));
+          next.disabled=an*12+(mo+1)>=Number(horizon.moisMax.slice(0,4))*12+Number(horizon.moisMax.slice(5,7));
         };
         prev.addEventListener("click",()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);dessin();},{signal:controller.signal});
         next.addEventListener("click",()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);dessin();},{signal:controller.signal});
@@ -323,6 +338,11 @@
       if(!nom.value.trim()){msg.textContent="Donnez un nom à l'alerte.";return;}
       if(!etat.departements.length){msg.textContent="Ajoutez au moins un département.";return;}
       if(!etat.periodes.length){msg.textContent="Ajoutez au moins une période.";return;}
+      const horizon=horizonRecherche();
+      if(etat.periodes.some(p=>p.debut<horizon.today||p.fin>horizon.fin||p.fin<p.debut)){
+        msg.textContent="Les périodes doivent être comprises entre aujourd'hui et la fin du mois M+6.";
+        return;
+      }
       if(!etat.categories.length){msg.textContent="Cochez au moins une catégorie d'invités.";return;}
       if(!endpoint){msg.textContent="Le Worker ALERTE PLANIFIER n'est pas configuré.";return;}
       enregistrer.disabled=true;msg.textContent="Enregistrement…";
