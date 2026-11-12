@@ -5817,7 +5817,11 @@
           const texte = document.createElement('span');
           texte.textContent = titres[option.code] || option.code;
           const montant = document.createElement('strong');
-          montant.textContent = euro.format(Number(option.totalTtc));
+          const quantite = Number(option.multiplicateur) || 1;
+          montant.textContent = quantite > 1
+            ? euro.format(Number(option.prixUnitaireTtc)) + ' TTC × ' + quantite +
+              ' mois = ' + euro.format(Number(option.totalTtc)) + ' TTC'
+            : euro.format(Number(option.totalTtc)) + ' TTC';
           description.append(texte, montant);
           label.append(caseOption, description);
           liste.append(label);
