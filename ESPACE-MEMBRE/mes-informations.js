@@ -657,7 +657,9 @@
     lienAlertes.href = construireUrlMembre("/ESPACE-MEMBRE/alerte-planifier.html");
     lienAlertes.textContent = "ALERTE PLANIFIER · Mes alertes";
     services.append(titreServices, lienAlertes);
-    fields.insertBefore(services, securite || null);
+    const statutMembre = fields.querySelector('[data-lcdp-compte-section="participation"]');
+    if (statutMembre) statutMembre.insertAdjacentElement("afterend", services);
+    else fields.insertBefore(services, securite || null);
     fields.classList.add("lcdp-mon-compte-sections");
   }
 
