@@ -1305,9 +1305,9 @@
       bouton.addEventListener("click", async () => {
         if (statut.disabled) {
           if (statut.type === "occupe") {
-            await afficherAlerteSuperposee("Vous êtes déjà abonné(e) à cette date");
+            await afficherInformationAbonnement("Vous êtes déjà abonné(e) à cette date", { titre: "Date déjà couverte" });
           } else if (statut.type === "incompatible") {
-            await afficherAlerteSuperposee("Date incompatible avec votre prochain abonnement");
+            await afficherInformationAbonnement("Date incompatible avec votre prochain abonnement", { titre: "Date indisponible" });
           }
           return;
         }
@@ -1495,7 +1495,7 @@
         bouton.addEventListener("click", async () => {
           if (statut.disabled) {
             if (statut.type === "occupe") {
-              await afficherAlerteSuperposee("Vous êtes déjà abonné(e) à cette date");
+              await afficherInformationAbonnement("Vous êtes déjà abonné(e) à cette date", { titre: "Date déjà couverte" });
             }
             return;
           }
@@ -2500,7 +2500,7 @@
     const echeances = echeancesNonPayeesAbonnement(abonnement);
 
     if (!echeances.length) {
-      await afficherAlerte("Aucune échéance non payée.");
+      await afficherInformationAbonnement("Aucune échéance non payée.", { titre: "Échéances de paiement" });
       return;
     }
 
