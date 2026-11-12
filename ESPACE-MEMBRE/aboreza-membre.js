@@ -528,7 +528,7 @@
     });
   }
   async function informerContrainte(p) {
-    return modalComposant('dialogue', 'Préparez vos accès', (objet, finir) => {
+    return modalComposant('dialogue', 'PLANIFIEZ VOS ACCÈS À LA COMMANDE', (objet, finir) => {
       const workflow = objet.closest('[data-lcdp-box-workflow-abonnement]');
       workflow?.classList.add('lcdp-aboreza-preparation');
       objet.classList.add('lcdp-aboreza-preparation__dialogue');
@@ -536,9 +536,9 @@
       const texte = objet.querySelector('[data-lcdp-dialogue-text]');
       const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
       if (!titre || !texte || !actions) throw Error('Zones du dialogue générique absentes.');
-      const etiquette = elem('span', 'lcdp-ui-badge lcdp-ui-badge--green lcdp-ui-badge--step lcdp-aboreza-preparation__badge', 'Étape de préparation');
+      const etiquette = elem('span', 'lcdp-ui-badge lcdp-ui-badge--green lcdp-ui-badge--step lcdp-aboreza-preparation__badge', 'ACCÈS À PLANIFIER');
       titre.before(etiquette);
-      texte.textContent = 'Voici les règles à connaître avant de choisir vos créneaux.';
+      texte.textContent = 'Vous pouvez les modifier après abonnement.';
       texte.hidden = false;
       actions.replaceChildren();
       actions.classList.add('lcdp-aboreza-preparation__contenu');
@@ -568,7 +568,7 @@
       actions.append(continuer);
 
       const regles = elem('section', 'lcdp-aboreza-preparation__regles');
-      regles.append(elem('h3', 'lcdp-aboreza-preparation__section-titre', 'Comment préparer vos accès'));
+      regles.append(elem('h3', 'lcdp-aboreza-preparation__section-titre', 'COMMENT PLANIFIER À LA COMMANDE'));
       const icones = {
         parc: '<path d="M12 22s7-4.4 7-11a7 7 0 1 0-14 0c0 6.6 7 11 7 11Z"/><circle cx="12" cy="11" r="2.5"/>',
         calendrier: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h3"/>',
