@@ -491,14 +491,23 @@
       }
       const paiement = { termine:false };
       const bonPrepare = monterBon(modeleWorkflow, modeleRecap, panier, devis, paiement);
-      // ABO-RÉZA peut déjà porter sa coque persistante : réutiliser cette même
-      // BOX générique plutôt que superposer une nouvelle fenêtre de paiement.
-      const workflow = window.LCDP_ABOREZA_UI?.adopterPaiement?.(bonPrepare) || bonPrepare;
-      const reutilise = workflow !== bonPrepare;
+      // Récapitulatif intégré à la même zone ABO-RÉZA que les autres écrans :
+      // aucun dialogue flottant hors du wrapper PLANIFIER.
+      const slot = document.getElementById('lcdp-aboreza-workflow-slot');
+      const conteneur = slot?.closest('.lcdp-planifier-wrapper .lcdp-page-content');
+      if (!slot || !conteneur) throw new Error('Wrapper de commande ABO-RÉZA introuvable.');
+      const workflow = bonPrepare;
+      workflow.classList.add('lcdp-aboreza-workflow-interne', 'lcdp-aboreza-recapitulatif');
+      workflow.setAttribute('role', 'region');
+      workflow.removeAttribute('aria-modal');
+      const masques = [...conteneur.children].filter(element => element !== slot)
+        .map(element => ({ element, hidden: element.hidden }));
       const boutonRetour = workflow.querySelector('[data-lcdp-recaporder-cancel]');
       const boutonPrecedent = workflow.querySelector('[data-lcdp-recaporder-back]');
       const precedent = document.activeElement;
-      if (!workflow.isConnected) (document.getElementById('lcdp-planifier-dialogues-slot') || document.querySelector('.lcdp-planifier-wrapper')).append(workflow);
+      masques.forEach(({ element }) => { element.hidden = true; });
+      slot.hidden = false;
+      slot.replaceChildren(workflow);
       if (typeof surOuverture === 'function') surOuverture();
       await new Promise(resolve => {
         let ferme = false;
@@ -506,9 +515,10 @@
           if (ferme) return;
           ferme = true;
           workflow.removeEventListener('keydown', touche);
-          if (reutilise) window.LCDP_ABOREZA_UI?.fermer?.();
-          else workflow.remove();
-          if (!reutilise && precedent?.isConnected && typeof precedent.focus === 'function') precedent.focus();
+          workflow.remove();
+          slot.hidden = true;
+          masques.forEach(({ element, hidden }) => { element.hidden = hidden; });
+          if (precedent?.isConnected && typeof precedent.focus === 'function') precedent.focus();
           resolve();
         };
         const touche = event => {
