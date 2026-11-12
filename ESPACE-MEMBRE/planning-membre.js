@@ -962,8 +962,8 @@
 
     if (titreWrapper) {
       titreWrapper.textContent = "Mes accès";
-      // Réutilisation du style de libellé des filtres MES ACCÈS, sans nouveau CSS.
-      titreWrapper.classList.add("lcdp-planning-filtres__label");
+      // Style éditorial discret existant dans le CSS central (module c085).
+      titreWrapper.classList.add("lcdp-editorial-eyebrow");
       titreWrapper.hidden = false;
     }
     const fragmentCalendrier = await chargerFragmentObjet("/HTMLBASE/04-calendrier-mois.html");
