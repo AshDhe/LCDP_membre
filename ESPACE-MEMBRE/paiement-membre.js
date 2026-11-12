@@ -220,7 +220,7 @@
       const ligne = creer('div', 'lcdp-paiement-refonte__acces-ligne');
       const horaire = plages[acces.plagebookd] || acces.plagebookd || 'Horaire non renseigné';
       const nomParc = String(acces.nomparc || acces.idparc || 'non renseigné').trim();
-      const parc = /^(parc\\s+d(?:e|u|es)?\\s+)/i.test(nomParc)
+      const parc = /^(parc\s+d(?:e|u|es)?\s+)/i.test(nomParc)
         ? nomParc : 'Parc de ' + nomParc;
       ligne.append(
         creer('strong', 'lcdp-paiement-refonte__date', dateLisible(acces.dateacces)),
