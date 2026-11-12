@@ -5514,7 +5514,8 @@
           } else {
             await afficherDialogueInformationPlanifier({
               titre: card.dataset.indisponible === 'fermee' ? "Accès au parc clos" : "Plage indisponible",
-              message: motifs[card.dataset.indisponible]
+              message: motifs[card.dataset.indisponible],
+              fermetureLibre: card.dataset.indisponible !== 'fermee'
             });
           }
           return;
@@ -5664,7 +5665,7 @@
 
   // Migration pilote vers l'objet INFORMATION générique.
   // Le rendu est toujours celui du profil INFORMATION ; seuls les contenus varient.
-  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu }) {
+  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false }) {
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
@@ -5681,10 +5682,19 @@
       message.textContent = contenu;
       fermer.textContent = 'Fermer';
       return await new Promise(resolve => {
-        fermer.addEventListener('click', () => {
+        let termine = false;
+        const clore = () => {
+          if (termine) return;
+          termine = true;
           enveloppe.remove();
           resolve('fermer');
-        }, { once: true });
+        };
+        fermer.addEventListener('click', clore, { once: true });
+        if (fermetureLibre) {
+          dialogue.addEventListener('click', event => {
+            if (event.target === dialogue) clore();
+          });
+        }
         fermer.focus();
       });
     } catch (erreur) {
