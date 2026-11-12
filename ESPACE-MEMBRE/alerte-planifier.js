@@ -55,14 +55,13 @@
       jours:lireCritere("jours"),dates:lireCritere("dates")
     };
   }
-  function remplir(formCrit){
+  async function remplir(formCrit){
     const remplirValeurs=key=>{
       const controls=[...root.querySelectorAll('[data-critere-valeur="'+key+'"]')];
       controls.forEach((el,i)=>el.value=(formCrit?.[key]||[])[i]||"");
     };
     remplirValeurs("departements");
-    // Recalculer les options des parcs avant de restaurer leurs identifiants.
-    ajusterParcs(true);
+    await chargerParcs(true);
     for(const key of ["parcs","plages","mois","jours","dates"])remplirValeurs(key);
     root.querySelector("#lcdp-alerte-categorie").value=formCrit?.categorie||"tous";
   }
@@ -72,10 +71,21 @@
     const selects=[...root.querySelectorAll('[data-critere-valeur="parcs"]')];
     selects.forEach(el=>{
       const avant=reinitialiser?"":el.value;
-      el.replaceChildren(new Option("Indifférent",""));
+      el.replaceChildren(new Option(deps.length?"Indifférent":"Choisir un département",""));
       options.forEach(([v,t])=>el.add(new Option(t,v)));
       el.value=options.some(([v])=>v===avant)?avant:"";
     });
+  }
+  async function chargerParcs(reinitialiser){
+    const deps=lireCritere("departements");
+    if(!deps.length){
+      etat.references.parcs=[];
+      ajusterParcs(true);
+      return;
+    }
+    const data=await api("/references?departements="+encodeURIComponent(deps.join(",")));
+    etat.references.parcs=data.parcs||[];
+    ajusterParcs(reinitialiser);
   }
   function formulaire(){
     const form=node("form","lcdp-planning-filtres lcdp-alerte-filtres");
@@ -89,7 +99,9 @@
     const nomChamp=champ("Nom de l'alerte",nom);nomChamp.style.gridColumn="1 / -1";champs.append(nomChamp);
     groupe(champs,"departements","Départements",etat.references.departements.map(d=>[d.code,d.code+" - "+d.nom]),3);
     const parcs=groupe(champs,"parcs","Parcs",[],3);
-    for(const el of champs.querySelectorAll('[data-critere-valeur="departements"]'))el.addEventListener("change",()=>ajusterParcs(true));
+    for(const el of champs.querySelectorAll('[data-critere-valeur="departements"]'))el.addEventListener("change",async()=>{
+      try{await chargerParcs(true);}catch(e){message(e.message);}
+    });
     const cat=select("lcdp-alerte-categorie",types),catChamp=champ("Invités",cat);catChamp.style.gridColumn="1 / -1";champs.append(catChamp);
     groupe(champs,"plages","Plages horaires",plages,3);
     groupe(champs,"mois","Mois (avec année)",[],3,"month");
@@ -129,7 +141,7 @@
       const actions=node("div","lcdp-alerte-liste__actions");
       actions.append(
         bouton("Relancer","lcdp-button-primary",()=>relancer(a.idalerte)),
-        bouton("Modifier","lcdp-button-secondary",()=>{etat.edition=a.idalerte;root.querySelector("#lcdp-alerte-titre").value=a.titre;remplir(a.criteres);root.querySelector("form").scrollIntoView({behavior:"smooth"});message("Modification de "+a.titre);}),
+        bouton("Modifier","lcdp-button-secondary",async()=>{try{etat.edition=a.idalerte;root.querySelector("#lcdp-alerte-titre").value=a.titre;await remplir(a.criteres);root.querySelector("form").scrollIntoView({behavior:"smooth"});message("Modification de "+a.titre);}catch(e){message(e.message);}}),
         bouton(a.actif?"Désactiver":"Activer","lcdp-button-secondary",async()=>{try{await api("/alertes/"+a.idalerte,"PATCH",{actif:!a.actif});await chargerListe();}catch(e){message(e.message);}}),
         bouton("Supprimer","lcdp-button-secondary",async()=>{if(!window.confirm("Supprimer cette alerte ?"))return;try{await api("/alertes/"+a.idalerte,"DELETE");await chargerListe();}catch(e){message(e.message);}})
       );
