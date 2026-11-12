@@ -479,7 +479,7 @@
     if (reglementApp) reglementApp.href = urlPublic('/ESPACE-PUBLIC/reglement-app.html');
     const cgv = recap.querySelector('[data-lcdp-recaporder-cgv]');
     const urlCgv = String(config.cgvUrl || config.CGV_URL || '').trim()
-      || urlPublic('/ESPACE-PUBLIC/cgv.html');
+      || urlMembre('/ESPACE-MEMBRE/cgv-lcdp.html');
     if (cgv) {
       const a = document.createElement('a');
       a.href = urlCgv;
