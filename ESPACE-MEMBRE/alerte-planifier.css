@@ -215,7 +215,7 @@
 #lcdp-lightbox-slot .lcdp-alerte-formulaire__actions .lcdp-button {
   width:auto;min-height:38px;padding:8px 13px;margin:0;font-size:12px;
 }
-#lcdp-lightbox-slot .lcdp-alerte-invites {grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+#lcdp-lightbox-slot .lcdp-alerte-invites {grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;}
 #lcdp-lightbox-slot .lcdp-alerte-invites .lcdp-planning-filtres__option {padding:7px 4px;gap:5px;}
 #lcdp-lightbox-slot .lcdp-alerte-formulaire__actions {
   display:flex;gap:10px;align-items:center;justify-content:space-between;
@@ -250,7 +250,7 @@
 #lcdp-lightbox-slot .lcdp-alerte-calendrier-hote .lcdp-box-calendrier-mois__weekdays {
   display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center;
 }
-@media(max-width:380px){
-  #lcdp-lightbox-slot .lcdp-alerte-invites {grid-template-columns:1fr;}
+@media(max-width:420px){
+  #lcdp-lightbox-slot .lcdp-alerte-invites {grid-template-columns:repeat(2,minmax(0,1fr));}
   #lcdp-lightbox-slot .lcdp-alerte-critere__saisie {flex-wrap:wrap;}
 }
