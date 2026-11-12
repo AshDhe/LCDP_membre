@@ -2,11 +2,10 @@
  * w-alerte-planifier.js — Cloudflare Worker (à déployer séparément).
  * Recherche ENREGISTRÉE, relance MANUELLE uniquement ; aucune tâche cron.
  * Secrets attendus : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
- * SESSION_SIGNING_SECRET (à aligner sur la signature du Worker de connexion).
+ * SESSION_SECRET (même secret HMAC que les Workers membres).
  * Origines autorisées : ALLOWED_ORIGINS séparées par virgule.
  *
- * IMPORTANT : la vérification JWT HS256 ci-dessous constitue un contrat
- * explicite ; vérifier le format réel de idsession_membre avant déploiement.
+ * Signature alignée sur w-factupaiement : deux segments HMAC-SHA256.
  */
 const JSON_HEADERS = {"content-type":"application/json; charset=utf-8","cache-control":"no-store"};
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -41,19 +40,22 @@ function base64urlBytes(value){
   const binary=atob(value.replace(/-/g,"+").replace(/_/g,"/"));
   return Uint8Array.from(binary,c=>c.charCodeAt(0));
 }
-function base64urlJson(value){try{return JSON.parse(new TextDecoder().decode(base64urlBytes(value)));}catch{throw erreur("Session invalide",401);}}
+function base64urlJson(value){
+  try{return JSON.parse(new TextDecoder().decode(base64urlBytes(value)));}
+  catch{throw erreur("Session invalide",401);}
+}
 async function session(request,env){
   const cookie=request.headers.get("Cookie")||"";
   const value=cookie.split(";").map(x=>x.trim()).find(x=>x.startsWith("idsession_membre="))?.slice("idsession_membre=".length);
-  if(!value||!env.SESSION_SIGNING_SECRET)throw erreur("Session non vérifiable",401);
+  if(!value||!env.SESSION_SECRET)throw erreur("Session non vérifiable",401);
   let token;try{token=decodeURIComponent(value);}catch{throw erreur("Session invalide",401);}
   const parts=token.split(".");
-  if(parts.length!==3)throw erreur("Format de session incompatible : vérification requise",401);
-  const header=base64urlJson(parts[0]),claims=base64urlJson(parts[1]);
-  if(header.alg!=="HS256"||header.typ&&header.typ!=="JWT")throw erreur("Signature de session invalide",401);
-  const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(env.SESSION_SIGNING_SECRET),{name:"HMAC",hash:"SHA-256"},false,["verify"]);
-  if(!await crypto.subtle.verify("HMAC",key,base64urlBytes(parts[2]),new TextEncoder().encode(parts[0]+"."+parts[1])))throw erreur("Signature de session invalide",401);
-  if(claims.typ!=="session_membre"||!UUID.test(claims.idsession)||!UUID.test(claims.idmembre)||!Number.isFinite(claims.exp)||claims.exp<=Date.now()/1000)throw erreur("Session expirée ou invalide",401);
+  // Même format que w-factupaiement : payload_base64url.signature_HMAC_base64url.
+  if(parts.length!==2)throw erreur("Session invalide",401);
+  const claims=base64urlJson(parts[0]);
+  const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(env.SESSION_SECRET),{name:"HMAC",hash:"SHA-256"},false,["verify"]);
+  if(!await crypto.subtle.verify("HMAC",key,base64urlBytes(parts[1]),new TextEncoder().encode(parts[0])))throw erreur("Signature de session invalide",401);
+  if(claims.typ!=="session_membre"||!UUID.test(claims.idsession)||!UUID.test(claims.idmembre)||!Number.isFinite(Number(claims.exp))||Number(claims.exp)<=Date.now()/1000)throw erreur("Session expirée ou invalide",401);
   const active=await db(env,"sessactive",{select:"idsession,idmembre,dateexpiration,revoked_reason",idsession:"eq."+claims.idsession,idmembre:"eq."+claims.idmembre,dateexpiration:"gt."+new Date().toISOString(),limit:"1"});
   if(!active.length||active[0].revoked_reason)throw erreur("Session révoquée ou expirée",401);
   return claims.idmembre;
