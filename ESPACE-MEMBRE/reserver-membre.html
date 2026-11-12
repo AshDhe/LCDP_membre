@@ -280,6 +280,128 @@
       #lcdp-planifier-attente-initiale .lcdp-loading-spinner__arc,
       .lcdp-planifier-partage-attente .lcdp-loading-spinner__arc { animation: none; }
     }
+    /* Récapitulatif ABO-RÉZA : vraie vue interne au wrapper, défilement autonome. */
+    body.lcdp-page-reserver #lcdp-aboreza-workflow-slot .lcdp-aboreza-recapitulatif {
+      position: static !important;
+      inset: auto !important;
+      display: block !important;
+      width: 100% !important;
+      max-height: none !important;
+      padding: 0 !important;
+      background: transparent !important;
+    }
+    body.lcdp-page-reserver #lcdp-aboreza-workflow-slot .lcdp-aboreza-recapitulatif > .lcdp-box-workflow-abonnement__card {
+      display: block !important;
+      box-sizing: border-box;
+      width: min(100%, 720px) !important;
+      max-width: 720px !important;
+      max-height: min(78dvh, 820px) !important;
+      height: auto !important;
+      margin: 0 auto !important;
+      padding: 0 !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      border-radius: 20px !important;
+    }
+    body.lcdp-page-reserver #lcdp-aboreza-workflow-slot .lcdp-aboreza-recapitulatif .lcdp-box-workflow-abonnement__content {
+      display: block !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__entete {
+      padding: 20px 24px 12px;
+      border-bottom: 0;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte .lcdp-box-card-recaporder__title {
+      font-size: 1.2rem !important;
+      line-height: 1.2 !important;
+      letter-spacing: 0;
+      text-transform: uppercase !important;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__abonnement {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-top: 10px;
+      font-size: .94rem;
+      color: #57534e;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__abonnement strong {
+      font-size: 1.08rem;
+      color: #4e6838;
+      font-weight: 800;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__nombre-acces {
+      margin: 5px 0 0 !important;
+      color: #292524;
+      font-size: .9rem;
+      font-weight: 700;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__message.lcdp-box-card-recaporder__message {
+      white-space: pre-line;
+      text-align: left !important;
+      font-size: .85rem !important;
+      font-weight: 700 !important;
+      margin-top: 8px !important;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__contenu {
+      gap: 15px;
+      padding: 16px 24px 22px;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__resume {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__acces {
+      border-radius: 10px;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__acces-ligne {
+      display: grid;
+      grid-template-columns: minmax(100px, 1.1fr) minmax(80px, .8fr) minmax(0, 1fr);
+      align-items: baseline;
+      column-gap: 9px;
+      padding: 7px 11px;
+      font-size: .76rem;
+      line-height: 1.35;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__acces-ligne span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__acces-heure {
+      color: #57534e;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__acces-parc {
+      color: #4e6838;
+      font-weight: 650;
+    }
+    @media (max-width: 560px) {
+      body.lcdp-page-reserver #lcdp-aboreza-workflow-slot .lcdp-aboreza-recapitulatif > .lcdp-box-workflow-abonnement__card {
+        max-height: calc(100dvh - 125px) !important;
+        border-radius: 15px !important;
+      }
+      body.lcdp-page-reserver .lcdp-paiement-refonte__entete {
+        padding: 16px 15px 10px;
+      }
+      body.lcdp-page-reserver .lcdp-paiement-refonte__contenu {
+        padding: 12px 15px 18px;
+      }
+      body.lcdp-page-reserver .lcdp-paiement-refonte__message.lcdp-box-card-recaporder__message {
+        margin: 7px 15px 0 !important;
+      }
+      body.lcdp-page-reserver .lcdp-paiement-refonte__acces-ligne {
+        grid-template-columns: minmax(0, 1fr) minmax(0, .85fr);
+        row-gap: 2px;
+        font-size: .75rem;
+      }
+      body.lcdp-page-reserver .lcdp-paiement-refonte__acces-parc {
+        grid-column: 1 / -1;
+      }
+    }
   </style>
 
   <script src="../config.js"></script>
@@ -476,7 +598,7 @@
   <script src="./attente-planifier.js"></script>
   <script src="./alerte-planifier-navigation.js"></script>
   <script src="./reserver-membre.js?v=20261112-options-choix-v7"></script>
-  <script src="./paiement-membre.js?v=20261112-devis-options-v2"></script>
+  <script src="./paiement-membre.js?v=20261112-recap-wrapper-v3"></script>
   <script src="./aboreza-membre.js?v=20261112-options-choix-v7"></script>
 </body>
 </html>
