@@ -6405,7 +6405,10 @@
     const urlScript = chemin.startsWith("/ESPACE-MEMBRE/")
       ? construireUrlMembre(chemin)
       : construireUrlPublic(chemin);
-    const src = urlScript + "?v=20261110-plages-card-cartouche-v4" +
+    const versionScript = chemin === "/ESPACE-MEMBRE/carte-diaporama.js"
+      ? "20261112-selection-marqueur-v1"
+      : "20261110-plages-card-cartouche-v4";
+    const src = urlScript + "?v=" + versionScript +
       (forcer ? "&actualisation=" + Date.now() : "");
     const promesse = new Promise((resolve, reject) => {
       const script = document.createElement("script");
