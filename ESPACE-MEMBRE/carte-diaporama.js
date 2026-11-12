@@ -80,6 +80,10 @@
     if (options.carteNavigation) svg.setAttribute("role", "group");
 
     const codeDepartement = nettoyerDepartement(parc.dptmt || parc.departement);
+    const departementsCarte = new Set(
+      (Array.isArray(parc.departementsCarte) ? parc.departementsCarte : [codeDepartement])
+        .map(nettoyerDepartement).filter(Boolean)
+    );
     const features = Array.isArray(geojson?.features) ? geojson.features : [];
     const traces = [];
 
@@ -108,7 +112,7 @@
       path.dataset.code = code;
       coucheDepartements.appendChild(path);
 
-      if (code === codeDepartement) {
+      if (departementsCarte.has(code)) {
         const selection = creerElementSvg("path");
         selection.setAttribute("d", trace.d);
         selection.setAttribute(
@@ -119,11 +123,12 @@
       }
     });
 
-    const traceSelectionnee = traces.find((item) => item.code === codeDepartement);
+    const tracesSelectionnees = traces.filter(item => departementsCarte.has(item.code));
     const bboxFrance = fusionnerBbox(traces.map((item) => item.trace.bbox));
-    const bboxCible = traceSelectionnee?.trace?.bbox || bboxFrance;
-    // La fiche reprend exactement l'emprise initiale de la vue CARTE.
-    const viewBoxInitiale = bboxVersViewBox(bboxCible, traceSelectionnee ? 0.04 : 0.045);
+    const bboxCible = tracesSelectionnees.length
+      ? fusionnerBbox(tracesSelectionnees.map(item => item.trace.bbox)) : bboxFrance;
+    // Une ou plusieurs zones sélectionnées : même moteur et même cadrage proportionnel.
+    const viewBoxInitiale = bboxVersViewBox(bboxCible, tracesSelectionnees.length ? 0.04 : 0.045);
 
     if (!viewBoxInitiale) {
       throw new Error("Emprise cartographique inexploitable.");
@@ -620,7 +625,7 @@
 
     svg.setAttribute(
       "aria-label",
-      "Carte du département " + (codeDepartement || "du parc")
+      departementsCarte.size > 1 ? "Carte des départements " + [...departementsCarte].join(", ") : "Carte du département " + (codeDepartement || "du parc")
     );
 
     appliquerViewBox();
