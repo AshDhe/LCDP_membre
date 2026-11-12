@@ -1,7 +1,7 @@
 /* Une seule référence pour MES ACCÈS et ALERTE PLANIFIER. */
 :root { --lcdp-alerte-form-radius: var(--lcdp-radius-medium,16px); }
       /* MES ACCÈS : présentation unifiée avec les variables CSS communes. */
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres {
         display:flex;
         flex-direction:column;
         width:100%;
@@ -15,32 +15,32 @@
         color:var(--lcdp-color-text);
         font-family:var(--lcdp-font-main);
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__champs {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__champs {
         display:grid;
         grid-template-columns:repeat(2,minmax(0,1fr));
         gap:12px 10px;
         width:100%;
         min-width:0;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__champ {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__champ {
         display:flex;
         flex-direction:column;
         gap:5px;
         min-width:0;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__champ[data-lcdp-filtre-champ="mois"] {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__champ[data-lcdp-filtre-champ="mois"] {
         grid-column:1;
         grid-row:1;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__champ[data-lcdp-filtre-champ="parc"] {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__champ[data-lcdp-filtre-champ="parc"] {
         grid-column:2;
         grid-row:1;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__champ[data-lcdp-filtre-champ="departement"] {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__champ[data-lcdp-filtre-champ="departement"] {
         grid-column:1 / -1;
         grid-row:2;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__label {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__label {
         color:#a8a29e;
         font-size:10px;
         font-weight:700;
@@ -48,7 +48,7 @@
         letter-spacing:.06em;
         text-transform:uppercase;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__select {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__select {
         display:block;
         appearance:none;
         width:100%;
@@ -65,19 +65,19 @@
         line-height:1.4;
         cursor:pointer;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__select:focus-visible {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__select:focus-visible {
         outline:2px solid var(--lcdp-color-focus);
         outline-offset:2px;
         border-color:var(--lcdp-color-logo-green);
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__invitations {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__invitations {
         display:grid;
         grid-template-columns:repeat(2,minmax(0,1fr));
         gap:10px;
         min-width:0;
         margin-top:4px;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__option {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__option {
         display:flex;
         justify-content:center;
         align-items:center;
@@ -94,10 +94,10 @@
         line-height:1.3;
         cursor:pointer;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__option:hover {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__option:hover {
         background:#ecfdf5;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__option input[type="checkbox"] {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__option input[type="checkbox"] {
         flex:0 0 16px;
         width:16px;
         height:16px;
@@ -106,7 +106,7 @@
         accent-color:var(--lcdp-color-logo-green);
         cursor:pointer;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__actions {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__actions {
         display:flex;
         align-items:center;
         justify-content:space-between;
@@ -115,13 +115,13 @@
         padding-top:12px;
         border-top:1px solid #e7e5e4;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__resultat {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__resultat {
         min-width:0;
         color:#78716c;
         font-size:12px;
         font-weight:600;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__effacer {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__effacer {
         flex:0 0 auto;
         width:auto;
         min-width:0;
@@ -140,22 +140,22 @@
         text-underline-offset:2px;
         cursor:pointer;
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__effacer:hover:not(:disabled) {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__effacer:hover:not(:disabled) {
         color:var(--lcdp-color-logo-green);
       }
-      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__effacer:disabled {
+      :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__effacer:disabled {
         opacity:.5;
         cursor:not-allowed;
       }
       
 /* Taille des contrôles : -20 % mobile, -10 % desktop, sur une base de 46 px. */
 @media (min-width:768px) {
-  :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__select {
+  :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__select {
     height:41px;
     padding-top:8px;
     padding-bottom:8px;
   }
-  :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__option {
+  :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot,#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue) .lcdp-planning-filtres__option {
     min-height:41px;
     padding-top:8px;
     padding-bottom:8px;
@@ -185,4 +185,72 @@
 }
 #lcdp-alerte-planifier-slot input.lcdp-planning-filtres__select:focus-visible {
   border-color:var(--lcdp-color-logo-green);
+}
+
+/* Lightbox ALERTE PLANIFIER : grille et contrôles du formulaire MES ACCÈS. */
+#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue .lcdp-box-dialogue-bouton__card {
+  width:min(96vw,600px);max-width:600px;max-height:calc(100dvh - 24px);
+  overflow-y:auto;box-sizing:border-box;padding:22px 18px;
+}
+#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue .lcdp-box-dialogue-bouton__actions {display:block;width:100%;min-width:0;}
+#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue .lcdp-planning-filtres {text-align:left;padding:16px;gap:12px;}
+#lcdp-lightbox-slot .lcdp-alerte-champ-complet {grid-column:1/-1;min-width:0;}
+#lcdp-lightbox-slot .lcdp-alerte-critere {display:flex;flex-direction:column;gap:9px;}
+#lcdp-lightbox-slot .lcdp-alerte-critere__titre {
+  font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a8a29e;
+}
+#lcdp-lightbox-slot .lcdp-alerte-critere__valeurs {display:flex;flex-wrap:wrap;gap:7px;}
+#lcdp-lightbox-slot .lcdp-alerte-critere__tag {
+  display:inline-flex;align-items:center;gap:8px;border:1px solid var(--lcdp-color-border);
+  background:#fff;border-radius:10px;padding:5px 8px;font-size:12px;font-weight:600;
+}
+#lcdp-lightbox-slot .lcdp-alerte-critere__retirer {
+  border:0;background:transparent;color:var(--lcdp-color-text-muted);font-size:17px;
+  cursor:pointer;line-height:1;padding:0 2px;
+}
+#lcdp-lightbox-slot .lcdp-alerte-critere__saisie {display:flex;gap:8px;align-items:center;}
+#lcdp-lightbox-slot .lcdp-alerte-critere__saisie select {flex:1;min-width:0;}
+#lcdp-lightbox-slot .lcdp-alerte-critere__saisie button {flex:0 0 auto;}
+#lcdp-lightbox-slot .lcdp-alerte-critere .lcdp-button,
+#lcdp-lightbox-slot .lcdp-alerte-formulaire__actions .lcdp-button {
+  width:auto;min-height:38px;padding:8px 13px;margin:0;font-size:12px;
+}
+#lcdp-lightbox-slot .lcdp-alerte-invites {grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+#lcdp-lightbox-slot .lcdp-alerte-invites .lcdp-planning-filtres__option {padding:7px 4px;gap:5px;}
+#lcdp-lightbox-slot .lcdp-alerte-formulaire__actions {
+  display:flex;gap:10px;align-items:center;justify-content:space-between;
+  padding-top:12px;border-top:1px solid #e7e5e4;
+}
+#lcdp-lightbox-slot .lcdp-alerte-formulaire .lcdp-alerte-etat {margin:0;color:var(--lcdp-color-text-muted);font-size:12px;}
+#lcdp-lightbox-slot .lcdp-alerte-calendrier-hote .lcdp-box-calendrier-mois {
+  position:fixed;inset:0;z-index:4000;display:flex;align-items:center;justify-content:center;
+  padding:12px;background:rgba(20,30,25,.42);
+}
+#lcdp-lightbox-slot .lcdp-alerte-calendrier-hote .lcdp-box-calendrier-mois__card {
+  box-sizing:border-box;width:min(100%,550px);max-width:550px;max-height:calc(100dvh - 24px);
+  overflow-y:auto;padding:14px;border-radius:18px;background:#fff;
+}
+#lcdp-lightbox-slot .lcdp-alerte-calendrier-hote .lcdp-box-calendrier-mois__grid {
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;min-width:0;
+}
+#lcdp-lightbox-slot .lcdp-alerte-calendrier-hote [data-lcdp-card-jour-mois] {
+  width:100%;min-width:0;min-height:42px;display:flex;align-items:center;justify-content:center;
+  padding:6px 2px;border:1px solid #d6d3d1;border-radius:8px;background:#fff;
+  color:var(--lcdp-color-text);font-size:13px;cursor:pointer;
+}
+#lcdp-lightbox-slot .lcdp-alerte-calendrier-hote [data-lcdp-card-jour-mois]:disabled {
+  opacity:.35;cursor:not-allowed;
+}
+#lcdp-lightbox-slot .lcdp-alerte-calendrier-hote [data-lcdp-card-jour-mois]:not(:disabled):hover {
+  border-color:var(--lcdp-color-logo-green);background:#ecfdf5;
+}
+#lcdp-lightbox-slot .lcdp-alerte-calendrier-hote .lcdp-box-calendrier-mois__navigation {
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+}
+#lcdp-lightbox-slot .lcdp-alerte-calendrier-hote .lcdp-box-calendrier-mois__weekdays {
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center;
+}
+@media(max-width:380px){
+  #lcdp-lightbox-slot .lcdp-alerte-invites {grid-template-columns:1fr;}
+  #lcdp-lightbox-slot .lcdp-alerte-critere__saisie {flex-wrap:wrap;}
 }
