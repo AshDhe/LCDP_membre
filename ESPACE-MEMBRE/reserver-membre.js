@@ -3573,11 +3573,9 @@
   }
 
   async function informerParcProjet() {
-    // Information à action unique : le bouton « Fermer » remplace la croix.
-    await afficherAlerteSuperposee("Ce parc n'est pas encore accessible.", "orange", {
-      libelleBouton: "Fermer",
-      sansCroix: true,
-      classe: "lcdp-planifier-alerte-information"
+    await afficherDialogueInformationPlanifier({
+      titre: "Information",
+      message: "Ce parc n'est pas encore accessible."
     });
   }
 
@@ -5591,12 +5589,8 @@
   }
 
   // Migration pilote vers l'objet INFORMATION générique.
-  // Le texte métier vient de la réservation ; aucun style n'est créé ici.
-  async function afficherDialogueAccesDejaPlanifie(reservation) {
-    const invitation = reservation?.invitation === true;
-    const prefixe = invitation ? 'Vous avez déjà une invitation' : 'Vous avez déjà un accès planifié';
-    const libelle = libelleAccesDejaPlanifie(reservation);
-    const detail = libelle.startsWith(prefixe) ? libelle.slice(prefixe.length).replace(/^\s*·\s*/, '') : libelle;
+  // Le rendu est toujours celui du profil INFORMATION ; seuls les contenus varient.
+  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu }) {
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
@@ -5609,8 +5603,8 @@
         throw new Error('Structure du dialogue INFORMATION incomplète.');
       }
       dialogue.dataset.lcdpDialogueContext = 'conteneur';
-      titre.textContent = invitation ? 'Invitation déjà reçue' : 'Accès déjà planifié';
-      message.textContent = detail;
+      titre.textContent = libelleTitre;
+      message.textContent = contenu;
       fermer.textContent = 'Fermer';
       return await new Promise(resolve => {
         fermer.addEventListener('click', () => {
@@ -5623,6 +5617,18 @@
       enveloppe.remove();
       throw erreur;
     }
+  }
+
+  // Le texte métier vient de la réservation ; aucun style n'est créé ici.
+  async function afficherDialogueAccesDejaPlanifie(reservation) {
+    const invitation = reservation?.invitation === true;
+    const prefixe = invitation ? 'Vous avez déjà une invitation' : 'Vous avez déjà un accès planifié';
+    const libelle = libelleAccesDejaPlanifie(reservation);
+    const detail = libelle.startsWith(prefixe) ? libelle.slice(prefixe.length).replace(/^\\s*·\\s*/, '') : libelle;
+    return afficherDialogueInformationPlanifier({
+      titre: invitation ? 'Invitation déjà reçue' : 'Accès déjà planifié',
+      message: detail
+    });
   }
 
   function libellePlageReservation(plagebookd) {
