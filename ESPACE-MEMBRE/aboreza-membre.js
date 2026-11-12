@@ -817,6 +817,41 @@
     });
     bandeau.append(groupes);
 
+    // Un panier complet doit toujours permettre d'ouvrir sa commande,
+    // même si le dialogue automatique a été fermé ou n'a pas été présenté.
+    if (courant.complet === true) {
+      const commander = bouton('Commander', true);
+      commander.type = 'button';
+      commander.classList.add('lcdp-aboreza-suivi__commander');
+      commander.style.setProperty('display', 'block');
+      commander.style.setProperty('margin', '12px auto 4px');
+      commander.addEventListener('click', async () => {
+        if (occupe) return;
+        occupe = true;
+        commander.disabled = true;
+        try {
+          // Confirmation serveur : aucun paiement sur une progression locale obsolète.
+          const panier = (await api('/panier')).panier;
+          if (!panier || panier.idpanier !== courant?.idpanier || panier.complet !== true) {
+            await bridge()?.informer?.(
+              'La commande doit être actualisée avant de poursuivre.',
+              { titre: 'Information', libelleBouton: 'Fermer' }
+            );
+            return;
+          }
+          courant = panier;
+          miseAJourBandeau();
+          await afficherRecap(panier);
+        } catch (erreur) {
+          await bridge()?.alerter?.(erreur?.message || 'Impossible d’ouvrir le bon de commande.');
+        } finally {
+          occupe = false;
+          if (commander.isConnected) commander.disabled = false;
+        }
+      });
+      bandeau.append(commander);
+    }
+
     const fermeture = hote.querySelector('.lcdp-box-calendrier-mois__close');
     if (fermeture) fermeture.after(bandeau);
     else hote.prepend(bandeau);
