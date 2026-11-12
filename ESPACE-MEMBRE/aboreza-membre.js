@@ -707,7 +707,7 @@
     await bridge()?.allerMois?.(v('year')+'-'+v('month'));
   }
   async function reprendreOuRecommencer(p) {
-    return modalComposant('dialogue', 'Un panier existe déjà', (objet, finir) => {
+    return modalComposant('dialogue', 'Un abonnement est en cours de commande', (objet, finir) => {
       objet.classList.add('lcdp-panier-existant');
       const carte = objet.querySelector('.lcdp-box-dialogue-bouton__card');
       const titre = objet.querySelector('[data-lcdp-dialogue-title]');
@@ -724,7 +724,7 @@
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__text{margin:4px 0 11px;max-width:none;color:#78716c;font-size:13px;font-weight:600;line-height:1.45}
         .lcdp-panier-existant .lcdp-panier-existant__recap{box-sizing:border-box;display:block;align-self:stretch;width:100%;min-width:0;max-width:none;margin:0 0 11px;padding:17px;border:1px solid #e7e5e4;border-radius:20px;background:#fafaf9;text-align:left}
         .lcdp-panier-existant__ligne{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:start;gap:8px;padding-bottom:13px;border-bottom:1px solid #e7e5e4}
-        .lcdp-panier-existant__col{min-width:0}.lcdp-panier-existant__col--date{text-align:right}
+        .lcdp-panier-existant__col{min-width:0;text-align:center}.lcdp-panier-existant__col--date{text-align:center}
         .lcdp-panier-existant__legende{display:block;margin-bottom:6px;color:#a8a29e;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
         .lcdp-panier-existant__valeur{display:block;color:#1c1917;font-size:15px;font-weight:850;line-height:1.3;white-space:nowrap}
         .lcdp-panier-existant__col--date .lcdp-panier-existant__valeur{color:#4b6333}
@@ -748,7 +748,7 @@
       icone.setAttribute('aria-hidden', 'true');
       icone.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11V7a4 4 0 0 0-8 0v4"/><path d="M5 9h14l1 12H4L5 9z"/></svg>';
       carte.insertBefore(icone, titre);
-      texte.textContent = 'Vous avez une sélection en attente de validation.';
+      texte.textContent = 'Vous avez un abonnement en cours de commande.';
       const recap = elem('div', 'lcdp-panier-existant__recap');
       const ligne = elem('div', 'lcdp-panier-existant__ligne');
       const formule = elem('div', 'lcdp-panier-existant__col');
@@ -791,10 +791,10 @@
       recap.append(ligne, progres);
       carte.insertBefore(recap, actions);
       actions.replaceChildren();
-      const reprendre = bouton('Reprendre ce panier', true);
+      const reprendre = bouton('Reprendre les accès', true);
       reprendre.insertAdjacentHTML('beforeend', '<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 7l5 5-5 5M18 12H6"/></svg>');
       reprendre.addEventListener('click', () => finir('reprendre'));
-      const annuler = bouton('Annuler ce panier et recommencer');
+      const annuler = bouton('Annuler cet abonnement en cours de commande');
       annuler.addEventListener('click', () => finir('recommencer'));
       actions.append(reprendre, annuler);
     });
