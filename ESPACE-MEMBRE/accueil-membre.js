@@ -817,7 +817,7 @@
 
   async function ouvrirPageAbonne(etat, fonction, chemin) {
     if (!etat.abonne && !membreAbonne()) {
-      await afficherAlerte("Vous devez être membre abonné pour utiliser la fonction " + fonction);
+      await afficherAlerte("Vous devez être membre abonné pour utiliser la fonction " + fonction, { profil: "information" });
       return;
     }
 
@@ -836,11 +836,11 @@
 
   async function gererEtreInvite(etat) {
     if (!etat.parrainRenseigne) {
-      await afficherAlerte('Renseignez votre parrain dans la rubrique "Mes informations"');
+      await afficherAlerte('Renseignez votre parrain dans la rubrique "Mes informations"', { profil: "information" });
       return;
     }
 
-    await afficherAlerte("Votre parrain peut vous inviter depuis son espace.");
+    await afficherAlerte("Votre parrain peut vous inviter depuis son espace.", { profil: "information" });
   }
 
   async function gererDeconnexion() {
@@ -902,7 +902,7 @@
 
     // Les informations simples partagent exclusivement le profil INFORMATION.
     // Les confirmations restent sur leur mécanisme existant jusqu'au lot CHOIX.
-    if (options.mode !== "confirmation") {
+    if (options.mode !== "confirmation" && options.profil === "information") {
       const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
       slot.appendChild(fragment);
       const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="information"]');
