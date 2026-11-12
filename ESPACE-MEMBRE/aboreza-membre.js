@@ -244,17 +244,24 @@
         titre = 'Privilège de l’abonnement ' + code + (nom && nom.toUpperCase() !== code.toUpperCase() ? ' (' + nom + ')' : '');
         const nombre = valeur => valeur === null || valeur === undefined
           ? 'Non renseigné' : String(valeur);
-        const estUnJour = code === '1J';
-        const duoPlusInclus = Number(p.freqduoplus) > 0 && Number(p.duoplus) > 0;
-        lignes = [
-          estUnJour ? 'Planifier sur une seule journée selon CGV' : 'Planifier illimité selon CGV',
-          nombre(p.maxduo) + ' invités DUO différents',
-          duoPlusInclus
-            ? 'DUO+ ' + nombre(p.freqduoplus) + ' x par mois (' + nombre(p.duoplus) + ' invités simultanés)'
-            : 'DUO+ non inclus',
-          nombre(p.famille) + ' invités FAMILLE',
-          'Payable en ' + nombre(p.ech) + (Number(p.ech) === 1 ? ' échéance' : ' échéances')
-        ];
+        if (code === '1J') {
+          lignes = [
+            'Jusqu’à 5 accès planifiés selon CGV',
+            nombre(p.maxduo) + ' invité DUO sur la journée',
+            nombre(p.famille) + ' invités FAMILLE sur la journée'
+          ];
+        } else {
+          const duoPlusInclus = Number(p.freqduoplus) > 0 && Number(p.duoplus) > 0;
+          lignes = [
+            'Planifier illimité selon CGV',
+            nombre(p.maxduo) + ' invités DUO différents',
+            duoPlusInclus
+              ? 'DUO+ ' + nombre(p.freqduoplus) + ' x par mois (' + nombre(p.duoplus) + ' invités simultanés)'
+              : 'DUO+ non inclus',
+            nombre(p.famille) + ' invités FAMILLE',
+            'Payable en ' + nombre(p.ech) + (Number(p.ech) === 1 ? ' échéance' : ' échéances')
+          ];
+        }
       }
     } catch (erreur) {
       lignes = [erreur?.message || 'Impossible de consulter les privilèges de cet abonnement.'];
