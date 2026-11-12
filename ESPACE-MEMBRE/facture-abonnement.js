@@ -194,7 +194,7 @@
         titre.textContent = option.code +
           (Number(option.multiplicateur) > 1 ? ' × ' + option.multiplicateur : '');
         const valeur = document.createElement('dd');
-        valeur.textContent = formaterMontant(option.totalTtc) + ' € TTC';
+        valeur.textContent = formaterMontant(option.totalTtc) + ' TTC';
         ligne.append(titre, valeur);
         liste.append(ligne);
       }
