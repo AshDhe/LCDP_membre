@@ -881,7 +881,7 @@
         });
         if (choix === "payer") await gererPaiementSuspensionMembre(etatMembre);
       } else {
-        await afficherAlerteSuperposee(messageImpayé, "orange", {libelleBouton:"Fermer"});
+        await afficherDialogueInformationPlanifier({ titre: "Abonnement", message: messageImpayé });
       }
       return;
     }
@@ -5806,7 +5806,7 @@
     choix = {...choix, heure:heuresDebut[choix.plagebookd], heureFin:heuresFin[choix.plagebookd]};
     const debut = construireDateBookd(choix.dateIso, choix.heure);
     if (!debut || Date.parse(debut) <= Date.now()) {
-      await afficherAlerteSuperposee("Cette plage a déjà commencé."); return false;
+      await afficherDialogueInformationPlanifier({ titre: "Plage indisponible", message: "Cette plage a déjà commencé." }); return false;
     }
     const contenu = document.createElement('div');
     contenu.className = 'lcdp-aboreza-confirmation-acces__recap';
