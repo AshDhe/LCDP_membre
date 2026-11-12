@@ -5718,8 +5718,8 @@
         await etatPage.actualiserPlanningPrincipal?.();
         masqueReservation.remove();
         await afficherDialogueInformationPlanifier({
-          titre: "Accès planifié",
-          message: "Votre accès a bien été planifié."
+          titre: "Information",
+          message: "Accès planifié"
         });
       } catch (error) {
         masqueReservation.remove();
