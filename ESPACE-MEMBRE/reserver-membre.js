@@ -5219,7 +5219,12 @@
       ligneIdentiteJour.appendChild(actionsJour);
     }
     const boutonCoachJour = enteteJour.querySelector(".lcdp-planifier-filtre--coach");
-    boutonCoachJour?.addEventListener("click", () => ouvrirModeCoachPlanifier().catch(console.error));
+    if (boutonCoachJour) {
+      // La vue jour est en lecture du mode choisi au calendrier mensuel :
+      // conserver aria-pressed, mais interdire tout changement depuis cette vue.
+      boutonCoachJour.disabled = true;
+      boutonCoachJour.setAttribute("aria-label", "Coach (modifiable uniquement dans la vue mois)");
+    }
     const boutonChanger = enteteJour.querySelector(".lcdp-planifier-filtre--parc");
     if (boutonChanger) {
       // Vue jour : le changement de parc reste accessible uniquement depuis la vue mois.
