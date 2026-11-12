@@ -177,16 +177,24 @@
   async function init(){
     try{
       await coque();
-      root.append(node("p","lcdp-alerte-etat","Chargement des critères…"));
-      const info=await api("/references");
-      etat.references={departements:info.departements||[],parcs:info.parcs||[]};
+      // Le formulaire reste visible et testable même avant déploiement du Worker.
       root.replaceChildren(formulaire());
-      root.append(node("p","lcdp-alerte-etat",""));root.lastChild.dataset.alerteMessage="";
+      const messageZone=node("p","lcdp-alerte-etat","");messageZone.dataset.alerteMessage="";root.append(messageZone);
       const section=node("section","lcdp-alerte-resultats");section.dataset.alerteResultats="";root.append(section);
       const list=node("section");list.append(node("h2","lcdp-title-section","MON COMPTE · Services · Mes alertes"));
       const cont=node("div");cont.dataset.alerteListe="";list.append(cont);root.append(list);
-      await chargerListe();
       document.getElementById("mention-statut-membre").textContent="ESPACE MEMBRE";
+      try{
+        const info=await api("/references");
+        etat.references={departements:info.departements||[],parcs:info.parcs||[]};
+        const ancien=root.querySelector("form");
+        ancien.replaceWith(formulaire());
+        ajusterParcs(false);
+        await chargerListe();
+      }catch(e){
+        message("Service non connecté : le formulaire est consultable, mais l'enregistrement et la recherche nécessitent le déploiement du Worker. "+e.message);
+        afficherListe();
+      }
     }catch(e){
       root.replaceChildren(node("p","lcdp-alerte-etat",e.message));
     }finally{
