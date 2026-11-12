@@ -360,7 +360,7 @@
         fermer();
         if(typeof options.onEnregistre==="function")await options.onEnregistre(data);
         else {
-          await afficherAlerte("Alerte enregistrée. Retrouvez-la dans MON COMPTE → SERVICE.", "Alerte enregistrée");
+          await afficherAlerte("Retrouvez votre alerte dans MON COMPTE → SERVICE.", "Alerte enregistrée");
           // Uniquement après l'accusé de réception de création : lancer la recherche.
           if(!source && data?.alerte?.idalerte && window.LCDP_alerteNavigation?.lancer){
             await window.LCDP_alerteNavigation.lancer(data.alerte);
