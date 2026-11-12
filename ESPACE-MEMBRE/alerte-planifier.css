@@ -393,8 +393,11 @@
   outline:2px solid var(--lcdp-color-focus,#4e6838);
   outline-offset:2px;
 }
-#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue .lcdp-alerte-invites .lcdp-planifier-filtre-categorie__input:checked ~ .lcdp-box-legende__libelle {
-  font-weight:800;
+#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue .lcdp-alerte-invites .lcdp-planifier-filtre-categorie__coche {
+  opacity:0;
+}
+#lcdp-lightbox-slot .lcdp-alerte-planning-dialogue .lcdp-alerte-invites .lcdp-planifier-filtre-categorie__input:checked + .lcdp-box-legende__carre .lcdp-planifier-filtre-categorie__coche {
+  opacity:1;
 }
 #lcdp-lightbox-slot .lcdp-alerte-planning-dialogue .lcdp-alerte-formulaire__actions {
   box-sizing:border-box;
