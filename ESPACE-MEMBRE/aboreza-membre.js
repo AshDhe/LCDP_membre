@@ -975,8 +975,16 @@
           }
         }
       }else{
-        demande=await choisirOffre(offres,contexte);
-        if(!demande)return;
+        // K1 utilise désormais les mêmes écrans 1 (catalogue/options) et 2 (date).
+        // Les règles de calendrier et les contrôles serveur restent inchangés.
+        while(!demande){
+          const formule=await choisirFormuleCatalogue(offres);
+          if(!formule)return;
+          const offre=offres.find(o=>o.formule===formule);
+          const dateDebut=await choisirDateDemarrage(offre);
+          if(!dateDebut)continue;
+          demande={formule,dateDebut};
+        }
       }
       // Pendant le POST, le planning ne doit jamais réapparaître entre deux étapes.
       afficherAttenteFormules('Préparation de vos accès…');
