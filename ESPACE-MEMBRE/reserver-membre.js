@@ -725,7 +725,19 @@
       if (depassement) titre = "Nouvel abonnement";
       boutons = [{label:"Abonnement",valeur:"abonnement",style:"lcdp-button-primary"}];
     }
-    const choix = await ouvrirDialogueBoutonsSuperpose({titre,texte,boutons,onAffiche: contexte.onAffiche});
+    // Une information avec une seule action relève du dialogue INFORMATION générique.
+    // Les choix multiples conservent leur objet CHOIX existant.
+    const informationAbonnement = depassement && daValidee &&
+      boutons.length === 1 && boutons[0].valeur === "abonnement";
+    const choix = informationAbonnement
+      ? await afficherDialogueInformationPlanifier({
+          titre,
+          message: "Un nouvel abonnement est nécessaire au-delà de cette date.",
+          libelleAction: "Abonnement",
+          valeurAction: "abonnement",
+          onAffiche: contexte.onAffiche
+        })
+      : await ouvrirDialogueBoutonsSuperpose({titre,texte,boutons,onAffiche: contexte.onAffiche});
     if (choix === "demande") {
       await ouvrirDemandeAbonnementDepuisPlanning();
     } else if (choix === "invitation") {
@@ -5716,7 +5728,7 @@
 
   // Migration pilote vers l'objet INFORMATION générique.
   // Le rendu est toujours celui du profil INFORMATION ; seuls les contenus varient.
-  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false }) {
+  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null }) {
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
@@ -5731,14 +5743,18 @@
       dialogue.dataset.lcdpDialogueContext = 'conteneur';
       titre.textContent = libelleTitre;
       message.textContent = contenu;
-      fermer.textContent = 'Fermer';
+      fermer.textContent = libelleAction;
+      // Retirer l'attente dès que la boîte d'information est réellement visible.
+      if (typeof onAffiche === "function") {
+        window.requestAnimationFrame(() => { Promise.resolve(onAffiche()).catch(console.error); });
+      }
       return await new Promise(resolve => {
         let termine = false;
         const clore = () => {
           if (termine) return;
           termine = true;
           enveloppe.remove();
-          resolve('fermer');
+          resolve(valeurAction);
         };
         fermer.addEventListener('click', clore, { once: true });
         if (fermetureLibre) {
