@@ -63,6 +63,22 @@
       width: min(220px, 100%);
       margin: 0 auto;
     }
+    /* ABO-RÉZA : mois non présélectionnés, survol distinct de la sélection. */
+    .lcdp-aboreza-demarrage .lcdp-box-calendrier-an__month[aria-pressed="false"] {
+      background: #fff;
+      color: inherit;
+      border-color: #d9dfd7;
+      box-shadow: none;
+    }
+    .lcdp-aboreza-demarrage .lcdp-box-calendrier-an__month[aria-pressed="false"]:hover {
+      background: #edf3e8;
+      border-color: #4e6838;
+      box-shadow: 0 2px 8px rgba(31, 55, 25, .12);
+    }
+    .lcdp-aboreza-demarrage .lcdp-box-calendrier-an__month[aria-pressed="false"]:focus-visible {
+      outline: 2px solid #4e6838;
+      outline-offset: 2px;
+    }
     @media (prefers-reduced-motion: reduce) {
       #lcdp-planifier-attente-initiale .lcdp-loading-spinner__arc,
       .lcdp-planifier-partage-attente .lcdp-loading-spinner__arc { animation: none; }
