@@ -1106,7 +1106,7 @@
       calculerDatesWorkflow();
 
       if (prolongationIncompatibleAvecAbonnements()) {
-        await afficherAlerteSuperposee("Durée incompatible avec votre prochain abonnement");
+        await afficherInformationAbonnement("Durée incompatible avec votre prochain abonnement", { titre: "Durée indisponible", superposition: true });
         return;
       }
 
@@ -2017,7 +2017,7 @@
       }
 
       if (etat.workflow.paiement.mode === "virement" && !virementAutorisePourWorkflow()) {
-        await afficherAlerteSuperposee("Vous n'avez plus assez de temps pour payer par virement avant le début de cet abonnement.");
+        await afficherInformationAbonnement("Vous n'avez plus assez de temps pour payer par virement avant le début de cet abonnement.", { titre: "Paiement par virement indisponible", superposition: true });
         basculerPaiementSurCb(slot);
         return;
       }
@@ -2043,7 +2043,7 @@
         const demandeVirement = input.name === "mode-paiement-abonnement" && input.value === "virement" && input.checked;
 
         if (demandeVirement && !virementAutorisePourWorkflow()) {
-          await afficherAlerteSuperposee("Vous n'avez plus assez de temps pour payer par virement avant le début de cet abonnement.");
+          await afficherInformationAbonnement("Vous n'avez plus assez de temps pour payer par virement avant le début de cet abonnement.", { titre: "Paiement par virement indisponible", superposition: true });
           basculerPaiementSurCb(slot);
           return;
         }
