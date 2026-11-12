@@ -906,18 +906,17 @@
         idparc:String(choix.parc.idparc||choix.parc.id||''),date:choix.dateIso,plagebookd:choix.plagebookd});
       courant=reponse.panier;
       bridge()?.fermerJour?.();bridge()?.viderCache?.();miseAJourBandeau();
-      // L'actualisation peut se faire derrière l'alerte ; elle ne retarde plus le bouton Payer.
+      // L'actualisation peut se faire derrière la confirmation INFORMATION.
       const miseAJour = Promise.resolve().then(() => courant.moisActif!==avant
         ? bridge()?.allerMois?.(courant.moisActif)
         : bridge()?.actualiser?.()
       ).catch(erreur => console.error('Actualisation du planning ABO-RÉZA :', erreur));
       if(courant.complet){
         masquerAttenteFormules();
-        const confirmation = await bridge()?.alerter?.(
-          'Les accès obligatoires sont sélectionnés. Votre panier est prêt pour paiement.',
-          { libelleBouton: 'Payer' }
+        const confirmation = await bridge()?.informer?.(
+          'Tous les accès de commande sont planifiés.',
+          { titre: 'Information', libelleBouton: 'Commander', valeurAction: true }
         );
-        // La croix ferme le dialogue et conserve le panier, sans lancer Paiement.
         if(confirmation===true)await afficherRecap(courant);
         await miseAJour;
       }else{
