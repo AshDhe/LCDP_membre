@@ -14,7 +14,7 @@
   function message(txt){const cible=root.querySelector("[data-alerte-message]");if(cible){cible.textContent=txt;cible.setAttribute("role","status");}}
   async function api(path,method="GET",payload){
     if(!endpoint)throw new Error("Worker ALERTE PLANIFIER non configuré.");
-    const r=await fetch(endpoint+path,{method,credentials:"include",cache:"no-store",headers:{"Accept":"application/json",...(payload?{"Content-Type":"application/json"}:{})},...(payload?{body:JSON.stringify(payload)}:{})});
+    const r=await fetch(endpoint+path,{method,credentials:"include",cache:"no-store",signal:AbortSignal.timeout(12000),headers:{"Accept":"application/json",...(payload?{"Content-Type":"application/json"}:{})},...(payload?{body:JSON.stringify(payload)}:{})});
     const data=await r.json().catch(()=>({}));
     if(r.status===401)throw new Error("Votre session membre doit être renouvelée.");
     if(!r.ok||data.ok!==true)throw new Error(data.message||"Service d'alertes indisponible.");
@@ -204,6 +204,10 @@
       const list=node("section");list.append(node("h2","lcdp-title-section","MON COMPTE · Services · Mes alertes"));
       const cont=node("div");cont.dataset.alerteListe="";list.append(cont);root.append(list);
       document.getElementById("mention-statut-membre").textContent="ESPACE MEMBRE";
+      // Afficher la coque immédiatement, même si le Worker n'est pas publié.
+      document.documentElement.classList.add("lcdp-alerte-page-pret");
+      document.body.classList.add("lcdp-alerte-page-pret");
+      document.getElementById("lcdp-alerte-page-attente-initiale")?.remove();
       try{
         const info=await api("/references");
         etat.references={departements:info.departements||[],parcs:info.parcs||[]};
