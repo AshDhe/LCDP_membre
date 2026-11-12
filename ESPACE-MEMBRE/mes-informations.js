@@ -1712,7 +1712,7 @@ function afficherResumePointsPassion(compte) {
       remplirChamp("champ-adresse2-membre", compteMembreActuel.adresse2);
       remplirChamp("champ-adresse3-membre", compteMembreActuel.adresse3);
 
-      await afficherAlerte(messageErreurApi(resultat, "Votre adresse de facturation est mise à jour."));
+      await afficherInformationMembre(messageErreurApi(resultat, "Votre adresse de facturation est mise à jour."));
     } catch (error) {
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -1787,7 +1787,7 @@ function afficherResumePointsPassion(compte) {
 
       remplirChamp("champ-" + champAutorise + "-membre", nouvelleValeur);
 
-      await afficherAlerte("Vos coordonnées de remboursement sont mises à jour.");
+      await afficherInformationMembre("Vos coordonnées de remboursement sont mises à jour.");
     } catch (error) {
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -2164,7 +2164,7 @@ function afficherResumePointsPassion(compte) {
       };
 
       remplirChamp("champ-parrain-membre", formaterParrainAffichage(compteMembreActuel.parrain));
-      await afficherAlerte(messageErreurApi(resultat, "Votre changement de parrain est enregistré."));
+      await afficherInformationMembre(messageErreurApi(resultat, "Votre changement de parrain est enregistré."));
     } catch (error) {
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -2214,7 +2214,7 @@ function afficherResumePointsPassion(compte) {
       };
 
       remplirChamp("champ-departement-membre", formaterDepartementAffichage(compteMembreActuel.departement));
-      await afficherAlerte(messageErreurApi(resultat, "Votre changement de département est enregistré."));
+      await afficherInformationMembre(messageErreurApi(resultat, "Votre changement de département est enregistré."));
     } catch (error) {
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -2485,6 +2485,35 @@ function afficherResumePointsPassion(compte) {
     zoneControl.appendChild(input);
 
     return champ;
+  }
+
+  async function afficherInformationMembre(message, titre = "Information") {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    if (!slot) return null;
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
+    slot.replaceChildren(fragment);
+    const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="information"]');
+    const titreElement = slot.querySelector('[data-lcdp-dialogue-titre]');
+    const texte = slot.querySelector('[data-lcdp-dialogue-message]');
+    const bouton = slot.querySelector('[data-lcdp-dialogue-action="compris"]');
+    if (!dialogue || !titreElement || !texte || !bouton) {
+      slot.replaceChildren();
+      throw new Error("Structure du dialogue INFORMATION incomplète.");
+    }
+    titreElement.textContent = titre;
+    texte.textContent = String(message || "");
+    bouton.textContent = "Fermer";
+    return new Promise(resolve => {
+      let resolu = false;
+      const fermer = () => {
+        if (resolu) return;
+        resolu = true;
+        slot.replaceChildren();
+        resolve(true);
+      };
+      bouton.addEventListener("click", fermer, { once: true });
+      bouton.focus();
+    });
   }
 
   async function afficherAlerteSuperposee(message) {
