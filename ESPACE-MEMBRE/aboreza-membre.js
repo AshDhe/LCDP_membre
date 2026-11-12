@@ -710,6 +710,7 @@
         .lcdp-panier-existant__progres-ligne span{color:#57534e;font-weight:600}
         .lcdp-panier-existant__progres-ligne strong{color:#1c1917;font-weight:850}
         .lcdp-panier-existant__progres .lcdp-aboreza-suivi__mois{margin-top:10px}
+        .lcdp-panier-existant__progres .lcdp-aboreza-suivi__case--faite{background:#4e6838;border-color:#4e6838}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;width:100%}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button{box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-width:0;max-width:none;margin:0;padding:15px 12px;border-radius:18px;font-family:inherit;line-height:1.3;cursor:pointer}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-primary{min-height:58px;border:1px solid #4b6333;background:#4b6333;color:#fff;box-shadow:0 3px 6px #0002;font-size:15px;font-weight:850}
