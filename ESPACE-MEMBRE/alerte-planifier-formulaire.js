@@ -58,7 +58,7 @@
     const source=options.alerte||null;
     const initial=source?.criteres||{};
     const etat={departements:[...(initial.departements||[])],periodes:(initial.periodes||[]).map(p=>({...p})),plages:[...(initial.plages||[])],categories:[...(initial.categories||["duo"])]};
-    const limites={departements:3,periodes:3,plages:3};
+    const limites={departements:2,periodes:2,plages:2};
     const controller=new AbortController();
     let ferme=false,modeCalendrier=false;
     const noeud=(tag,classe,libelle)=>{
@@ -97,9 +97,9 @@
       n.append(liste);champs.append(n);
       return {n,liste};
     };
-    const departements=groupe("Département",3,"lcdp-alerte-critere--departement");
-    const periodes=groupe("Période",3,"lcdp-alerte-critere--periode");
-    const horaires=groupe("Horaire",3,"lcdp-alerte-critere--horaire");
+    const departements=groupe("Département",limites.departements,"lcdp-alerte-critere--departement");
+    const periodes=groupe("Période",limites.periodes,"lcdp-alerte-critere--periode");
+    const horaires=groupe("Horaire",limites.plages,"lcdp-alerte-critere--horaire");
     const invites=groupe("Filtre invités (accès parc)",0,"lcdp-alerte-critere--invites");
     const msg=noeud("p","lcdp-alerte-etat");msg.setAttribute("role","status");
     const endpoint=String(CONFIG_PAGE.workerAlertePlanifierUrl||CONFIG_PAGE.WORKER_ALERTE_PLANIFIER_URL||"").replace(/\/+$/,"");
@@ -177,18 +177,18 @@
           for(const [corse,libelle] of [["2A","Corse-du-Sud"],["2B","Haute-Corse"]]){
             choixCorse.append(bouton(libelle,()=>{
               if(etat.departements.includes(corse)){msg.textContent="Département déjà sélectionné.";return;}
-              if(etat.departements.length<3){etat.departements.push(corse);actualiser();}
+              if(etat.departements.length<limites.departements){etat.departements.push(corse);actualiser();}
               choixCorse.remove();
             }));
           }
           departements.n.append(choixCorse);
-        }else if(code&&etat.departements.length<3){etat.departements.push(code);actualiser();}
+        }else if(code&&etat.departements.length<limites.departements){etat.departements.push(code);actualiser();}
       }catch(e){msg.textContent=e.message;}
     });
     departements.n.append(departements.ajouter);
     const ouvrirCalendrier=async()=>{
       try{
-        if(etat.periodes.length>=3)return;
+        if(etat.periodes.length>=limites.periodes)return;
         const [fragmentCalendrier,fragmentJour]=await Promise.all([
           chargerFragmentObjet("/HTMLBASE/04-calendrier-mois.html"),
           chargerFragmentObjet("/HTMLBASE/04-card-jour-in-calendrier-mois.html")
@@ -257,7 +257,7 @@
     horaires.ajouter=bouton("+ Ajouter",()=>{
       const v=choixPlage.value;
       if(etat.plages.includes(v)){msg.textContent="Cette plage est déjà sélectionnée.";return;}
-      if(etat.plages.length<3){etat.plages.push(v);actualiser();msg.textContent="";}
+      if(etat.plages.length<limites.plages){etat.plages.push(v);actualiser();msg.textContent="";}
     });
     const choixHoraire=noeud("div","lcdp-alerte-critere__saisie");choixHoraire.append(choixPlage,horaires.ajouter);
     horaires.n.append(choixHoraire);
