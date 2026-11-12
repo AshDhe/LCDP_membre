@@ -547,6 +547,57 @@
         animation: none !important;
       }
     }
+    /* Paiement : fermeture dans l'en-tête et ventilation lisible des échéances. */
+    body.lcdp-page-reserver .lcdp-aboreza-recapitulatif .lcdp-paiement-refonte__entete {
+      position: relative;
+      padding-right: 52px !important;
+    }
+    body.lcdp-page-reserver .lcdp-aboreza-recapitulatif .lcdp-paiement-refonte__fermer {
+      position: absolute !important;
+      top: 10px;
+      right: 12px;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      width: 32px !important;
+      min-width: 32px !important;
+      height: 32px !important;
+      min-height: 32px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 1px solid #d6dcd3 !important;
+      border-radius: 50% !important;
+      background: #f4f7f2 !important;
+      color: #4e6838 !important;
+      font-size: 25px !important;
+      font-weight: 400 !important;
+      line-height: 1 !important;
+      box-shadow: none !important;
+      cursor: pointer;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__echeance {
+      display: flex !important;
+      gap: 8px;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: .76rem;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__echeance strong {
+      font-size: .76rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__echeance--immediate strong {
+      color: #4e6838;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__echeance--future,
+    body.lcdp-page-reserver .lcdp-paiement-refonte__echeance--future strong {
+      color: #78716c !important;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__option-prix--echeances {
+      color: #4e6838;
+    }
   </style>
 
   <script src="../config.js"></script>
@@ -743,7 +794,7 @@
   <script src="./attente-planifier.js"></script>
   <script src="./alerte-planifier-navigation.js"></script>
   <script src="./reserver-membre.js?v=20261113-transitions-v8"></script>
-  <script src="./paiement-membre.js?v=20261112-recap-compact-v6"></script>
+  <script src="./paiement-membre.js?v=20261113-paiement-entete-v7"></script>
   <script src="./aboreza-membre.js?v=20261113-titre-centre-v9"></script>
 </body>
 </html>
