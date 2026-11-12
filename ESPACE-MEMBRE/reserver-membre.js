@@ -239,7 +239,10 @@
           document.body.classList.add("lcdp-planifier-origine-alerte");
           await ouvrirFiltreParcPlanifier();
         } else {
-          await afficherAlerte("Les résultats de l'alerte ne sont plus disponibles. Relancez l'alerte depuis l'accueil membre.");
+          await afficherDialogueInformationPlanifier({
+            titre: "Résultats de l’alerte",
+            message: "Les résultats de l'alerte ne sont plus disponibles. Relancez l'alerte depuis l'accueil membre."
+          });
         }
       }
       // Ouverture IA depuis le sélecteur de l'accueil membre uniquement.
@@ -5509,9 +5512,9 @@
                 : reservationPlage
             );
           } else {
-            await afficherAlerteSuperposee(motifs[card.dataset.indisponible], "vert", {
-              libelleBouton: 'Fermer', sansCroix: card.dataset.indisponible === 'fermee',
-              fermetureLibre: card.dataset.indisponible !== 'fermee'
+            await afficherDialogueInformationPlanifier({
+              titre: card.dataset.indisponible === 'fermee' ? "Accès au parc clos" : "Plage indisponible",
+              message: motifs[card.dataset.indisponible]
             });
           }
           return;
