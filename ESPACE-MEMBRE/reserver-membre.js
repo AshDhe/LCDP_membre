@@ -2518,9 +2518,10 @@
         error?.name === "NotAllowedError" ||
         error?.name === "PermissionDeniedError"
       ) {
-        await afficherAlerte(
-          "L’accès au microphone est nécessaire pour utiliser la recherche avec l’IA."
-        );
+        await afficherDialogueInformationPlanifier({
+          titre: "Autorisation du microphone",
+          message: "L’accès au microphone est nécessaire pour utiliser la recherche avec l’IA."
+        });
         return;
       }
 
