@@ -94,40 +94,56 @@ async function recuperer(env,idmembre,id){
   return rows[0];
 }
 async function rechercheManuelle(env,crit){
-  // Sélection indicative uniquement : la disponibilité et les droits sont
-  // impérativement revalidés par PLANIFIER / ABO-RÉZA à la réservation.
+  // Résultats indicatifs uniquement : réservation et droits vérifiés ensuite
+  // par PLANIFIER/ABO-RÉZA, sans aucun accès réservé par ce Worker.
   const mois=crit.mois.length?crit.mois:[new Date().toISOString().slice(0,7)];
   const candidatsMois=[...new Set([...mois,...crit.dates.map(d=>d.slice(0,7))])].slice(0,9);
   const datesSet=new Set(crit.dates);
-  const parcs=await db(env,"parcs",{select:"idparc,nom,dptmt",...(crit.parcs.length?{idparc:"in.("+crit.parcs.join(",")+")"}:crit.departements.length?{dptmt:"in.("+crit.departements.join(",")+")"}:{}),limit:"300"});
+  // Recherche bornée à un département/parc pour limiter la charge serveur.
+  if(!crit.parcs.length&&!crit.departements.length)throw erreur("Choisissez au moins un département ou un parc.");
+  const parcQuery={select:"idparc,nom,dptmt",...(crit.parcs.length?{idparc:"in.("+crit.parcs.join(",")+")"}:{dptmt:"in.("+crit.departements.join(",")+")"}),limit:"500"};
+  const parcs=await db(env,"parcs",parcQuery);
   const parcsEligibles=parcs.filter(p=>(!crit.departements.length||crit.departements.includes(p.dptmt))&&(!crit.parcs.length||crit.parcs.includes(p.idparc)));
   if(!parcsEligibles.length)return [];
+  const noms=new Map(parcsEligibles.map(p=>[p.idparc,p.nom]));
   const correspondances=[];
+  const aujourdHui=new Date().toISOString().slice(0,10);
   for(const month of candidatsMois){
     if(correspondances.length>=100)break;
     const first=month+"-01";
     const next=new Date(Date.UTC(+month.slice(0,4),+month.slice(5,7),1)).toISOString().slice(0,10);
-    const idset=new Set(parcsEligibles.map(p=>p.idparc));
-    for(let offset=0;offset<parcsEligibles.length;offset+=50){
-      const ids=parcsEligibles.slice(offset,offset+50).map(p=>p.idparc);
-      const rows=await db(env,"hparcs",{select:"idparc,datejour,segments",idparc:"in.("+ids.join(",")+")",datejour:"gte."+first,order:"datejour.asc",limit:"1000"});
-      for(const row of rows){
-        if(row.datejour>=next||!idset.has(row.idparc)||row.datejour<new Date().toISOString().slice(0,10))continue;
-        if(datesSet.size&&!datesSet.has(row.datejour))continue;
-        const jour=new Date(row.datejour+"T12:00:00Z").getUTCDay()||7;
-        if(crit.jours.length&&!crit.jours.includes(String(jour)))continue;
-        const parc=parcsEligibles.find(p=>p.idparc===row.idparc);
-        for(const seg of Array.isArray(row.segments)?row.segments:[]){
-          if(crit.plages.length&&!crit.plages.includes(String(seg.plage)))continue;
-          const cats=crit.categorie==="tous"?["duo","famille","coach"]:crit.categorie==="famille-coach"?["famille","coach"]:[crit.categorie];
-          // On ne conclut jamais à une place libre à partir d'un état absent.
-          const ferme=Boolean(seg.fermeture||seg.privatisation);
-          const lisible=cats.some(c=>seg[c]&&seg[c].etat!==null&&seg[c].etat!==undefined);
-          if(ferme||!lisible)continue;
-          correspondances.push({idparc:row.idparc,parc:parc.nom,date:row.datejour,plage:seg.plage,debut:seg.debut,fin:seg.fin,statut:"à vérifier dans PLANIFIER"});
+    for(let start=0;start<parcsEligibles.length;start+=30){
+      if(correspondances.length>=100)break;
+      const ids=parcsEligibles.slice(start,start+30).map(p=>p.idparc);
+      // Pagination indispensable : 30 parcs * 31 jours dépassent parfois 1000 lignes.
+      for(let offset=0;offset<3000;offset+=500){
+        if(correspondances.length>=100)break;
+        const rows=await db(env,"hparcs",{
+          select:"idparc,datejour,segments",
+          idparc:"in.("+ids.join(",")+")",
+          and:"(datejour.gte."+first+",datejour.lt."+next+")",
+          order:"datejour.asc,idparc.asc",limit:"500",offset:String(offset)
+        });
+        for(const row of rows){
+          if(row.datejour<aujourdHui||datesSet.size&&!datesSet.has(row.datejour))continue;
+          const jour=new Date(row.datejour+"T12:00:00Z").getUTCDay()||7;
+          if(crit.jours.length&&!crit.jours.includes(String(jour)))continue;
+          for(const seg of Array.isArray(row.segments)?row.segments:[]){
+            if(crit.plages.length&&!crit.plages.includes(String(seg.plage)))continue;
+            if(seg.fermeture||seg.privatisation)continue;
+            const ouvert=c=>seg[c]?.etat===true&&Number(seg[c].capacite)>0;
+            const correspond=crit.categorie==="tous"
+              ? ["duo","famille","coach"].some(ouvert)
+              : crit.categorie==="famille-coach"
+                ? ouvert("famille")&&ouvert("coach")
+                : ouvert(crit.categorie);
+            if(!correspond)continue;
+            correspondances.push({idparc:row.idparc,parc:noms.get(row.idparc)||"",date:row.datejour,plage:seg.plage,debut:seg.debut,fin:seg.fin,statut:"à vérifier dans PLANIFIER"});
+            if(correspondances.length>=100)break;
+          }
           if(correspondances.length>=100)break;
         }
-        if(correspondances.length>=100)break;
+        if(rows.length<500)break;
       }
     }
   }
