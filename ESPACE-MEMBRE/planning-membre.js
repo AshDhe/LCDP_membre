@@ -269,11 +269,6 @@
       #lcdp-planning-calendrier-slot [data-lcdp-commande-bar-actions] {
         display: block !important; width:100% !important; min-width:0 !important;
       }
-      #lcdp-planning-calendrier-slot .lcdp-planning-membre-titre {
-        margin:0 0 10px;
-        color:var(--lcdp-color-text,#1f2a24);
-        font:600 .95rem/1.3 var(--lcdp-font-main);
-      }
       #lcdp-planning-calendrier-slot .lcdp-planning-membre-periode-tabs {
         display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr)) !important;
         align-items:stretch !important;box-sizing:border-box;width:100%;
@@ -1112,8 +1107,8 @@
     wrapperPlanning.classList.add("lcdp-box-liste-card--planning-membre");
 
     if (titreWrapper) {
-      titreWrapper.textContent = "";
-      titreWrapper.hidden = true;
+      titreWrapper.textContent = "Mes accès";
+      titreWrapper.hidden = false;
     }
     const fragmentCalendrier = await chargerFragmentObjet("/HTMLBASE/04-calendrier-mois.html");
     slotPlanning.appendChild(fragmentCalendrier);
@@ -1145,10 +1140,6 @@
     }
 
     ajouterActionsPlanningMembre(actionsCommande);
-    const titreMesAcces = document.createElement("h1");
-    titreMesAcces.className = "lcdp-planning-membre-titre";
-    titreMesAcces.textContent = "Mes accès";
-    actionsCommande.prepend(titreMesAcces);
     actualiserBoutonsPeriodePlanningMembre();
 
     calendrier.removeAttribute("role");
@@ -1310,7 +1301,7 @@
     groupePeriodes.appendChild(
       creerBoutonPeriodePlanningMembre(
         "passe",
-        "Passé"
+        "Récent"
       )
     );
     actionsWrapper.appendChild(groupePeriodes);
@@ -1341,6 +1332,19 @@
     );
 
     return bouton;
+  }
+
+  // Récent : dix derniers accès passés ou annulés, uniquement sur M et M-1.
+  function reservationsRecentesPlanningMembre() {
+    const moisCourant = debutMois(dateAujourdhuiParis());
+    const moisPrecedent = ajouterMois(moisCourant, -1);
+    const aujourdHui = dateAujourdhuiParis();
+    return filtrerEtTrierReservationsAgenda(etat.reservations, "passe")
+      .filter(reservation => {
+        const date = extraireDateFranceReservation(reservation.datebookd);
+        return date && date >= moisPrecedent && date <= aujourdHui;
+      })
+      .slice(0, 10);
   }
 
   function changerPeriodePlanningMembre(periode) {
@@ -1377,8 +1381,10 @@
       .forEach((bouton) => {
         const periode = bouton.dataset.lcdpPlanningPeriode;
         const actif = etat.modeAffichage === "liste" && periode === etat.periodeAffichage;
-        const compte = etat.reservations.filter(r => reservationDansPeriodeAgenda(r,periode)).length;
-        definirContenuBoutonVue(bouton, periode === "avenir" ? "Liste" : "Passé", compte);
+        const compte = periode === "avenir"
+          ? etat.reservations.filter(r => reservationDansPeriodeAgenda(r, "avenir")).length
+          : reservationsRecentesPlanningMembre().length;
+        definirContenuBoutonVue(bouton, periode === "avenir" ? "Liste" : "Récent", compte);
 
         bouton.classList.toggle(
           "lcdp-button-primary",
@@ -1453,9 +1459,11 @@
       ? etat.templateListeParcsDiaporama.cloneNode(true)
       : document.createDocumentFragment();
     const zoneCartes = fragment.querySelector?.("[data-lcdp-liste-card-diaporama-list]") || fragment;
-    const reservations = filtrerReservationsPlanningMembre(
-      filtrerEtTrierReservationsAgenda(etat.reservations)
-    );
+    const reservations = etat.periodeAffichage === "passe"
+      ? reservationsRecentesPlanningMembre()
+      : filtrerReservationsPlanningMembre(
+          filtrerEtTrierReservationsAgenda(etat.reservations, "avenir")
+        );
     const resultats = etat.formulaireFiltres?.querySelector("[data-lcdp-filtres-resultat]");
     if(resultats)resultats.textContent=reservations.length+" accès affiché"+(reservations.length>1?"s":"");
     actualiserEtatFiltresPlanningMembre();
@@ -1468,7 +1476,7 @@
       message.textContent =
         etat.periodeAffichage === "avenir"
           ? (filtresPlanningActifs() ? "Aucun accès ne correspond aux filtres sélectionnés." : "Vous n’avez aucun accès à venir.")
-          : "Vous n’avez aucun accès passé ou annulé.";
+          : "Aucun accès récent sur le mois en cours ou le mois précédent.";
       zoneCartes.appendChild(message);
     } else {
       reservations.forEach(
