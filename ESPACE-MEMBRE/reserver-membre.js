@@ -731,7 +731,7 @@
     const filtreCoach = entete.querySelector("[data-lcdp-filtres-coach]");
     const informationCoach = entete.querySelector("[data-lcdp-information-coach]");
     const grille = document.querySelector("#lcdp-planifier-calendrier-slot [data-lcdp-calendrier-mois-grid]");
-    if (titre) titre.textContent = modeCoachPlanifierActif ? "FILTRE COACH" : "FILTRE INVITÉS (ACCÈS PARC)";
+    if (titre) titre.textContent = modeCoachPlanifierActif ? "FILTRE COACH (PRÉSENCE PARC)" : "FILTRE INVITÉS (ACCÈS PARC)";
     if (filtreInvites) {
       filtreInvites.hidden = modeCoachPlanifierActif;
       filtreInvites.style.display = modeCoachPlanifierActif ? "none" : "";
