@@ -53,9 +53,9 @@
         appearance:none;
         width:100%;
         min-width:0;
-        height:46px;
+        height:37px;
         margin:0;
-        padding:10px 32px 10px 13px;
+        padding:6px 32px 6px 13px;
         border:1px solid #e7e5e4;
         border-radius:12px;
         background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m19 9-7 7-7-7'/%3E%3C/svg%3E") no-repeat right 10px center;
@@ -83,8 +83,8 @@
         align-items:center;
         gap:8px;
         min-width:0;
-        min-height:46px;
-        padding:10px 9px;
+        min-height:37px;
+        padding:6px 9px;
         border:1px solid rgba(75,99,51,.3);
         border-radius:12px;
         background:rgba(236,253,245,.5);
@@ -148,6 +148,20 @@
         cursor:not-allowed;
       }
       
+/* Taille des contrôles : -20 % mobile, -10 % desktop, sur une base de 46 px. */
+@media (min-width:768px) {
+  :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__select {
+    height:41px;
+    padding-top:8px;
+    padding-bottom:8px;
+  }
+  :is(#lcdp-planning-calendrier-slot,#lcdp-alerte-planifier-slot) .lcdp-planning-filtres__option {
+    min-height:41px;
+    padding-top:8px;
+    padding-bottom:8px;
+  }
+}
+
 /* Champs à choix multiples d'ALERTE PLANIFIER, avec les mêmes contrôles de base. */
 #lcdp-alerte-planifier-slot .lcdp-alerte-groupe { grid-column:1/-1;min-width:0;display:grid;gap:8px; }
 #lcdp-alerte-planifier-slot .lcdp-alerte-groupe__titre {font-size:10px;line-height:1.4;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a8a29e;}
