@@ -588,7 +588,13 @@
       const choix = await ouvrirChoixPlanifier(permanent);
       if (!choix) return "annule";
       if (choix === "alerte") {
-        await ouvrirFormulaireAlertePlanning();
+        try {
+          await window.LCDP_alerteNavigation.accueil({
+            permanent,creer:()=>ouvrirFormulaireAlertePlanning()
+          });
+        } catch(err) {
+          await afficherAlerte(err.message||"Recherche d'alerte indisponible.");
+        }
         return "dialogue";
       }
       if (choix === "ia") {
