@@ -555,31 +555,61 @@
   }
   async function afficherRetourEnAttente(message, panierAReprendre=null){
     try {
-      const racine=await chargerObjet('/HTMLBASE/02-alerte.html','[data-lcdp-box-alerte]');
-      racine.querySelector('[data-lcdp-alerte-message]').textContent=message;
-      const fermer=()=>{racine.remove();window.location.replace(urlMembre('/ESPACE-MEMBRE/accueil-membre.html'));};
-      const bouton=racine.querySelector('[data-lcdp-alerte-ok]');
+      // Le retour de paiement conserve sa propre action, mais partage le profil visuel INFORMATION.
+      const urlCss = cheminObjet('/CSSBASE/lcdp-lightbox-convergence.css');
+      if (![...document.querySelectorAll('link[rel="stylesheet"]')].some(lien => lien.href === urlCss)) {
+        const lien = document.createElement('link');
+        lien.rel = 'stylesheet';
+        lien.href = urlCss;
+        document.head.appendChild(lien);
+      }
+      const racine = await chargerObjet(
+        '/HTMLBASE/02-dialogue-reference-information.html',
+        '[data-lcdp-dialogue-reference="information"]'
+      );
+      const titre = racine.querySelector('[data-lcdp-dialogue-titre]');
+      const texte = racine.querySelector('[data-lcdp-dialogue-message]');
+      const bouton = racine.querySelector('[data-lcdp-dialogue-action="compris"]');
+      if (!titre || !texte || !bouton) throw new Error('Structure INFORMATION paiement incomplète.');
+      titre.textContent = panierAReprendre ? 'Reprise du paiement' : 'Vérification du paiement';
+      texte.textContent = message;
+      const fermer = () => {
+        racine.remove();
+        window.location.replace(urlMembre('/ESPACE-MEMBRE/accueil-membre.html'));
+      };
       if (panierAReprendre) {
-        if(bouton) bouton.textContent='Reprendre le paiement';
-        bouton?.addEventListener('click',async()=>{
-          bouton.disabled=true;
-          try{
-            const reponse=await apiPaiement('/valider',{method:'POST',
-              body:JSON.stringify({idpanier:panierAReprendre,echeancier:'comptant'})});
-            if((reponse.paymentPageUrl || reponse.checkoutUrl) && /^https:\/\//.test((reponse.paymentPageUrl || reponse.checkoutUrl)))
-              window.location.assign((reponse.paymentPageUrl || reponse.checkoutUrl));
-            else if(reponse.commande?.statut==='paye')fermer();
-            else throw new Error('Paiement non repris.');
-          }catch(e){
-            racine.querySelector('[data-lcdp-alerte-message]').textContent=e.message;
-            bouton.disabled=false;
-            bouton.textContent='Reprendre le paiement';
+        bouton.textContent = 'Reprendre le paiement';
+        bouton.addEventListener('click', async () => {
+          bouton.disabled = true;
+          try {
+            const reponse = await apiPaiement('/valider', {
+              method: 'POST',
+              body: JSON.stringify({idpanier:panierAReprendre,echeancier:'comptant'})
+            });
+            if ((reponse.paymentPageUrl || reponse.checkoutUrl) &&
+                /^https:\/\//.test((reponse.paymentPageUrl || reponse.checkoutUrl))) {
+              window.location.assign(reponse.paymentPageUrl || reponse.checkoutUrl);
+            } else if (reponse.commande?.statut === 'paye') {
+              fermer();
+            } else {
+              throw new Error('Paiement non repris.');
+            }
+          } catch (e) {
+            texte.textContent = e.message;
+            bouton.disabled = false;
+            bouton.textContent = 'Reprendre le paiement';
           }
         });
-      } else bouton?.addEventListener('click',fermer);
-      racine.querySelector('[data-lcdp-alerte-close]')?.addEventListener('click',fermer);
-      (document.getElementById('lcdp-planifier-dialogues-slot') || document.querySelector('.lcdp-planifier-wrapper')).append(racine);
-    }catch(e){console.error('Retour Paiement',e);}
+      } else {
+        bouton.textContent = 'Fermer';
+        bouton.addEventListener('click', fermer);
+      }
+      const hote = document.getElementById('lcdp-planifier-dialogues-slot') ||
+        document.querySelector('.lcdp-planifier-wrapper');
+      if (!hote) throw new Error('Conteneur du retour paiement absent.');
+      hote.append(racine);
+      bouton.focus();
+    } catch (e) { console.error('Retour Paiement', e); }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',traiterRetourStripe);
   else traiterRetourStripe();
