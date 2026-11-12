@@ -6137,7 +6137,7 @@
     const inclus=new Set([...(c.alreadyCoveredIds||[]),...offre.plan.flatMap(p=>p.reservationIds)]);
     const selection=panierPlanning.reservations.filter((r,i)=>inclus.has(i+1));
     const exclus=panierPlanning.reservations.length-selection.length;
-    if(exclus){const decision=await ouvrirDialogueBoutonsSuperpose({titre:'Planning partiellement couvert',texte:exclus+' réservation(s) ne figurent pas dans cette proposition. Continuer avec les '+selection.length+' réservation(s) incluses ?',boutons:[{label:'Modifier mon planning',valeur:'retour',style:'lcdp-button-secondary'},{label:'Continuer',valeur:'oui',style:'lcdp-button-orange'}]});if(decision!=='oui')return;}
+    if(exclus){const decision=await afficherChoixPlanifier(exclus+' réservation(s) ne figurent pas dans cette proposition. Continuer avec les '+selection.length+' réservation(s) incluses ?', {titre:'Planning partiellement couvert',libelleAnnuler:'Modifier mon planning',libelleConfirmer:'Continuer'});if(decision!==true)return;}
     panierPlanning.selection={reservations:selection.map(r=>({...r})),offres:offre.plan,priceCents:offre.priceCents};
     const recap=document.createElement('div');
     lignePanier(recap,'p',selection.length+' réservation(s) · '+montantPanier(offre.priceCents));
@@ -6160,14 +6160,13 @@
       });
       if(reponse==="fermer"){fermerShiftDetailParc();return "fermer";}
       if(reponse==="ajouter"){
-        const parc=await ouvrirDialogueBoutonsSuperpose({titre:"Ajouter une réservation",texte:"Dans quel parc souhaitez-vous planifier ?",
-          boutons:[{label:"Ce parc",valeur:"meme",style:"lcdp-button-orange"},{label:"Autre parc",valeur:"autre",style:"lcdp-button-secondary"}]});
-        if(parc==="meme"){
+        const parc=await afficherChoixPlanifier("Dans quel parc souhaitez-vous planifier ?",{titre:"Ajouter une réservation",libelleAnnuler:"Autre parc",libelleConfirmer:"Ce parc"});
+        if(parc===true){
           if(typeof choix.retourMois==="function")choix.retourMois();
           else await ouvrirShiftDetailParc(choix.parc,"planning");
           return "ajouter";
         }
-        if(parc==="autre"){fermerShiftDetailParc();return "autre";}
+        if(parc===false){fermerShiftDetailParc();return "autre";}
       }
       if(reponse==="annuler"){
         const annuler=panierPlanning.reservations.length ? await ouvrirDialogueBoutonsSuperpose({titre:"Annuler votre planning ?",
