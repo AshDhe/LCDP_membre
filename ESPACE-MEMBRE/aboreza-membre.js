@@ -896,13 +896,16 @@
       }else{
         const moisTermine = courant.moisActif !== avant;
         const restants = Number(courant.restantsMois) || 0;
+        const nomMois = cle => new Intl.DateTimeFormat('fr-FR', {
+          timeZone: 'UTC', month: 'long'
+        }).format(new Date(cle.slice(0, 7) + '-01T12:00:00Z'));
         const texte = moisTermine
-          ? 'Accès planifiés pour ce mois. Continuez la planification de votre commande.'
+          ? `Accès à la commande planifié pour ${nomMois(avant)}. Planifier ${nomMois(courant.moisActif)}.`
           : `Accès planifié. Il reste ${restants} accès à planifier à la commande pour ${moisLibelle(courant.moisActif)}.`;
-        // Afficher le dialogue INFORMATION avant de révéler le planning actualisé.
+        // La confirmation passe par le dialogue INFORMATION générique.
         const dialogue = bridge()?.informer?.(texte, {
           titre: 'Information',
-          ...(moisTermine ? { libelleBouton: 'Continuer' } : {}),
+          ...(moisTermine ? { libelleBouton: 'Planifier' } : {}),
           onAffiche: masquerAttenteFormules
         });
         await miseAJour;
