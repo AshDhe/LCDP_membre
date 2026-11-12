@@ -2178,10 +2178,8 @@
       slot.dataset.idflux =
         String(reservation.idflux || "");
       slot.dataset.plage = plage;
-      slot.addEventListener(
-        "click",
-        gererClicSlotCalendrier
-      );
+      // Le clic sur un trait doit remonter au bouton du jour :
+      // un seul comportement, afficher tous les accès de la journée.
 
       const nomParcComplet = nomParcReservation(reservation);
       const typeAgenda =
