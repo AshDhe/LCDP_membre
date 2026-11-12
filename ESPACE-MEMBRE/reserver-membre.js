@@ -254,7 +254,10 @@
         if (autoriseIa) {
           await demanderOuvertureRechercheIaShift();
         } else {
-          await afficherAlerte("La recherche avec l’IA est réservée aux abonnements permanents 1A, 11M et 10M.");
+          await afficherDialogueInformationPlanifier({
+            titre: "Recherche avec l’IA",
+            message: "La recherche avec l’IA est réservée aux abonnements permanents 1A, 11M et 10M."
+          });
         }
       }
 
@@ -1561,7 +1564,10 @@
     }
 
     if (!echeances.length) {
-      await afficherAlerte("Aucune échéance non payée.");
+      await afficherDialogueInformationPlanifier({
+        titre: "Échéances de paiement",
+        message: "Aucune échéance non payée."
+      });
       return;
     }
 
