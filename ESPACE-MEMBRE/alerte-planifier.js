@@ -56,12 +56,15 @@
     };
   }
   function remplir(formCrit){
-    for(const key of ["departements","parcs","plages","mois","jours","dates"]){
+    const remplirValeurs=key=>{
       const controls=[...root.querySelectorAll('[data-critere-valeur="'+key+'"]')];
       controls.forEach((el,i)=>el.value=(formCrit?.[key]||[])[i]||"");
-    }
+    };
+    remplirValeurs("departements");
+    // Recalculer les options des parcs avant de restaurer leurs identifiants.
+    ajusterParcs(true);
+    for(const key of ["parcs","plages","mois","jours","dates"])remplirValeurs(key);
     root.querySelector("#lcdp-alerte-categorie").value=formCrit?.categorie||"tous";
-    ajusterParcs(false);
   }
   function ajusterParcs(reinitialiser){
     const deps=lireCritere("departements");
