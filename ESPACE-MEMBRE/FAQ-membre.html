@@ -27,7 +27,7 @@
       window.LCDP_urlMembre = path => typeof cfg.membreUrl === 'function' ? cfg.membreUrl(path) : join(memberBase, path);
       window.LCDP_urlPublic = path => typeof cfg.publicUrl === 'function' ? cfg.publicUrl(path) : join(publicBase, path);
       window.LCDP_urlObjet = path => typeof cfg.objetUrl === 'function' ? cfg.objetUrl(path) : join(objetBase, path);
-      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css?v=20261110-spinner-membre-espace-v1') + '">');
+      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css') + '">');
     })();
   </script>
 

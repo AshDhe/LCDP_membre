@@ -112,7 +112,6 @@
     const href = construireUrlObjet(chemin);
     const cssCible = new URL(href, document.baseURI);
     // Une page peut déjà charger le central par un <link> classique, sans attribut data.
-    // Les paramètres ?v= sont du cache busting et non un fichier CSS différent.
     const dejaPresent = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
       .some((element) => {
         try {
@@ -285,8 +284,8 @@
   // Aucun CSS /BOX n’est chargé pour la DA : présentation des objets dans le central,
   // particularités du parcours dans lcdp-da-membre.css.
   async function chargerFondationsDa() {
-    await chargerCssObjetUneFois("/CSSBASE/lcdp-central-mobile-first.css?v=20261105-objets-integres-v2");
-    await chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261105-da-v1");
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-central-mobile-first.css");
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css");
   }
 
   async function chargerDependancesAlerteDa() {

@@ -108,24 +108,24 @@
   <!-- Même CSS central que l'accueil public, résolu sur le domaine OBJET configuré. -->
   <script>
     (() => {
-      const href = window.LCDP_urlObjet("/CSSBASE/lcdp-central-mobile-first.css?v=20261110-spinner-centre-v1");
+      const href = window.LCDP_urlObjet("/CSSBASE/lcdp-central-mobile-first.css");
       document.write('<link rel="stylesheet" href="' + href.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">');
       document.write('<script src="' + window.LCDP_urlObjet("/JSBASE/02-footer.js") + '" data-lcdp-footer-autonome defer><\/script>');
     })();
   </script>
   <script>
     (() => {
-      const href = window.LCDP_urlObjet("/CSSBASE/lcdp-lightbox-convergence.css?v=20261111-multi-dialogues-v4");
+      const href = window.LCDP_urlObjet("/CSSBASE/lcdp-lightbox-convergence.css");
       document.write('<link rel="stylesheet" href="' + href.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">');
     })();
   </script>
   <script>
     (() => {
-      const href = window.LCDP_urlObjet("/CSSBASE/lcdp-ui-badges.css?v=20261111-convergence-v1");
+      const href = window.LCDP_urlObjet("/CSSBASE/lcdp-ui-badges.css");
       document.write('<link rel="stylesheet" href="' + href.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">');
     })();
   </script>
-  <link rel="stylesheet" href="./planifier-choix.css?v=20261111-badges-convergence-v1">
+  <link rel="stylesheet" href="./planifier-choix.css">
   <style>
     /* Uniquement l'état hidden et le formulaire sécurité conservé du membre. */
     #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden], #lcdp-navigation-attente[hidden] { display: none !important; }
@@ -230,6 +230,6 @@
     };
   </script>
   <script>document.write('<script src="' + window.LCDP_urlPublic("/ESPACE-PUBLIC/controle-acces-accueil.js") + '"><\/script>');</script>
-  <script src="./accueil-membre.js?v=20261111-maquette-planifier-v2" onerror="window.LCDP_echecAccueilMembre()"></script>
+  <script src="./accueil-membre.js" onerror="window.LCDP_echecAccueilMembre()"></script>
 </body>
 </html>

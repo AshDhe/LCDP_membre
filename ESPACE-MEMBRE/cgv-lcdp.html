@@ -24,7 +24,7 @@
     (() => {
       const cfg=window.SITE_CONFIG||{};
       const base=String(cfg.objetBaseUrl||cfg.OBJET_BASE||(cfg.publicBaseUrl||'')+'/OBJET').replace(/\/+$/,'');
-      ["/CSSBASE/cssbase.css", "/CSSBASE/lcdp-central-mobile-first.css?v=20261110-spinner-membre-espace-v1"].forEach(path=>{
+      ["/CSSBASE/cssbase.css", "/CSSBASE/lcdp-central-mobile-first.css"].forEach(path=>{
         const link=document.createElement('link');link.rel='stylesheet';link.href=base+path;document.head.appendChild(link);
       });
     })();
@@ -69,6 +69,6 @@
     <p id="lcdp-cgv-status" class="lcdp-cgv-status" role="status" aria-live="polite">Chargement des CGV…</p>
     <div id="lcdp-cgv-contenu" hidden></div>
   </main>
-  <script src="./cgv-lcdp.js?v=20261110-spinner-membre-espace-v1"></script>
+  <script src="./cgv-lcdp.js"></script>
 </body>
 </html>
