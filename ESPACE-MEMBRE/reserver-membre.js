@@ -5809,9 +5809,16 @@
         lien.textContent = lienSecondaire;
         lien.addEventListener('click', event => {
           event.preventDefault();
-          // Aucune route d'achat de privilèges n'est encore raccordée.
-          // Ne pas inventer une transaction ou modifier le panier.
-          window.alert('L’ajout de privilèges n’est pas encore disponible.');
+          // Pas de parcours d'ajout raccordé : rester dans INFORMATION.
+          titre.textContent = 'Ajouter des privilèges';
+          const liste = dialogue.querySelector('.lcdp-aboreza-privileges-liste');
+          if (liste) {
+            const information = document.createElement('p');
+            information.className = 'lcdp-dialogue-ref__message';
+            information.textContent = 'Le parcours d’ajout de privilèges n’est pas encore disponible.';
+            liste.replaceWith(information);
+          }
+          lien.remove();
         });
         const actions = fermer.closest('.lcdp-dialogue-ref__actions');
         if (actions) actions.before(lien);
