@@ -38,7 +38,7 @@
       <span class="lcdp-loading-spinner__dot"></span>`;
     return roue;
   }
-  function afficherAttenteFormules(libelle = 'Chargement des formules d’abonnement') {
+  function afficherAttenteFormules(libelle = 'Chargement des abonnements') {
     if (attenteFormules?.isConnected) {
       attenteFormules.setAttribute('aria-label', libelle);
       return;
@@ -486,13 +486,13 @@
   async function choisirOffre(offres) {
     return modalComposant('dialogue', 'Choisissez votre abonnement', (objet, finir) => {
       const texte = objet.querySelector('[data-lcdp-dialogue-text]');
-      texte.textContent = 'Choisissez une formule puis sa date de démarrage.';
+      texte.textContent = 'Choisissez un abonnement puis sa date de démarrage.';
       const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
       const choix = elem('select');
       offres.filter(o => o.disponible !== false).forEach(o => {
         const option = elem('option', '', nomFormule(o.formule)); option.value = o.formule; choix.append(option);
       });
-      actions.append(champDialogueCentre('Formule', choix));
+      actions.append(champDialogueCentre('Abonnement', choix));
       const espace = elem('div', 'lcdp-box-dialogue-bouton__actions');
       actions.append(espace);
       const note = elem('p', 'lcdp-box-dialogue-bouton__text');
@@ -513,7 +513,7 @@
         entree.required = true;
         espace.append(champDialogueCentre('Date de démarrage choisie', entree));
         note.textContent = offre.formule === '1J'
-          ? 'Vous devez réserver au moins un accès pour cette formule.'
+          ? 'Vous devez réserver au moins un accès pour cet abonnement.'
           : offre.nbAccesRequis + ' accès obligatoires : deux par mois pendant ' + offre.nbMoisGuides + ' mois consécutifs.';
       };
       choix.addEventListener('change', reconstruire); reconstruire();
@@ -637,7 +637,7 @@
     const details = elem('div', 'lcdp-aboreza-suivi__details');
     const formule = elem('div', 'lcdp-aboreza-suivi__champ');
     formule.append(
-      elem('span', 'lcdp-aboreza-suivi__libelle', 'Formule'),
+      elem('span', 'lcdp-aboreza-suivi__libelle', 'Abonnement'),
       elem('strong', 'lcdp-aboreza-suivi__valeur', String(courant.formule || '').toUpperCase() === '12M' ? '1A' : String(courant.formule || '').toUpperCase())
     );
     const debut = elem('div', 'lcdp-aboreza-suivi__champ');
@@ -752,7 +752,7 @@
       const recap = elem('div', 'lcdp-panier-existant__recap');
       const ligne = elem('div', 'lcdp-panier-existant__ligne');
       const formule = elem('div', 'lcdp-panier-existant__col');
-      formule.append(elem('span', 'lcdp-panier-existant__legende', 'Formule'),
+      formule.append(elem('span', 'lcdp-panier-existant__legende', 'Abonnement'),
         elem('strong', 'lcdp-panier-existant__valeur', String(p.formule || '')));
       const date = elem('div', 'lcdp-panier-existant__col lcdp-panier-existant__col--date');
       date.append(elem('span', 'lcdp-panier-existant__legende', 'Début prévu'),
