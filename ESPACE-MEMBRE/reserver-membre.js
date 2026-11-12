@@ -5757,7 +5757,7 @@
       }
       dialogue.dataset.lcdpDialogueContext = 'conteneur';
       titre.textContent = 'Annuler ce panier ?';
-      message.textContent = 'Cette action annule votre demande d’abonnement en cours de préparation ainsi que tous les accès planifiés dans ce panier.';
+      message.textContent = 'Cette action annule votre demande d’abonnement en cours de préparation et tous les accès planifiés qui étaient associés.';
       conserver.textContent = 'Conserver le panier';
       supprimer.textContent = 'Oui, annuler et recommencer';
       return await new Promise(resolve => {
