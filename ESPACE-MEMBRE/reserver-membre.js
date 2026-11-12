@@ -188,7 +188,8 @@
       titre: options.titre || "Information",
       message,
       libelleAction: options.libelleBouton || "Fermer",
-      onAffiche: options.onAffiche
+      onAffiche: options.onAffiche,
+      classe: "lcdp-aboreza-confirmation-information"
     }),
     viderCache: () => cachePlanningParcLecture.clear(),
     choisirParc: () => ouvrirFiltreParcPlanifier(),
@@ -5737,7 +5738,7 @@
 
   // Migration pilote vers l'objet INFORMATION générique.
   // Le rendu est toujours celui du profil INFORMATION ; seuls les contenus varient.
-  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null }) {
+  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null, classe = "" }) {
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
@@ -5750,6 +5751,7 @@
         throw new Error('Structure du dialogue INFORMATION incomplète.');
       }
       dialogue.dataset.lcdpDialogueContext = 'conteneur';
+      if (classe) dialogue.classList.add(classe);
       titre.textContent = libelleTitre;
       message.textContent = contenu;
       fermer.textContent = libelleAction;
