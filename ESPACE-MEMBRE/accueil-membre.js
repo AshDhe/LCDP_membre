@@ -780,7 +780,7 @@
     }
 
     if (etat.abonnementSuspendu === true) {
-      await afficherAlerte("Votre abonnement est suspendu.");
+      await afficherAlerte("Votre abonnement est suspendu.", { profil: "information", titre: "Abonnement suspendu" });
       return;
     }
 
