@@ -193,7 +193,10 @@
     }),
     viderCache: () => cachePlanningParcLecture.clear(),
     choisirParc: () => ouvrirFiltreParcPlanifier(),
-    changerMode: actif => { preparationAbonnementPlanifier = Boolean(actif); }
+    changerMode: actif => {
+      preparationAbonnementPlanifier = Boolean(actif);
+      document.body.classList.toggle("lcdp-planifier-commande-active", preparationAbonnementPlanifier);
+    }
   };
 
   let attenteListeParcs = null;
