@@ -609,9 +609,11 @@
             titre.className="lcdp-ui-badge lcdp-ui-badge--green lcdp-ui-badge--context";
             titre.textContent="RÉSULTAT DE L’ALERTE";
             publierListeParcs(construireListeParcsPreparee(etatPage.parcs,""));
-            // Pas de filtres département/carte supplémentaires dans la recherche.
-            barre.hidden=true;
-            barre.setAttribute("aria-hidden","true");
+            // Résultat ALERTE : conserver la carte commune, sans le changement de département.
+            const changerDepartement = document.getElementById("bouton-changer-departement");
+            if (changerDepartement) changerDepartement.hidden = true;
+            barre.hidden=false;
+            barre.setAttribute("aria-hidden","false");
           }else{
             await chargerParcsDepartementMembre();
             actualiserTitreParcsDepartement();
@@ -2164,19 +2166,29 @@
           "workerFicheParcUrl", "WORKER_FICHE_PARC_URL", "fiche-parc-api"
         );
         if (!endpointFiche) throw new Error("Service de localisation des parcs indisponible.");
-        const idPremierParc = String(parcs[0].idparc || parcs[0].id || "");
-        const reponseDetail = await fetch(
-          endpointFiche + "/fiche-parc?idparc=" + encodeURIComponent(idPremierParc) + "&token=&ctx=",
-          { method: "GET", credentials: "include", cache: "no-store", headers: { Accept: "application/json" } }
-        );
-        const donneesDetail = await reponseDetail.json().catch(() => null);
-        if (!reponseDetail.ok || !donneesDetail || (donneesDetail.ok !== true && donneesDetail.success !== true)) {
-          throw new Error(donneesDetail?.message || "Impossible de localiser les parcs du département.");
+        // Une recherche ALERTE peut couvrir deux départements. Regrouper leurs
+        // localisations sans ajouter au résultat des parcs qui n'ont pas correspondu.
+        const premiersParDepartement = new Map();
+        for (const parc of parcs) {
+          const code = String(parc.dptmt || parc.departement || "");
+          if (!premiersParDepartement.has(code)) premiersParDepartement.set(code, parc);
         }
+        const lots = await Promise.all([...premiersParDepartement.values()].map(async premier => {
+          const id = String(premier.idparc || premier.id || "");
+          const response = await fetch(
+            endpointFiche + "/fiche-parc?idparc=" + encodeURIComponent(id) + "&token=&ctx=",
+            { method: "GET", credentials: "include", cache: "no-store", headers: { Accept: "application/json" } }
+          );
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data || (data.ok !== true && data.success !== true)) {
+            throw new Error(data?.message || "Impossible de localiser les parcs.");
+          }
+          return data;
+        }));
         detail = {
-          parc: donneesDetail.parc || null,
-          parcsDepartement: Array.isArray(donneesDetail.parcs) ? donneesDetail.parcs : [],
-          localites: Array.isArray(donneesDetail.localites) ? donneesDetail.localites : []
+          parc: lots[0]?.parc || null,
+          parcsDepartement: lots.flatMap(lot => Array.isArray(lot.parcs) ? lot.parcs : []),
+          localites: lots.flatMap(lot => Array.isArray(lot.localites) ? lot.localites : [])
         };
       }
       if (!estCourante()) return;
@@ -2208,7 +2220,10 @@
       hote.classList.add("lcdp-planifier-carte-hote--masque");
       navigation.zoneCarte.appendChild(hote);
       const controleur = await moteurCarte.rendreCarteDansConteneur(hote, {
-        dptmt: departement,
+        dptmt: departement || String(parcs[0]?.dptmt || parcs[0]?.departement || ""),
+        departementsCarte: resultatsAlerteActifs
+          ? [...new Set(parcs.map(parc => String(parc.dptmt || parc.departement || "")).filter(Boolean))]
+          : [departement],
         parcsDepartement: parcsCarte,
         localitesCarte: detail.localites || []
       }, {
