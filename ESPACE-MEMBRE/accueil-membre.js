@@ -760,6 +760,7 @@
           titre:"Ajouter un département",placeholder:"exemple 41",longueurMax:3,
           autoValider:v=>(v.length===2&&!v.startsWith("97"))||(v.length===3&&v.startsWith("97")),
           verifier:async v=>{
+            if(v==="20")return null; // Corse : choix 2A / 2B après Diginum.
             if(!/^(?:0[1-9]|[1-8][0-9]|9[0-5]|97[1-6])$/.test(v))return "Code de département invalide.";
             if(etat.departements.includes(v))return "Département déjà sélectionné.";
             // Validation par le même service que le choix de département PLANIFIER.
@@ -770,7 +771,20 @@
             return null;
           }
         });
-        if(code&&etat.departements.length<3){etat.departements.push(code);actualiser();}
+        if(code==="20"){
+          departements.n.querySelector("[data-lcdp-corse-choix]")?.remove();
+          const choixCorse=noeud("div","lcdp-alerte-critere__saisie");
+          choixCorse.dataset.lcdpCorseChoix="";
+          choixCorse.append(noeud("span","lcdp-alerte-etat","Corse :"));
+          for(const [corse,libelle] of [["2A","Corse-du-Sud"],["2B","Haute-Corse"]]){
+            choixCorse.append(bouton(libelle,()=>{
+              if(etat.departements.includes(corse)){msg.textContent="Département déjà sélectionné.";return;}
+              if(etat.departements.length<3){etat.departements.push(corse);actualiser();}
+              choixCorse.remove();
+            }));
+          }
+          departements.n.append(choixCorse);
+        }else if(code&&etat.departements.length<3){etat.departements.push(code);actualiser();}
       }catch(e){msg.textContent=e.message;}
     });
     departements.n.append(departements.ajouter);
