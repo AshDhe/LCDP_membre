@@ -305,21 +305,9 @@
           const option = elem('div', 'lcdp-aboreza-catalogue__option lcdp-aboreza-catalogue__option--indisponible');
           const ligne = elem('div', 'lcdp-aboreza-catalogue__option-ligne');
           ligne.append(elem('strong', 'lcdp-aboreza-catalogue__nom', nomFormule(offre.formule)));
-          // Les motifs explicitement fournis par le catalogue pilotent les étiquettes.
-          // Un motif composite/ambigu reste "Abonnement indisponible" : ne pas
-          // attribuer sans preuve une cause précise absente de la réponse serveur.
-          const motif = String(offre.motifIndisponibilite || '').toLocaleLowerCase('fr-FR');
-          const causes = [];
-          if (/hors date|hors délai|date limite dépassée|fenêtre de démarrage expirée/.test(motif)) {
-            causes.push('Abonnement hors date');
-          }
-          if (/chevauch|incompatib|ne permet pas d.inclure entièrement|inclusion impossible/.test(motif)) {
-            causes.push('Abonnement incompatible');
-          }
-          if (!causes.length) causes.push('Abonnement indisponible');
-          for (const cause of causes) {
-            ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', cause));
-          }
+          // L'étiquette reste générique tant que le Worker ne renvoie pas
+          // de codes de causes fiables et distincts. Conserver le motif serveur en dessous.
+          ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', 'Abonnement indisponible'));
           option.append(ligne);
           option.append(elem('p', 'lcdp-aboreza-catalogue__description',
             offre.motifIndisponibilite || 'Aucune date de démarrage compatible.'));
