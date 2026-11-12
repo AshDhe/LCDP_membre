@@ -722,7 +722,7 @@
         .lcdp-panier-existant__icone{display:grid;place-items:center;box-sizing:border-box;width:60px;height:60px;margin:0 auto 14px;border:1px solid #c7dcc3;border-radius:20px;background:#f0f7ef;color:#4e6838}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__title{margin:0;max-width:none;color:#1c1917;font-size:23px;font-weight:900;letter-spacing:-.5px;line-height:1.2}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__text{margin:6px 0 16px;max-width:none;color:#78716c;font-size:13px;font-weight:600;line-height:1.45}
-        .lcdp-panier-existant__recap{box-sizing:border-box;margin-bottom:17px;padding:17px;border:1px solid #e7e5e4;border-radius:20px;background:#fafaf9;text-align:left}
+        .lcdp-panier-existant .lcdp-panier-existant__recap{box-sizing:border-box;display:block;align-self:stretch;width:100%;min-width:0;max-width:none;margin:0 0 17px;padding:17px;border:1px solid #e7e5e4;border-radius:20px;background:#fafaf9;text-align:left}
         .lcdp-panier-existant__ligne{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:start;gap:8px;padding-bottom:13px;border-bottom:1px solid #e7e5e4}
         .lcdp-panier-existant__col{min-width:0}.lcdp-panier-existant__col--date{text-align:right}
         .lcdp-panier-existant__legende{display:block;margin-bottom:6px;color:#a8a29e;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
