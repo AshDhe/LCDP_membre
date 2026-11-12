@@ -265,32 +265,11 @@
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card__header {
         min-width: 0;
       }
-      /* Navigation segmentée de la maquette MES ACCÈS, commit 34045ac7d. */
+      /* La navigation utilise l'objet CSS générique lcdp-navigation-onglets. */
       #lcdp-planning-calendrier-slot [data-lcdp-commande-bar-actions] {
-        display: block !important; width:100% !important; min-width:0 !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-membre-periode-tabs {
-        display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-        align-items:stretch !important;box-sizing:border-box;width:100%;
-        gap:4px !important;margin:0 0 16px;padding:5px !important;
-        border:1px solid #e7e5e4;border-radius:16px;background:#f5f5f4;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-membre-periode-button {
-        display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;
-        gap:2px !important;
-        box-sizing:border-box;width:100% !important;max-width:none !important;min-width:0 !important;
-        height:50px !important;min-height:50px !important;margin:0 !important;
-        padding:6px 3px !important;border:0 !important;border-radius:11px !important;
-        background:transparent !important;color:#78716c !important;
-        font:600 .82rem/1.2 var(--lcdp-font-main) !important;box-shadow:none !important;
-        transform:none !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-membre-periode-compte {
-        display:block;font-size:.75rem;line-height:1.1;font-weight:700;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-membre-periode-button[aria-pressed="true"] {
-        background:#4e6838 !important;color:#fff !important;font-weight:700 !important;
-        box-shadow:0 1px 2px rgba(0,0,0,.12) !important;
+        display:block !important;
+        width:100% !important;
+        min-width:0 !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-agenda .lcdp-box-liste-card__header {
         display:block !important;
@@ -583,10 +562,10 @@
         position:relative !important;
         width:100% !important;
         min-width:0 !important;
-        padding:0 0 18px !important;
+        padding:0 !important;
         margin:0 !important;
         flex:0 0 auto !important;
-        border-bottom:1px solid var(--lcdp-color-border,#e7e5e4) !important;
+        border-bottom:0 !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente .lcdp-box-liste-card__commande {
         display:block !important;
@@ -598,9 +577,6 @@
         width:100% !important;
         min-width:0 !important;
         padding-top:0 !important;
-        margin:0 !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente .lcdp-planning-membre-periode-tabs {
         margin:0 !important;
       }
       /* Consultation d'une journée : wrapper existant et cartouches en colonne. */
@@ -1124,9 +1100,9 @@
     actionsWrapper.innerHTML = "";
 
     const groupePeriodes =
-      document.createElement("div");
+      document.createElement("nav");
     groupePeriodes.className =
-      "lcdp-planning-membre-periode-tabs";
+      "lcdp-navigation-onglets";
     groupePeriodes.setAttribute(
       "role",
       "group"
@@ -1145,7 +1121,7 @@
 
     const boutonAffichage = document.createElement("button");
     boutonAffichage.type = "button";
-    boutonAffichage.className = "lcdp-button lcdp-button-secondary lcdp-button-mini lcdp-planning-membre-periode-button lcdp-planning-membre-affichage-button";
+    boutonAffichage.className = "lcdp-navigation-onglets__onglet lcdp-planning-membre-affichage-button";
     boutonAffichage.dataset.lcdpPlanningAffichage = "true";
     definirContenuBoutonVue(boutonAffichage, "Planning", 0);
     boutonAffichage.setAttribute("aria-pressed","false");
@@ -1173,10 +1149,7 @@
       document.createElement("button");
 
     bouton.type = "button";
-    bouton.className =
-      "lcdp-button lcdp-button-secondary " +
-      "lcdp-button-mini " +
-      "lcdp-planning-membre-periode-button";
+    bouton.className = "lcdp-navigation-onglets__onglet";
     bouton.dataset.lcdpPlanningPeriode =
       periode;
     definirContenuBoutonVue(bouton, libelle, 0);
@@ -1222,7 +1195,7 @@
     const texte = document.createElement("span");
     texte.textContent = libelle;
     const valeur = document.createElement("span");
-    valeur.className = "lcdp-planning-membre-periode-compte";
+    valeur.className = "lcdp-navigation-onglets__compteur";
     valeur.textContent = String(compte);
     bouton.replaceChildren(texte, valeur);
   }
@@ -1242,14 +1215,6 @@
           : reservationsRecentesPlanningMembre().length;
         definirContenuBoutonVue(bouton, periode === "avenir" ? "Liste" : "Récent", compte);
 
-        bouton.classList.toggle(
-          "lcdp-button-primary",
-          actif
-        );
-        bouton.classList.toggle(
-          "lcdp-button-secondary",
-          !actif
-        );
         bouton.setAttribute(
           "aria-pressed",
           actif ? "true" : "false"
@@ -1728,8 +1693,6 @@
     ).length;
     definirContenuBoutonVue(bouton, "Planning", compte);
     bouton.setAttribute("aria-pressed", actif ? "true" : "false");
-    bouton.classList.toggle("lcdp-button-primary", actif);
-    bouton.classList.toggle("lcdp-button-secondary", !actif);
   }
 
   async function chargerReservations() {
