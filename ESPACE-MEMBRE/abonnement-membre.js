@@ -415,12 +415,12 @@
     }
 
     if (boutonAvoirDepasse) {
-      await afficherAlerte("Le délai d’annulation est dépassé.");
+      await afficherInformationAbonnement("Le délai d’annulation est dépassé.", { titre: "Annulation indisponible" });
       return;
     }
 
     if (boutonAnnuleCreeTermine) {
-      await afficherAlerte("L'abonnement est annulé (non payé). L'avoir est édité le 1er du mois suivant");
+      await afficherInformationAbonnement("L'abonnement est annulé (non payé). L'avoir est édité le 1er du mois suivant", { titre: "État de l’abonnement" });
       return;
     }
 
