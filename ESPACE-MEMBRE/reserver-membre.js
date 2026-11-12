@@ -1209,6 +1209,18 @@
       const terminerAttente = commencerAttenteCalendrierMois();
       try {
         const droits = await chargerDroitsPlanningParcMembre(parc);
+        // En provenance de l'alerte, ouvrir directement le mois de la première
+        // disponibilité correspondante, uniquement si les droits le permettent.
+        if(resultatsAlerteActifs && /^\\d{4}-\\d{2}-\\d{2}$/.test(String(parc.date||""))){
+          const cle=parc.date.slice(0,7);
+          const an=Number(cle.slice(0,4));
+          const mo=Number(cle.slice(5,7));
+          if(mo>=1 && mo<=12 && an*12+mo>=borne &&
+              (!droits?.moisMaximum||cle<=droits.moisMaximum)){
+            etat.annee=an;
+            etat.mois=mo;
+          }
+        }
         const demande = { parc, annee: etat.annee, mois: etat.mois };
         const donnees = await chargerPlanningParcMoisLecture(demande);
         parcSelectionne = parc;
