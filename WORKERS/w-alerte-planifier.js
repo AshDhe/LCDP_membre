@@ -73,7 +73,7 @@ function criteresValides(input){
   const mois=listeUniq(input.mois||[],3,v=>/^20\d{2}-(0[1-9]|1[0-2])$/.test(v),"Mois");
   const jours=listeUniq(input.jours||[],3,v=>/^[1-7]$/.test(v),"Jours");
   const plages=listeUniq(input.plages||[],3,v=>/^[1-5]$/.test(v),"Plages");
-  const dates=listeUniq(input.dates||[],6,v=>/^20\d{2}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(v)&&!Number.isNaN(Date.parse(v+"T00:00:00Z")),"Dates");
+  const dates=listeUniq(input.dates||[],6,v=>/^20\d{2}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(v)&&!Number.isNaN(Date.parse(v+"T00:00:00Z"))&&new Date(v+"T00:00:00Z").toISOString().slice(0,10)===v,"Dates");
   const categorie=String(input.categorie||"tous");
   if(!CATEGORIES.has(categorie))throw erreur("Catégorie d'invités invalide");
   if(![departements,parcs,mois,jours,plages,dates].some(v=>v.length))throw erreur("Sélectionnez au moins un critère");
