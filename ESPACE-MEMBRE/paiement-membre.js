@@ -59,6 +59,19 @@
       ? formatDate.format(new Date(valeur + 'T12:00:00Z')) : valeur || '—';
   }
 
+  function periodeCourte(debutIso, finIso) {
+    const debut = String(debutIso || ''), fin = String(finIso || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(debut) || !/^\d{4}-\d{2}-\d{2}$/.test(fin))
+      return dateLisible(debut) + ' – ' + dateLisible(fin);
+    const format = (iso, avecAnnee) => {
+      const d = new Date(iso + 'T12:00:00Z');
+      const jour = d.getUTCDate() === 1 ? '1er' : String(d.getUTCDate());
+      const mois = new Intl.DateTimeFormat('fr-FR', { timeZone:'UTC', month:'long' }).format(d);
+      return jour + ' ' + mois + (avecAnnee ? ' ' + d.getUTCFullYear() : '');
+    };
+    return format(debut, debut.slice(0,4) !== fin.slice(0,4)) + ' – ' + format(fin, true);
+  }
+
   function remplir(racine, selecteur, valeur) {
     const champ = racine.querySelector(selecteur);
     if (!champ) throw new Error('Champ manquant dans le composant : ' + selecteur);
@@ -197,7 +210,7 @@
     const contenu = creer('div', 'lcdp-paiement-refonte__contenu');
     // Une seule ligne, sans carte : période effective de l'abonnement.
     const periode = creer('p', 'lcdp-paiement-refonte__periode',
-      'Du ' + dateLisible(panier.dateDebut) + ' au ' + dateLisible(panier.dateFin));
+      periodeCourte(panier.dateDebut, panier.dateFin));
     contenu.append(periode);
 
     const sectionAcces = creer('section', 'lcdp-paiement-refonte__section');
