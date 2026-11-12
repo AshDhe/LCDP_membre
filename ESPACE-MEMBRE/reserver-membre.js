@@ -684,10 +684,10 @@
     // ATTENTION : le stockage reste une maquette tant que le Worker n'est pas raccordé.
     if (reponse !== "oui") return;
     tagsDuoActifMaquette.add(idparc);
-    await afficherAlerteSuperposee(
-      "Mode maquette : votre intérêt pour ce parc est mémorisé temporairement. Il n'est pas encore enregistré dans Mes accès.",
-      "orange", {libelleBouton:"Fermer"}
-    );
+    await afficherDialogueInformationPlanifier({
+      titre: "Duo Actif",
+      message: "Mode maquette : votre intérêt pour ce parc est mémorisé temporairement. Il n'est pas encore enregistré dans Mes accès."
+    });
   }
 
   let modeCoachPlanifierActif = false;
@@ -825,10 +825,10 @@
       await window.LCDP_ouvrirAboReza({...contexte});
       return;
     }
-    await afficherAlerteSuperposee(
-      "Le sous-tunnel ABO-RÉZA n'est pas encore raccordé. Aucun abonnement n'a été commandé.",
-      "orange", {libelleBouton:"Fermer"}
-    );
+    await afficherDialogueInformationPlanifier({
+      titre: "Abonnement",
+      message: "Le sous-tunnel ABO-RÉZA n'est pas encore raccordé. Aucun abonnement n'a été commandé."
+    });
   }
 
   async function ouvrirDemandeAbonnementDepuisPlanning() {
@@ -5717,7 +5717,10 @@
         fermerVueChoixPlagePlanifier();
         await etatPage.actualiserPlanningPrincipal?.();
         masqueReservation.remove();
-        await afficherAlerteSuperposee("Accès planifié", "orange", {libelleBouton:"Fermer"});
+        await afficherDialogueInformationPlanifier({
+          titre: "Accès planifié",
+          message: "Votre accès a bien été planifié."
+        });
       } catch (error) {
         masqueReservation.remove();
         await afficherAlerteSuperposee(error.message || "Impossible d'enregistrer cette réservation.");
