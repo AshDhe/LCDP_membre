@@ -69,6 +69,27 @@
     if (!res.ok || result?.ok !== true) throw new Error(result?.message || 'Le service ABO-RÉZA est indisponible.');
     return result;
   }
+  // Contrôle serveur avant la confirmation d'une NOUVELLE souscription.
+  // Les paniers existants peuvent toujours être consultés et repris.
+  async function verifierHorairesNouvelleCommande() {
+    const endpointPaiement = String(cfg.workerPaiementUrl || cfg.WORKER_PAIEMENT_URL ||
+      (typeof cfg.apiUrl === 'function' ? cfg.apiUrl('paiement-api') : 'https://paiement-api.lacleduparc.fr')).replace(/\\/+$/, '');
+    const reponse = await fetch(endpointPaiement + '/ouverture-commande', {
+      method: 'GET', credentials: 'include', cache: 'no-store',
+      signal: AbortSignal.timeout(15000), headers: { Accept: 'application/json' }
+    });
+    const donnees = await reponse.json().catch(() => null);
+    if (!reponse.ok || donnees?.ok !== true)
+      throw new Error(donnees?.message || 'Impossible de vérifier les horaires de commande.');
+    if (donnees.ouverte !== true) {
+      await bridge()?.informer?.(
+        donnees.message || 'Les commandes sont enregistrées entre 8 h et 22 h, heure de Paris.',
+        { titre: 'Information', libelleBouton: 'Fermer' }
+      );
+      return false;
+    }
+    return true;
+  }
   function cheminObjet(chemin) {
     if (typeof window.LCDP_urlObjet === 'function') return window.LCDP_urlObjet(chemin);
     if (typeof cfg.objetUrl === 'function') return cfg.objetUrl(chemin);
@@ -956,6 +977,8 @@
         afficherAttenteFormules();
         await api('/annuler','POST',{idpanier:enCours.idpanier});
       }
+      masquerAttenteFormules();
+      if (!await verifierHorairesNouvelleCommande()) return;
       const parametres=new URLSearchParams({origine:contexte.origine});
       if(contexte.origine==='jour_hors_couverture')parametres.set('dateCible',contexte.date||'');
       if(contexte.origine==='horizon')parametres.set('moisCible',contexte.moisCible||'');
@@ -969,6 +992,8 @@
         while(!demande){
           const formule=await choisirFormuleCatalogue(offres);
           if(!formule)return;
+          // Recontrôler au moment exact de confirmer l'abonnement.
+          if (!await verifierHorairesNouvelleCommande()) return;
           const offre=offres.find(o=>o.formule===formule);
           while(!demande){
             const dateDebut=await choisirDateDemarrage(offre);
@@ -988,6 +1013,8 @@
         while(!demande){
           const formule=await choisirFormuleCatalogue(offres);
           if(!formule)return;
+          // Recontrôler au moment exact de confirmer l'abonnement.
+          if (!await verifierHorairesNouvelleCommande()) return;
           const offre=offres.find(o=>o.formule===formule);
           const dateDebut=await choisirDateDemarrage(offre);
           if(!dateDebut)continue;
@@ -995,6 +1022,7 @@
         }
       }
       // Pendant le POST, le planning ne doit jamais réapparaître entre deux étapes.
+      if (!await verifierHorairesNouvelleCommande()) return;
       afficherAttenteFormules('Préparation de vos accès…');
       const nouveau=(await api('/panier','POST',{
         ...demande,origine:contexte.origine,inclureExistants,
