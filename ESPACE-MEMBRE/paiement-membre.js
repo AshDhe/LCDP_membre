@@ -111,6 +111,11 @@
     // Une commande déjà transmise à Stripe reste reprenable tant que ses
     // retenues sont valides. Le serveur Paiement reste seul juge de l'état
     // de la session et du règlement lors de /valider.
+    // Tant que w-paiement n'intègre pas les options, ne jamais présenter un
+    // devis incomplet ni permettre un paiement qui les oublierait.
+    if (Array.isArray(panier.options) && panier.options.length > 0) {
+      throw new Error('La facturation des privilèges ajoutés n’est pas encore disponible. Votre panier est conservé.');
+    }
     if (!['pret_paiement', 'transmis_paiement'].includes(panier.statut) ||
         panier.complet !== true ||
         Number(panier.nbSelectionnes) < Number(panier.nbAccesRequis)) {
