@@ -2212,7 +2212,7 @@
     });
 
     // La journée est consultable si elle contient au moins une réservation.
-    // Les traits conservent leur interaction propre sans déclencher celle du jour.
+    // Les traits sont purement visuels : leur clic ouvre aussi toute la journée.
     jour.disabled = !jourReservable;
     if (jourReservable) {
       jour.setAttribute("aria-label", "Afficher tous les accès du " + formaterJourMoisDateIso(jourMois.dateIso));
