@@ -296,7 +296,7 @@
     }
 
     if (!echeances.length) {
-      await afficherAlerte("Aucune échéance non payée.");
+      await afficherAlerte("Aucune échéance non payée.", { profil: "information", titre: "Échéances de paiement" });
       return;
     }
 
