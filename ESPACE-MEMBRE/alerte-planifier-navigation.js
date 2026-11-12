@@ -70,8 +70,8 @@
     if(alertes.length<(permanent?2:1))options.push({label:"Créer une nouvelle alerte",value:"creer"});
     options.push({label:"Annuler",value:null});
     const sel=await choix(options,alertes.length<(permanent?2:1)?
-      "Lancer une alerte existante ou créer une nouvelle alerte.":
-      "Quota atteint. Lancez une alerte existante ou modifiez-la depuis MON COMPTE.");
+      "Lancez une alerte existante ou créez-en une nouvelle. Modifiez votre alerte depuis MON COMPTE, si besoin.":
+      "Modifiez votre alerte depuis MON COMPTE, si besoin.");
     if(sel==="creer")await creer();
     else if(sel){const a=alertes.find(a=>a.idalerte===sel);if(a)await lancer(a);}
   }
