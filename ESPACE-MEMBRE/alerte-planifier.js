@@ -119,7 +119,15 @@
     const titre=root.querySelector("#lcdp-alerte-titre").value.trim();
     if(!titre){message("Donnez un nom à l'alerte.");return;}
     try{
-      const body={titre,criteres:criteres()};
+      const origine=etat.edition?etat.alertes.find(a=>a.idalerte===etat.edition)?.criteres:null;
+      const filtre=criteres();
+      // Ne jamais effacer les périodes et les catégories enregistrées
+      // depuis la lightbox de l'accueil en modifiant l'alerte dans MON COMPTE.
+      const body={titre,criteres:origine?{
+        ...origine,...filtre,
+        periodes:origine.periodes||[],
+        categories:origine.categories||undefined
+      }:filtre};
       if(etat.edition)await api("/alertes/"+encodeURIComponent(etat.edition),"PATCH",body);
       else await api("/alertes","POST",body);
       etat.edition=null;root.querySelector("form").reset();ajusterParcs(true);
@@ -128,7 +136,9 @@
   }
   function resume(c){
     const champs=[["Départements","departements"],["Parcs","parcs"],["Plages","plages"],["Mois","mois"],["Jours","jours"],["Dates","dates"]];
-    return [c?.categorie&&c.categorie!=="tous"?"Invités : "+c.categorie:"Tous types d'invités",...champs.filter(([,k])=>c?.[k]?.length).map(([t,k])=>t+" : "+c[k].join(", "))].join(" | ");
+    const invites=c?.categories?.length?"Invités : "+c.categories.join(", "):(c?.categorie&&c.categorie!=="tous"?"Invités : "+c.categorie:"Tous types d'invités");
+    const periodes=(c?.periodes||[]).map(p=>p.debut+" au "+p.fin);
+    return [invites,...(periodes.length?["Périodes : "+periodes.join(", ")]:[]),...champs.filter(([,k])=>c?.[k]?.length).map(([t,k])=>t+" : "+c[k].join(", "))].join(" | ");
   }
   function afficherListe(){
     const zone=root.querySelector("[data-alerte-liste]");zone.replaceChildren();
