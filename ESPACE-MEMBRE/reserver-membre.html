@@ -601,6 +601,43 @@
     body.lcdp-page-reserver .lcdp-paiement-refonte .lcdp-workflow-paiement__option:has(.lcdp-paiement-refonte__option-prix--echeances) {
       grid-template-columns: 23px minmax(0, 1fr) !important;
     }
+    /* Une ligne par accès : date et horaire groupés, nom du parc lisible.
+       Les noms exceptionnellement longs défilent horizontalement sans retour ligne. */
+    body.lcdp-page-reserver .lcdp-aboreza-recapitulatif .lcdp-paiement-refonte__acces-ligne,
+    body.lcdp-page-reserver .lcdp-aboreza-recapitulatif .lcdp-paiement-refonte__acces-ligne {
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      align-items: baseline !important;
+      justify-content: flex-start !important;
+      gap: 6px !important;
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+      white-space: nowrap !important;
+      font-size: clamp(.64rem, 1.7vw, .72rem) !important;
+    }
+    body.lcdp-page-reserver .lcdp-aboreza-recapitulatif .lcdp-paiement-refonte__acces-ligne > * {
+      flex: 0 0 auto;
+      white-space: nowrap !important;
+      overflow-wrap: normal !important;
+      grid-column: auto !important;
+    }
+    body.lcdp-page-reserver .lcdp-aboreza-recapitulatif .lcdp-paiement-refonte__acces-parc {
+      margin-left: 3px;
+    }
+    body.lcdp-page-reserver .lcdp-aboreza-recapitulatif .lcdp-paiement-refonte__erreur-paiement {
+      margin: 8px 18px 0 !important;
+      padding: 10px 12px !important;
+      border: 1px solid #f4b7a7;
+      border-radius: 10px;
+      background: #fff3ef;
+      color: #963b2c;
+      font-size: .82rem;
+      line-height: 1.4;
+      font-weight: 650;
+    }
   </style>
 
   <script src="../config.js"></script>
@@ -797,7 +834,7 @@
   <script src="./attente-planifier.js"></script>
   <script src="./alerte-planifier-navigation.js"></script>
   <script src="./reserver-membre.js?v=20261113-transitions-v8"></script>
-  <script src="./paiement-membre.js?v=20261113-paiement-entete-v7"></script>
+  <script src="./paiement-membre.js?v=20261113-parc-paiement-v8"></script>
   <script src="./aboreza-membre.js?v=20261113-titre-centre-v9"></script>
 </body>
 </html>
