@@ -5012,7 +5012,7 @@
     if (!match) return "";
     const hh = Number(match[1]);
     const mm = Number(match[2]);
-    if (hh > 23 || mm > 59) return "";
+    if (hh > 24 || mm > 59 || (hh === 24 && mm !== 0)) return "";
     return String(hh) + "h" + (mm === 0 ? "" : String(mm).padStart(2, "0"));
   }
 
