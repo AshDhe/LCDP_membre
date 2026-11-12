@@ -9,6 +9,7 @@
   const bridge = () => window.LCDP_PLANIFIER_ABOREZA;
   let composants = null;
   let courant = null;
+  const optionsChoisies = new Map();
   let occupe = false;
   let bandeau = null;
   let attenteFormules = null;
@@ -281,16 +282,40 @@
     });
     return lien;
   }
-  function lienAjouterPrivileges() {
+  function lienAjouterPrivileges(formule, poursuivre) {
     const lien = elem('a', 'lcdp-aboreza-catalogue__privileges lcdp-aboreza-catalogue__privileges--ajouter', 'Ajouter des privilèges');
     lien.href = '#';
-    lien.addEventListener('click', evenement => {
+    const desactiver = () => {
+      lien.removeAttribute('href');
+      lien.setAttribute('aria-disabled', 'true');
+      lien.classList.add('lcdp-aboreza-catalogue__privileges--ajoutes');
+    };
+    if (optionsChoisies.has(formule)) desactiver();
+    lien.addEventListener('click', async evenement => {
       evenement.preventDefault();
       evenement.stopPropagation();
-      // Le parcours d'achat de privilèges n'est pas encore raccordé.
-      bridge()?.informer?.('Le parcours d’ajout de privilèges n’est pas encore disponible.', {
-        titre: 'Information', libelleBouton: 'Fermer'
-      }).catch(console.error);
+      if (optionsChoisies.has(formule) || lien.dataset.occupe === '1') return;
+      lien.dataset.occupe = '1';
+      try {
+        const donnees = await api('/options?formule=' + encodeURIComponent(formule));
+        const resultat = await bridge()?.choisirPrivileges?.({ options: donnees.options || [] });
+        if (resultat === 'plus_tard') { poursuivre(); return; }
+        if (!Array.isArray(resultat) || !resultat.length) return;
+        const confirmation = await bridge()?.confirmerPrivileges?.();
+        if (confirmation === 'ne_pas_ajouter') { poursuivre(); return; }
+        if (confirmation !== 'ajouter') return;
+        optionsChoisies.set(formule, resultat);
+        desactiver();
+        await bridge()?.informer?.('Les privilèges sont ajoutés.', {
+          titre: 'Information', libelleBouton: 'Fermer'
+        });
+      } catch (erreur) {
+        await bridge()?.informer?.(erreur.message || 'Impossible de préparer les privilèges.', {
+          titre: 'Information', libelleBouton: 'Fermer'
+        });
+      } finally {
+        delete lien.dataset.occupe;
+      }
     });
     return lien;
   }
@@ -345,7 +370,7 @@
           contenu.append(ligne);
           contenu.append(elem('span', 'lcdp-aboreza-catalogue__description', 'Abonnement compatible avec votre planning.'));
           const liensPrivileges = elem('span', 'lcdp-aboreza-catalogue__liens-privileges');
-          liensPrivileges.append(lienPrivilegesAbonnement(offre.formule), lienAjouterPrivileges());
+          liensPrivileges.append(lienPrivilegesAbonnement(offre.formule), lienAjouterPrivileges(offre.formule, () => finir(offre.formule)));
           contenu.append(liensPrivileges);
           const indicateur = elem('span', 'lcdp-aboreza-catalogue__indicateur');
           indicateur.setAttribute('aria-hidden', 'true');
@@ -927,6 +952,7 @@
       if(contexte.origine==='jour_hors_couverture')parametres.set('dateCible',contexte.date||'');
       if(contexte.origine==='horizon')parametres.set('moisCible',contexte.moisCible||'');
       const offres=(await api('/catalogue?'+parametres.toString())).offres;
+      optionsChoisies.clear();
       masquerAttenteFormules();
       let demande=null;
       let inclureExistants=false;
@@ -956,6 +982,7 @@
       afficherAttenteFormules('Préparation de vos accès…');
       const nouveau=(await api('/panier','POST',{
         ...demande,origine:contexte.origine,inclureExistants,
+        options: optionsChoisies.get(demande.formule) || [],
         ...(contexte.origine==='jour_hors_couverture'?{dateCible:contexte.date}:{}),
         ...(contexte.origine==='horizon'?{moisCible:contexte.moisCible}:{}),
       })).panier;
