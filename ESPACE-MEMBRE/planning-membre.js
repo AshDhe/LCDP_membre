@@ -1351,7 +1351,13 @@
     const parc = reservation.parc || {};
     const nom = String(parc.nom || parc.nomparc || reservation.nomparc || "Parc").trim();
     const departement = String(parc.dptmt || parc.departement || reservation.dptmt || "").trim();
-    const nomAvecDepartement = "Parc de " + nom + (departement ? " (" + departement + ")" : "");
+    // Certains noms contiennent déjà le département en suffixe « - 45 ».
+    // Le retirer uniquement s'il correspond au département de la réservation.
+    const suffixeDepartement = departement ? " - " + departement : "";
+    const nomAffiche = suffixeDepartement && nom.endsWith(suffixeDepartement)
+      ? nom.slice(0, -suffixeDepartement.length).trim()
+      : nom;
+    const nomAvecDepartement = "Parc de " + nomAffiche + (departement ? " (" + departement + ")" : "");
     const date = formaterDateCourte(reservation.datebookd);
     const heure = formaterPlageAccesReservation(reservation);
     const media = cardReservation.querySelector("[data-lcdp-card-reservation-media]");
