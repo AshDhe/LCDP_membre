@@ -256,7 +256,7 @@
     contenu.append(prix);
 
     const paiement = creer('section', 'lcdp-paiement-refonte__section lcdp-paiement-refonte__paiement');
-    paiement.append(creer('h3', 'lcdp-paiement-refonte__rubrique', 'Mode de règlement'));
+    paiement.append(creer('h3', 'lcdp-paiement-refonte__rubrique', 'Paiement'));
     zone.querySelectorAll('.lcdp-workflow-paiement__option').forEach(label => {
       const input = label.querySelector('input');
       const valeur = input?.value;
@@ -275,14 +275,17 @@
           const libelleDate = index === 0 ? 'À la commande' : (
             dates[index] ? dateLisible(dates[index]) : 'Date à confirmer'
           );
-          details.append(creer('small', 'lcdp-paiement-refonte__echeance',
-            libelleDate + ' : ' + EURO.format(montantEcheance)));
+          const ligneEcheance = creer('small', 'lcdp-paiement-refonte__echeance' +
+            (index === 0 ? ' lcdp-paiement-refonte__echeance--immediate' : ' lcdp-paiement-refonte__echeance--future'));
+          ligneEcheance.append(creer('span', '', libelleDate), creer('strong', '', EURO.format(montantEcheance)));
+          details.append(ligneEcheance);
         });
       }
       const montant = valeur === 'echeances' && Array.isArray(devis.echeances)
         ? devis.echeances[0] : devis.totalTtc;
       const prixOption = creer('strong', 'lcdp-paiement-refonte__option-prix',
         EURO.format(Number(montant) || 0));
+      if (valeur === 'echeances') prixOption.classList.add('lcdp-paiement-refonte__option-prix--echeances');
       const boutonRadio = creer('span', 'lcdp-paiement-refonte__radio');
       boutonRadio.setAttribute('aria-hidden', 'true');
       label.replaceChildren(input, boutonRadio, details, prixOption);
@@ -395,7 +398,7 @@
     const zone = document.createElement('div');
     zone.className = 'lcdp-workflow-paiement';
     zone.setAttribute('role', 'radiogroup');
-    zone.setAttribute('aria-label', 'Mode de règlement');
+    zone.setAttribute('aria-label', 'Paiement');
     const options = [
       ['comptant', devis.totalTtc === 0 ? 'Aucun règlement supplémentaire' : 'Règlement en une fois'],
       ...(devis.echelonnePossible ? [['echeances', 'Paiement échelonné (première échéance ' + EURO.format(devis.echeances[0]) + ')']] : [])
@@ -440,12 +443,19 @@
     });
 
     const boutonAnnuler = recap.querySelector('[data-lcdp-recaporder-cancel]');
-    if (boutonAnnuler) boutonAnnuler.textContent = 'Retour au planning';
+    if (boutonAnnuler) {
+      boutonAnnuler.textContent = 'Fermer le récapitulatif';
+      boutonAnnuler.classList.add('lcdp-paiement-refonte__fermer');
+      boutonAnnuler.setAttribute('aria-label', 'Fermer le récapitulatif');
+      boutonAnnuler.setAttribute('title', 'Fermer et revenir au planning');
+      boutonAnnuler.textContent = '×';
+      carte.querySelector('.lcdp-paiement-refonte__entete')?.append(boutonAnnuler);
+    }
     // Précédent et Retour au planning avaient exactement la même action :
     // conserver une seule sortie, sans annuler la commande ni les retenues.
     recap.querySelector('[data-lcdp-recaporder-back]')?.remove();
     const actions = recap.querySelector('.lcdp-box-card-recaporder__actions');
-    if (actions && boutonAnnuler) actions.replaceChildren(boutonAnnuler, boutonPayer);
+    if (actions) actions.replaceChildren(boutonPayer);
 
     const urlPublic = chemin => typeof window.LCDP_urlPublic === 'function'
       ? window.LCDP_urlPublic(chemin)
@@ -456,14 +466,14 @@
     if (reglementClub) reglementClub.href = urlPublic('/ESPACE-PUBLIC/reglement-club.html');
     if (reglementApp) reglementApp.href = urlPublic('/ESPACE-PUBLIC/reglement-app.html');
     const cgv = recap.querySelector('[data-lcdp-recaporder-cgv]');
-    const urlCgv = String(config.cgvUrl || config.CGV_URL || '').trim();
-    if (cgv && urlCgv) {
-      // Aucun URL de CGV n’est inventé : seul un lien configuré peut être ouvert.
+    const urlCgv = String(config.cgvUrl || config.CGV_URL || '').trim()
+      || urlPublic('/ESPACE-PUBLIC/cgv.html');
+    if (cgv) {
       const a = document.createElement('a');
       a.href = urlCgv;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
-      a.textContent = cgv.textContent;
+      a.textContent = 'CGV';
       cgv.replaceWith(a);
     }
 
