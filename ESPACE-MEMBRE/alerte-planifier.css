@@ -281,3 +281,10 @@
 #lcdp-lightbox-slot .lcdp-alerte-calendrier-hote .lcdp-box-calendrier-mois__weekdays {
   margin:12px 0 5px;font-size:12px;color:var(--lcdp-color-text-muted);
 }
+
+/* Variante locale du libellé éditorial existant : titre MES ACCÈS uniquement. */
+#lcdp-planning-calendrier-slot .lcdp-box-liste-card__title.lcdp-editorial-eyebrow {
+  font-size: 14px;
+  color: #64748b;
+}
+
