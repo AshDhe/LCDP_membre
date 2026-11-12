@@ -68,16 +68,27 @@ function listeUniq(valeur,max,validateur,nom){
 }
 function criteresValides(input){
   if(!input||typeof input!=="object"||Array.isArray(input))throw erreur("Critères invalides");
-  const departements=listeUniq(input.departements||[],3,v=>/^\d{2,3}[A-B]?$/.test(v),"Départements");
+  const departements=listeUniq(input.departements||[],3,v=>/^(?:0[1-9]|[1-8][0-9]|9[0-5]|97[1-6])$/.test(v),"Départements");
   const parcs=listeUniq(input.parcs||[],3,v=>UUID.test(v),"Parcs");
   const mois=listeUniq(input.mois||[],3,v=>/^20\d{2}-(0[1-9]|1[0-2])$/.test(v),"Mois");
-  const jours=listeUniq(input.jours||[],3,v=>/^[1-7]$/.test(v),"Jours");
-  const plages=listeUniq(input.plages||[],3,v=>/^[1-5]$/.test(v),"Plages");
-  const dates=listeUniq(input.dates||[],6,v=>/^20\d{2}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(v)&&!Number.isNaN(Date.parse(v+"T00:00:00Z"))&&new Date(v+"T00:00:00Z").toISOString().slice(0,10)===v,"Dates");
-  const categorie=String(input.categorie||"tous");
-  if(!CATEGORIES.has(categorie))throw erreur("Catégorie d'invités invalide");
-  if(![departements,parcs,mois,jours,plages,dates].some(v=>v.length))throw erreur("Sélectionnez au moins un critère");
-  return {departements,parcs,categorie,plages,mois,jours,dates};
+  const jours=listeUniq(input.jours||[],7,v=>/^[1-7]$/.test(v),"Jours");
+  const plages=listeUniq(input.plages||[],5,v=>/^[1-5]$/.test(v),"Plages");
+  const dateValide=v=>/^20\d{2}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(v)&&!Number.isNaN(Date.parse(v+"T00:00:00Z"))&&new Date(v+"T00:00:00Z").toISOString().slice(0,10)===v;
+  const dates=listeUniq(input.dates||[],6,dateValide,"Dates");
+  if(!Array.isArray(input.periodes||[])||input.periodes.length>3)throw erreur("Trois périodes maximum.");
+  const periodes=(input.periodes||[]).map(p=>{
+    const debut=String(p?.debut||""),fin=String(p?.fin||"");
+    if(!dateValide(debut)||!dateValide(fin)||fin<debut)throw erreur("Période de dates invalide.");
+    return {debut,fin};
+  });
+  const categories=listeUniq(input.categories||(
+    input.categorie==="tous"?["duo","famille","coach"]:
+    input.categorie==="famille-coach"?["duo","famille","coach"]:
+    input.categorie?[input.categorie]:["duo"]
+  ),3,v=>["duo","famille","coach"].includes(v),"Catégories d'invités");
+  if(!categories.length)throw erreur("Sélectionnez un type d'accès.");
+  if(![departements,parcs,mois,jours,plages,dates,periodes].some(v=>v.length))throw erreur("Sélectionnez au moins un critère.");
+  return {departements,parcs,categories,plages,mois,jours,dates,periodes};
 }
 async function verifierParcs(env,crit){
   if(!crit.parcs.length)return;
@@ -96,7 +107,17 @@ async function recuperer(env,idmembre,id){
 async function rechercheManuelle(env,crit){
   // Résultats indicatifs uniquement : réservation et droits vérifiés ensuite
   // par PLANIFIER/ABO-RÉZA, sans aucun accès réservé par ce Worker.
-  const candidatsMois=crit.mois.length?crit.mois:(crit.dates.length?[...new Set(crit.dates.map(d=>d.slice(0,7)))]:[new Date().toISOString().slice(0,7)]);
+  const moisPeriodes=new Set();
+  for(const p of crit.periodes){
+    let cursor=p.debut.slice(0,7);
+    while(cursor<=p.fin.slice(0,7)){
+      moisPeriodes.add(cursor);
+      const [an,mo]=cursor.split("-").map(Number);
+      cursor=new Date(Date.UTC(an,mo,1)).toISOString().slice(0,7);
+      if(moisPeriodes.size>18)throw erreur("Recherche limitée à 18 mois. Réduisez les périodes.");
+    }
+  }
+  const candidatsMois=crit.mois.length?crit.mois:(moisPeriodes.size?[...moisPeriodes]:(crit.dates.length?[...new Set(crit.dates.map(d=>d.slice(0,7)))]:[new Date().toISOString().slice(0,7)]));
   const datesSet=new Set(crit.dates);
   // Recherche bornée à un département/parc pour limiter la charge serveur.
   if(!crit.parcs.length&&!crit.departements.length)throw erreur("Choisissez au moins un département ou un parc.");
@@ -125,17 +146,14 @@ async function rechercheManuelle(env,crit){
         });
         for(const row of rows){
           if(row.datejour<aujourdHui||datesSet.size&&!datesSet.has(row.datejour))continue;
+          if(crit.periodes.length&&!crit.periodes.some(p=>row.datejour>=p.debut&&row.datejour<=p.fin))continue;
           const jour=new Date(row.datejour+"T12:00:00Z").getUTCDay()||7;
           if(crit.jours.length&&!crit.jours.includes(String(jour)))continue;
           for(const seg of Array.isArray(row.segments)?row.segments:[]){
             if(crit.plages.length&&!crit.plages.includes(String(seg.plage)))continue;
             if(seg.fermeture||seg.privatisation)continue;
             const ouvert=c=>seg[c]?.etat===true&&Number(seg[c].capacite)>0;
-            const correspond=crit.categorie==="tous"
-              ? ["duo","famille","coach"].some(ouvert)
-              : crit.categorie==="famille-coach"
-                ? ouvert("famille")&&ouvert("coach")
-                : ouvert(crit.categorie);
+            const correspond=crit.categories.some(ouvert);
             if(!correspond)continue;
             correspondances.push({idparc:row.idparc,parc:noms.get(row.idparc)||"",date:row.datejour,plage:seg.plage,debut:seg.debut,fin:seg.fin,statut:"à vérifier dans PLANIFIER"});
             if(correspondances.length>=100)break;
