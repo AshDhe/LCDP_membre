@@ -6648,7 +6648,9 @@
       const suffixe = new RegExp('(?:\\s*[-–—]\\s*|\\s*\\()' + code + '\\)?\\s*$', 'i');
       nom = nom.replace(suffixe, '').trim() || nom;
     }
-    return nom + (code ? ' (' + code + ')' : '');
+    // Règle commune de présentation : le nom du parc est toujours en majuscules,
+    // même si une réponse intermédiaire ne respecte pas la casse de public.parcs.nom.
+    return nom.toLocaleUpperCase('fr-FR') + (code ? ' (' + code + ')' : '');
   }
 
   function normaliserNomParcPourChemin(valeur) {
