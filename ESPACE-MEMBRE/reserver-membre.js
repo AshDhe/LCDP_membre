@@ -467,6 +467,41 @@
     return nom && code ? nom + " (" + code + ")" : nom || code;
   }
 
+  // Les résultats de recherche sont succincts. La fiche fournit le statut réel,
+  // les descriptions et la localisation utilisés par le diaporama départemental.
+  async function completerParcsResultatAlerte(parcs) {
+    const endpoint = construireEndpointApi("workerFicheParcUrl", "WORKER_FICHE_PARC_URL", "fiche-parc-api");
+    if (!endpoint) throw new Error("Service de vérification des parcs indisponible.");
+    return Promise.all(parcs.map(async parc => {
+      const id = String(parc.idparc || parc.id || "");
+      try {
+        const response = await fetch(endpoint + "/fiche-parc?idparc=" + encodeURIComponent(id) + "&token=&ctx=", {
+          method: "GET", credentials: "include", cache: "no-store", headers: { Accept: "application/json" }
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data || (data.ok !== true && data.success !== true) || !data.parc) {
+          throw new Error("Fiche de parc indisponible.");
+        }
+        const fiche = data.parc;
+        const statut = String(fiche.statut || "").trim().toLowerCase();
+        // En cas d'absence de statut explicite, ne jamais autoriser le planning.
+        const statutConfirme = ["oui", "enligne", "prepa"].includes(statut) ? statut : "prepa";
+        return {
+          ...fiche, ...parc, statut: statutConfirme,
+          nom: fiche.nom || fiche.nomparc || parc.nom,
+          dptmt: fiche.dptmt || fiche.departement || parc.dptmt,
+          prez: fiche.prez || fiche.presentation || parc.prez || "",
+          datestatut: fiche.datestatut || parc.datestatut,
+          _statutAlerteConfirme: statut === statutConfirme
+        };
+      } catch (erreur) {
+        console.warn("Vérification d'un parc de résultat ALERTE indisponible :", id, erreur);
+        // Sécurité : conserver le parc visible, mais bloquer son planning.
+        return { ...parc, statut: "prepa", _statutAlerteConfirme: false };
+      }
+    }));
+  }
+
   async function ouvrirFiltreParcPlanifier() {
     if (filtreParcOuvert) return;
     filtreParcOuvert = true;
@@ -566,7 +601,7 @@
           ]);
           initialiserBoutonDepartementPrincipal();
           if(resultatsAlerteActifs){
-            etatPage.parcs=resultatsAlerteActifs;
+            etatPage.parcs=await completerParcsResultatAlerte(resultatsAlerteActifs);
             etatPage.departement="";
             etatPage.nomDepartement="";
             navigationParcs.mode="diaporama";
