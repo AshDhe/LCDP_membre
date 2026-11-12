@@ -184,6 +184,12 @@
       libelleBouton: options.libelleBouton || "Fermer",
       onAffiche: options.onAffiche
     }),
+    informer: (message, options = {}) => afficherDialogueInformationPlanifier({
+      titre: options.titre || "Information",
+      message,
+      libelleAction: options.libelleBouton || "Fermer",
+      onAffiche: options.onAffiche
+    }),
     viderCache: () => cachePlanningParcLecture.clear(),
     choisirParc: () => ouvrirFiltreParcPlanifier(),
     changerMode: actif => { preparationAbonnementPlanifier = Boolean(actif); }
