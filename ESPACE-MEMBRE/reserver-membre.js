@@ -5200,6 +5200,17 @@
     // Même en-tête que la vue mensuelle : le parc figure déjà, en grand,
     // dans le bandeau de page conservé pendant la vue des horaires.
     enteteJour.querySelector(".lcdp-planifier-nom-parc")?.remove();
+    // La vue jour porte uniquement sur les accès au parc : le filtre COACH
+    // ne doit pas être dupliqué, même s'il était masqué dans la vue mensuelle.
+    enteteJour.querySelector("[data-lcdp-filtres-coach]")?.remove();
+    enteteJour.querySelector("[data-lcdp-information-coach]")?.remove();
+    const titreFiltreJour = enteteJour.querySelector(".lcdp-planifier-legende-autorisations .lcdp-box-legende__titre");
+    if (titreFiltreJour) titreFiltreJour.textContent = "FILTRE INVITÉS (ACCÈS PARC)";
+    const filtresInvitesJour = enteteJour.querySelector(".lcdp-planifier-legende-autorisations .lcdp-box-legende__ligne");
+    if (filtresInvitesJour) {
+      filtresInvitesJour.hidden = false;
+      filtresInvitesJour.style.removeProperty("display");
+    }
     const ligneIdentiteJour = enteteJour.querySelector(".lcdp-planifier-entete-identite");
     const informationsJour = enteteJour.querySelector(".lcdp-planifier-entete-parc");
     const actionsJour = enteteJour.querySelector(".lcdp-planifier-actions-filtres");
