@@ -731,7 +731,7 @@
     const filtreCoach = entete.querySelector("[data-lcdp-filtres-coach]");
     const informationCoach = entete.querySelector("[data-lcdp-information-coach]");
     const grille = document.querySelector("#lcdp-planifier-calendrier-slot [data-lcdp-calendrier-mois-grid]");
-    if (titre) titre.textContent = modeCoachPlanifierActif ? "FILTRE COACH" : "FILTRE INVITÉS";
+    if (titre) titre.textContent = modeCoachPlanifierActif ? "FILTRE COACH" : "FILTRE INVITÉS (ACCÈS PARC)";
     if (filtreInvites) {
       filtreInvites.hidden = modeCoachPlanifierActif;
       filtreInvites.style.display = modeCoachPlanifierActif ? "none" : "";
@@ -905,8 +905,10 @@
     informationsParc.appendChild(titre);
     meta.classList.add("lcdp-planifier-nom-parc");
     informationsParc.appendChild(meta);
-    // L'ordre visuel change avec le parc : nom en premier, PLANIFIER en dessous.
-    // Sans parc : PLANIFIER reprend la première ligne, au niveau de la croix.
+    // La première ligne accueille le badge du parc, aligné sur la croix.
+    // La ligne PLANIFIER et ses commandes se place sous ce badge.
+    const badgeParc = document.getElementById("lcdp-planifier-parc-en-tete");
+    if (badgeParc) enteteFiltres.appendChild(badgeParc);
     const departementParc = document.createElement("p");
     departementParc.className = "lcdp-planifier-departement-parc";
     departementParc.hidden = true;
@@ -953,7 +955,7 @@
     contenuLegende.replaceChildren();
     const titreFiltres = document.createElement("span");
     titreFiltres.className = "lcdp-box-legende__titre";
-    titreFiltres.textContent = "FILTRE INVITÉS";
+    titreFiltres.textContent = "FILTRE INVITÉS (ACCÈS PARC)";
     contenuLegende.appendChild(titreFiltres);
     const ligneLegende = document.createElement("div");
     ligneLegende.className = "lcdp-box-legende__ligne";
