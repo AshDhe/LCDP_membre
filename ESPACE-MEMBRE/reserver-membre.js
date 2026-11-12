@@ -5791,12 +5791,24 @@
       titre.textContent = libelleTitre;
       message.textContent = contenu;
       if (Array.isArray(lignes) && lignes.length) {
-        // Utiliser les marqueurs verts des listes du règlement application LCDP.
+        // Chaque ligne reçoit le véritable pictogramme LCDP, sans puce CSS.
+        const logoPrivileges = typeof window.LCDP_urlObjet === 'function'
+          ? window.LCDP_urlObjet('/IMAG/LOGO/logo-bouton-navigation-76.webp')
+          : (typeof window.SITE_CONFIG?.objetUrl === 'function'
+              ? window.SITE_CONFIG.objetUrl('/IMAG/LOGO/logo-bouton-navigation-76.webp')
+              : '/OBJET/IMAG/LOGO/logo-bouton-navigation-76.webp');
         const liste = document.createElement('ul');
         liste.className = 'lcdp-aboreza-privileges-liste';
         for (const ligne of lignes) {
           const item = document.createElement('li');
-          item.textContent = String(ligne);
+          const logo = document.createElement('img');
+          logo.className = 'lcdp-aboreza-privileges-logo';
+          logo.src = logoPrivileges;
+          logo.alt = '';
+          logo.setAttribute('aria-hidden', 'true');
+          const libelle = document.createElement('span');
+          libelle.textContent = String(ligne);
+          item.append(logo, libelle);
           liste.appendChild(item);
         }
         message.replaceWith(liste);
