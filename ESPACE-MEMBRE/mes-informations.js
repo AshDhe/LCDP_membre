@@ -750,7 +750,7 @@
         await window.LCDP_ouvrirFormulaireAlertePlanifier({
           alerte,onEnregistre:async()=>{
             await chargerAlertesCompte();
-            await afficherInformationMembre("L’alerte a été modifiée.","SERVICE");
+            await afficherInformationMembre("L’alerte a été modifiée et enregistrée. Pour utiliser cette alerte, ouvrez PLANIFIER depuis l’accueil membre, puis choisissez ALERTE PLANIFIER.","SERVICE");
           }
         });
       };
