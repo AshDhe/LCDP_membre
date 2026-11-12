@@ -820,7 +820,8 @@
           titreCal.textContent=dateDebut?"Choisir la date de fin":"Choisir la date de début";
           meta.textContent=dateDebut?"À partir du "+new Date(dateDebut+"T12:00:00Z").toLocaleDateString("fr-FR"):"Sélectionnez un premier jour.";
           grille.replaceChildren();
-          const today=new Date().toLocaleDateString("en-CA");
+          const morceauxDate=new Intl.DateTimeFormat("fr-CA",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+          const today=["year","month","day"].map(c=>morceauxDate.find(p=>p.type===c)?.value).join("-");
           const an=month.getFullYear(),mo=month.getMonth();
           const offset=(new Date(an,mo,1).getDay()+6)%7;
           for(let i=0;i<offset;i++)grille.append(noeud("span","lcdp-alerte-calendrier-vide"));
