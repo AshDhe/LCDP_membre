@@ -26,12 +26,12 @@
     slot.replaceChildren();
     window.location.assign((window.LCDP_urlMembre||CONFIG_PAGE.membreUrl)("/ESPACE-MEMBRE/mes-informations.html"));
   };
-  const afficherAlerte=async message=>{
+  const afficherAlerte=async (message, titreDialogue="ALERTE PLANIFIER")=>{
     const slot=document.getElementById("lcdp-lightbox-slot");
     const fragment=await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
     slot.replaceChildren(fragment);
     const dlg=slot.querySelector('[data-lcdp-dialogue-reference="information"]');
-    dlg.querySelector("[data-lcdp-dialogue-titre]").textContent="ALERTE PLANIFIER";
+    dlg.querySelector("[data-lcdp-dialogue-titre]").textContent=titreDialogue;
     dlg.querySelector("[data-lcdp-dialogue-message]").textContent=message;
     const action=dlg.querySelector('[data-lcdp-dialogue-action="compris"]');
     action.textContent="OK";
@@ -44,18 +44,33 @@
     // identiques à ceux utilisés dans PLANIFIER, sans navigateur de dates natif.
     const slot=document.getElementById("lcdp-lightbox-slot");
     if(!slot)throw new Error("Emplacement de lightbox introuvable.");
+    const source=options.alerte||null;
+    // Le contrôle du quota et le montage précèdent l’affichage.
+    const endpoint=String(CONFIG_PAGE.workerAlertePlanifierUrl||CONFIG_PAGE.WORKER_ALERTE_PLANIFIER_URL||"").replace(/\/+$/,"");
+    if(!source){
+      if(!endpoint)throw new Error("Le Worker ALERTE PLANIFIER n'est pas configuré.");
+      const response=await fetch(endpoint+"/alertes",{method:"GET",credentials:"include",cache:"no-store",headers:{"Accept":"application/json"}});
+      const data=await response.json().catch(()=>null);
+      if(!response.ok||data?.ok!==true)throw new Error(data?.message||"Vérification des alertes indisponible.");
+      // Le contrôle côté Worker reste obligatoire : cette vérification UX ne le remplace pas.
+      const maximum=options.permanent===true?2:1;
+      if((data.alertes||[]).length>=maximum){
+        await afficherInformationLimite("Une alerte planifiée est déjà en cours, modifiez-la depuis MON COMPTE.");
+        return;
+      }
+    }
     const fragment=await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
-    slot.replaceChildren(fragment);
-    const dialogue=slot.querySelector("[data-lcdp-box-dialogue-bouton]");
-    const titre=slot.querySelector("[data-lcdp-dialogue-title]");
-    const texte=slot.querySelector("[data-lcdp-dialogue-text]");
-    const actions=slot.querySelector("[data-lcdp-dialogue-actions]");
-    const croix=slot.querySelector("[data-lcdp-dialogue-close]");
+    const preparation=document.createElement("div");
+    preparation.appendChild(fragment);
+    const dialogue=preparation.querySelector("[data-lcdp-box-dialogue-bouton]");
+    const titre=preparation.querySelector("[data-lcdp-dialogue-title]");
+    const texte=preparation.querySelector("[data-lcdp-dialogue-text]");
+    const actions=preparation.querySelector("[data-lcdp-dialogue-actions]");
+    const croix=preparation.querySelector("[data-lcdp-dialogue-close]");
     if(!dialogue||!titre||!texte||!actions||!croix)throw new Error("Structure du dialogue incomplète.");
     dialogue.classList.add("lcdp-alerte-planning-dialogue");
     titre.textContent="ALERTE PLANIFIER";
     texte.textContent="Définissez vos critères de recherche.";
-    const source=options.alerte||null;
     const initial=source?.criteres||{};
     const etat={departements:[...(initial.departements||[])],periodes:(initial.periodes||[]).map(p=>({...p})),plages:[...(initial.plages||[])],categories:[...(initial.categories||["duo"])]};
     const limites={departements:2,periodes:2,plages:2};
@@ -115,21 +130,6 @@
     const horaires=groupe("Horaire",limites.plages,"lcdp-alerte-critere--horaire");
     const invites=groupe("Filtre invités (accès parc)",0,"lcdp-alerte-critere--invites");
     const msg=noeud("p","lcdp-alerte-etat");msg.setAttribute("role","status");
-    const endpoint=String(CONFIG_PAGE.workerAlertePlanifierUrl||CONFIG_PAGE.WORKER_ALERTE_PLANIFIER_URL||"").replace(/\/+$/,"");
-    if(!source){
-      if(!endpoint)throw new Error("Le Worker ALERTE PLANIFIER n'est pas configuré.");
-      const response=await fetch(endpoint+"/alertes",{method:"GET",credentials:"include",cache:"no-store",headers:{"Accept":"application/json"}});
-      const data=await response.json().catch(()=>null);
-      if(!response.ok||data?.ok!==true)throw new Error(data?.message||"Vérification des alertes indisponible.");
-      // Le contrôle côté Worker reste obligatoire : cette vérification UX ne le remplace pas.
-      const maximum=options.permanent===true?2:1;
-      if((data.alertes||[]).length>=maximum){
-        slot.replaceChildren();
-        await afficherInformationLimite("Une alerte planifiée est déjà en cours, modifiez-la depuis MON COMPTE.");
-        return;
-      }
-    }
-
     const getDiginum=async()=>{
       if(window.LCDP_diginum?.ouvrir)return window.LCDP_diginum;
       await new Promise((resolve,reject)=>{
@@ -360,7 +360,7 @@
         fermer();
         if(typeof options.onEnregistre==="function")await options.onEnregistre(data);
         else {
-          await afficherAlerte("Alerte enregistrée. Retrouvez-la dans MON COMPTE → SERVICE.");
+          await afficherAlerte("Alerte enregistrée. Retrouvez-la dans MON COMPTE → SERVICE.", "Alerte enregistrée");
           // Uniquement après l'accusé de réception de création : lancer la recherche.
           if(!source && data?.alerte?.idalerte && window.LCDP_alerteNavigation?.lancer){
             await window.LCDP_alerteNavigation.lancer(data.alerte);
@@ -378,6 +378,7 @@
         enregistrer.disabled=false;
       }
     },{signal:controller.signal});
+    slot.replaceChildren(dialogue);
   }
 
   window.LCDP_ouvrirFormulaireAlertePlanifier=ouvrirFormulaireAlertePlanning;
