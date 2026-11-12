@@ -195,17 +195,10 @@
     entete.append(liensPrivileges);
 
     const contenu = creer('div', 'lcdp-paiement-refonte__contenu');
-    const resume = creer('section', 'lcdp-paiement-refonte__resume');
-    const donnees = [
-      ['Début prévu', dateLisible(panier.dateDebut)],
-      ['Fin prévue', dateLisible(panier.dateFin)]
-    ];
-    for (const [intitule, valeur] of donnees) {
-      const champ = creer('div', 'lcdp-paiement-refonte__resume-champ');
-      champ.append(creer('span', '', intitule), creer('strong', '', valeur));
-      resume.append(champ);
-    }
-    contenu.append(resume);
+    // Une seule ligne, sans carte : période effective de l'abonnement.
+    const periode = creer('p', 'lcdp-paiement-refonte__periode',
+      'Du ' + dateLisible(panier.dateDebut) + ' au ' + dateLisible(panier.dateFin));
+    contenu.append(periode);
 
     const sectionAcces = creer('section', 'lcdp-paiement-refonte__section');
     sectionAcces.append(creer('h3', 'lcdp-paiement-refonte__rubrique', 'Accès planifiés à la commande'));
@@ -350,27 +343,21 @@
     });
     premiereLignePrix.before(...lignes);
 
-    // Ventilation des privilèges issue exclusivement du devis du Worker.
+    // Total commercial brut, indépendant du mode de règlement choisi plus bas.
     const optionsDevis = Array.isArray(devis.options) ? devis.options : [];
-    if (optionsDevis.length) {
-      premiereLignePrix.before(ajouterLigne(liste, 'Abonnement hors privilèges',
-        EURO.format(devis.prixAbonnementTtc)));
-      for (const option of optionsDevis) {
-        premiereLignePrix.before(ajouterLigne(liste,
-          option.code + (Number(option.multiplicateur) > 1
-            ? ' × ' + option.multiplicateur : ''),
-          EURO.format(Number(option.totalTtc))));
-      }
+    premiereLignePrix.before(ajouterLigne(liste,
+      'Abonnement ' + panier.formule, EURO.format(Number(devis.prixAbonnementTtc ?? devis.prixTtc))));
+    for (const option of optionsDevis) {
+      const code = String(option.code || '');
+      premiereLignePrix.before(ajouterLigne(liste,
+        'Privilège ' + code + (Number(option.multiplicateur) > 1
+          ? ' × ' + option.multiplicateur + ' mois' : ''),
+        EURO.format(Number(option.totalTtc))));
     }
 
     remplir(recap, '[data-lcdp-recaporder-prix-initial]', EURO.format(devis.prixTtc));
-    const prixNet=remplir(recap, '[data-lcdp-recaporder-prix-net]', EURO.format(devis.totalTtc));
-    let ligneRemise = null;
-    if (devis.remiseComptantTtc > 0) {
-      ligneRemise=ajouterLigne(liste, 'Remise paiement comptant',
-        '− '+EURO.format(devis.remiseComptantTtc));
-      premiereLignePrix.after(ligneRemise);
-    }
+    premiereLignePrix.querySelector('dt').replaceChildren(document.createTextNode('Total TTC'));
+    recap.querySelector('[data-lcdp-recaporder-prix-net]')?.closest('.lcdp-box-card-recaporder__row')?.remove();
     if (devis.nombreAbonnementsInclus) {
       premiereLignePrix.before(ajouterLigne(liste, 'Engagements des abonnements intégrés',
         EURO.format(devis.engagementsAnterieursTtc)));
@@ -380,8 +367,7 @@
         premiereLignePrix.before(ajouterLigne(liste, 'Écart sans remboursement',
           EURO.format(devis.excedentSansRemboursementTtc)));
     }
-    remplir(recap, '[data-lcdp-recaporder-tva-label]', '(TVA ' + devis.tauxTva + ' %)');
-    remplir(recap, '[data-lcdp-recaporder-tva-net-label]', '(TVA ' + devis.tauxTva + ' %)');
+    // La TVA est incluse dans les prix TTC du devis ; pas de libellé encombrant.
     // Aucun code de remise n’est géré par ce cycle : ne pas afficher de champ inactif.
     recap.querySelector('.lcdp-box-card-recaporder__row--code')?.remove();
     const boutonPayer = recap.querySelector('[data-lcdp-recaporder-pay]');
@@ -405,9 +391,7 @@
       span.className = 'lcdp-workflow-paiement__option-text';
       span.textContent = titreOption;
       input.addEventListener('change',()=>{
-        const montant=valeur==='echeances'?devis.totalEchelonneTtc:devis.totalTtc;
-        prixNet.textContent=EURO.format(montant);
-        if(ligneRemise) ligneRemise.hidden=valeur==='echeances';
+        // Le total de vente ne varie jamais selon le règlement sélectionné.
       });
       label.append(input,span);zone.append(label);
     }
