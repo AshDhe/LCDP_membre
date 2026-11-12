@@ -869,9 +869,17 @@
       box.addEventListener("change",()=>{
         if(box.checked){if(!etat.categories.includes(code))etat.categories.push(code);}
         else etat.categories=etat.categories.filter(v=>v!==code);
+        tous.checked=etat.categories.length===3;
       },{signal:controller.signal});
       label.append(box,noeud("span","",libelle));ligneInvites.append(label);
     }
+    const labelTous=noeud("label","lcdp-planning-filtres__option");
+    const tous=document.createElement("input");tous.type="checkbox";
+    tous.addEventListener("change",()=>{
+      etat.categories=tous.checked?["duo","famille","coach"]:[];
+      ligneInvites.querySelectorAll("input").forEach((e,i)=>{if(i<3)e.checked=tous.checked;});
+    },{signal:controller.signal});
+    labelTous.append(tous,noeud("span","","TOUS"));ligneInvites.append(labelTous);
     invites.n.append(ligneInvites);
     formulaire.append(champs);
     const barre=noeud("div","lcdp-alerte-formulaire__actions");
