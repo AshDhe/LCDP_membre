@@ -456,7 +456,7 @@
       return;
     }
 
-    const confirmation = await afficherAlerte("Prolonger votre abonnement ?");
+    const confirmation = await afficherChoixAbonnement("Prolonger votre abonnement ?", { titre: "Prolonger l’abonnement", libelleConfirmer: "Prolonger" });
 
     if (!confirmation) return;
 
@@ -2492,7 +2492,7 @@
   }
 
   async function demanderQuitterWorkflow() {
-    const ok = await afficherAlerteSuperposee("Quitter la demande d'abonnement ?");
+    const ok = await afficherChoixAbonnement("Quitter la demande d'abonnement ?", { titre: "Quitter la demande", superposition: true, libelleConfirmer: "Quitter" });
 
     if (ok) {
       window.location.href = PAGE_ABONNEMENT_MEMBRE;
@@ -3656,6 +3656,52 @@
       month: "2-digit",
       year: "numeric"
     });
+  }
+
+  async function afficherChoixAbonnement(message, options = {}) {
+    const superposition = options.superposition === true;
+    const slot = superposition ? document.createElement("div") : obtenirLightboxSlot();
+    if (superposition) {
+      slot.style.position = "fixed";
+      slot.style.inset = "0";
+      slot.style.zIndex = "12000";
+      document.body.appendChild(slot);
+    } else {
+      slot.replaceChildren();
+    }
+    try {
+      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html"));
+      const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="choix"]');
+      const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+      const annuler = slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
+      const confirmer = slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+      if (!dialogue || !titre || !texte || !annuler || !confirmer) throw new Error("Structure CHOIX incomplète.");
+      titre.textContent = options.titre || "Confirmation";
+      texte.textContent = String(message || "");
+      annuler.textContent = options.libelleAnnuler || "Annuler";
+      confirmer.textContent = options.libelleConfirmer || "Confirmer";
+      return await new Promise(resolve => {
+        let termine = false;
+        const fermer = valeur => {
+          if (termine) return;
+          termine = true;
+          if (superposition) slot.remove();
+          else slot.replaceChildren();
+          resolve(valeur);
+        };
+        annuler.addEventListener("click", () => fermer(false), { once: true });
+        confirmer.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => {
+          if (event.target === dialogue) fermer(false);
+        });
+        confirmer.focus();
+      });
+    } catch (error) {
+      if (superposition) slot.remove();
+      else slot.replaceChildren();
+      throw error;
+    }
   }
 
   async function afficherAlerteSuperposee(message, options = {}) {
