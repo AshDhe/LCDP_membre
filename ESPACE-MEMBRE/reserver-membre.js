@@ -1957,7 +1957,7 @@
     if (!etatPage.parcs.length) {
       const message = document.createElement("p");
       message.setAttribute("role", "status");
-      message.textContent = "Il n’y a pas encore de parc dans ce département.";
+      message.textContent = resultatsAlerteActifs ? "Aucun parc ne correspond aux critères de cette alerte." : "Il n’y a pas encore de parc dans ce département.";
       message.style.cssText = "box-sizing:border-box;width:100%;margin:12px auto;padding:16px 12px;border:1px solid #dce4da;border-radius:14px;background:#fff;box-shadow:0 3px 12px rgba(35,55,35,.08);color:#263e2f;font-weight:600;text-align:center;line-height:1.5";
       zone.appendChild(message);
     }
@@ -3364,7 +3364,7 @@
     if (!Array.isArray(parcs) || parcs.length < 1) {
       zoneMessage.hidden = false;
       zoneMessage.textContent =
-        "Aucun parc trouvé pour ce département";
+        (resultatsAlerteActifs ? "Aucun parc ne correspond aux critères de cette alerte." : "Aucun parc trouvé pour ce département");
       zoneMessage.dataset.lcdpMessageType = "information";
       return listeCard;
     }
