@@ -1410,6 +1410,8 @@
 
     if (!slotPlanning || !calendrier) return;
 
+    // Planning est la représentation calendaire de Liste : accès à venir uniquement.
+    etat.periodeAffichage = "avenir";
     ajusterMoisCourantSelonPeriode();
     afficherCalendrierMois();
 
@@ -1857,7 +1859,10 @@
     if (!bouton) return;
 
     const actif = etat.modeAffichage === "agenda";
-    definirContenuBoutonVue(bouton, "Planning", etat.reservations.length);
+    const compte = etat.reservations.filter(reservation =>
+      reservationDansPeriodeAgenda(reservation, "avenir")
+    ).length;
+    definirContenuBoutonVue(bouton, "Planning", compte);
     bouton.setAttribute("aria-pressed", actif ? "true" : "false");
     bouton.classList.toggle("lcdp-button-primary", actif);
     bouton.classList.toggle("lcdp-button-secondary", !actif);
