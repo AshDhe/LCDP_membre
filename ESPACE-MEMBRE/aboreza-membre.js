@@ -275,9 +275,9 @@
           const contenu = elem('span', 'lcdp-aboreza-catalogue__option-contenu');
           const ligne = elem('span', 'lcdp-aboreza-catalogue__option-ligne');
           ligne.append(elem('strong', 'lcdp-aboreza-catalogue__nom', nomFormule(offre.formule)));
-          ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut lcdp-aboreza-catalogue__statut--disponible', 'Disponible'));
+          ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut lcdp-aboreza-catalogue__statut--disponible', 'Compatible'));
           contenu.append(ligne);
-          contenu.append(elem('span', 'lcdp-aboreza-catalogue__description', 'Abonnement disponible pour votre planning.'));
+          contenu.append(elem('span', 'lcdp-aboreza-catalogue__description', 'Abonnement compatible avec votre planning.'));
           const indicateur = elem('span', 'lcdp-aboreza-catalogue__indicateur');
           indicateur.setAttribute('aria-hidden', 'true');
           option.append(radio, contenu, indicateur);
