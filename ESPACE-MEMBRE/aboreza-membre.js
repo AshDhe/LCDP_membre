@@ -895,12 +895,13 @@
         await miseAJour;
       }else{
         const moisTermine = courant.moisActif !== avant;
+        const restants = Number(courant.restantsMois) || 0;
         const texte = moisTermine
-          ? 'Les accès du mois sont planifiés. Continuer le planning.'
-          : `Accès ajouté. Il vous reste ${courant.restantsMois} accès à réserver pour ${moisLibelle(courant.moisActif)}.`;
-        // Afficher le dialogue avant de révéler le planning actualisé.
-        // Le spinner n'est retiré qu'une fois la lightbox réellement montée.
-        const dialogue = bridge()?.alerter?.(texte, {
+          ? 'Accès planifiés pour ce mois. Continuez la planification de votre commande.'
+          : `Accès planifié. Il reste ${restants} accès à planifier à la commande pour ${moisLibelle(courant.moisActif)}.`;
+        // Afficher le dialogue INFORMATION avant de révéler le planning actualisé.
+        const dialogue = bridge()?.informer?.(texte, {
+          titre: 'Information',
           ...(moisTermine ? { libelleBouton: 'Continuer' } : {}),
           onAffiche: masquerAttenteFormules
         });
