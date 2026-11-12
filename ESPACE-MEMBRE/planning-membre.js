@@ -1352,7 +1352,7 @@
     const parc = reservation.parc || {};
     const nom = String(parc.nom || parc.nomparc || reservation.nomparc || "Parc");
     const date = formaterDateCourte(reservation.datebookd);
-    const heure = formaterHeureReservation(reservation.datebookd);
+    const heure = formaterPlageAccesReservation(reservation);
     const media = cardReservation.querySelector("[data-lcdp-card-reservation-media]");
     if (media && !media.hidden) {
       const img = media.querySelector("img");
@@ -2377,7 +2377,7 @@
     }
 
     if (date) date.textContent = formaterDateCourte(reservation.datebookd);
-    if (heure) heure.textContent = formaterHeureReservation(reservation.datebookd);
+    if (heure) heure.textContent = formaterPlageAccesReservation(reservation);
     if (parcElement) parcElement.textContent = "Parc de " + nomParc;
 
     if (departementElement) {
@@ -4920,36 +4920,38 @@
     return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
   }
 
+  // Date en français : aujourd'hui/demain, puis jour seul sur la semaine
+  // civile courante (lundi à dimanche), sinon jour + date sans année.
   function formaterDateCourte(dateIso) {
-    const date = new Date(dateIso);
-
-    if (Number.isNaN(date.getTime())) return "Date non renseignée";
-
     const dateFranceIso = extraireDateFranceReservation(dateIso);
+    if (!dateFranceIso) return "Date non renseignée";
+
     const aujourdHui = dateAujourdhuiParis();
-    const demain = ajouterJoursDateIso(aujourdHui, 1);
-    const apresDemain = ajouterJoursDateIso(aujourdHui, 2);
+    if (dateFranceIso === aujourdHui) return "Aujourd’hui";
+    if (dateFranceIso === ajouterJoursDateIso(aujourdHui, 1)) return "Demain";
 
-    if (dateFranceIso && dateFranceIso === aujourdHui) {
-      return "Aujourd’hui " + formaterJourMoisDateIso(dateFranceIso);
-    }
-
-    if (dateFranceIso && dateFranceIso === demain) {
-      return "Demain " + formaterJourMoisDateIso(dateFranceIso);
-    }
-
-    if (dateFranceIso && dateFranceIso === apresDemain) {
-      return "Après-demain " + formaterJourMoisDateIso(dateFranceIso);
-    }
-
-    const dateFormatee = date.toLocaleDateString("fr-FR", {
-      timeZone: "Europe/Paris",
-      weekday: "long",
-      day: "numeric",
-      month: "long"
+    const dateLocale = new Date(dateFranceIso + "T12:00:00Z");
+    const jourSemaine = dateLocale.toLocaleDateString("fr-FR", {
+      timeZone: "UTC", weekday: "long"
     });
+    const jourAujourdhui = new Date(aujourdHui + "T12:00:00Z").getUTCDay();
+    const debutSemaine = ajouterJoursDateIso(aujourdHui, -((jourAujourdhui + 6) % 7));
+    const finSemaine = ajouterJoursDateIso(debutSemaine, 6);
 
-    return majusculePremiereLettre(dateFormatee);
+    if (dateFranceIso >= debutSemaine && dateFranceIso <= finSemaine) {
+      return majusculePremiereLettre(jourSemaine);
+    }
+    const jourMois = dateLocale.toLocaleDateString("fr-FR", {
+      timeZone: "UTC", day: "numeric", month: "long"
+    });
+    return majusculePremiereLettre(jourSemaine + " " + jourMois);
+  }
+
+  // Une plage réservée est une période et non une heure ponctuelle.
+  // Le Worker actuel n'expose pas les horaires réduits : ne pas les inventer.
+  function formaterPlageAccesReservation(reservation) {
+    const plage = normaliserPlageReservation(reservation);
+    return plage ? libellePlage(plage).replace(/\\s*h\\s*/g, "h").replace(/\\s*–\\s*/g, "–") : "";
   }
 
   function extraireDateFranceReservation(timestampIso) {
