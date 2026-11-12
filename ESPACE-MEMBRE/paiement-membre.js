@@ -139,22 +139,21 @@
       return noeud;
     };
     const entete = creer('header', 'lcdp-paiement-refonte__entete');
-    const surTitre = creer('div', 'lcdp-paiement-refonte__surtitre');
-    surTitre.append(
-      creer('span', 'lcdp-paiement-refonte__pastille', 'Récapitulatif'),
-      creer('span', 'lcdp-paiement-refonte__quantite',
-        String(panier.nbSelectionnes) + ' accès sélectionnés')
+    titre.textContent = 'RÉCAPITULATIF';
+    const abonnement = creer('div', 'lcdp-paiement-refonte__abonnement');
+    abonnement.append(
+      creer('span', '', 'Nouvel abonnement'),
+      creer('strong', '', panier.formule || '—')
     );
-    titre.textContent = 'Validation de votre commande';
-    entete.append(surTitre, titre);
+    const nombreAcces = creer('p', 'lcdp-paiement-refonte__nombre-acces',
+      String(panier.nbSelectionnes) + ' accès planifiés à la commande');
+    entete.append(titre, abonnement, nombreAcces);
 
     const contenu = creer('div', 'lcdp-paiement-refonte__contenu');
     const resume = creer('section', 'lcdp-paiement-refonte__resume');
     const donnees = [
-      ['Formule', nomFormule[panier.formule] || panier.formule || '—'],
       ['Début prévu', dateLisible(panier.dateDebut)],
-      ['Fin prévue', dateLisible(panier.dateFin)],
-      ['Accès', String(panier.nbSelectionnes) + ' / ' + String(panier.nbAccesRequis)]
+      ['Fin prévue', dateLisible(panier.dateFin)]
     ];
     for (const [intitule, valeur] of donnees) {
       const champ = creer('div', 'lcdp-paiement-refonte__resume-champ');
@@ -164,24 +163,17 @@
     contenu.append(resume);
 
     const sectionAcces = creer('section', 'lcdp-paiement-refonte__section');
-    sectionAcces.append(creer('h3', 'lcdp-paiement-refonte__rubrique', 'Créneaux planifiés'));
+    sectionAcces.append(creer('h3', 'lcdp-paiement-refonte__rubrique', 'Accès planifiés à la commande'));
     const listeAcces = creer('div', 'lcdp-paiement-refonte__acces');
-    (Array.isArray(panier.acces) ? panier.acces : []).forEach((acces, index) => {
+    (Array.isArray(panier.acces) ? panier.acces : []).forEach(acces => {
       const ligne = creer('div', 'lcdp-paiement-refonte__acces-ligne');
-      const detail = creer('div', 'lcdp-paiement-refonte__acces-detail');
-      const haut = creer('div', 'lcdp-paiement-refonte__acces-haut');
-      haut.append(
-        creer('strong', 'lcdp-paiement-refonte__numero', 'Accès ' + (index + 1)),
-        creer('span', 'lcdp-paiement-refonte__point', '•'),
-        creer('strong', 'lcdp-paiement-refonte__date', dateLisible(acces.dateacces))
-      );
       const horaire = plages[acces.plagebookd] || acces.plagebookd || 'Horaire non renseigné';
       const parc = acces.nomparc || ('Parc ' + (acces.idparc || 'non renseigné'));
-      detail.append(haut, creer('p', 'lcdp-paiement-refonte__acces-sousligne', horaire + ' · ' + parc));
-      const badge = creer('span', 'lcdp-paiement-refonte__statut' +
-        (acces.origine === 'existant' ? ' lcdp-paiement-refonte__statut--existant' : ''),
-        acces.origine === 'existant' ? 'Déjà réservé' : 'Provisoire');
-      ligne.append(detail, badge);
+      ligne.append(
+        creer('strong', 'lcdp-paiement-refonte__date', dateLisible(acces.dateacces)),
+        creer('span', 'lcdp-paiement-refonte__acces-heure', horaire),
+        creer('span', 'lcdp-paiement-refonte__acces-parc', parc)
+      );
       listeAcces.append(ligne);
     });
     sectionAcces.append(listeAcces);
@@ -429,11 +421,11 @@
 
     const message = recap.querySelector('[data-lcdp-recaporder-message]');
     if (message) {
-      let note = 'Merci de procéder au paiement. Vos accès seront confirmés après le règlement.';
+      let note = 'Paiement à effectuer.';
       if (panier.expirationCommande) {
         const expiration = new Date(panier.expirationCommande);
         if (Number.isFinite(expiration.getTime())) {
-          note = `Votre commande est valable jusqu’au ${formatHeure.format(expiration)}. Merci de procéder au paiement.`;
+          note = `Commande en cours, valable jusqu’au ${formatHeure.format(expiration)}.\nPaiement à effectuer.`;
         }
       }
       message.textContent = note;
