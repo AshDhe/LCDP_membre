@@ -1083,7 +1083,7 @@
       card.setAttribute('aria-label',date+' · Accès provisoire ABO-RÉZA, plage '+String(acces.plagebookd).slice(5));
     }
   }
-  window.LCDP_ABOREZA={actif:()=>Boolean(courant),panier:()=>courant,demarrer,quitter:quitterTunnel,selectionnerAcces,datePossible,accesDejaChoisi,marquerAccesProvisoires};
+  window.LCDP_ABOREZA={actif:()=>Boolean(courant),panier:()=>courant,demarrer,quitter:quitterTunnel,selectionnerAcces,datePossible,accesDejaChoisi,marquerAccesProvisoires,afficherPrivilegesAbonnement};
   window.LCDP_ouvrirAboReza=demarrer;
 
   // Présentation de l'étape 2 : seul le texte défile. Le bouton PLANIFIER et
