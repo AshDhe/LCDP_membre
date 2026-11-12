@@ -307,32 +307,49 @@
           const option = elem('div', 'lcdp-aboreza-catalogue__option lcdp-aboreza-catalogue__option--indisponible');
           const ligne = elem('div', 'lcdp-aboreza-catalogue__option-ligne');
           ligne.append(elem('strong', 'lcdp-aboreza-catalogue__nom', nomFormule(offre.formule)));
-          // Une étiquette par cause réellement retournée par ABO-RÉZA.
-          // Les codes inconnus ne sont pas interprétés par l'interface.
-          const libelles = {
-            DATE_NON_AUTORISEE: 'Date non autorisée',
-            CHEVAUCHEMENT_PARTIEL: 'Chevauchement partiel',
-            PERIODE_DEJA_COUVERTE: 'Période déjà couverte',
-            HORIZON_NON_PROLONGE: 'Horizon non prolongé'
+          // Les motifs proviennent exclusivement des codes calculés par ABO-RÉZA.
+          // "Hors date" ne doit pas être confondu avec un horizon non prolongé.
+          const motifs = {
+            DATE_NON_AUTORISEE: {
+              etiquette: 'Hors date',
+              explication: 'Cet abonnement est hors date.'
+            },
+            CHEVAUCHEMENT_PARTIEL: {
+              etiquette: 'Chevauchement',
+              explication: 'Cet abonnement chevauche au moins un abonnement existant sans pouvoir l’inclure entièrement.'
+            },
+            PERIODE_DEJA_COUVERTE: {
+              etiquette: 'Période déjà couverte',
+              explication: 'Cet abonnement ne couvre aucune date supplémentaire.'
+            },
+            HORIZON_NON_PROLONGE: {
+              etiquette: 'Horizon non prolongé',
+              explication: 'Cet abonnement ne prolonge pas votre horizon de planning.'
+            }
           };
           const causes = [...new Set(Array.isArray(offre.codesIndisponibilite)
-            ? offre.codesIndisponibilite.filter(code => Object.hasOwn(libelles, code))
+            ? offre.codesIndisponibilite.filter(code => Object.hasOwn(motifs, code))
             : [])];
           if (!causes.length) {
             ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', 'Abonnement indisponible'));
           } else {
             for (const code of causes) {
-              ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', libelles[code]));
+              ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', motifs[code].etiquette));
             }
           }
           option.append(ligne);
-          option.append(elem('p', 'lcdp-aboreza-catalogue__description',
-            offre.motifIndisponibilite || 'Aucune date de démarrage compatible.'));
+          if (!causes.length) {
+            option.append(elem('p', 'lcdp-aboreza-catalogue__description', 'Cet abonnement est indisponible.'));
+          } else {
+            for (const code of causes) {
+              option.append(elem('p', 'lcdp-aboreza-catalogue__description', motifs[code].explication));
+            }
+          }
           listeIndisponibles.append(option);
         }
       }
 
-      if (!offres.length) zoneDefilement.append(elem('p', 'lcdp-aboreza-catalogue__vide', 'Aucune formule disponible.'));
+      if (!offres.length) zoneDefilement.append(elem('p', 'lcdp-aboreza-catalogue__vide', 'Aucun abonnement disponible.'));
       actions.append(zoneDefilement);
     });
   }
