@@ -1097,7 +1097,7 @@
     }
 
     if (!echeances.length) {
-      await afficherAlerte("Aucune échéance non payée.");
+      await afficherInformationMembre("Aucune échéance non payée.", "Échéances de paiement");
       return;
     }
 
