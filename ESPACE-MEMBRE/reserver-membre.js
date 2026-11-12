@@ -757,6 +757,9 @@
   }
 
   async function ouvrirModeCoachPlanifier() {
+    // Aucun contrôle de droits ni alerte depuis la vue jour :
+    // COACH y est uniquement un indicateur visuel non interactif.
+    if (document.body.classList.contains("lcdp-planifier-vue-jour-active")) return;
     let droitsCoach;
     try {
       // Les droits et l'état membre sont relus au clic : pas de lecture COACH
