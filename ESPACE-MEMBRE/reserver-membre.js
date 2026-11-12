@@ -191,6 +191,8 @@
 
   let attenteListeParcs = null;
   let navigationParcs = null;
+  // Résultats d'alerte : conservés uniquement tant que ce tunnel reste ouvert.
+  let resultatsAlerteActifs = null;
   // Un seul calendrier mensuel persistant pour tout le tunnel PLANIFIER.
   let selectionnerParcPlanningPrincipal = null;
 
@@ -226,6 +228,20 @@
         bouton.setAttribute("aria-disabled", String(!abonnementPermanentActifCoach(etatMembre)));
       });
       masquerAttenteInitialePlanifier();
+      // ALERTE PLANIFIER réutilise le diaporama des parcs déjà présent.
+      if(new URL(window.location.href).searchParams.get("mode")==="alerte"){
+        const urlSansMode=new URL(window.location.href);
+        urlSansMode.searchParams.delete("mode");
+        window.history.replaceState(window.history.state,"",urlSansMode.href);
+        const parcs=window.LCDP_alerteNavigation?.consommerResultats?.();
+        if(parcs){
+          resultatsAlerteActifs=parcs;
+          document.body.classList.add("lcdp-planifier-origine-alerte");
+          await ouvrirFiltreParcPlanifier();
+        } else {
+          await afficherAlerte("Les résultats de l'alerte ne sont plus disponibles. Relancez l'alerte depuis l'accueil membre.");
+        }
+      }
       // Ouverture IA depuis le sélecteur de l'accueil membre uniquement.
       const parametresPlanifier = new URL(window.location.href);
       if (parametresPlanifier.searchParams.get("mode") === "ia") {
@@ -246,7 +262,7 @@
       bandeauPret.then(() => actualiserBurgerMembre(etatMembre.abonne))
         .catch(erreur => console.warn("Menu burger indisponible.", erreur));
       // Préparer les parcs en arrière-plan, sans retarder le planning général.
-      prechargerListeParcsPlanifier();
+      if(!resultatsAlerteActifs)prechargerListeParcsPlanifier();
       const contexteAReprendre = lireReprisePlanifier();
       if (contexteAReprendre) {
         reprendreContextePlanifier(contexteAReprendre).catch(error => {
@@ -523,8 +539,15 @@
         filtreParcOuvert = false;
       };
       navigationParcs.fermer = fermer;
-      close.addEventListener("click", fermer);
-      dialogue.addEventListener("click", event => {if(event.target === dialogue) fermer();});
+      close.addEventListener("click", ()=>{
+        if(resultatsAlerteActifs){
+          resultatsAlerteActifs=null;
+          window.location.assign(construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html"));
+        }else fermer();
+      });
+      dialogue.addEventListener("click", event => {
+        if(event.target===dialogue && !resultatsAlerteActifs)fermer();
+      });
       if (!parcInitialise) {
         parcInitialise = true;
         try {
@@ -536,8 +559,20 @@
             assurerReservationsListeParcs()
           ]);
           initialiserBoutonDepartementPrincipal();
-          await chargerParcsDepartementMembre();
-          actualiserTitreParcsDepartement();
+          if(resultatsAlerteActifs){
+            etatPage.parcs=resultatsAlerteActifs;
+            etatPage.departement="";
+            etatPage.nomDepartement="";
+            navigationParcs.mode="diaporama";
+            titre.textContent="RÉSULTAT DE L'ALERTE";
+            publierListeParcs(construireListeParcsPreparee(etatPage.parcs,""));
+            // Pas de filtres département/carte supplémentaires dans la recherche.
+            barre.hidden=true;
+            barre.setAttribute("aria-hidden","true");
+          }else{
+            await chargerParcsDepartementMembre();
+            actualiserTitreParcsDepartement();
+          }
           await revelerDialogueParcs(dialogue, chargement);
         } catch(error) {parcInitialise = false; throw error;}
       } else {
@@ -1186,7 +1221,14 @@
         afficher();
         enregistrerContextePlanning();
         // La liste/carte est un filtre en superposition, jamais une autre page.
-        navigationParcs?.fermer?.();
+        if(resultatsAlerteActifs && navigationParcs){
+          // Masquer le diaporama sans le détruire : retour immédiat, sans recherche.
+          const vue=document.getElementById("lcdp-planifier-parcs-vue");
+          if(vue)vue.hidden=true;
+          document.body.classList.remove("lcdp-planifier-vue-parcs-active");
+        }else{
+          navigationParcs?.fermer?.();
+        }
         fermerShiftDetailParc();
       } finally {
         terminerAttente();
@@ -1355,6 +1397,11 @@
         generationPlanning++;
         afficher();
         enregistrerContextePlanning();
+        if(resultatsAlerteActifs && navigationParcs){
+          const vue=document.getElementById("lcdp-planifier-parcs-vue");
+          if(vue)vue.hidden=false;
+          document.body.classList.add("lcdp-planifier-vue-parcs-active");
+        }
         return;
       }
       // La croix du planning général conserve son retour à l'accueil membre.
