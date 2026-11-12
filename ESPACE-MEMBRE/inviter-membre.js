@@ -286,7 +286,7 @@
       return;
     }
 
-    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
+    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.", { profil: "choix", titre: "Régulariser l’abonnement", libelleConfirmer: "Continuer vers le paiement" });
     if (!ok) return;
 
     const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
@@ -695,14 +695,49 @@
     if (!slot) return null;
 
     const information = options.profil === "information";
-    const superposition = information && options.superposition === true;
+    const choix = options.profil === "choix";
+    const superposition = (information || choix) && options.superposition === true;
     const hote = superposition ? document.createElement("div") : slot;
     if (superposition) document.body.appendChild(hote);
     else slot.innerHTML = "";
     const fragment = await chargerFragmentObjet(information
       ? "/HTMLBASE/02-dialogue-reference-information.html"
+      : choix ? "/HTMLBASE/02-dialogue-reference-choix.html"
       : "/HTMLBASE/02-alerte.html");
     hote.appendChild(fragment);
+
+    if (choix) {
+      const dialogue = hote.querySelector('[data-lcdp-dialogue-reference="choix"]');
+      const titre = hote.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = hote.querySelector("[data-lcdp-dialogue-message]");
+      const annuler = hote.querySelector('[data-lcdp-dialogue-action="annuler"]');
+      const confirmer = hote.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+      if (!dialogue || !titre || !texte || !annuler || !confirmer) {
+        if (superposition) hote.remove();
+        else slot.replaceChildren();
+        throw new Error("Structure CHOIX incomplète.");
+      }
+      titre.textContent = options.titre || "Confirmation";
+      texte.textContent = message || "";
+      annuler.textContent = options.libelleAnnuler || "Annuler";
+      confirmer.textContent = options.libelleConfirmer || "Confirmer";
+      return new Promise(resolve => {
+        let resolu = false;
+        const fermer = valeur => {
+          if (resolu) return;
+          resolu = true;
+          if (superposition) hote.remove();
+          else slot.replaceChildren();
+          resolve(valeur);
+        };
+        annuler.addEventListener("click", () => fermer(false), { once: true });
+        confirmer.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => {
+          if (event.target === dialogue) fermer(false);
+        });
+        confirmer.focus();
+      });
+    }
 
     const alerte = hote.querySelector(information
       ? '[data-lcdp-dialogue-reference="information"]'
