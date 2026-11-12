@@ -111,11 +111,6 @@
     // Une commande déjà transmise à Stripe reste reprenable tant que ses
     // retenues sont valides. Le serveur Paiement reste seul juge de l'état
     // de la session et du règlement lors de /valider.
-    // Tant que w-paiement n'intègre pas les options, ne jamais présenter un
-    // devis incomplet ni permettre un paiement qui les oublierait.
-    if (Array.isArray(panier.options) && panier.options.length > 0) {
-      throw new Error('La facturation des privilèges ajoutés n’est pas encore disponible. Votre panier est conservé.');
-    }
     if (!['pret_paiement', 'transmis_paiement'].includes(panier.statut) ||
         panier.complet !== true ||
         Number(panier.nbSelectionnes) < Number(panier.nbAccesRequis)) {
@@ -318,6 +313,19 @@
     });
     premiereLignePrix.before(...lignes);
 
+    // Ventilation des privilèges issue exclusivement du devis du Worker.
+    const optionsDevis = Array.isArray(devis.options) ? devis.options : [];
+    if (optionsDevis.length) {
+      premiereLignePrix.before(ajouterLigne(liste, 'Abonnement hors privilèges',
+        EURO.format(devis.prixAbonnementTtc)));
+      for (const option of optionsDevis) {
+        premiereLignePrix.before(ajouterLigne(liste,
+          option.code + (Number(option.multiplicateur) > 1
+            ? ' × ' + option.multiplicateur : ''),
+          EURO.format(Number(option.totalTtc))));
+      }
+    }
+
     remplir(recap, '[data-lcdp-recaporder-prix-initial]', EURO.format(devis.prixTtc));
     const prixNet=remplir(recap, '[data-lcdp-recaporder-prix-net]', EURO.format(devis.totalTtc));
     let ligneRemise = null;
@@ -479,6 +487,16 @@
       const [[modeleWorkflow, modeleRecap], [panier, devis]] = await Promise.all([
         obtenirComposants(), Promise.all([lirePanier(idpanier), lireDevis(idpanier)])
       ]);
+      // Une divergence entre les options du panier et le devis interdit le paiement.
+      const optionsPanier = Array.isArray(panier.options) ? panier.options : [];
+      const optionsDevis = Array.isArray(devis.options) ? devis.options : [];
+      const totalOptions = optionsPanier.reduce((n,o)=>n+Math.round(Number(o.totalTtc)*100),0);
+      if (optionsPanier.length !== optionsDevis.length ||
+          totalOptions !== Math.round(Number(devis.optionsTtc || 0)*100) ||
+          optionsPanier.some(o => !optionsDevis.some(d =>
+            d.code === o.code && Math.round(Number(d.totalTtc)*100) === Math.round(Number(o.totalTtc)*100)))) {
+        throw new Error('Le devis ne reprend pas exactement les privilèges du panier. Paiement bloqué.');
+      }
       const paiement = { termine:false };
       const bonPrepare = monterBon(modeleWorkflow, modeleRecap, panier, devis, paiement);
       // ABO-RÉZA peut déjà porter sa coque persistante : réutiliser cette même
