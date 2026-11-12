@@ -696,7 +696,7 @@
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__card{box-sizing:border-box;position:relative;width:100%;max-width:480px;margin:auto;padding:32px 30px 29px;border:1px solid #eee;border-radius:28px;background:#fff;box-shadow:0 24px 50px #0002;text-align:center;color:#292524}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__close{position:absolute;top:20px;right:20px;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:50%;background:#f5f5f4;color:#a8a29e;font-size:23px;cursor:pointer}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__close:hover{background:#e7e5e4;color:#44403c}
-        .lcdp-panier-existant__icone{display:grid;place-items:center;box-sizing:border-box;width:60px;height:60px;margin:0 auto 22px;border:1px solid #fde68a;border-radius:20px;background:#fffbeb;color:#d97706}
+        .lcdp-panier-existant__icone{display:grid;place-items:center;box-sizing:border-box;width:60px;height:60px;margin:0 auto 22px;border:1px solid #c7dcc3;border-radius:20px;background:#f0f7ef;color:#4e6838}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__title{margin:0;max-width:none;color:#1c1917;font-size:23px;font-weight:900;letter-spacing:-.5px;line-height:1.2}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__text{margin:7px 0 24px;max-width:none;color:#78716c;font-size:13px;font-weight:600;line-height:1.45}
         .lcdp-panier-existant__recap{box-sizing:border-box;margin-bottom:28px;padding:20px;border:1px solid #e7e5e4;border-radius:20px;background:#fafaf9;text-align:left}
