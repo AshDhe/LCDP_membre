@@ -372,7 +372,6 @@
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card--mode-liste .lcdp-box-liste-card__header {
         padding-bottom:12px !important;
       }
-      #lcdp-planning-calendrier-slot .lcdp-planning-membre-periode-tabs {margin-bottom:0 !important;}
       #lcdp-planning-calendrier-slot .lcdp-box-liste-card__tools:not([hidden]) {
         box-sizing:border-box;padding:0 !important;margin:0 !important;
         width:100% !important;max-width:100% !important;
