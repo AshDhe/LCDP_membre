@@ -241,7 +241,7 @@
           window.location.replace(data.nextUrl);
           return;
         } else {
-          await afficherInformation("Votre mot de passe est enregistré. Vous pouvez maintenant vous connecter à votre compte membre.", urlConnexionMembre);
+          await afficherInformation("Votre mot de passe est enregistré. Vous pouvez maintenant vous connecter à votre compte membre.", urlConnexionMembre, "information");
         }
 
       } catch (error) {
@@ -394,7 +394,7 @@
     return "";
   }
 
-  async function afficherInformation(message, redirectUrl = null) {
+  async function afficherInformation(message, redirectUrl = null, profil = null) {
     const slot = document.getElementById("lcdp-lightbox-slot");
     const texteMessage = message || "";
 
@@ -411,18 +411,31 @@
     slot.innerHTML = "";
 
     try {
-      const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
+      const information = profil === "information";
+      const fragment = await chargerFragmentObjet(information
+        ? "/HTMLBASE/02-dialogue-reference-information.html"
+        : "/HTMLBASE/02-alerte.html");
       slot.appendChild(fragment);
 
-      const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-      const texte = slot.querySelector("[data-lcdp-alerte-message]");
-      const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-      const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
+      const alerte = slot.querySelector(information
+        ? '[data-lcdp-dialogue-reference="information"]'
+        : "[data-lcdp-box-alerte]");
+      const texte = slot.querySelector(information
+        ? "[data-lcdp-dialogue-message]"
+        : "[data-lcdp-alerte-message]");
+      const boutonFermer = information ? null : slot.querySelector("[data-lcdp-alerte-close]");
+      const boutonOk = slot.querySelector(information
+        ? '[data-lcdp-dialogue-action="compris"]'
+        : "[data-lcdp-alerte-ok]");
 
-      if (!alerte || !texte || !boutonFermer || !boutonOk) {
-        throw new Error("Structure de l’alerte incomplète.");
+      if (!alerte || !texte || !boutonOk || (!information && !boutonFermer)) {
+        throw new Error("Structure du dialogue incomplète.");
       }
-
+      if (information) {
+        const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+        if (titre) titre.textContent = "Mot de passe enregistré";
+        boutonOk.textContent = "Fermer";
+      }
       texte.textContent = texteMessage;
 
       await new Promise((resolve) => {
@@ -435,7 +448,7 @@
           resolve();
         }
 
-        boutonFermer.addEventListener("click", fermer, { once: true });
+        boutonFermer?.addEventListener("click", fermer, { once: true });
         boutonOk.addEventListener("click", fermer, { once: true });
 
         alerte.addEventListener("click", (event) => {
