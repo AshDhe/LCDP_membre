@@ -924,7 +924,7 @@
     const iconeParc = document.createElement("span");
     iconeParc.className = "lcdp-planifier-filtre__picto";
     iconeParc.setAttribute("aria-hidden", "true");
-    iconeParc.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.2 8.5A7.2 7.2 0 0 1 18 7.4M18.2 4.7v3.1h-3.1M17.8 15.5A7.2 7.2 0 0 1 6 16.6M5.8 19.3v-3.1h3.1" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    iconeParc.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>';
     boutonParc.append(iconeParc, document.createTextNode("CHANGER"));
     actionsFiltres.appendChild(boutonParc);
     // Commande COACH affichée dans les trois vues ; action définie ultérieurement.
@@ -935,7 +935,7 @@
     boutonCoach.setAttribute("aria-disabled", "true");
     const iconeCoach = document.createElement("span");
     iconeCoach.className = "lcdp-planifier-filtre-coach__picto";
-    iconeCoach.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 20v-2.2a5.5 5.5 0 0 1 11 0V20M16 5.5a3 3 0 0 1 0 6M17 14a4 4 0 0 1 3.5 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    iconeCoach.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>';
     iconeCoach.setAttribute("aria-hidden", "true");
     boutonCoach.append(iconeCoach, document.createTextNode("COACH"));
     actionsFiltres.appendChild(boutonCoach);
