@@ -1277,9 +1277,11 @@
         return;
       }
       // Ne pas perdre le parc précédent lorsque le chargement échoue.
+      const generationSelection = ++generationPlanning;
       const terminerAttente = commencerAttenteCalendrierMois();
       try {
         const droits = await chargerDroitsPlanningParcMembre(parc);
+        if (generationSelection !== generationPlanning) return;
         // En provenance de l'alerte, ouvrir directement le mois de la première
         // disponibilité correspondante, uniquement si les droits le permettent.
         if(resultatsAlerteActifs && /^\\d{4}-\\d{2}-\\d{2}$/.test(String(parc.date||""))){
@@ -1294,13 +1296,13 @@
         }
         const demande = { parc, annee: etat.annee, mois: etat.mois };
         const donnees = await chargerPlanningParcMoisLecture(demande);
+        if (generationSelection !== generationPlanning) return;
         parcSelectionne = parc;
         droitsParc = droits;
         etatPage.droitsPlanningParcActifs = droits;
         preparationAbonnementPlanifier = Boolean(window.LCDP_ABOREZA?.actif());
         planningCourant = donnees;
         etatPage.calendrierMoisActif = { ...demande, modePlanning: "lecture", planning: donnees };
-        generationPlanning++;
         afficher();
         enregistrerContextePlanning();
         // La liste/carte est un filtre en superposition, jamais une autre page.
@@ -1328,7 +1330,9 @@
         if (generation !== generationPlanning) return;
         planningCourant = donnees;
         etatPage.calendrierMoisActif = { ...demande, modePlanning: "lecture", planning: donnees };
-        remplirGrilleCalendrier(grille, etatPage.calendrierMoisActif, donnees);
+        // Reconstruire toute la vue à partir de l'état courant, et non uniquement
+        // les cases : mois, navigation et données affichées restent synchronisés.
+        afficher();
       } catch (error) {
         if (generation !== generationPlanning) return;
         message.textContent = error.message || "Impossible de charger le planning du parc.";
@@ -1438,8 +1442,10 @@
       if (etat.annee * 12 + etat.mois <= borne) return;
       changerMois(etat, -1);
       enregistrerContextePlanning();
+      // Ne jamais réutiliser le planning du mois précédent sur le nouveau mois.
+      planningCourant = [];
       afficher();
-      if (parcSelectionne) actualiserMoisParc();
+      if (parcSelectionne) actualiserMoisParc().catch(console.error);
     });
     suivant.addEventListener("click", () => {
       if (window.LCDP_ABOREZA?.actif()) return;
@@ -1452,8 +1458,10 @@
       }
       changerMois(etat, 1);
       enregistrerContextePlanning();
+      // Ne jamais réutiliser le planning du mois précédent sur le nouveau mois.
+      planningCourant = [];
       afficher();
-      if (parcSelectionne) actualiserMoisParc();
+      if (parcSelectionne) actualiserMoisParc().catch(console.error);
     });
     fermer.addEventListener("click", () => {
       fermer.blur();
