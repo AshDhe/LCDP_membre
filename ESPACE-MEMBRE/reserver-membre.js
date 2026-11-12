@@ -779,17 +779,13 @@
     }
     const idparc = String(parc.idparc || parc.id || "");
     if (!idparc) return;
-    const reponse = await ouvrirDialogueBoutonsSuperpose({
-      titre: "Duo Actif",
-      texte: "Souhaitez-vous faire une déclaration Duo Actif pour ce parc ?",
-      boutons: [
-        {label:"Oui",valeur:"oui",style:"lcdp-button-primary"},
-        {label:"Non",valeur:"non",style:"lcdp-button-secondary"}
-      ]
-    });
+    const reponse = await afficherChoixPlanifier(
+      "Souhaitez-vous faire une déclaration Duo Actif pour ce parc ?",
+      { titre: "Duo Actif", libelleAnnuler: "Non", libelleConfirmer: "Oui" }
+    );
     // Non, fermeture ou clic extérieur = aucune action.
     // ATTENTION : le stockage reste une maquette tant que le Worker n'est pas raccordé.
-    if (reponse !== "oui") return;
+    if (reponse !== true) return;
     tagsDuoActifMaquette.add(idparc);
     await afficherDialogueInformationPlanifier({
       titre: "Duo Actif",
@@ -2378,28 +2374,15 @@
     let confirmation = null;
 
     try {
-      confirmation = await ouvrirDialogueBoutonsSuperpose({
-        titre: "Confirmer l’ouverture du micro",
-        texte:
-          "La recherche avec l’IA utilise votre microphone pendant la conversation.",
-        boutons: [
-          {
-            label: "Annuler",
-            valeur: "annuler",
-            style: "lcdp-button-secondary"
-          },
-          {
-            label: "Confirmer",
-            valeur: "confirmer",
-            style: "lcdp-button-orange"
-          }
-        ]
-      });
+      confirmation = await afficherChoixPlanifier(
+        "La recherche avec l’IA utilise votre microphone pendant la conversation.",
+        { titre: "Confirmer l’ouverture du micro", libelleAnnuler: "Annuler", libelleConfirmer: "Confirmer" }
+      );
     } finally {
       etatIaShift.confirmationOuvertureEnCours = false;
     }
 
-    if (confirmation !== "confirmer") return;
+    if (confirmation !== true) return;
 
     await ouvrirRechercheIaShift();
   }
