@@ -639,6 +639,14 @@
       titre.before(etiquette);
       texte.textContent = 'Vous pouvez les modifier après abonnement.';
       texte.hidden = false;
+      // Le composant partagé peut imposer un alignement de texte plus spécifique :
+      // centrer explicitement ce seul sous-titre sans toucher aux autres dialogues.
+      texte.style.setProperty('display', 'block', 'important');
+      texte.style.setProperty('width', '100%', 'important');
+      texte.style.setProperty('max-width', 'none', 'important');
+      texte.style.setProperty('margin-inline', 'auto', 'important');
+      texte.style.setProperty('text-align', 'center', 'important');
+      texte.style.setProperty('align-self', 'stretch', 'important');
       actions.replaceChildren();
       actions.classList.add('lcdp-aboreza-preparation__contenu');
 
