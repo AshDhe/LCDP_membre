@@ -1301,7 +1301,7 @@
       // Les routes métier restent identiques tant que le passage RÉZA-BO → ABO-RÉZA n'est pas raccordé.
       if (acces?.actionSecondaire === "abonnement") {
         creerAction("Abonnement", () => {
-          window.location.href = construireUrlSite("/ESPACE-MEMBRE/abonnement-membre.html");
+          window.location.href = construireUrlSite("/ESPACE-MEMBRE/membre-abonne.html");
         });
       }
       if (acces?.actionSecondaire === "regulariser" && acces?.orderid) {
