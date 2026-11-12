@@ -1745,7 +1745,7 @@
       return;
     }
 
-    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
+    const ok = await afficherChoixPlanifier("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.", { titre: "Régulariser l’abonnement", libelleConfirmer: "Continuer vers le paiement" });
     if (!ok) return;
 
     const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
@@ -6340,6 +6340,43 @@
         if (event.target === dialogue && options.fermetureLibre!==false) fermer(null);
       });
     });
+  }
+
+  async function afficherChoixPlanifier(message, options = {}) {
+    const conteneur = document.createElement("div");
+    hoteDialoguesPlanifier().appendChild(conteneur);
+    try {
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html"));
+      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="choix"]');
+      const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
+      const annuler = conteneur.querySelector('[data-lcdp-dialogue-action="annuler"]');
+      const confirmer = conteneur.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+      if (!dialogue || !titre || !texte || !annuler || !confirmer) throw new Error("Structure CHOIX incomplète.");
+      titre.textContent = options.titre || "Confirmation";
+      texte.textContent = String(message || "");
+      annuler.textContent = options.libelleAnnuler || "Annuler";
+      confirmer.textContent = options.libelleConfirmer || "Confirmer";
+      dialogue.dataset.lcdpDialogueContext = "conteneur";
+      return await new Promise(resolve => {
+        let termine = false;
+        const fermer = valeur => {
+          if (termine) return;
+          termine = true;
+          conteneur.remove();
+          resolve(valeur);
+        };
+        annuler.addEventListener("click", () => fermer(false), { once: true });
+        confirmer.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => {
+          if (event.target === dialogue) fermer(false);
+        });
+        confirmer.focus();
+      });
+    } catch (erreur) {
+      conteneur.remove();
+      throw erreur;
+    }
   }
 
   async function afficherAlerteSuperposee(
