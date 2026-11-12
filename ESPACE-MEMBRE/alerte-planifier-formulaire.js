@@ -34,8 +34,10 @@
     dlg.querySelector("[data-lcdp-dialogue-titre]").textContent="ALERTE PLANIFIER";
     dlg.querySelector("[data-lcdp-dialogue-message]").textContent=message;
     const action=dlg.querySelector('[data-lcdp-dialogue-action="compris"]');
-    action.textContent="Fermer";
-    action.addEventListener("click",()=>slot.replaceChildren(),{once:true});
+    action.textContent="OK";
+    return new Promise(resolve=>{
+      action.addEventListener("click",()=>{slot.replaceChildren();resolve(true);},{once:true});
+    });
   };
   async function ouvrirFormulaireAlertePlanning(options={}) {
     // Même grille de filtre que MES ACCÈS ; composants Diginum et calendrier
@@ -337,7 +339,13 @@
         if(!reponse.ok||data?.ok!==true)throw new Error(data?.message||"Enregistrement indisponible.");
         fermer();
         if(typeof options.onEnregistre==="function")await options.onEnregistre(data);
-        else await afficherAlerte("Alerte enregistrée. Retrouvez-la dans MON COMPTE → SERVICE.");
+        else {
+          await afficherAlerte("Alerte enregistrée. Retrouvez-la dans MON COMPTE → SERVICE.");
+          // Uniquement après l'accusé de réception de création : lancer la recherche.
+          if(!source && data?.alerte?.idalerte && window.LCDP_alerteNavigation?.lancer){
+            await window.LCDP_alerteNavigation.lancer(data.alerte);
+          }
+        }
       }catch(err){
         // TypeError au fetch : aucun statut HTTP récupérable (réseau, DNS,
         // TLS ou CORS). Ne pas l'attribuer à tort à la session membre.
