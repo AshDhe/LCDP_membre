@@ -244,12 +244,16 @@
         titre = 'Privilège de l’abonnement ' + code + (nom && nom.toUpperCase() !== code.toUpperCase() ? ' (' + nom + ')' : '');
         const nombre = valeur => valeur === null || valeur === undefined
           ? 'Non renseigné' : String(valeur);
+        const estUnJour = code === '1J';
+        const duoPlusInclus = Number(p.freqduoplus) > 0 && Number(p.duoplus) > 0;
         lignes = [
-          'Planifier illimité selon CGV',
+          estUnJour ? 'Planifier sur une seule journée selon CGV' : 'Planifier illimité selon CGV',
           nombre(p.maxduo) + ' invités DUO différents',
-          'DUO+ ' + nombre(p.freqduoplus) + ' x par mois (' + nombre(p.duoplus) + ' invités simultanés)',
+          duoPlusInclus
+            ? 'DUO+ ' + nombre(p.freqduoplus) + ' x par mois (' + nombre(p.duoplus) + ' invités simultanés)'
+            : 'DUO+ non inclus',
           nombre(p.famille) + ' invités FAMILLE',
-          'Payable en ' + nombre(p.ech) + ' échéances'
+          'Payable en ' + nombre(p.ech) + (Number(p.ech) === 1 ? ' échéance' : ' échéances')
         ];
       }
     } catch (erreur) {
