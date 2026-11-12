@@ -305,9 +305,24 @@
           const option = elem('div', 'lcdp-aboreza-catalogue__option lcdp-aboreza-catalogue__option--indisponible');
           const ligne = elem('div', 'lcdp-aboreza-catalogue__option-ligne');
           ligne.append(elem('strong', 'lcdp-aboreza-catalogue__nom', nomFormule(offre.formule)));
-          // L'étiquette reste générique tant que le Worker ne renvoie pas
-          // de codes de causes fiables et distincts. Conserver le motif serveur en dessous.
-          ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', 'Abonnement indisponible'));
+          // Une étiquette par cause réellement retournée par ABO-RÉZA.
+          // Les codes inconnus ne sont pas interprétés par l'interface.
+          const libelles = {
+            DATE_NON_AUTORISEE: 'Date non autorisée',
+            CHEVAUCHEMENT_PARTIEL: 'Chevauchement partiel',
+            PERIODE_DEJA_COUVERTE: 'Période déjà couverte',
+            HORIZON_NON_PROLONGE: 'Horizon non prolongé'
+          };
+          const causes = [...new Set(Array.isArray(offre.codesIndisponibilite)
+            ? offre.codesIndisponibilite.filter(code => Object.hasOwn(libelles, code))
+            : [])];
+          if (!causes.length) {
+            ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', 'Abonnement indisponible'));
+          } else {
+            for (const code of causes) {
+              ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', libelles[code]));
+            }
+          }
           option.append(ligne);
           option.append(elem('p', 'lcdp-aboreza-catalogue__description',
             offre.motifIndisponibilite || 'Aucune date de démarrage compatible.'));
