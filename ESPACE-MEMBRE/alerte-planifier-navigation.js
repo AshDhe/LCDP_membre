@@ -54,7 +54,7 @@
       const date=String(r.date||"");
       if(!id||!/^\d{4}-\d{2}-\d{2}$/.test(date))continue;
       if(!uniques.has(id)||date<uniques.get(id).date){
-        uniques.set(id,{idparc:id,nom:String(r.parc||"Parc"),dptmt:String(r.dptmt||""),date,statut:"oui"});
+        uniques.set(id,{idparc:id,nom:String(r.parc||"Parc"),dptmt:String(r.dptmt||""),date,statut:String(r.statut||"").toLowerCase()});
       }
     }
     const parcs=[...uniques.values()].sort((a,b)=>a.nom.localeCompare(b.nom,"fr",{sensitivity:"base"})||a.idparc.localeCompare(b.idparc));
