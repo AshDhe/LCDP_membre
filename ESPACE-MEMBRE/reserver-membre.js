@@ -6160,7 +6160,7 @@
       });
       if(reponse==="fermer"){fermerShiftDetailParc();return "fermer";}
       if(reponse==="ajouter"){
-        const parc=await afficherChoixPlanifier("Dans quel parc souhaitez-vous planifier ?",{titre:"Ajouter une réservation",libelleAnnuler:"Autre parc",libelleConfirmer:"Ce parc"});
+        const parc=await afficherChoixPlanifier("Dans quel parc souhaitez-vous planifier ?",{titre:"Ajouter une réservation",libelleAnnuler:"Autre parc",libelleConfirmer:"Ce parc",fermetureFondValeur:null});
         if(parc===true){
           if(typeof choix.retourMois==="function")choix.retourMois();
           else await ouvrirShiftDetailParc(choix.parc,"planning");
@@ -6375,7 +6375,7 @@
         annuler.addEventListener("click", () => fermer(false), { once: true });
         confirmer.addEventListener("click", () => fermer(true), { once: true });
         dialogue.addEventListener("click", event => {
-          if (event.target === dialogue) fermer(false);
+          if (event.target === dialogue) fermer(Object.prototype.hasOwnProperty.call(options, "fermetureFondValeur") ? options.fermetureFondValeur : false);
         });
         confirmer.focus();
       });
