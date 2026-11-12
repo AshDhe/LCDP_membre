@@ -99,20 +99,32 @@
       box-sizing: border-box;
       width: 100%;
       margin: 6px 0 14px;
-      padding-left: 23px;
-      list-style: disc outside;
+      padding-left: 0;
+      list-style: none;
       color: #57534e;
       text-align: left !important;
       font-size: .875rem;
       line-height: 1.55;
     }
     .lcdp-aboreza-privileges-information .lcdp-aboreza-privileges-liste li {
-      margin: 0 0 8px;
-      padding-left: 2px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 0 0 10px;
+      padding-left: 0;
       text-align: left !important;
     }
-    .lcdp-aboreza-privileges-information .lcdp-aboreza-privileges-liste li::marker {
-      color: #4e6838;
+    .lcdp-aboreza-privileges-information .lcdp-aboreza-privileges-logo {
+      display: block;
+      flex: 0 0 17px;
+      width: 17px;
+      height: 17px;
+      object-fit: contain;
+      margin-top: 2px;
+    }
+    .lcdp-aboreza-privileges-information .lcdp-aboreza-privileges-liste li span {
+      flex: 1;
+      min-width: 0;
     }
     .lcdp-aboreza-privileges-information .lcdp-aboreza-privileges-ajouter {
       display: block;
@@ -412,7 +424,7 @@
 
   <script src="./attente-planifier.js"></script>
   <script src="./alerte-planifier-navigation.js"></script>
-  <script src="./reserver-membre.js?v=20261112-privileges-liens-v3"></script>
+  <script src="./reserver-membre.js?v=20261112-privileges-logo-1j-v4"></script>
   <script src="./paiement-membre.js"></script>
   <script src="./aboreza-membre.js?v=20261112-privileges-liens-v3"></script>
 </body>
