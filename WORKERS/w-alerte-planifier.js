@@ -68,7 +68,7 @@ function listeUniq(valeur,max,validateur,nom){
 }
 function criteresValides(input){
   if(!input||typeof input!=="object"||Array.isArray(input))throw erreur("Critères invalides");
-  const departements=listeUniq(input.departements||[],3,v=>/^(?:0[1-9]|[1-8][0-9]|9[0-5]|97[1-6])$/.test(v),"Départements");
+  const departements=listeUniq(input.departements||[],3,v=>/^(?:0[1-9]|[1-8][0-9]|9[0-5]|2A|2B|97[1-6])$/.test(v),"Départements");
   const parcs=listeUniq(input.parcs||[],3,v=>UUID.test(v),"Parcs");
   const mois=listeUniq(input.mois||[],3,v=>/^20\d{2}-(0[1-9]|1[0-2])$/.test(v),"Mois");
   const jours=listeUniq(input.jours||[],7,v=>/^[1-7]$/.test(v),"Jours");
