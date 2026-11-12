@@ -1347,12 +1347,41 @@
     // ABO-RÉZA réutilise la grille permanente, mais pilote seul son mois courant.
     etatPage.allerMoisAboReza = async (cle) => {
       if (!/^\d{4}-\d{2}$/.test(String(cle || ""))) throw new Error("Mois ABO-RÉZA invalide.");
+      const avant = { annee: etat.annee, mois: etat.mois, planning: planningCourant };
       etat.annee = Number(cle.slice(0,4));
       etat.mois = Number(cle.slice(5,7));
-      enregistrerContextePlanning();
-      planningCourant = [];
-      afficher();
-      if (parcSelectionne) await actualiserMoisParc();
+      if (!parcSelectionne) {
+        planningCourant = [];
+        afficher();
+        enregistrerContextePlanning();
+        return;
+      }
+      // Ne jamais dessiner un mois vide avant de recevoir les disponibilités.
+      // Le précédent planning reste visible avec son indicateur de chargement.
+      const generation = ++generationPlanning;
+      const demande = { parc: parcSelectionne, annee: etat.annee, mois: etat.mois };
+      const terminerAttente = commencerAttenteCalendrierMois();
+      try {
+        const donnees = await chargerPlanningParcMoisLecture(demande);
+        if (generation !== generationPlanning) return;
+        if (!Array.isArray(donnees) || donnees.length === 0)
+          throw new Error("Le planning du parc est vide pour ce mois. Réessayez ou signalez cette anomalie.");
+        planningCourant = donnees;
+        etatPage.calendrierMoisActif = { ...demande, modePlanning: "lecture", planning: donnees };
+        afficher();
+        enregistrerContextePlanning();
+      } catch (erreur) {
+        if (generation !== generationPlanning) return;
+        etat.annee = avant.annee;
+        etat.mois = avant.mois;
+        planningCourant = avant.planning;
+        afficher();
+        message.textContent = erreur.message || "Impossible de charger le planning du parc.";
+        message.hidden = false;
+        console.error("Échec de chargement du mois ABO-RÉZA", { mois: cle, parc: demande.parc.idparc || demande.parc.id }, erreur);
+      } finally {
+        terminerAttente();
+      }
     };
     // Le bandeau d'abonnement s'insère juste après la croix du planning.
     etatPage.hoteBandeauAboReza = calendrier.querySelector('.lcdp-box-calendrier-mois__card');
@@ -4573,10 +4602,7 @@
       const data = await reponse.json().catch(() => null);
 
       if (reponse.status === 401) {
-        await afficherAlerteDetailParcOuPage(
-          "Cette page est réservée aux membres invités ou abonnés."
-        );
-        return [];
+        throw new Error("Votre session membre n'autorise plus la lecture du planning. Reconnectez-vous.");
       }
 
       if (!reponse.ok || !data || !reponseApiOk(data)) {
