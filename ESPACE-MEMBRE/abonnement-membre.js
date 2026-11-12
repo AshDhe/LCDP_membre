@@ -1693,9 +1693,9 @@
   }
 
   async function confirmerCommandeAvantPaiement() {
-    return afficherAlerteSuperposee(
+    return afficherChoixAbonnement(
       "Vous allez être dirigé vers la page de paiement. Confirmez-vous votre commande ?",
-      { boutonOk: "Je confirme" }
+      { titre: "Confirmation de commande", libelleConfirmer: "Je confirme", superposition: true }
     );
   }
 
@@ -2584,7 +2584,7 @@
       return;
     }
 
-    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.");
+    const ok = await afficherChoixAbonnement("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.", { titre: "Régulariser l’abonnement", libelleConfirmer: "Continuer vers le paiement" });
     if (!ok) return;
 
     const url = PAGE_PAIEMENT_CB +
