@@ -149,6 +149,51 @@
       String(panier.nbSelectionnes) + ' accès planifiés à la commande');
     entete.append(titre, abonnement, nombreAcces);
 
+    // Deux consultations en INFORMATION dans le wrapper, sans quitter le bon.
+    const liensPrivileges = creer('div', 'lcdp-paiement-refonte__privileges');
+    const lienInclus = creer('a', 'lcdp-paiement-refonte__privileges-lien', 'Privilèges inclus');
+    lienInclus.href = '#';
+    lienInclus.addEventListener('click', async event => {
+      event.preventDefault();
+      try {
+        if (typeof window.LCDP_ABOREZA?.afficherPrivilegesAbonnement !== 'function')
+          throw new Error('Consultation des privilèges momentanément indisponible.');
+        await window.LCDP_ABOREZA.afficherPrivilegesAbonnement(panier.formule);
+      } catch (erreur) {
+        console.error('Privilèges inclus', erreur);
+      }
+    });
+    liensPrivileges.append(lienInclus);
+    const optionsAjoutees = Array.isArray(panier.options) ? panier.options : [];
+    if (optionsAjoutees.length) {
+      const lienAjoutes = creer('a', 'lcdp-paiement-refonte__privileges-lien', 'Privilèges ajoutés');
+      lienAjoutes.href = '#';
+      lienAjoutes.addEventListener('click', async event => {
+        event.preventDefault();
+        const libelles = {
+          '+5 DUOMAX': '+5 invités DUO différents',
+          '+5 DUO+': '+5 invités DUO+ par mois',
+          '+2 FAMILLE': '+2 invités FAMILLE'
+        };
+        const lignes = optionsAjoutees.map(option =>
+          (libelles[option.code] || option.code) +
+          (Number(option.multiplicateur) > 1 ? ' pendant ' + option.multiplicateur + ' mois' : '')
+        );
+        try {
+          await window.LCDP_PLANIFIER_ABOREZA?.informer?.('', {
+            titre: 'Privilèges ajoutés',
+            libelleBouton: 'Fermer',
+            classe: 'lcdp-aboreza-privileges-information',
+            lignes
+          });
+        } catch (erreur) {
+          console.error('Privilèges ajoutés', erreur);
+        }
+      });
+      liensPrivileges.append(lienAjoutes);
+    }
+    entete.append(liensPrivileges);
+
     const contenu = creer('div', 'lcdp-paiement-refonte__contenu');
     const resume = creer('section', 'lcdp-paiement-refonte__resume');
     const donnees = [
