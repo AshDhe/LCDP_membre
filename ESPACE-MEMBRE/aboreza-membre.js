@@ -568,7 +568,7 @@
       actions.append(continuer);
 
       const regles = elem('section', 'lcdp-aboreza-preparation__regles');
-      regles.append(elem('h3', 'lcdp-aboreza-preparation__section-titre', 'COMMENT PLANIFIER À LA COMMANDE'));
+      regles.append(elem('h3', 'lcdp-aboreza-preparation__section-titre', 'COMMENT PLANIFIER À LA COMMANDE ?'));
       const icones = {
         parc: '<path d="M12 22s7-4.4 7-11a7 7 0 1 0-14 0c0 6.6 7 11 7 11Z"/><circle cx="12" cy="11" r="2.5"/>',
         calendrier: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h3"/>',
