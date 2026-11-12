@@ -1305,9 +1305,9 @@
       bouton.addEventListener("click", async () => {
         if (statut.disabled) {
           if (statut.type === "occupe") {
-            await afficherInformationAbonnement("Vous êtes déjà abonné(e) à cette date", { titre: "Date déjà couverte" });
+            await afficherInformationAbonnement("Vous êtes déjà abonné(e) à cette date", { titre: "Date déjà couverte", superposition: true });
           } else if (statut.type === "incompatible") {
-            await afficherInformationAbonnement("Date incompatible avec votre prochain abonnement", { titre: "Date indisponible" });
+            await afficherInformationAbonnement("Date incompatible avec votre prochain abonnement", { titre: "Date indisponible", superposition: true });
           }
           return;
         }
@@ -1495,7 +1495,7 @@
         bouton.addEventListener("click", async () => {
           if (statut.disabled) {
             if (statut.type === "occupe") {
-              await afficherInformationAbonnement("Vous êtes déjà abonné(e) à cette date", { titre: "Date déjà couverte" });
+              await afficherInformationAbonnement("Vous êtes déjà abonné(e) à cette date", { titre: "Date déjà couverte", superposition: true });
             }
             return;
           }
@@ -2190,8 +2190,15 @@
   }
 
   async function afficherInformationAbonnement(message, options = {}) {
-    const slot = options.slot || obtenirLightboxSlot();
-    if (!options.slot) slot.replaceChildren();
+    // En cours de workflow, superposer l'information sans détruire son DOM.
+    const superposition = options.superposition === true;
+    const slot = superposition ? document.createElement("div") : (options.slot || obtenirLightboxSlot());
+    if (superposition) {
+      slot.className = "lcdp-workflow-abonnement-alerte";
+      document.body.appendChild(slot);
+    } else if (!options.slot) {
+      slot.replaceChildren();
+    }
     const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
     slot.appendChild(fragment);
     const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="information"]');
@@ -2218,7 +2225,8 @@
       bouton.addEventListener("click", () => {
         if (resolu) return;
         resolu = true;
-        slot.replaceChildren();
+        if (superposition) slot.remove();
+        else slot.replaceChildren();
         resolve(true);
       }, { once: true });
       bouton.focus();
