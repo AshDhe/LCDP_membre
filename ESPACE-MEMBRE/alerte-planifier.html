@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="fr" data-lcdp-css="c085 c034 c037 c038 c033 c036 c035 c041 c040 c066 c047">
+<head>
+  <meta charset="utf-8">
+
+  <title>ALERTE PLANIFIER - La Clé du Parc</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Prévenir le flash de l'ancien formulaire pendant le chargement des CSS et des données. -->
+  <style>
+    /* Couverture immédiate de l'écran, avant config.js et les CSS distants.
+       Ces pseudo-éléments empêchent tout affichage transitoire de contrôles
+       et donnent un indicateur dès le premier rendu du document. */
+    html:not(.lcdp-alerte-page-pret)::before {
+      content: "";
+      position: fixed; inset: 0; z-index: 2147483644;
+      background: #fff; pointer-events: none;
+    }
+    html:not(.lcdp-alerte-page-pret)::after {
+      content: "";
+      position: fixed; top: 50%; left: 50%; z-index: 2147483645;
+      box-sizing: border-box; width: 64px; height: 64px;
+      margin: -32px 0 0 -32px;
+      border: 3px solid rgba(6,95,70,.10);
+      border-top-color: #e59834; border-radius: 50%;
+      background: radial-gradient(circle, #4e6838 0 4px, transparent 4.5px);
+      animation: lcdp-alerte-page-spinner-tourne .8s linear infinite;
+      pointer-events: none;
+    }
+    body.lcdp-page-alerte-planifier:not(.lcdp-alerte-page-pret) > .lcdp-site-page { visibility: hidden; }
+    #lcdp-alerte-page-attente-initiale {
+      position: fixed; inset: 0; z-index: 2147483646;
+      display: flex; align-items: center; justify-content: center;
+      background: #fff;
+    }
+    #lcdp-alerte-page-attente-initiale .lcdp-loading-spinner {
+      position: relative; display: flex; align-items: center; justify-content: center;
+      box-sizing: border-box; width: 64px; height: 64px;
+    }
+    #lcdp-alerte-page-attente-initiale .lcdp-loading-spinner > svg {
+      position: absolute; inset: 0; display: block; width: 100%; height: 100%;
+    }
+    #lcdp-alerte-page-attente-initiale .lcdp-loading-spinner__track { color: rgba(6,95,70,.10); }
+    #lcdp-alerte-page-attente-initiale .lcdp-loading-spinner__arc {
+      color: #e59834; animation: lcdp-alerte-page-spinner-tourne .8s linear infinite;
+    }
+    #lcdp-alerte-page-attente-initiale .lcdp-loading-spinner__dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #4e6838;
+    }
+    @keyframes lcdp-alerte-page-spinner-tourne { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      html:not(.lcdp-alerte-page-pret)::after,
+      #lcdp-alerte-page-attente-initiale .lcdp-loading-spinner__arc { animation: none; }
+    }
+  </style>
+  <meta name="description" content="Créer et consulter vos recherches PLANIFIER enregistrées.">
+
+  <script src="../config.js"></script>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const config = window.SITE_CONFIG || {};
+
+      function nettoyerBaseUrl(value) {
+        return String(value || "").replace(/\/+$/, "");
+      }
+
+      function buildUrl(base, path) {
+        return nettoyerBaseUrl(base) + "/" + String(path || "").replace(/^\/+/, "");
+      }
+
+      const membreBase = nettoyerBaseUrl(
+        config.membreBaseUrl ||
+        config.MEMBRE_BASE ||
+        config.siteBase ||
+        ""
+      );
+
+      const publicBase = nettoyerBaseUrl(
+        config.publicBaseUrl ||
+        config.PUBLIC_BASE ||
+        ""
+      );
+
+      const objetBase = nettoyerBaseUrl(
+        config.objetBaseUrl ||
+        config.OBJET_BASE ||
+        buildUrl(publicBase, "/OBJET")
+      );
+
+      window.SITE_BASE = membreBase;
+      window.LCDP_MEMBRE_BASE = membreBase;
+      window.LCDP_PUBLIC_BASE = publicBase;
+      window.LCDP_OBJET_BASE = objetBase;
+
+      window.LCDP_urlPublic = function LCDP_urlPublic(path) {
+        if (typeof config.publicUrl === "function") {
+          return config.publicUrl(path);
+        }
+
+        return buildUrl(publicBase, path);
+      };
+
+      window.LCDP_urlMembre = function LCDP_urlMembre(path) {
+        if (typeof config.membreUrl === "function") {
+          return config.membreUrl(path);
+        }
+
+        return buildUrl(membreBase, path);
+      };
+
+      window.LCDP_urlObjet = function LCDP_urlObjet(path) {
+        if (typeof config.objetUrl === "function") {
+          return config.objetUrl(path);
+        }
+
+        return buildUrl(objetBase, path);
+      };
+
+      // Coque commune : wrapper, bandeau, burger, footer et composants métier.
+      // Les réglages de cette page restent dans lcdp-mon-compte.css.
+      const feuillesCssObjet = [
+        "/CSSBASE/lcdp-central-mobile-first.css",
+        "/CSSBASE/lcdp-mon-compte.css"
+      ];
+
+      feuillesCssObjet.forEach((chemin) => {
+        document.write(
+          '<link rel="stylesheet" href="' +
+          window.LCDP_urlObjet(chemin) +
+          '">'
+        );
+      });
+    })();
+  </script>
+  <link rel="stylesheet" href="./alerte-planifier.css">
+</head>
+
+<body class="lcdp-page-alerte-planifier lcdp-app-page">
+  <div class="lcdp-attente-plein-ecran" id="lcdp-alerte-page-attente-initiale" role="status" aria-label="Chargement d'ALERTE PLANIFIER">
+    <div class="lcdp-loading-spinner" aria-hidden="true">
+      <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
+      <svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg>
+      <span class="lcdp-loading-spinner__dot"></span>
+    </div>
+  </div>
+  <div class="lcdp-site-page lcdp-app-wrapper">
+
+    <div id="lcdp-bandeau-slot"></div>
+
+    <main class="lcdp-site-main">
+      <section class="lcdp-page-section" aria-label="Alerte planifier">
+        <div class="lcdp-page-container">
+          <div class="lcdp-page-content lcdp-page-content--avec-entete lcdp-stack-large">
+
+            <header class="lcdp-page-header">
+              <p class="lcdp-mention-connexion lcdp-etiquette-statut-membre" id="mention-statut-membre" aria-live="polite">
+                
+              </p>
+            </header>
+
+            <div id="lcdp-alerte-planifier-slot" aria-live="off"></div>
+
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="lcdp-footer-slot"></div>
+    <div id="lcdp-lightbox-slot"></div>
+
+  </div>
+
+
+
+  <script src="./alerte-planifier.js"></script>
+</body>
+</html>
