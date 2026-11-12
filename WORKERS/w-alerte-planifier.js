@@ -162,8 +162,9 @@ export default {async fetch(request,env){
       const selection=(url.searchParams.get("departements")||"").split(",").filter(Boolean);
       if(selection.length>3||!selection.every(x=>/^\d{2,3}[A-B]?$/.test(x)))throw erreur("Départements invalides");
       const parcs=[];
-      // Paginer plutôt que tronquer les milliers de parcs de la base.
-      for(let offset=0;offset<6000;offset+=1000){
+      // Les parcs sont chargés à la demande après choix des départements.
+      // Ne pas télécharger les milliers de parcs lors de l'ouverture.
+      for(let offset=0;selection.length&&offset<6000;offset+=1000){
         const page=await db(env,"parcs",{select:"idparc,nom,dptmt",...(selection.length?{dptmt:"in.("+selection.join(",")+")"}:{}),order:"nom.asc",limit:"1000",offset:String(offset)});
         parcs.push(...page);
         if(page.length<1000)break;
