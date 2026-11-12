@@ -2840,7 +2840,7 @@
     }
 
     if (reservationHorsAbonnementMembre(reservation)) {
-      await afficherAlerteInvitationReservation(formaterParrainInvitationRecue(reservation), declencheur);
+      await afficherAlerteInvitationReservation(formaterParrainInvitationRecue(reservation), declencheur, { profil: "information" });
       return;
     }
 
@@ -3963,11 +3963,10 @@
     }
 
     if (reservationDelaiActionDepasse(reservation)) {
-      if (workflowReservation) {
-        await afficherAlerteOkParDessusLightbox("Vous ne pouvez plus utiliser la fonction annuler (délai dépassé).");
-      } else {
-        await afficherAlerteOk("Vous ne pouvez plus utiliser la fonction annuler (délai dépassé).");
-      }
+      await afficherInformationPlanning(
+        "Vous ne pouvez plus utiliser la fonction annuler (délai dépassé).",
+        { titre: "Délai d’annulation dépassé", superposition: Boolean(workflowReservation) }
+      );
       return;
     }
 
