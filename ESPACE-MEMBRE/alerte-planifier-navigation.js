@@ -66,6 +66,13 @@
     const data=await api("/alertes");
     const alertes=Array.isArray(data.alertes)?data.alertes.filter(a=>a?.idalerte):[];
     if(!alertes.length){await creer();return;}
+    const quota = data.quotaLancements;
+    const quotaJournalierAtteint = quota && Number(quota.restants) === 0;
+    if(quotaJournalierAtteint){
+      await choix([{label:"Annuler",value:null}],
+        "Vous ne pouvez plus lancer d'alerte aujourd'hui. Modifiez votre alerte depuis MON COMPTE, si besoin.");
+      return;
+    }
     const options=alertes.map(a=>({label:"Lancer : "+a.titre,value:a.idalerte,primary:true}));
     if(alertes.length<(permanent?2:1))options.push({label:"Créer une nouvelle alerte",value:"creer"});
     options.push({label:"Annuler",value:null});
