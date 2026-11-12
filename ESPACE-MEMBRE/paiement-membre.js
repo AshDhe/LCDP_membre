@@ -461,7 +461,7 @@
       boutonAnnuler.setAttribute('aria-label', 'Fermer le récapitulatif');
       boutonAnnuler.setAttribute('title', 'Fermer et revenir au planning');
       boutonAnnuler.textContent = '×';
-      carte.querySelector('.lcdp-paiement-refonte__entete')?.append(boutonAnnuler);
+      recap.querySelector('.lcdp-paiement-refonte__entete')?.append(boutonAnnuler);
     }
     // Précédent et Retour au planning avaient exactement la même action :
     // conserver une seule sortie, sans annuler la commande ni les retenues.
