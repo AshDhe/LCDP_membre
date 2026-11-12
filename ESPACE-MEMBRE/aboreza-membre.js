@@ -239,7 +239,7 @@
       if (!texte || !actions) throw Error('Structure de sélection ABO-RÉZA incomplète.');
       texte.textContent = offres.some(offre => offre.disponible === false)
         ? 'Certains abonnements sont incompatibles avec votre planning actuel.'
-        : 'Tous les abonnements sont compatibles avec votre planning.';
+        : 'Tous les abonnements sont compatibles avec votre planning actuel.';
       actions.replaceChildren();
       actions.classList.add('lcdp-aboreza-catalogue__actions');
 
