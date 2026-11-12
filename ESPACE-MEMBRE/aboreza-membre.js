@@ -229,7 +229,7 @@
     return conteneur;
   }
   async function choisirFormuleCatalogue(offres) {
-    return modalComposant('dialogue', 'Choisissez votre abonnement', (objet, finir) => {
+    return modalComposant('dialogue', 'Nouvel abonnement', (objet, finir) => {
       const workflow = objet.closest('[data-lcdp-box-workflow-abonnement]');
       workflow?.classList.add('lcdp-aboreza-catalogue');
       objet.classList.add('lcdp-aboreza-catalogue__dialogue');
@@ -237,13 +237,13 @@
       const texte = objet.querySelector('[data-lcdp-dialogue-text]');
       const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
       if (!texte || !actions) throw Error('Structure de sélection ABO-RÉZA incomplète.');
-      texte.textContent = 'Toutes les formules sont affichées. Les abonnements non compatibles avec votre planning actuel sont désactivés.';
+      texte.textContent = 'Les abonnements incompatibles avec votre planning actuel sont indisponibles.';
       actions.replaceChildren();
       actions.classList.add('lcdp-aboreza-catalogue__actions');
 
       const zoneDefilement = elem('div', 'lcdp-aboreza-catalogue__liste');
       const zoneValidation = elem('div', 'lcdp-aboreza-catalogue__validation');
-      const continuer = bouton('Continuer avec cette formule', true);
+      const continuer = bouton('Continuer avec cet abonnement', true);
       continuer.classList.add('lcdp-aboreza-catalogue__continuer');
       continuer.disabled = true;
       let selection = null;
@@ -261,7 +261,7 @@
       }
 
       if (disponibles.length) {
-        const listeDisponibles = section('Formules disponibles', 'lcdp-aboreza-catalogue__section--disponibles');
+        const listeDisponibles = section('Abonnement disponible', 'lcdp-aboreza-catalogue__section--disponibles');
         const nomRadio = 'lcdp-aboreza-catalogue-formule';
         disponibles.forEach((offre, index) => {
           const option = elem('label', 'lcdp-aboreza-catalogue__option');
@@ -275,7 +275,7 @@
           ligne.append(elem('strong', 'lcdp-aboreza-catalogue__nom', nomFormule(offre.formule)));
           ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut lcdp-aboreza-catalogue__statut--disponible', 'Disponible'));
           contenu.append(ligne);
-          contenu.append(elem('span', 'lcdp-aboreza-catalogue__description', 'Formule disponible pour votre planning.'));
+          contenu.append(elem('span', 'lcdp-aboreza-catalogue__description', 'Abonnement disponible pour votre planning.'));
           const indicateur = elem('span', 'lcdp-aboreza-catalogue__indicateur');
           indicateur.setAttribute('aria-hidden', 'true');
           option.append(radio, contenu, indicateur);
@@ -300,12 +300,26 @@
       zoneDefilement.append(zoneValidation);
 
       if (indisponibles.length) {
-        const listeIndisponibles = section('Formules indisponibles', 'lcdp-aboreza-catalogue__section--indisponibles');
+        const listeIndisponibles = section('Abonnement indisponible', 'lcdp-aboreza-catalogue__section--indisponibles');
         for (const offre of indisponibles) {
           const option = elem('div', 'lcdp-aboreza-catalogue__option lcdp-aboreza-catalogue__option--indisponible');
           const ligne = elem('div', 'lcdp-aboreza-catalogue__option-ligne');
           ligne.append(elem('strong', 'lcdp-aboreza-catalogue__nom', nomFormule(offre.formule)));
-          ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', 'Indisponible'));
+          // Les motifs explicitement fournis par le catalogue pilotent les étiquettes.
+          // Un motif composite/ambigu reste "Abonnement indisponible" : ne pas
+          // attribuer sans preuve une cause précise absente de la réponse serveur.
+          const motif = String(offre.motifIndisponibilite || '').toLocaleLowerCase('fr-FR');
+          const causes = [];
+          if (/hors date|hors délai|date limite dépassée|fenêtre de démarrage expirée/.test(motif)) {
+            causes.push('Abonnement hors date');
+          }
+          if (/chevauch|incompatib|ne permet pas d.inclure entièrement|inclusion impossible/.test(motif)) {
+            causes.push('Abonnement incompatible');
+          }
+          if (!causes.length) causes.push('Abonnement indisponible');
+          for (const cause of causes) {
+            ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', cause));
+          }
           option.append(ligne);
           option.append(elem('p', 'lcdp-aboreza-catalogue__description',
             offre.motifIndisponibilite || 'Aucune date de démarrage compatible.'));
