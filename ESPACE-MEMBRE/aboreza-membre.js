@@ -257,7 +257,7 @@
     }
     await bridge()?.informer?.('', {
       titre, libelleBouton: 'Fermer', classe: 'lcdp-aboreza-privileges-information',
-      lignes, lienSecondaire: 'Ajouter des privilèges'
+      lignes
     });
   }
   function lienPrivilegesAbonnement(formule) {
@@ -267,6 +267,19 @@
       evenement.preventDefault();
       evenement.stopPropagation();
       afficherPrivilegesAbonnement(formule).catch(console.error);
+    });
+    return lien;
+  }
+  function lienAjouterPrivileges() {
+    const lien = elem('a', 'lcdp-aboreza-catalogue__privileges lcdp-aboreza-catalogue__privileges--ajouter', 'Ajouter des privilèges');
+    lien.href = '#';
+    lien.addEventListener('click', evenement => {
+      evenement.preventDefault();
+      evenement.stopPropagation();
+      // Le parcours d'achat de privilèges n'est pas encore raccordé.
+      bridge()?.informer?.('Le parcours d’ajout de privilèges n’est pas encore disponible.', {
+        titre: 'Information', libelleBouton: 'Fermer'
+      }).catch(console.error);
     });
     return lien;
   }
@@ -320,7 +333,7 @@
           ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut lcdp-aboreza-catalogue__statut--disponible', 'Compatible'));
           contenu.append(ligne);
           contenu.append(elem('span', 'lcdp-aboreza-catalogue__description', 'Abonnement compatible avec votre planning.'));
-          contenu.append(lienPrivilegesAbonnement(offre.formule));
+          contenu.append(lienPrivilegesAbonnement(offre.formule), lienAjouterPrivileges());
           const indicateur = elem('span', 'lcdp-aboreza-catalogue__indicateur');
           indicateur.setAttribute('aria-hidden', 'true');
           option.append(radio, contenu, indicateur);
@@ -396,7 +409,6 @@
               option.append(elem('p', 'lcdp-aboreza-catalogue__description', motif.explication));
             }
           }
-          option.append(lienPrivilegesAbonnement(offre.formule));
           listeIndisponibles.append(option);
         }
       }
