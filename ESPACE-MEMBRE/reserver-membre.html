@@ -63,6 +63,14 @@
       width: min(220px, 100%);
       margin: 0 auto;
     }
+    /* Plusieurs motifs d'indisponibilité peuvent coexister sur une même offre. */
+    .lcdp-aboreza-catalogue__option--indisponible .lcdp-aboreza-catalogue__option-ligne {
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .lcdp-aboreza-catalogue__option--indisponible .lcdp-aboreza-catalogue__statut {
+      white-space: normal;
+    }
     /* ABO-RÉZA : mois non présélectionnés, survol distinct de la sélection. */
     .lcdp-aboreza-demarrage .lcdp-box-calendrier-an__month[aria-pressed="false"] {
       background: #fff;
