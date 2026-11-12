@@ -900,6 +900,34 @@
     if (!slot) return false;
     slot.innerHTML = "";
 
+    // Les informations simples partagent exclusivement le profil INFORMATION.
+    // Les confirmations restent sur leur mécanisme existant jusqu'au lot CHOIX.
+    if (options.mode !== "confirmation") {
+      const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
+      slot.appendChild(fragment);
+      const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="information"]');
+      const titre = slot.querySelector('[data-lcdp-dialogue-titre]');
+      const texte = slot.querySelector('[data-lcdp-dialogue-message]');
+      const fermer = slot.querySelector('[data-lcdp-dialogue-action="compris"]');
+      if (!dialogue || !titre || !texte || !fermer) {
+        slot.replaceChildren();
+        throw new Error("Structure du dialogue INFORMATION incomplète.");
+      }
+      titre.textContent = options.titre || "Information";
+      texte.textContent = normaliserPonctuationAlerte(message);
+      fermer.textContent = "Fermer";
+      return new Promise(resolve => {
+        let resolu = false;
+        fermer.addEventListener("click", () => {
+          if (resolu) return;
+          resolu = true;
+          slot.replaceChildren();
+          resolve(true);
+        }, { once: true });
+        fermer.focus();
+      });
+    }
+
     const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     slot.appendChild(fragment);
     const alerte = slot.querySelector("[data-lcdp-box-alerte]");
