@@ -1259,46 +1259,66 @@
   }
 
   async function afficherBlocageReservationPublique(acces) {
-    const message = "Vous devez être membre abonné pour utiliser la fonction RESERVER. Et être à jour du paiement de vos échéances si cela n'est pas votre cas.";
-    const detail = document.querySelector("[data-lcdp-box-shift-detail-parc]");
-    const slot = detail?.querySelector("[data-lcdp-shift-detail-parc-alerte-slot]");
-
-    if (!slot) {
-      window.alert(message);
-      return;
+    const message = "La planification d'un accès nécessite un abonnement en cours de validité et le paiement de ses échéances.";
+    const urlCss = construireUrlSite("/OBJET/CSSBASE/lcdp-lightbox-convergence.css");
+    if (![...document.querySelectorAll('link[rel="stylesheet"]')].some(lien => lien.href === new URL(urlCss, window.location.href).href)) {
+      const lien = document.createElement("link");
+      lien.rel = "stylesheet";
+      lien.href = urlCss;
+      document.head.appendChild(lien);
     }
-
-    slot.innerHTML = "";
-    const box = document.createElement("div");
-    box.className = "lcdp-box-shift-detail-parc__alerte-box";
-    const texte = document.createElement("p");
-    texte.className = "lcdp-box-shift-detail-parc__alerte-message";
-    texte.textContent = message;
-    const actions = document.createElement("div");
-    actions.className = "lcdp-fiche-parc__dialogue-actions";
-
-    if (acces?.actionSecondaire === "abonnement") {
-      actions.appendChild(creerBoutonCommande("Abonnement", "lcdp-button-secondary", () => {
-        window.location.href = construireUrlSite("/ESPACE-MEMBRE/abonnement-membre.html");
-      }));
+    const hote = document.createElement("div");
+    document.body.appendChild(hote);
+    try {
+      hote.appendChild(await chargerFragment("/OBJET/HTMLBASE/02-dialogue-reference-information.html"));
+      const dialogue = hote.querySelector('[data-lcdp-dialogue-reference="information"]');
+      const titre = hote.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = hote.querySelector("[data-lcdp-dialogue-message]");
+      const actions = hote.querySelector(".lcdp-dialogue-ref__actions");
+      const fermer = hote.querySelector('[data-lcdp-dialogue-action="compris"]');
+      if (!dialogue || !titre || !texte || !actions || !fermer) throw new Error("Structure INFORMATION incomplète.");
+      titre.textContent = "Abonnement nécessaire";
+      texte.textContent = message;
+      fermer.textContent = "Fermer";
+      let termine = false;
+      const clore = () => {
+        if (termine) return;
+        termine = true;
+        hote.remove();
+      };
+      fermer.addEventListener("click", clore, { once: true });
+      const creerAction = (libelle, action) => {
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--principal";
+        bouton.textContent = libelle;
+        bouton.addEventListener("click", () => {
+          clore();
+          action();
+        }, { once: true });
+        actions.prepend(bouton);
+      };
+      // Les routes métier restent identiques tant que le passage RÉZA-BO → ABO-RÉZA n'est pas raccordé.
+      if (acces?.actionSecondaire === "abonnement") {
+        creerAction("Abonnement", () => {
+          window.location.href = construireUrlSite("/ESPACE-MEMBRE/abonnement-membre.html");
+        });
+      }
+      if (acces?.actionSecondaire === "regulariser" && acces?.orderid) {
+        creerAction("Régulariser", () => {
+          const page = construireUrlSite("/ESPACE-MEMBRE/paiement-cb.html");
+          const url = new URL(page, window.location.href);
+          url.searchParams.set("orderid", acces.orderid);
+          url.searchParams.set("echeance", String(acces.echeance || 1));
+          url.searchParams.set("source", "suspension");
+          window.location.href = url.toString();
+        });
+      }
+      fermer.focus();
+    } catch (erreur) {
+      hote.remove();
+      throw erreur;
     }
-
-    if (acces?.actionSecondaire === "regulariser" && acces?.orderid) {
-      actions.appendChild(creerBoutonCommande("Régulariser", "lcdp-button-secondary", () => {
-        const page = construireUrlSite("/ESPACE-MEMBRE/paiement-cb.html");
-        const url = new URL(page, window.location.href);
-        url.searchParams.set("orderid", acces.orderid);
-        url.searchParams.set("echeance", String(acces.echeance || 1));
-        url.searchParams.set("source", "suspension");
-        window.location.href = url.toString();
-      }));
-    }
-
-    actions.appendChild(creerBoutonCommande("OK", "lcdp-button-primary", () => {
-      slot.innerHTML = "";
-    }));
-    box.append(texte, actions);
-    slot.appendChild(box);
   }
 
   function ouvrirPlanningPublic(parc) {
