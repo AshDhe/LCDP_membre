@@ -5624,7 +5624,7 @@
     const invitation = reservation?.invitation === true;
     const prefixe = invitation ? 'Vous avez déjà une invitation' : 'Vous avez déjà un accès planifié';
     const libelle = libelleAccesDejaPlanifie(reservation);
-    const detail = libelle.startsWith(prefixe) ? libelle.slice(prefixe.length).replace(/^\\s*·\\s*/, '') : libelle;
+    const detail = libelle.startsWith(prefixe) ? libelle.slice(prefixe.length).replace(/^\s*·\s*/, '') : libelle;
     return afficherDialogueInformationPlanifier({
       titre: invitation ? 'Invitation déjà reçue' : 'Accès déjà planifié',
       message: detail
