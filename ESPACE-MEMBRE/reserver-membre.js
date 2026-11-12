@@ -190,7 +190,7 @@
       libelleAction: options.libelleBouton || "Fermer",
       valeurAction: options.valeurAction ?? "fermer",
       onAffiche: options.onAffiche,
-      classe: "lcdp-aboreza-confirmation-information"
+      classe: options.classe || "lcdp-aboreza-confirmation-information"
     }),
     confirmerAnnulationPanier: () => afficherConfirmationSuppressionPanier(),
     viderCache: () => cachePlanningParcLecture.clear(),
