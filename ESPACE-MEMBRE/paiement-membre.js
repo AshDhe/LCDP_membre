@@ -370,8 +370,7 @@
     for (const option of optionsDevis) {
       const code = String(option.code || '');
       premiereLignePrix.before(ajouterLigne(liste,
-        'Privilège ' + code + (Number(option.multiplicateur) > 1
-          ? ' × ' + option.multiplicateur + ' mois' : ''),
+        'Privilège ' + code,
         EURO.format(Number(option.totalTtc))));
     }
 
