@@ -4951,7 +4951,7 @@
   // Le Worker actuel n'expose pas les horaires réduits : ne pas les inventer.
   function formaterPlageAccesReservation(reservation) {
     const plage = normaliserPlageReservation(reservation);
-    return plage ? libellePlage(plage).replace(/\\s*h\\s*/g, "h").replace(/\\s*–\\s*/g, "–") : "";
+    return plage ? libellePlage(plage).replace(/\s*h\s*/g, "h").replace(/\s*–\s*/g, "–") : "";
   }
 
   function extraireDateFranceReservation(timestampIso) {
