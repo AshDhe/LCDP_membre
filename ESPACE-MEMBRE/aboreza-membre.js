@@ -631,7 +631,7 @@
     bandeau.style.setProperty('border', '2px solid #4e6838', 'important');
     bandeau.style.setProperty('border-radius', '18px', 'important');
     bandeau.style.setProperty('box-sizing', 'border-box', 'important');
-    bandeau.style.setProperty('margin-top', '-12px', 'important');
+    bandeau.style.setProperty('margin-top', '8px', 'important');
     bandeau.replaceChildren();
 
     const details = elem('div', 'lcdp-aboreza-suivi__details');
