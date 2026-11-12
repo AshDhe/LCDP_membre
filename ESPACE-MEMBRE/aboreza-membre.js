@@ -237,7 +237,9 @@
       const texte = objet.querySelector('[data-lcdp-dialogue-text]');
       const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
       if (!texte || !actions) throw Error('Structure de sélection ABO-RÉZA incomplète.');
-      texte.textContent = 'Les abonnements incompatibles avec votre planning actuel sont indisponibles.';
+      texte.textContent = offres.some(offre => offre.disponible === false)
+        ? 'Certains abonnements sont incompatibles avec votre planning actuel.'
+        : 'Tous les abonnements sont compatibles avec votre planning.';
       actions.replaceChildren();
       actions.classList.add('lcdp-aboreza-catalogue__actions');
 
@@ -261,7 +263,7 @@
       }
 
       if (disponibles.length) {
-        const listeDisponibles = section('Abonnement disponible', 'lcdp-aboreza-catalogue__section--disponibles');
+        const listeDisponibles = section('Abonnement compatible', 'lcdp-aboreza-catalogue__section--disponibles');
         const nomRadio = 'lcdp-aboreza-catalogue-formule';
         disponibles.forEach((offre, index) => {
           const option = elem('label', 'lcdp-aboreza-catalogue__option');
@@ -300,7 +302,7 @@
       zoneDefilement.append(zoneValidation);
 
       if (indisponibles.length) {
-        const listeIndisponibles = section('Abonnement indisponible', 'lcdp-aboreza-catalogue__section--indisponibles');
+        const listeIndisponibles = section('Abonnement incompatible', 'lcdp-aboreza-catalogue__section--indisponibles');
         for (const offre of indisponibles) {
           const option = elem('div', 'lcdp-aboreza-catalogue__option lcdp-aboreza-catalogue__option--indisponible');
           const ligne = elem('div', 'lcdp-aboreza-catalogue__option-ligne');
