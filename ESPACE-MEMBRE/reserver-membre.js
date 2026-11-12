@@ -5757,7 +5757,7 @@
       }
       dialogue.dataset.lcdpDialogueContext = 'conteneur';
       titre.textContent = 'Annuler ce panier ?';
-      message.textContent = 'Les accès planifiés dans ce panier seront annulés. Cette action est irréversible.';
+      message.textContent = 'Cette action annule votre demande d’abonnement en cours de préparation ainsi que tous les accès planifiés dans ce panier.';
       conserver.textContent = 'Conserver le panier';
       supprimer.textContent = 'Oui, annuler et recommencer';
       return await new Promise(resolve => {
