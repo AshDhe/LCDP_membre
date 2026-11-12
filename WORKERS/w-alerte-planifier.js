@@ -142,7 +142,15 @@ export default {async fetch(request,env){
     const membre=await session(request,env);
     if(pathname==="/references"&&request.method==="GET"){
       const departements=await db(env,"dptmt",{select:"code,nom",order:"code.asc",limit:"110"});
-      const parcs=await db(env,"parcs",{select:"idparc,nom,dptmt",order:"nom.asc",limit:"1000"});
+      const selection=(url.searchParams.get("departements")||"").split(",").filter(Boolean);
+      if(selection.length>3||!selection.every(x=>/^\d{2,3}[A-B]?$/.test(x)))throw erreur("Départements invalides");
+      const parcs=[];
+      // Paginer plutôt que tronquer les milliers de parcs de la base.
+      for(let offset=0;offset<6000;offset+=1000){
+        const page=await db(env,"parcs",{select:"idparc,nom,dptmt",...(selection.length?{dptmt:"in.("+selection.join(",")+")"}:{}),order:"nom.asc",limit:"1000",offset:String(offset)});
+        parcs.push(...page);
+        if(page.length<1000)break;
+      }
       return REPONSE({ok:true,departements,parcs},200,origin);
     }
     if(pathname==="/alertes"&&request.method==="GET")return REPONSE({ok:true,alertes:await liste(env,membre)},200,origin);
