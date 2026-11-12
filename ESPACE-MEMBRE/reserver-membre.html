@@ -336,6 +336,26 @@
       color: #4e6838;
       font-weight: 800;
     }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__privileges {
+      display: flex;
+      flex-wrap: wrap;
+      column-gap: 18px;
+      row-gap: 5px;
+      margin-top: 8px;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__privileges-lien {
+      color: #4e6838;
+      font-size: .79rem;
+      font-weight: 650;
+      line-height: 1.4;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte__privileges-lien:focus-visible {
+      outline: 2px solid #4e6838;
+      outline-offset: 3px;
+    }
     body.lcdp-page-reserver .lcdp-paiement-refonte__nombre-acces {
       margin: 5px 0 0 !important;
       color: #292524;
@@ -598,7 +618,7 @@
   <script src="./attente-planifier.js"></script>
   <script src="./alerte-planifier-navigation.js"></script>
   <script src="./reserver-membre.js?v=20261112-options-choix-v7"></script>
-  <script src="./paiement-membre.js?v=20261112-recap-wrapper-v3"></script>
-  <script src="./aboreza-membre.js?v=20261112-options-choix-v7"></script>
+  <script src="./paiement-membre.js?v=20261112-recap-privileges-v4"></script>
+  <script src="./aboreza-membre.js?v=20261112-recap-privileges-v8"></script>
 </body>
 </html>
