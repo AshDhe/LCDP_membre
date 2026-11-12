@@ -606,6 +606,18 @@
     });
   }
 
+  // Légende sur deux lignes fixes : mois au-dessus, progression en dessous.
+  function legendeProgressionMois(nomMois, selectionnes, attendu) {
+    const legende = elem('span', 'lcdp-aboreza-suivi__mois-libelle');
+    legende.style.setProperty('display', 'block');
+    legende.style.setProperty('text-align', 'center');
+    const mois = elem('span', '', nomMois);
+    const compteur = elem('span', '', Math.min(selectionnes, attendu) + '/' + attendu);
+    mois.style.setProperty('display', 'block');
+    compteur.style.setProperty('display', 'block');
+    legende.append(mois, compteur);
+    return legende;
+  }
   function miseAJourBandeau() {
     const hote = bridge()?.hoteBandeau?.();
     if (!hote) return;
@@ -671,8 +683,7 @@
       const nomMois = new Intl.DateTimeFormat('fr-FR', {
         timeZone: 'UTC', month: 'short'
       }).format(new Date(m.mois + '-01T12:00:00Z'));
-      const legende = elem('span', 'lcdp-aboreza-suivi__mois-libelle',
-        nomMois + ' · ' + Math.min(selectionnes, attendu) + '/' + attendu);
+      const legende = legendeProgressionMois(nomMois, selectionnes, attendu);
       groupe.append(cases, legende);
       groupes.append(groupe);
     });
@@ -772,8 +783,7 @@
         const nomMois = new Intl.DateTimeFormat('fr-FR', {
           timeZone: 'UTC', month: 'short'
         }).format(new Date(m.mois + '-01T12:00:00Z'));
-        const legende = elem('span', 'lcdp-aboreza-suivi__mois-libelle',
-          nomMois + ' · ' + Math.min(selectionnes, attendu) + '/' + attendu);
+        const legende = legendeProgressionMois(nomMois, selectionnes, attendu);
         groupe.append(cases, legende);
         groupes.append(groupe);
       });
