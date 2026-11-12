@@ -1784,7 +1784,7 @@
         plagebookd
       });
 
-      await afficherMessageShift("Votre nouvelle date a bien été enregistrée.");
+      await afficherMessageShift("Votre nouvelle date a bien été enregistrée.", "information");
       const slot = document.getElementById("lcdp-lightbox-slot");
       if (slot) slot.innerHTML = "";
     } catch (error) {
@@ -1857,7 +1857,39 @@
     return promesse;
   }
 
-  async function afficherMessageShift(message) {
+  async function afficherMessageShift(message, profil = null) {
+    if (profil === "information") {
+      const urlCss = construireUrlSite("/OBJET/CSSBASE/lcdp-lightbox-convergence.css");
+      if (![...document.querySelectorAll('link[rel="stylesheet"]')].some(lien => lien.href === new URL(urlCss, window.location.href).href)) {
+        const lien = document.createElement("link");
+        lien.rel = "stylesheet";
+        lien.href = urlCss;
+        document.head.appendChild(lien);
+      }
+      const hote = document.createElement("div");
+      document.body.appendChild(hote);
+      try {
+        hote.appendChild(await chargerFragment("/OBJET/HTMLBASE/02-dialogue-reference-information.html"));
+        const dialogue = hote.querySelector('[data-lcdp-dialogue-reference="information"]');
+        const titre = hote.querySelector("[data-lcdp-dialogue-titre]");
+        const texte = hote.querySelector("[data-lcdp-dialogue-message]");
+        const bouton = hote.querySelector('[data-lcdp-dialogue-action="compris"]');
+        if (!dialogue || !titre || !texte || !bouton) throw new Error("Structure INFORMATION incomplète.");
+        titre.textContent = "Réservation enregistrée";
+        texte.textContent = message || "";
+        bouton.textContent = "Fermer";
+        return await new Promise(resolve => {
+          bouton.addEventListener("click", () => {
+            hote.remove();
+            resolve();
+          }, { once: true });
+          bouton.focus();
+        });
+      } catch (erreur) {
+        hote.remove();
+        throw erreur;
+      }
+    }
     const detail = document.querySelector("[data-lcdp-box-shift-detail-parc]");
     const slot = detail?.querySelector("[data-lcdp-shift-detail-parc-alerte-slot]");
     if (!slot) {
