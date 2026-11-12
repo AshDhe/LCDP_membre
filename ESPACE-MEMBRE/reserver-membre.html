@@ -137,6 +137,49 @@
       font-weight: 650;
       cursor: pointer;
     }
+    /* Liste à cocher dans le composant générique CHOIX ABO-RÉZA. */
+    .lcdp-aboreza-options-choix .lcdp-aboreza-options-liste {
+      width: 100%;
+      display: grid;
+      gap: 11px;
+      margin: 4px 0 16px;
+      text-align: left;
+    }
+    .lcdp-aboreza-options-choix .lcdp-aboreza-options-ligne {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: .875rem;
+      line-height: 1.4;
+      cursor: pointer;
+    }
+    .lcdp-aboreza-options-choix .lcdp-aboreza-options-ligne input {
+      flex: 0 0 auto;
+      width: 17px;
+      height: 17px;
+      margin-top: 2px;
+      accent-color: #4e6838;
+    }
+    .lcdp-aboreza-options-choix .lcdp-aboreza-options-ligne span {
+      min-width: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .lcdp-aboreza-options-choix .lcdp-aboreza-options-ligne strong {
+      font-weight: 700;
+      color: #4e6838;
+    }
+    .lcdp-aboreza-options-choix .lcdp-aboreza-options-ligne:has(input:disabled) {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+    .lcdp-aboreza-catalogue__privileges--ajoutes {
+      color: #9ca3af !important;
+      text-decoration: none !important;
+      cursor: default !important;
+    }
     /* Lien d'information dans chaque carte du catalogue ABO-RÉZA. */
     .lcdp-aboreza-catalogue__liens-privileges {
       display: flex;
@@ -428,8 +471,8 @@
 
   <script src="./attente-planifier.js"></script>
   <script src="./alerte-planifier-navigation.js"></script>
-  <script src="./reserver-membre.js?v=20261112-privileges-inline-v5"></script>
+  <script src="./reserver-membre.js?v=20261112-options-choix-v6"></script>
   <script src="./paiement-membre.js"></script>
-  <script src="./aboreza-membre.js?v=20261112-privileges-liens-v3"></script>
+  <script src="./aboreza-membre.js?v=20261112-options-choix-v6"></script>
 </body>
 </html>
