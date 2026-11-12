@@ -5590,20 +5590,39 @@
     return parc ? description + '\nPARC DE ' + parc : description;
   }
 
-  // Pilote d'harmonisation : dialogue structuré EXISTANT (c036), sans CSS
-  // supplémentaire et sans changer les contrôles de réservation.
+  // Migration pilote vers l'objet INFORMATION générique.
+  // Le texte métier vient de la réservation ; aucun style n'est créé ici.
   async function afficherDialogueAccesDejaPlanifie(reservation) {
     const invitation = reservation?.invitation === true;
     const prefixe = invitation ? 'Vous avez déjà une invitation' : 'Vous avez déjà un accès planifié';
     const libelle = libelleAccesDejaPlanifie(reservation);
     const detail = libelle.startsWith(prefixe) ? libelle.slice(prefixe.length).replace(/^\s*·\s*/, '') : libelle;
-    return ouvrirDialogueBoutonsSuperpose({
-      titre: invitation ? 'Invitation déjà reçue' : 'Accès déjà planifié',
-      texte: detail,
-      classe: 'lcdp-planifier-dialogue-etat',
-      fermetureLibre: false,
-      boutons: [{ label: 'Fermer', valeur: 'fermer', style: 'lcdp-button-primary' }]
-    });
+    const enveloppe = document.createElement('div');
+    hoteDialoguesPlanifier().appendChild(enveloppe);
+    try {
+      enveloppe.appendChild(await chargerFragmentObjet('/HTMLBASE/02-dialogue-reference-information.html'));
+      const dialogue = enveloppe.querySelector('[data-lcdp-dialogue-reference="information"]');
+      const titre = enveloppe.querySelector('[data-lcdp-dialogue-titre]');
+      const message = enveloppe.querySelector('[data-lcdp-dialogue-message]');
+      const fermer = enveloppe.querySelector('[data-lcdp-dialogue-action="compris"]');
+      if (!dialogue || !titre || !message || !fermer) {
+        throw new Error('Structure du dialogue INFORMATION incomplète.');
+      }
+      dialogue.dataset.lcdpDialogueContext = 'conteneur';
+      titre.textContent = invitation ? 'Invitation déjà reçue' : 'Accès déjà planifié';
+      message.textContent = detail;
+      fermer.textContent = 'Fermer';
+      return await new Promise(resolve => {
+        fermer.addEventListener('click', () => {
+          enveloppe.remove();
+          resolve('fermer');
+        }, { once: true });
+        fermer.focus();
+      });
+    } catch (erreur) {
+      enveloppe.remove();
+      throw erreur;
+    }
   }
 
   function libellePlageReservation(plagebookd) {
