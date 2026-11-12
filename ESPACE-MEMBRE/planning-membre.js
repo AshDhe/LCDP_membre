@@ -312,14 +312,6 @@
         width: 100%; height: 100%; object-fit: cover; display: block;
         border-radius: 11px;
       }
-      .lcdp-planning-carte-visite__legende {
-        position: absolute; bottom: 0; left: 0; right: 0;
-        padding: 24px 12px 12px;
-        background: linear-gradient(transparent, rgba(0,0,0,.85));
-        color: white; font-weight: 750;
-        font-size: .86rem; line-height: 1.4; text-align: left;
-        overflow-wrap: anywhere;
-      }
       .lcdp-planning-carte-visite__sans-image {
         display: flex; align-items: center; justify-content: center;
         flex: 1; background: #e9eee6; color: #526c3f;
@@ -1350,14 +1342,16 @@
   function creerCarteVisiteDiaporama(cardReservation, reservation) {
     if (!etat.templateCardParcDiaporama) return cardReservation;
     const carte = etat.templateCardParcDiaporama.cloneNode(true);
-    carte.classList.add("lcdp-box-card-parc--reserver", "lcdp-planning-carte-visite");
+    carte.classList.add("lcdp-box-card-parc--reserver", "lcdp-planning-carte-visite", "lcdp-carte-acces-visuel");
     carte.dataset.idflux = String(reservation.idflux || "");
     const ouvrir = carte.querySelector("[data-lcdp-diaporama-retourner]");
     const fermer = carte.querySelector("[data-lcdp-diaporama-fermer]");
     const dos = carte.querySelector("[data-lcdp-diaporama-dos]");
     const contenu = carte.querySelector("[data-lcdp-diaporama-dos-contenu]");
     const parc = reservation.parc || {};
-    const nom = String(parc.nom || parc.nomparc || reservation.nomparc || "Parc");
+    const nom = String(parc.nom || parc.nomparc || reservation.nomparc || "Parc").trim();
+    const departement = String(parc.dptmt || parc.departement || reservation.dptmt || "").trim();
+    const nomAvecDepartement = "Parc de " + nom + (departement ? " (" + departement + ")" : "");
     const date = formaterDateCourte(reservation.datebookd);
     const heure = formaterPlageAccesReservation(reservation);
     const media = cardReservation.querySelector("[data-lcdp-card-reservation-media]");
@@ -1369,7 +1363,7 @@
         image.alt = img.alt;
         image.loading = "lazy";
         image.decoding = "async";
-        image.className = "lcdp-planning-carte-visite__image";
+        image.className = "lcdp-planning-carte-visite__image lcdp-carte-acces-visuel__image";
         image.addEventListener("error", () => {
           const secours = construireUrlObjet("/IMAG/PARC/cardlogo.webp");
           if (image.src !== secours) image.src = secours;
@@ -1377,20 +1371,38 @@
         ouvrir.appendChild(image);
       }
     }
-    const titre = document.createElement("span");
-    titre.className = "lcdp-planning-carte-visite__legende";
-    titre.textContent = "Parc de " + nom + " · " + date + (heure ? " · " + heure : "");
-    actualiserHoraireEffectifReservation(reservation, horaire => {
-      titre.textContent = "Parc de " + nom + " · " + date + " · " + horaire;
-    });
     if (!ouvrir.querySelector("img")) {
       const imageAbsente = document.createElement("span");
       imageAbsente.className = "lcdp-planning-carte-visite__sans-image";
-      imageAbsente.textContent = "Parc de " + nom;
+      imageAbsente.textContent = nomAvecDepartement;
       ouvrir.appendChild(imageAbsente);
     }
-    ouvrir.appendChild(titre);
-    ouvrir.setAttribute("aria-label", "Voir les détails de la visite au parc " + nom + " le " + date);
+
+    const degrade = document.createElement("span");
+    degrade.className = "lcdp-carte-acces-visuel__degrade";
+    degrade.setAttribute("aria-hidden", "true");
+
+    const titreParc = document.createElement("span");
+    titreParc.className = "lcdp-carte-acces-visuel__titre";
+    titreParc.textContent = nomAvecDepartement;
+
+    const blocHoraire = document.createElement("span");
+    blocHoraire.className = "lcdp-carte-acces-visuel__bloc-horaire";
+    const ligneDate = document.createElement("span");
+    ligneDate.className = "lcdp-carte-acces-visuel__date";
+    ligneDate.textContent = date;
+    const ligneHoraire = document.createElement("span");
+    ligneHoraire.className = "lcdp-carte-acces-visuel__horaire";
+    ligneHoraire.textContent = heure;
+    blocHoraire.append(ligneDate, ligneHoraire);
+
+    ouvrir.append(degrade, titreParc, blocHoraire);
+    actualiserHoraireEffectifReservation(reservation, horaire => {
+      ligneHoraire.textContent = horaire;
+    });
+    ouvrir.setAttribute("aria-label",
+      "Voir les détails de la visite au " + nomAvecDepartement + " le " + date +
+      (heure ? ", de " + heure : ""));
     contenu.appendChild(cardReservation);
     const basculer = ouvert => {
       // Éviter de conserver un décalage vertical du recto dans le verso.
