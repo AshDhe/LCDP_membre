@@ -759,7 +759,10 @@
   async function proposerTagDuoActifMaquette() {
     const parc = etatPage.calendrierMoisActif?.parc;
     if (!parc) {
-      await afficherAlerteSuperposee("Sélectionnez d'abord un parc.");
+      await afficherDialogueInformationPlanifier({
+        titre: "Choisir un parc",
+        message: "Sélectionnez d'abord un parc."
+      });
       return;
     }
     const idparc = String(parc.idparc || parc.id || "");
