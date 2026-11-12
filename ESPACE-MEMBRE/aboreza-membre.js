@@ -659,6 +659,12 @@
       for (let i = 0; i < attendu; i++) {
         const caseAcces = elem('span', 'lcdp-aboreza-suivi__case' +
           (i < selectionnes ? ' lcdp-aboreza-suivi__case--faite' : ''));
+        if (i < selectionnes) {
+          // Le style générique applique un jaune aux segments validés :
+          // forcer ici le vert du suivi de commande, sans toucher aux segments gris.
+          caseAcces.style.setProperty('background-color', '#4e6838', 'important');
+          caseAcces.style.setProperty('border-color', '#4e6838', 'important');
+        }
         caseAcces.setAttribute('aria-hidden', 'true');
         cases.append(caseAcces);
       }
