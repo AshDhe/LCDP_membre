@@ -1362,10 +1362,22 @@
       const demande = { parc: parcSelectionne, annee: etat.annee, mois: etat.mois };
       const terminerAttente = commencerAttenteCalendrierMois();
       try {
-        const donnees = await chargerPlanningParcMoisLecture(demande);
+        // Même lecture que « Changer de parc », mais en ignorant une éventuelle
+        // réponse mise en cache avant la dernière réservation ABO-RÉZA.
+        cachePlanningParcLecture.clear();
+        let donnees = await chargerPlanningParcMoisLecture(demande);
         if (generation !== generationPlanning) return;
+        const contientPlagesOuvertes = jours => Array.isArray(jours) && jours.some(jour =>
+          jour?.ouvert === true || Object.values(jour?.plages || {}).some(plage => plage?.ouverte === true));
+        if (!contientPlagesOuvertes(donnees)) {
+          // Un état tout fermé est suspect après un changement de mois du tunnel :
+          // refaire une seule lecture sans cache avant de présenter un planning vide.
+          cachePlanningParcLecture.clear();
+          donnees = await chargerPlanningParcMoisLecture(demande);
+          if (generation !== generationPlanning) return;
+        }
         if (!Array.isArray(donnees) || donnees.length === 0)
-          throw new Error("Le planning du parc est vide pour ce mois. Réessayez ou signalez cette anomalie.");
+          throw new Error("Aucun jour de planning reçu pour ce mois. Réessayez en changeant de parc.");
         planningCourant = donnees;
         etatPage.calendrierMoisActif = { ...demande, modePlanning: "lecture", planning: donnees };
         afficher();
