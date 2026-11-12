@@ -205,7 +205,7 @@
 
             await afficherAlerte(
               "Votre checkout est enregistré. Le bracelet n'a pas pu être éteint automatiquement.",
-              { fermetureParOkUniquement: true }
+              { fermetureParOkUniquement: true, profil: "information" }
             );
             redirigerAccueil();
             return;
@@ -213,7 +213,8 @@
         }
 
         await afficherAlerte("Votre checkout est enregistré.", {
-          fermetureParOkUniquement: true
+          fermetureParOkUniquement: true,
+          profil: "information"
         });
         redirigerAccueil();
         return;
@@ -224,7 +225,8 @@
       }
 
       await afficherAlerte("Votre clé est validée.", {
-        fermetureParOkUniquement: true
+        fermetureParOkUniquement: true,
+        profil: "information"
       });
 
       afficherEcranActif(
@@ -328,7 +330,8 @@
       );
 
       await afficherAlerte("Votre bracelet est allumé.", {
-        fermetureParOkUniquement: true
+        fermetureParOkUniquement: true,
+        profil: "information"
       });
     } catch (error) {
       if (error?.sessionRemplaceeTraitee === true) return;
@@ -797,6 +800,31 @@
     if (!slot) return false;
 
     slot.innerHTML = "";
+    if (options.profil === "information") {
+      const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
+      slot.appendChild(fragment);
+      const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="information"]');
+      const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+      const bouton = slot.querySelector('[data-lcdp-dialogue-action="compris"]');
+      if (!dialogue || !titre || !texte || !bouton) {
+        slot.replaceChildren();
+        throw new Error("Structure INFORMATION incomplète.");
+      }
+      titre.textContent = options.titre || "Information";
+      texte.textContent = normaliserPonctuation(message);
+      bouton.textContent = options.boutonOkLabel || "OK";
+      return new Promise(resolve => {
+        let resolu = false;
+        bouton.addEventListener("click", () => {
+          if (resolu) return;
+          resolu = true;
+          slot.replaceChildren();
+          resolve(true);
+        }, { once: true });
+        bouton.focus();
+      });
+    }
     const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
     slot.appendChild(fragment);
 
