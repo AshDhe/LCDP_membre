@@ -732,7 +732,7 @@
       ouvrir.setAttribute("aria-label","Modifier l’alerte "+alerte.titre);
       const modifier=document.createElement("button");
       modifier.type="button";
-      modifier.className="lcdp-box-champ-formulaire__action-edit lcdp-compte-alerte__action";
+      modifier.className="lcdp-compte-alerte__action lcdp-compte-alerte__modifier";
       modifier.title="Modifier l’alerte";
       modifier.setAttribute("aria-label","Modifier l’alerte "+alerte.titre);
       modifier.innerHTML='<svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M4 16.8V20h3.2L17.9 9.3l-3.2-3.2L4 16.8Z"></path><path d="M19.2 8 16 4.8l1.1-1.1a1.7 1.7 0 0 1 2.4 0l.8.8a1.7 1.7 0 0 1 0 2.4L19.2 8Z"></path></svg>';
