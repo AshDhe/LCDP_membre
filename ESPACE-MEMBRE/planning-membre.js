@@ -2852,14 +2852,14 @@
     const blocageInvitation = determinerBlocageInvitationReservation(reservation);
 
     if (blocageInvitation) {
-      await afficherAlerteInvitationReservation(blocageInvitation, declencheur);
+      await afficherAlerteInvitationReservation(blocageInvitation, declencheur, { profil: "information" });
       return;
     }
 
     const blocageAcces = determinerBlocageReservationPlanning(etat.membre || creerEtatMembreFallback());
 
     if (blocageAcces) {
-      await afficherAlerteInvitationReservation(blocageAcces, declencheur);
+      await afficherAlerteInvitationReservation(blocageAcces, declencheur, { profil: "information" });
       return;
     }
 
