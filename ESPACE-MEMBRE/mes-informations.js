@@ -744,7 +744,7 @@
       supprimer.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7"/></svg>';
       const edit=async()=>{
         if(typeof window.LCDP_ouvrirFormulaireAlertePlanifier!=="function"){
-          await afficherInformationMembre("Formulaire de modification indisponible.");
+          await afficherAlerte("Formulaire de modification indisponible.");
           return;
         }
         await window.LCDP_ouvrirFormulaireAlertePlanifier({
@@ -754,14 +754,14 @@
           }
         });
       };
-      ouvrir.addEventListener("click",()=>edit().catch(err=>afficherInformationMembre(err.message)));
-      modifier.addEventListener("click",()=>edit().catch(err=>afficherInformationMembre(err.message)));
+      ouvrir.addEventListener("click",()=>edit().catch(err=>afficherAlerte(err.message)));
+      modifier.addEventListener("click",()=>edit().catch(err=>afficherAlerte(err.message)));
       supprimer.addEventListener("click",async()=>{
         try{
           if(!await demanderSuppressionAlerte(alerte.titre))return;
           await apiAlertesCompte("/alertes/"+encodeURIComponent(alerte.idalerte),"DELETE");
           await chargerAlertesCompte();
-        }catch(err){await afficherInformationMembre(err.message||"Suppression impossible.");}
+        }catch(err){await afficherAlerte(err.message||"Suppression impossible.");}
       });
       const actions=document.createElement("div");
       actions.className="lcdp-compte-alerte__actions";
@@ -2153,7 +2153,7 @@ function afficherResumePointsPassion(compte) {
 
       remplirChamp("champ-alias-membre", formaterAliasAffichage(compteMembreActuel.alias));
 
-      await afficherAlerte(messageErreurApi(resultat, "Votre alias est mis à jour."));
+      await afficherInformationMembre(messageErreurApi(resultat, "Votre alias est mis à jour."), "Alias mis à jour");
     } catch (error) {
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -2223,7 +2223,7 @@ function afficherResumePointsPassion(compte) {
         throw new Error("Aucun message reçu du worker. Ni OK ni KO = KO.");
       }
 
-      await afficherAlerte(messageWorker);
+      await afficherInformationMembre(messageWorker, "Modification de l’e-mail");
     } catch (error) {
       if (error.redirection === true) return;
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
