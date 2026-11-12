@@ -315,34 +315,37 @@
               explication: 'Cet abonnement est hors date.'
             },
             CHEVAUCHEMENT_PARTIEL: {
-              etiquette: 'Chevauchement',
-              explication: 'Cet abonnement chevauche au moins un abonnement existant sans pouvoir l’inclure entièrement.'
+              etiquette: 'Doublon',
+              explication: 'Cet abonnement fait doublon avec un abonnement souscrit.'
             },
             PERIODE_DEJA_COUVERTE: {
-              etiquette: 'Période déjà couverte',
-              explication: 'Cet abonnement ne couvre aucune date supplémentaire.'
+              etiquette: 'Doublon',
+              explication: 'Cet abonnement fait doublon avec un abonnement souscrit.'
             },
             HORIZON_NON_PROLONGE: {
-              etiquette: 'Horizon non prolongé',
-              explication: 'Cet abonnement ne prolonge pas votre horizon de planning.'
+              etiquette: 'Insuffisant',
+              explication: 'Cet abonnement ne permet pas de consulter la date demandée.'
             }
           };
-          const causes = [...new Set(Array.isArray(offre.codesIndisponibilite)
-            ? offre.codesIndisponibilite.filter(code => Object.hasOwn(motifs, code))
-            : [])];
+          // Regrouper les codes techniques partageant le même motif public.
+          const causes = [...new Set((Array.isArray(offre.codesIndisponibilite)
+            ? offre.codesIndisponibilite : [])
+            .filter(code => Object.hasOwn(motifs, code))
+            .map(code => motifs[code].etiquette))];
           if (!causes.length) {
             ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', 'Abonnement indisponible'));
           } else {
-            for (const code of causes) {
-              ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', motifs[code].etiquette));
+            for (const libelle of causes) {
+              ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut', libelle));
             }
           }
           option.append(ligne);
           if (!causes.length) {
             option.append(elem('p', 'lcdp-aboreza-catalogue__description', 'Cet abonnement est indisponible.'));
           } else {
-            for (const code of causes) {
-              option.append(elem('p', 'lcdp-aboreza-catalogue__description', motifs[code].explication));
+            for (const libelle of causes) {
+              const motif = Object.values(motifs).find(item => item.etiquette === libelle);
+              option.append(elem('p', 'lcdp-aboreza-catalogue__description', motif.explication));
             }
           }
           listeIndisponibles.append(option);
