@@ -741,7 +741,7 @@
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-secondary{min-height:50px;border:1px solid #e7e5e4;background:#fff;color:#57534e;box-shadow:none;font-size:12px;font-weight:750}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-secondary:hover{background:#fff1f2;border-color:#fecdd3;color:#be123c}
         .lcdp-panier-existant .lcdp-button:focus-visible,.lcdp-panier-existant .lcdp-box-dialogue-bouton__close:focus-visible{outline:2px solid #4b6333;outline-offset:3px}
-        @media(min-width:768px){.lcdp-panier-existant .lcdp-box-dialogue-bouton__title{white-space:nowrap}}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__title{white-space:normal;overflow-wrap:break-word;word-break:normal}
         @media(max-width:480px){.lcdp-panier-existant .lcdp-box-dialogue-bouton__card{padding:13px 17px 13px;border-radius:23px}.lcdp-panier-existant__recap{padding:14px 14px}.lcdp-panier-existant__valeur{font-size:13px}.lcdp-panier-existant .lcdp-box-dialogue-bouton__title{font-size:21px}}
       `;
       objet.prepend(style);
@@ -941,7 +941,7 @@
   }
   async function afficherRecap(p) {
     if (typeof window.LCDP_PAIEMENT?.ouvrirBonCommande !== 'function') {
-      await bridge()?.alerter?.('Le bon de commande n’est pas disponible. Votre panier reste récupérable.');
+      await bridge()?.informer?.('Le bon de commande n’est pas disponible. Votre panier reste récupérable.', { titre: 'Information', libelleBouton: 'Fermer' });
       return;
     }
     afficherAttenteFormules('Préparation du bon de commande…');
@@ -950,7 +950,7 @@
       await window.LCDP_PAIEMENT.ouvrirBonCommande(p.idpanier, masquerAttenteFormules);
     } catch (e) {
       masquerAttenteFormules();
-      await bridge()?.alerter?.(e.message || 'Bon de commande indisponible.');
+      await bridge()?.informer?.(e.message || 'Bon de commande indisponible.', { titre: 'Information', libelleBouton: 'Fermer' });
     } finally {
       masquerAttenteFormules();
     }
