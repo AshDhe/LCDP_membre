@@ -38,6 +38,31 @@
     .lcdp-planifier-partage-attente .lcdp-loading-spinner__dot {
       width: 8px; height: 8px; border-radius: 50%; background: #4e6838;
     }
+    /* Résultats ALERTE : commande CARTE seule, centrée et sans cadre.
+       Le diaporama départemental conserve la barre générique inchangée. */
+    body.lcdp-planifier-origine-alerte #lcdp-commande-bar-reserver-slot {
+      margin: 14px 0 20px;
+    }
+    body.lcdp-planifier-origine-alerte #lcdp-commande-bar-reserver-slot .lcdp-box-commande-bar {
+      border: 0 !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+    }
+    body.lcdp-planifier-origine-alerte #lcdp-commande-bar-reserver-slot .lcdp-box-commande-bar__actions {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0;
+    }
+    body.lcdp-planifier-origine-alerte #lcdp-commande-bar-reserver-slot #bouton-changer-departement {
+      display: none !important;
+    }
+    body.lcdp-planifier-origine-alerte #lcdp-commande-bar-reserver-slot #bouton-voir-carte {
+      flex: 0 1 220px;
+      width: min(220px, 100%);
+      margin: 0 auto;
+    }
     @media (prefers-reduced-motion: reduce) {
       #lcdp-planifier-attente-initiale .lcdp-loading-spinner__arc,
       .lcdp-planifier-partage-attente .lcdp-loading-spinner__arc { animation: none; }
