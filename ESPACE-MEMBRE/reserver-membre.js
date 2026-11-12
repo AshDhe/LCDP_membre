@@ -908,7 +908,12 @@
     // La première ligne accueille le badge du parc, aligné sur la croix.
     // La ligne PLANIFIER et ses commandes se place sous ce badge.
     const badgeParc = document.getElementById("lcdp-planifier-parc-en-tete");
-    if (badgeParc) enteteFiltres.appendChild(badgeParc);
+    if (badgeParc) {
+      const ligneParc = document.createElement("div");
+      ligneParc.className = "lcdp-planifier-ligne-parc";
+      ligneParc.appendChild(badgeParc);
+      enteteFiltres.appendChild(ligneParc);
+    }
     const departementParc = document.createElement("p");
     departementParc.className = "lcdp-planifier-departement-parc";
     departementParc.hidden = true;
