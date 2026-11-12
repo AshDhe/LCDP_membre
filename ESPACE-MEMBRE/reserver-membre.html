@@ -522,6 +522,28 @@
         font-size: .71rem !important;
       }
     }
+    /* Séquence CHOIX / INFORMATION des privilèges : transitions courtes et sobres. */
+    .lcdp-aboreza-dialogue-transition {
+      animation: lcdp-privileges-apparition .16s ease-out both;
+    }
+    .lcdp-aboreza-dialogue-transition.lcdp-aboreza-dialogue-sortie {
+      animation: lcdp-privileges-disparition .13s ease-in both;
+      pointer-events: none;
+    }
+    @keyframes lcdp-privileges-apparition {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes lcdp-privileges-disparition {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .lcdp-aboreza-dialogue-transition,
+      .lcdp-aboreza-dialogue-transition.lcdp-aboreza-dialogue-sortie {
+        animation: none !important;
+      }
+    }
   </style>
 
   <script src="../config.js"></script>
@@ -717,8 +739,8 @@
 
   <script src="./attente-planifier.js"></script>
   <script src="./alerte-planifier-navigation.js"></script>
-  <script src="./reserver-membre.js?v=20261112-options-choix-v7"></script>
+  <script src="./reserver-membre.js?v=20261113-transitions-v8"></script>
   <script src="./paiement-membre.js?v=20261112-recap-compact-v6"></script>
-  <script src="./aboreza-membre.js?v=20261112-recap-privileges-v8"></script>
+  <script src="./aboreza-membre.js?v=20261113-titre-centre-v9"></script>
 </body>
 </html>
