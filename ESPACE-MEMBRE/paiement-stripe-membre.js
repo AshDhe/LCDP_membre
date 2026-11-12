@@ -18,13 +18,84 @@
   }
   function afficherErreur(message) { erreur.textContent = message || 'Paiement indisponible.'; erreur.hidden = false; }
   function retirerErreur() { erreur.hidden = true; erreur.textContent = ''; }
+  const details = el('detail-commande');
+  const lienDetails = el('voir-detail-commande');
+  const listeDetails = el('detail-commande-lignes');
+  const statutDetails = el('detail-commande-statut');
+  lienDetails.addEventListener('click', () => {
+    const afficher = details.hidden;
+    details.hidden = !afficher;
+    lienDetails.setAttribute('aria-expanded', String(afficher));
+    lienDetails.textContent = afficher ? 'Masquer le détail' : 'Voir le détail';
+  });
+  function ajouterLigneDetail(libelle, valeur, total = false) {
+    const ligne = document.createElement('div');
+    if (total) ligne.className = 'lcdp-stripe__detail-total';
+    const titre = document.createElement('dt');
+    titre.textContent = libelle;
+    const montant = document.createElement('dd');
+    montant.textContent = valeur;
+    ligne.append(titre, montant);
+    listeDetails.append(ligne);
+  }
+  function euros(valeur) {
+    const nombre = Number(valeur);
+    return Number.isFinite(nombre) ? fmtEuro.format(nombre) : 'Non disponible';
+  }
+  async function chargerDetailCommande() {
+    const [rp, rd] = await Promise.all([
+      fetch(String(config.workerAboRezaUrl || config.WORKER_ABOREZA_URL ||
+        (typeof config.apiUrl === 'function' ? config.apiUrl('aboreza-api') : 'https://aboreza-api.lacleduparc.fr')).replace(/\\/+$/, '') +
+        '/panier', {credentials:'include',cache:'no-store',headers:{Accept:'application/json'}}),
+      fetch(endpoint + '/devis?idpanier=' + encodeURIComponent(idpanier),
+        {credentials:'include',cache:'no-store',headers:{Accept:'application/json'}})
+    ]);
+    const [dp, dd] = await Promise.all([rp.json().catch(()=>null),rd.json().catch(()=>null)]);
+    if (!rp.ok || !dp?.ok || dp?.panier?.idpanier !== idpanier || !rd.ok || !dd?.ok || !dd.devis)
+      throw new Error('Le détail de cette commande ne peut pas être vérifié.');
+    const panier = dp.panier, devis = dd.devis;
+    listeDetails.replaceChildren();
+    ajouterLigneDetail('Formule', String(panier.formule || 'Non renseignée'));
+    if (panier.dateDebut) ajouterLigneDetail('Début', String(panier.dateDebut));
+    if (panier.dateFin) ajouterLigneDetail('Fin', String(panier.dateFin));
+    if (Number.isFinite(Number(devis.prixAbonnementTtc)))
+      ajouterLigneDetail('Abonnement TTC', euros(devis.prixAbonnementTtc));
+    for (const option of Array.isArray(devis.options) ? devis.options : [])
+      ajouterLigneDetail('Privilège ' + String(option.code || ''), euros(option.totalTtc));
+    if (Number(devis.creditAbonnementsInclus) > 0)
+      ajouterLigneDetail('Crédit abonnements inclus', '− ' + euros(devis.creditAbonnementsInclus));
+    ajouterLigneDetail('Total de la commande TTC', euros(devis.totalTtc), true);
+    if (Number(devis.remiseComptantTtc) > 0)
+      ajouterLigneDetail('Remise si règlement en une fois', '− ' + euros(devis.remiseComptantTtc));
+    if (Array.isArray(devis.echeances) && devis.echeances.length) {
+      devis.echeances.forEach((montant, index) => {
+        const date = index === 0 ? 'à la commande' :
+          (Array.isArray(devis.datesEcheances) && devis.datesEcheances[index]
+            ? String(devis.datesEcheances[index]) : 'date non communiquée');
+        ajouterLigneDetail('Échéance ' + (index + 1) + ' (' + date + ')', euros(montant));
+      });
+    }
+    statutDetails.textContent = 'Montants et échéances issus du devis de la commande. Le prélèvement Stripe porte sur l’échéance actuellement payable.';
+    el('description-commande').textContent = 'Abonnement ' + String(panier.formule || '') +
+      ' · Conditions de paiement consultables ci-dessous.';
+    return {panier,devis};
+  }
   async function demarrer() {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idpanier))
       throw new Error('Référence de commande invalide. Retournez au planning.');
+    // Le détail commercial ne dépend pas de la disponibilité de Stripe.
+    const detailEnCours = chargerDetailCommande().catch(e => {
+      statutDetails.textContent = e.message || 'Détail de la commande indisponible.';
+      return null;
+    });
     const reponse = await fetch(endpoint + '/elements-session?idpanier=' + encodeURIComponent(idpanier), {
       method:'GET', cache:'no-store', credentials:'include', headers:{Accept:'application/json'}
     });
     const d = await reponse.json().catch(() => null);
+    if (d?.orderid) el('reference-commande').textContent = d.orderid;
+    if (typeof d?.montantEcheanceTtc === 'number')
+      el('montant-commande').textContent = euros(d.montantEcheanceTtc);
+    await detailEnCours;
     if (!reponse.ok || !d?.ok) throw new Error(d?.message || 'Impossible de charger la commande.');
     if (!/^pk_(test|live)_[A-Za-z0-9]+$/.test(d.publishableKey || '') ||
         !/^cs_(test|live)_[A-Za-z0-9_]+_secret_[A-Za-z0-9]+$/.test(d.clientSecret || ''))
@@ -32,7 +103,8 @@
     if (typeof window.Stripe !== 'function') throw new Error('Le service sécurisé Stripe ne s’est pas chargé.');
     el('environnement-test').hidden = !d.publishableKey.startsWith('pk_test_');
     el('reference-commande').textContent = d.orderid || '—';
-    el('description-commande').textContent = d.formule ? 'Abonnement ' + d.formule + ' · Première échéance' : 'Première échéance de votre abonnement';
+    if (!el('description-commande').textContent.includes('Conditions de paiement'))
+      el('description-commande').textContent = d.formule ? 'Abonnement ' + d.formule + ' · Échéance à payer' : 'Échéance de votre commande';
     const stripe = window.Stripe(d.publishableKey, {locale:'fr'});
     const checkout = stripe.initCheckoutElementsSdk({
       clientSecret:d.clientSecret,
