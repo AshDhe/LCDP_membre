@@ -720,10 +720,10 @@
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__close{position:absolute;top:20px;right:20px;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:50%;background:#f5f5f4;color:#a8a29e;font-size:23px;cursor:pointer}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__close:hover{background:#e7e5e4;color:#44403c}
         .lcdp-panier-existant__icone{display:grid;place-items:center;box-sizing:border-box;width:60px;height:60px;margin:0 auto 9px;border:1px solid #c7dcc3;border-radius:20px;background:#f0f7ef;color:#4e6838}
-        .lcdp-panier-existant .lcdp-box-dialogue-bouton__title{margin:0;max-width:none;color:#1c1917;font-size:23px;font-weight:900;letter-spacing:-.5px;line-height:1.2}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__title{margin:0;max-width:none;color:#1c1917;font-size:20px;font-weight:900;letter-spacing:-.5px;line-height:1.2}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__text{margin:4px 0 11px;max-width:none;color:#78716c;font-size:13px;font-weight:600;line-height:1.45}
         .lcdp-panier-existant .lcdp-panier-existant__recap{box-sizing:border-box;display:block;align-self:stretch;width:100%;min-width:0;max-width:none;margin:0 0 11px;padding:17px;border:1px solid #e7e5e4;border-radius:20px;background:#fafaf9;text-align:left}
-        .lcdp-panier-existant__ligne{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:start;gap:8px;padding-bottom:13px;border-bottom:1px solid #e7e5e4}
+        .lcdp-panier-existant__ligne{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:8px;padding-bottom:13px;border-bottom:1px solid #e7e5e4}
         .lcdp-panier-existant__col{min-width:0;text-align:center}.lcdp-panier-existant__col--date{text-align:center}
         .lcdp-panier-existant__legende{display:block;margin-bottom:6px;color:#a8a29e;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
         .lcdp-panier-existant__valeur{display:block;color:#1c1917;font-size:15px;font-weight:850;line-height:1.3;white-space:nowrap}
@@ -741,6 +741,7 @@
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-secondary{min-height:50px;border:1px solid #e7e5e4;background:#fff;color:#57534e;box-shadow:none;font-size:12px;font-weight:750}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-secondary:hover{background:#fff1f2;border-color:#fecdd3;color:#be123c}
         .lcdp-panier-existant .lcdp-button:focus-visible,.lcdp-panier-existant .lcdp-box-dialogue-bouton__close:focus-visible{outline:2px solid #4b6333;outline-offset:3px}
+        @media(min-width:768px){.lcdp-panier-existant .lcdp-box-dialogue-bouton__title{white-space:nowrap}}
         @media(max-width:480px){.lcdp-panier-existant .lcdp-box-dialogue-bouton__card{padding:13px 17px 13px;border-radius:23px}.lcdp-panier-existant__recap{padding:14px 14px}.lcdp-panier-existant__valeur{font-size:13px}.lcdp-panier-existant .lcdp-box-dialogue-bouton__title{font-size:21px}}
       `;
       objet.prepend(style);
