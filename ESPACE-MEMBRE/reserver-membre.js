@@ -4486,7 +4486,11 @@
     } finally {
       attente.remove();
     }
-    await afficherAlerteSuperposee(messageResultat, succes ? "vert-plein-partage" : "vert-contour");
+    if (succes) {
+      await afficherDialogueInformationPlanifier({ titre: "Information", message: messageResultat });
+    } else {
+      await afficherAlerteSuperposee(messageResultat, "vert-contour");
+    }
   }
 
   async function ouvrirDialoguePartageEmails() {
@@ -6001,7 +6005,10 @@
               });
               const data=await response.json().catch(()=>null);
               if(!response.ok || !reponseApiOk(data))throw new Error(data?.message || "Impossible d’annuler ce planning.");
-              await afficherAlerteSuperposee(reservation.invitation === true ? "Votre invitation est annulée." : "Votre réservation est annulée.","orange");
+              await afficherDialogueInformationPlanifier({
+                titre: "Information",
+                message: reservation.invitation === true ? "Votre invitation est annulée." : "Votre réservation est annulée."
+              });
               fermer("actualiser");
             } catch(error) {await afficherAlerteSuperposee(error.message);}
             finally {annuler.disabled=false;}
