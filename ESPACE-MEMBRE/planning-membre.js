@@ -317,14 +317,11 @@
         color:#292524;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__champs {
-        box-sizing:border-box;
         display:grid !important;
         grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-        grid-template-rows:auto auto;
         gap:12px 10px !important;
         width:100% !important;
         min-width:0;
-        align-items:stretch;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__select {
         box-sizing:border-box !important;
@@ -372,7 +369,6 @@
         grid-column:1 / -1;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__invitations {
-        box-sizing:border-box;
         display:grid !important;
         grid-template-columns:repeat(2,minmax(0,1fr)) !important;
         gap:10px !important;
@@ -381,7 +377,6 @@
         margin:4px 0 0 !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__option {
-        box-sizing:border-box;
         display:flex !important;
         align-items:center !important;
         justify-content:center !important;
@@ -403,7 +398,6 @@
         background:#ecfdf5 !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__option input[type="checkbox"] {
-        box-sizing:border-box;
         appearance:auto !important;
         display:block !important;
         flex:0 0 16px !important;
@@ -416,7 +410,6 @@
         cursor:pointer;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-filtres__actions {
-        box-sizing:border-box;
         display:flex !important;
         align-items:center !important;
         justify-content:space-between !important;
