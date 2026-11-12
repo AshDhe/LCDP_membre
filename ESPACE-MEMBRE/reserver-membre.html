@@ -96,6 +96,26 @@
       color: #4e6838 !important;
       stroke: #4e6838 !important;
     }
+    /* Micro-tunnel ABO-RÉZA : seul le mois actif est mis en évidence.
+       Les flèches de navigation du calendrier gardent leur style initial. */
+    body.lcdp-planifier-commande-active
+    #lcdp-planifier-calendrier-slot [data-lcdp-calendrier-mois-current] {
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      justify-self: center;
+      width: fit-content;
+      max-width: 100%;
+      margin-inline: auto;
+      padding: 6px 14px;
+      border: 1px solid #bfd8bd;
+      border-radius: 14px;
+      background: #e3f1e2;
+      color: #4e6838;
+      font-weight: 800;
+      line-height: 1.25;
+    }
     /* Plusieurs motifs d'indisponibilité peuvent coexister sur une même offre. */
     .lcdp-aboreza-catalogue__option--indisponible .lcdp-aboreza-catalogue__option-ligne {
       flex-wrap: wrap;
