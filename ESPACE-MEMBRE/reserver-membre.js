@@ -193,6 +193,8 @@
       classe: options.classe || "lcdp-aboreza-confirmation-information",
       lignes: options.lignes
     }),
+    choisirPrivileges: options => afficherChoixPrivilegesPlanifier(options),
+    confirmerPrivileges: () => afficherChoixPrivilegesPlanifier({ confirmation: true }),
     confirmerAnnulationPanier: () => afficherConfirmationSuppressionPanier(),
     viderCache: () => cachePlanningParcLecture.clear(),
     choisirParc: () => ouvrirFiltreParcPlanifier(),
@@ -5774,6 +5776,70 @@
 
   // Migration pilote vers l'objet INFORMATION générique.
   // Le rendu est toujours celui du profil INFORMATION ; seuls les contenus varient.
+  // Dialogues CHOIX génériques, affichés exclusivement dans le wrapper PLANIFIER.
+  async function afficherChoixPrivilegesPlanifier({ options = [], confirmation = false } = {}) {
+    const enveloppe = document.createElement('div');
+    hoteDialoguesPlanifier().appendChild(enveloppe);
+    try {
+      enveloppe.appendChild(await chargerFragmentObjet('/HTMLBASE/02-dialogue-reference-choix.html'));
+      const dialogue = enveloppe.querySelector('[data-lcdp-dialogue-reference="choix"]');
+      const titre = enveloppe.querySelector('[data-lcdp-dialogue-titre]');
+      const message = enveloppe.querySelector('[data-lcdp-dialogue-message]');
+      const secondaire = enveloppe.querySelector('[data-lcdp-dialogue-action="annuler"]');
+      const principal = enveloppe.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+      if (!dialogue || !titre || !message || !secondaire || !principal)
+        throw new Error('Structure du dialogue CHOIX incomplète.');
+      dialogue.dataset.lcdpDialogueContext = 'conteneur';
+      dialogue.classList.add('lcdp-aboreza-options-choix');
+      titre.textContent = confirmation ? 'Ajouter les privilèges ?' : 'Ajouter des privilèges';
+      secondaire.textContent = confirmation ? 'Ne pas ajouter' : 'Plus tard';
+      principal.textContent = 'Ajouter';
+      const cases = [];
+      if (confirmation) {
+        message.textContent = 'Confirmer les privilèges sélectionnés ?';
+      } else {
+        const liste = document.createElement('div');
+        liste.className = 'lcdp-aboreza-options-liste';
+        const euro = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+        const titres = {
+          '+5 DUOMAX': '+5 invités DUO différents',
+          '+5 DUO+': '+5 invités DUO+ par mois',
+          '+2 FAMILLE': '+2 invités FAMILLE'
+        };
+        for (const option of options) {
+          const label = document.createElement('label');
+          label.className = 'lcdp-aboreza-options-ligne';
+          const caseOption = document.createElement('input');
+          caseOption.type = 'checkbox';
+          caseOption.value = option.code;
+          caseOption.disabled = option.disponible === false;
+          const description = document.createElement('span');
+          const texte = document.createElement('span');
+          texte.textContent = titres[option.code] || option.code;
+          const montant = document.createElement('strong');
+          montant.textContent = euro.format(Number(option.totalTtc));
+          description.append(texte, montant);
+          label.append(caseOption, description);
+          liste.append(label);
+          cases.push(caseOption);
+        }
+        message.replaceWith(liste);
+        principal.disabled = true;
+        const actualiser = () => { principal.disabled = !cases.some(c => c.checked); };
+        cases.forEach(c => c.addEventListener('change', actualiser));
+      }
+      return await new Promise(resolve => {
+        const terminer = valeur => { enveloppe.remove(); resolve(valeur); };
+        secondaire.addEventListener('click', () => terminer(confirmation ? 'ne_pas_ajouter' : 'plus_tard'), { once: true });
+        principal.addEventListener('click', () => terminer(confirmation ? 'ajouter' : cases.filter(c => c.checked).map(c => c.value)), { once: true });
+        secondaire.focus();
+      });
+    } catch (erreur) {
+      enveloppe.remove();
+      throw erreur;
+    }
+  }
+
   async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null, classe = "", lignes = null }) {
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
