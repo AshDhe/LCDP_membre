@@ -52,12 +52,12 @@
       await actualiserBurgerMembre(etatMembre.abonne);
 
       if (!etatMembre.abonne && !membreAbonne()) {
-        await afficherAlerte("Cette fonction est réservée aux membres abonnés.");
+        await afficherAlerte("Cette fonction est réservée aux membres abonnés.", { profil: "information" });
         return;
       }
 
       if (etatMembre.abonnementSuspendu === true) {
-        await afficherAlerte("Votre abonnement est suspendu (non payé).");
+        await afficherAlerte("Votre abonnement est suspendu (non payé).", { profil: "information" });
         return;
       }
 
@@ -177,7 +177,7 @@
     }
 
     if (!echeances.length) {
-      await afficherAlerte("Aucune échéance non payée.");
+      await afficherAlerte("Aucune échéance non payée.", { profil: "information" });
       return;
     }
 
@@ -969,14 +969,14 @@
     }
 
     if (!etatMembre.abonne && !membreAbonne()) {
-      await afficherAlerte("Cette fonction est réservée aux membres abonnés.");
+      await afficherAlerte("Cette fonction est réservée aux membres abonnés.", { profil: "information" });
       return;
     }
 
     const maxinvit = lireMaxinvit();
 
     if (maxinvit <= 0) {
-      await afficherAlerte("Votre droit d'invitation n'est pas configuré.");
+      await afficherAlerte("Votre droit d'invitation n'est pas configuré.", { profil: "information" });
       return;
     }
 
