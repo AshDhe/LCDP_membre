@@ -539,3 +539,105 @@ body.lcdp-page-accueil-membre #lcdp-lightbox-slot > .lcdp-alerte-calendrier-hote
   color: #64748b;
 }
 
+
+
+/* SERVICE / MON COMPTE : lignes d'alertes dans la carte existante. */
+body.lcdp-page-mon-compte .lcdp-compte-alertes-liste {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-width:0;
+}
+body.lcdp-page-mon-compte .lcdp-compte-alerte {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  min-width:0;
+  padding:9px 10px;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  background:#f8fafc;
+}
+body.lcdp-page-mon-compte .lcdp-compte-alerte__nom {
+  flex:1 1 auto;
+  min-width:0;
+  padding:6px 3px;
+  border:0;
+  background:transparent;
+  color:#1f2937;
+  font:inherit;
+  font-size:13px;
+  font-weight:600;
+  text-align:left;
+  overflow-wrap:anywhere;
+  cursor:pointer;
+}
+body.lcdp-page-mon-compte .lcdp-compte-alerte__actions {
+  display:flex;
+  flex:0 0 auto;
+  align-items:center;
+  gap:7px;
+}
+body.lcdp-page-mon-compte .lcdp-compte-alerte__action {
+  display:inline-flex;
+  position:static;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  width:34px;
+  height:34px;
+  padding:6px;
+  border:1px solid #e2e8f0;
+  border-radius:9px;
+  background:#fff;
+  cursor:pointer;
+}
+body.lcdp-page-mon-compte .lcdp-compte-alerte__action svg {
+  width:19px;
+  height:19px;
+}
+body.lcdp-page-mon-compte .lcdp-compte-alerte__supprimer {
+  color:#b91c1c;
+}
+body.lcdp-page-mon-compte .lcdp-compte-alertes-vide {
+  margin:0;
+  color:var(--lcdp-color-text-muted);
+  font-size:13px;
+}
+body.lcdp-page-mon-compte .lcdp-compte-alerte__action:focus-visible,
+body.lcdp-page-mon-compte .lcdp-compte-alerte__nom:focus-visible {
+  outline:2px solid var(--lcdp-color-focus,#4e6838);
+  outline-offset:2px;
+}
+/* Le dialogue partagé reste à l'intérieur du wrapper de MON COMPTE. */
+body.lcdp-page-mon-compte > .lcdp-app-wrapper {
+  position:relative;
+  isolation:isolate;
+}
+body.lcdp-page-mon-compte > .lcdp-app-wrapper #lcdp-lightbox-slot:has(> .lcdp-alerte-planning-dialogue),
+body.lcdp-page-mon-compte > .lcdp-app-wrapper #lcdp-lightbox-slot:has(> .lcdp-alerte-calendrier-hote) {
+  position:absolute;
+  inset:0;
+  z-index:200;
+  width:100%;
+  height:100%;
+  max-width:100%;
+  max-height:100%;
+  overflow:hidden;
+}
+body.lcdp-page-mon-compte #lcdp-lightbox-slot > .lcdp-alerte-planning-dialogue,
+body.lcdp-page-mon-compte #lcdp-lightbox-slot > .lcdp-alerte-calendrier-hote {
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  width:100%;
+  height:100%;
+  max-width:100%;
+  max-height:100%;
+  padding:10px;
+  overflow:hidden;
+}
