@@ -642,6 +642,22 @@
     // Déplacement du noeud existant : tous les champs, actions et écouteurs sont conservés.
     const securite = fields.querySelector('[data-lcdp-compte-section="securite"]');
     if (securite) fields.appendChild(securite);
+
+    // Services : même carte que les autres rubriques de MON COMPTE.
+    const services = document.createElement("section");
+    services.className = "lcdp-mon-compte-section";
+    services.dataset.lcdpCompteSection = "services";
+    services.setAttribute("aria-labelledby", "lcdp-mon-compte-titre-services");
+    const titreServices = document.createElement("h2");
+    titreServices.id = "lcdp-mon-compte-titre-services";
+    titreServices.className = "lcdp-title-section";
+    titreServices.textContent = "Services";
+    const lienAlertes = document.createElement("a");
+    lienAlertes.className = "lcdp-button lcdp-button-secondary";
+    lienAlertes.href = construireUrlMembre("/ESPACE-MEMBRE/alerte-planifier.html");
+    lienAlertes.textContent = "ALERTE PLANIFIER · Mes alertes";
+    services.append(titreServices, lienAlertes);
+    fields.insertBefore(services, securite || null);
     fields.classList.add("lcdp-mon-compte-sections");
   }
 
