@@ -96,8 +96,7 @@ async function recuperer(env,idmembre,id){
 async function rechercheManuelle(env,crit){
   // Résultats indicatifs uniquement : réservation et droits vérifiés ensuite
   // par PLANIFIER/ABO-RÉZA, sans aucun accès réservé par ce Worker.
-  const mois=crit.mois.length?crit.mois:[new Date().toISOString().slice(0,7)];
-  const candidatsMois=[...new Set([...mois,...crit.dates.map(d=>d.slice(0,7))])].slice(0,9);
+  const candidatsMois=crit.mois.length?crit.mois:(crit.dates.length?[...new Set(crit.dates.map(d=>d.slice(0,7)))]:[new Date().toISOString().slice(0,7)]);
   const datesSet=new Set(crit.dates);
   // Recherche bornée à un département/parc pour limiter la charge serveur.
   if(!crit.parcs.length&&!crit.departements.length)throw erreur("Choisissez au moins un département ou un parc.");
@@ -185,6 +184,7 @@ export default {async fetch(request,env){
     if(!match||!UUID.test(match[1]))throw erreur("Route introuvable",404);
     const id=match[1],action=match[2],alerte=await recuperer(env,membre,id);
     if(action==="relancer"&&request.method==="POST"){
+      if(!alerte.actif)throw erreur("Réactivez cette alerte avant de la relancer.",409);
       const crit=criteresValides(alerte.criteres);
       const resultats=await rechercheManuelle(env,crit);
       await db(env,"alerte_planification",{idalerte:"eq."+id,idmembre:"eq."+membre},{method:"PATCH",body:JSON.stringify({datedernierelancement:new Date().toISOString()})});
