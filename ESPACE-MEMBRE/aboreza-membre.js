@@ -248,7 +248,7 @@
           '• DUO+ ' + nombre(p.freqduoplus) + ' x par mois (' + nombre(p.duoplus) + ' invités simultanés)',
           '• ' + nombre(p.famille) + ' invités FAMILLE',
           '• Payable en ' + nombre(p.ech) + ' échéances'
-        ].join('\\n');
+        ].join('\n');
       }
     } catch (erreur) {
       texte = erreur?.message || 'Impossible de consulter les privilèges de cet abonnement.';
