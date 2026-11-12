@@ -5434,7 +5434,8 @@
           };
           await afficherAlerteSuperposee(motifs[card.dataset.indisponible], "vert", {
             libelleBouton: 'Fermer', sansCroix: ['fermee', 'deja-reserve'].includes(card.dataset.indisponible),
-            fermetureLibre: !['fermee', 'deja-reserve'].includes(card.dataset.indisponible)
+            fermetureLibre: !['fermee', 'deja-reserve'].includes(card.dataset.indisponible),
+            classe: card.dataset.indisponible === 'deja-reserve' ? 'lcdp-planifier-alerte-acces-existant' : ''
           });
           return;
         }
@@ -5573,22 +5574,22 @@
       : '';
     const plage = libellePlageReservation(String(reservation?.plagebookd || ''));
     const parc = nomParcReservationPlanifier(reservation);
-    return [
+    const description = [
       reservation?.invitation === true ? 'Vous avez déjà une invitation' : 'Vous avez déjà un accès planifié',
       date ? 'le ' + date : '',
-      plage,
-      parc ? 'au parc « ' + parc + ' »' : ''
+      plage
     ].filter(Boolean).join(' · ');
+    return parc ? description + '\nPARC DE ' + parc : description;
   }
 
   function libellePlageReservation(plagebookd) {
-    if (plagebookd === "plage1") return "la plage de 6 h à 10 h";
-    if (plagebookd === "plage2") return "la plage de 10 h à 13 h";
-    if (plagebookd === "plage3") return "la plage de 13 h à 17 h";
-    if (plagebookd === "plage4") return "la plage de 17 h à 21 h";
-    if (plagebookd === "plage5") return "la plage de 21 h à 2 h";
+    if (plagebookd === "plage1") return "06h00–10h00";
+    if (plagebookd === "plage2") return "10h00–13h00";
+    if (plagebookd === "plage3") return "13h00–17h00";
+    if (plagebookd === "plage4") return "17h00–21h00";
+    if (plagebookd === "plage5") return "21h00–02h00";
 
-    return "cette plage";
+    return "Horaire indisponible";
   }
 
 
