@@ -252,12 +252,19 @@
       const details = creer('span', 'lcdp-paiement-refonte__option-details');
       texte.textContent = valeur === 'comptant'
         ? (devis.totalTtc === 0 ? 'Aucun règlement supplémentaire' : 'Règlement en une fois')
-        : 'Paiement échelonné';
+        : 'Paiement en ' + devis.echeances.length + ' fois';
       details.append(texte);
       if (valeur === 'comptant' && devis.remiseComptantTtc > 0) {
-        details.append(creer('small', '', 'Économisez ' + EURO.format(devis.remiseComptantTtc) + ' immédiatement'));
+        details.append(creer('small', '', EURO.format(devis.remiseComptantTtc) + ' de remise immédiate'));
       } else if (valeur === 'echeances' && Array.isArray(devis.echeances) && devis.echeances.length) {
-        details.append(creer('small', '', 'Première échéance aujourd’hui'));
+        const dates = Array.isArray(devis.datesEcheances) ? devis.datesEcheances : [];
+        devis.echeances.forEach((montantEcheance, index) => {
+          const libelleDate = index === 0 ? 'À la commande' : (
+            dates[index] ? dateLisible(dates[index]) : 'Date à confirmer'
+          );
+          details.append(creer('small', 'lcdp-paiement-refonte__echeance',
+            libelleDate + ' : ' + EURO.format(montantEcheance)));
+        });
       }
       const montant = valeur === 'echeances' && Array.isArray(devis.echeances)
         ? devis.echeances[0] : devis.totalTtc;
