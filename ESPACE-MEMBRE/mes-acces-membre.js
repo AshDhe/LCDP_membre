@@ -527,25 +527,65 @@
     } else masqueMsg();
   }
 
-  function montrerParrain(r) {
+  async function afficherInformationMesAcces(message, titre = "Information") {
+    const urlObjet = chemin => typeof window.LCDP_urlObjet === "function"
+      ? window.LCDP_urlObjet(chemin)
+      : String(config.objetBaseUrl || config.OBJET_BASE || "https://lacleduparc.fr/OBJET").replace(/\/+$/, "") + chemin;
+    const css = urlObjet("/CSSBASE/lcdp-lightbox-convergence.css");
+    if (![...document.querySelectorAll('link[rel="stylesheet"]')].some(lien => lien.href === css)) {
+      const lien = document.createElement("link");
+      lien.rel = "stylesheet";
+      lien.href = css;
+      document.head.appendChild(lien);
+    }
+    const reponse = await fetch(urlObjet("/HTMLBASE/02-dialogue-reference-information.html"), { cache: "no-cache" });
+    if (!reponse.ok) throw new Error("Dialogue INFORMATION indisponible.");
+    const modele = document.createElement("template");
+    modele.innerHTML = (await reponse.text()).trim();
+    const conteneur = document.createElement("div");
+    conteneur.appendChild(modele.content.cloneNode(true));
+    document.body.appendChild(conteneur);
+    try {
+      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="information"]');
+      const elementTitre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
+      const bouton = conteneur.querySelector('[data-lcdp-dialogue-action="compris"]');
+      if (!dialogue || !elementTitre || !texte || !bouton) throw new Error("Dialogue INFORMATION incomplet.");
+      elementTitre.textContent = titre;
+      texte.textContent = String(message || "");
+      bouton.textContent = "Fermer";
+      return await new Promise(resolve => {
+        bouton.addEventListener("click", () => {
+          conteneur.remove();
+          resolve();
+        }, { once: true });
+        bouton.focus();
+      });
+    } catch (erreur) {
+      conteneur.remove();
+      throw erreur;
+    }
+  }
+
+  async function montrerParrain(r) {
     const parrain = r.parrainInvitation || r.parrain || {};
     const alias = String(parrain.affichage || parrain.alias || parrain.aliasmembre || '').trim();
     const prenom = String(parrain.prenommembre || parrain.prenom || '').trim();
     const nom = String(parrain.nommembre || parrain.nom || '').trim();
     const identite = alias || [prenom, nom ? nom[0].toUpperCase() + '.' : ''].filter(Boolean).join(' ');
-    window.alert('Invitation par : ' + (identite || 'Information indisponible'));
+    await afficherInformationMesAcces('Invitation par : ' + (identite || 'Information indisponible'), 'Invitation reçue');
   }
   async function montrerInvites(r) {
     if (!invitationsApi) return window.alert('Le service des invitations est indisponible.');
     try {
       const data = await getJson(invitationsApi + '/invites?idflux=' + encodeURIComponent(String(r.idflux)));
       const invites = Array.isArray(data.invites) ? data.invites : [];
-      if (!invites.length) return window.alert('Aucun invité enregistré pour cet accès.');
+      if (!invites.length) return afficherInformationMesAcces('Aucun invité enregistré pour cet accès.', 'Invités');
       const lignes = invites.map(i => {
         const label = [i.prenom || i.prenommembre, i.nom || i.nommembre].filter(Boolean).join(' ');
         return label || i.email || i.emailinvite || 'Invité';
       });
-      window.alert('Invités :\n' + lignes.join('\n'));
+      await afficherInformationMesAcces('Invités :\n' + lignes.join('\n'), 'Invités');
     } catch (e) { window.alert(e.message || 'Impossible de consulter les invités.'); }
   }
   async function demanderAnnulation(r) {
@@ -559,7 +599,7 @@
     try {
       await getJson(planningApi + '/annuler-reservation', {method:'POST', body: {idflux: r.idflux}});
       await recharger();
-      window.alert('Annulation enregistrée.');
+      await afficherInformationMesAcces('Annulation enregistrée.', 'Confirmation');
     } catch (e) {
       window.alert(e.message || 'Annulation impossible.');
     } finally { etat.annulationEnCours = false; }
