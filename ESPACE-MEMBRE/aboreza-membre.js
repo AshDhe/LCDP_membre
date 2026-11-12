@@ -705,32 +705,32 @@
       if (!carte || !titre || !texte || !actions) throw Error('Dialogue de panier incomplet.');
       const style = elem('style');
       style.textContent = `
-        .lcdp-panier-existant .lcdp-box-dialogue-bouton__card{box-sizing:border-box;position:relative;width:100%;max-width:480px;margin:auto;padding:32px 30px 29px;border:1px solid #eee;border-radius:28px;background:#fff;box-shadow:0 24px 50px #0002;text-align:center;color:#292524}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__card{box-sizing:border-box;position:relative;width:100%;max-width:480px;margin:auto;padding:24px 30px 22px;border:1px solid #eee;border-radius:28px;background:#fff;box-shadow:0 24px 50px #0002;text-align:center;color:#292524}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__close{position:absolute;top:20px;right:20px;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:50%;background:#f5f5f4;color:#a8a29e;font-size:23px;cursor:pointer}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__close:hover{background:#e7e5e4;color:#44403c}
-        .lcdp-panier-existant__icone{display:grid;place-items:center;box-sizing:border-box;width:60px;height:60px;margin:0 auto 22px;border:1px solid #c7dcc3;border-radius:20px;background:#f0f7ef;color:#4e6838}
+        .lcdp-panier-existant__icone{display:grid;place-items:center;box-sizing:border-box;width:60px;height:60px;margin:0 auto 14px;border:1px solid #c7dcc3;border-radius:20px;background:#f0f7ef;color:#4e6838}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__title{margin:0;max-width:none;color:#1c1917;font-size:23px;font-weight:900;letter-spacing:-.5px;line-height:1.2}
-        .lcdp-panier-existant .lcdp-box-dialogue-bouton__text{margin:7px 0 24px;max-width:none;color:#78716c;font-size:13px;font-weight:600;line-height:1.45}
-        .lcdp-panier-existant__recap{box-sizing:border-box;margin-bottom:28px;padding:20px;border:1px solid #e7e5e4;border-radius:20px;background:#fafaf9;text-align:left}
-        .lcdp-panier-existant__ligne{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:start;gap:8px;padding-bottom:17px;border-bottom:1px solid #e7e5e4}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__text{margin:6px 0 16px;max-width:none;color:#78716c;font-size:13px;font-weight:600;line-height:1.45}
+        .lcdp-panier-existant__recap{box-sizing:border-box;margin-bottom:17px;padding:17px;border:1px solid #e7e5e4;border-radius:20px;background:#fafaf9;text-align:left}
+        .lcdp-panier-existant__ligne{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:start;gap:8px;padding-bottom:13px;border-bottom:1px solid #e7e5e4}
         .lcdp-panier-existant__col{min-width:0}.lcdp-panier-existant__col--date{text-align:right}
         .lcdp-panier-existant__legende{display:block;margin-bottom:6px;color:#a8a29e;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
         .lcdp-panier-existant__valeur{display:block;color:#1c1917;font-size:15px;font-weight:850;line-height:1.3;white-space:nowrap}
         .lcdp-panier-existant__col--date .lcdp-panier-existant__valeur{color:#4b6333}
-        .lcdp-panier-existant__progres{padding-top:15px}
+        .lcdp-panier-existant__progres{padding-top:12px}
         .lcdp-panier-existant__progres-ligne{display:flex;justify-content:space-between;gap:10px;font-size:13px;line-height:1.4}
         .lcdp-panier-existant__progres-ligne span{color:#57534e;font-weight:600}
         .lcdp-panier-existant__progres-ligne strong{color:#1c1917;font-weight:850}
-        .lcdp-panier-existant__progres .lcdp-aboreza-suivi__mois{margin-top:10px}
+        .lcdp-panier-existant__progres .lcdp-aboreza-suivi__mois{margin-top:8px}
         .lcdp-panier-existant .lcdp-panier-existant__progres .lcdp-aboreza-suivi__cases .lcdp-aboreza-suivi__case.lcdp-aboreza-suivi__case--faite{background-color:#4e6838!important;background:#4e6838!important;border-color:#4e6838!important;box-shadow:none!important}
-        .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;width:100%}
+        .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;width:100%}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button{box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-width:0;max-width:none;margin:0;padding:15px 12px;border-radius:18px;font-family:inherit;line-height:1.3;cursor:pointer}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-primary{min-height:58px;border:1px solid #4b6333;background:#4b6333;color:#fff;box-shadow:0 3px 6px #0002;font-size:15px;font-weight:850}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-primary:hover{background:#3d5129;border-color:#3d5129}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-secondary{min-height:50px;border:1px solid #e7e5e4;background:#fff;color:#57534e;box-shadow:none;font-size:12px;font-weight:750}
         .lcdp-panier-existant .lcdp-box-dialogue-bouton__actions .lcdp-button-secondary:hover{background:#fff1f2;border-color:#fecdd3;color:#be123c}
         .lcdp-panier-existant .lcdp-button:focus-visible,.lcdp-panier-existant .lcdp-box-dialogue-bouton__close:focus-visible{outline:2px solid #4b6333;outline-offset:3px}
-        @media(max-width:480px){.lcdp-panier-existant .lcdp-box-dialogue-bouton__card{padding:25px 17px 22px;border-radius:23px}.lcdp-panier-existant__recap{padding:16px 14px}.lcdp-panier-existant__valeur{font-size:13px}.lcdp-panier-existant .lcdp-box-dialogue-bouton__title{font-size:21px}}
+        @media(max-width:480px){.lcdp-panier-existant .lcdp-box-dialogue-bouton__card{padding:20px 17px 19px;border-radius:23px}.lcdp-panier-existant__recap{padding:14px 14px}.lcdp-panier-existant__valeur{font-size:13px}.lcdp-panier-existant .lcdp-box-dialogue-bouton__title{font-size:21px}}
       `;
       objet.prepend(style);
       const icone = elem('div', 'lcdp-panier-existant__icone');
