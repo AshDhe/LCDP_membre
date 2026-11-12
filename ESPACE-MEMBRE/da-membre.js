@@ -202,6 +202,38 @@
   }
 
   async function afficherAlerteDa(message, options = {}) {
+    if (options.profil === "information") {
+      try {
+        await chargerCssObjetUneFois("/CSSBASE/lcdp-lightbox-convergence.css");
+        const conteneur = document.createElement("div");
+        document.body.appendChild(conteneur);
+        try {
+          conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html"));
+          const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="information"]');
+          const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
+          const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
+          const bouton = conteneur.querySelector('[data-lcdp-dialogue-action="compris"]');
+          if (!dialogue || !titre || !texte || !bouton) throw new Error("Structure INFORMATION incomplète.");
+          titre.textContent = options.titre || "Information";
+          texte.textContent = String(message || "");
+          bouton.textContent = "Fermer";
+          return await new Promise(resolve => {
+            bouton.addEventListener("click", () => {
+              conteneur.remove();
+              resolve(true);
+            }, { once: true });
+            bouton.focus();
+          });
+        } catch (erreur) {
+          conteneur.remove();
+          throw erreur;
+        }
+      } catch (erreur) {
+        console.error("Dialogue INFORMATION DA :", erreur);
+        window.alert(message || "");
+        return true;
+      }
+    }
     try {
       await chargerDependancesAlerteDa();
     } catch (error) {
@@ -363,13 +395,13 @@
           return;
         }
 
-        await afficherAlerteDa("Vous avez une DA en cours.");
+        await afficherAlerteDa("Vous avez une DA en cours.", { profil: "information" });
         return;
       }
 
       if (daactive === false) {
         if (!dateDaAtteinte(datenext)) {
-          await afficherAlerteDa("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(datenext) + ".");
+          await afficherAlerteDa("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(datenext) + ".", { profil: "information" });
           return;
         }
 
@@ -383,12 +415,12 @@
       }
 
       if (statuda === "encours") {
-        await afficherAlerteDa("Vous avez une DA en cours.");
+        await afficherAlerteDa("Vous avez une DA en cours.", { profil: "information" });
         return;
       }
 
       if (statuda === "non") {
-        await afficherAlerteDa("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(datenext) + ".");
+        await afficherAlerteDa("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(datenext) + ".", { profil: "information" });
         return;
       }
 
