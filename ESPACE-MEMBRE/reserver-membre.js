@@ -191,8 +191,7 @@
       valeurAction: options.valeurAction ?? "fermer",
       onAffiche: options.onAffiche,
       classe: options.classe || "lcdp-aboreza-confirmation-information",
-      lignes: options.lignes,
-      lienSecondaire: options.lienSecondaire
+      lignes: options.lignes
     }),
     confirmerAnnulationPanier: () => afficherConfirmationSuppressionPanier(),
     viderCache: () => cachePlanningParcLecture.clear(),
@@ -5775,7 +5774,7 @@
 
   // Migration pilote vers l'objet INFORMATION générique.
   // Le rendu est toujours celui du profil INFORMATION ; seuls les contenus varient.
-  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null, classe = "", lignes = null, lienSecondaire = "" }) {
+  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null, classe = "", lignes = null }) {
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
@@ -5801,27 +5800,6 @@
           liste.appendChild(item);
         }
         message.replaceWith(liste);
-      }
-      if (lienSecondaire) {
-        const lien = document.createElement('a');
-        lien.href = '#';
-        lien.className = 'lcdp-aboreza-privileges-ajouter';
-        lien.textContent = lienSecondaire;
-        lien.addEventListener('click', event => {
-          event.preventDefault();
-          // Pas de parcours d'ajout raccordé : rester dans INFORMATION.
-          titre.textContent = 'Ajouter des privilèges';
-          const liste = dialogue.querySelector('.lcdp-aboreza-privileges-liste');
-          if (liste) {
-            const information = document.createElement('p');
-            information.className = 'lcdp-dialogue-ref__message';
-            information.textContent = 'Le parcours d’ajout de privilèges n’est pas encore disponible.';
-            liste.replaceWith(information);
-          }
-          lien.remove();
-        });
-        const actions = fermer.closest('.lcdp-dialogue-ref__actions');
-        if (actions) actions.before(lien);
       }
       fermer.textContent = libelleAction;
       // Retirer l'attente dès que la boîte d'information est réellement visible.
