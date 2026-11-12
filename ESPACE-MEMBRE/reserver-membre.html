@@ -596,7 +596,10 @@
       color: #78716c !important;
     }
     body.lcdp-page-reserver .lcdp-paiement-refonte__option-prix--echeances {
-      color: #4e6838;
+      display: none !important;
+    }
+    body.lcdp-page-reserver .lcdp-paiement-refonte .lcdp-workflow-paiement__option:has(.lcdp-paiement-refonte__option-prix--echeances) {
+      grid-template-columns: 23px minmax(0, 1fr) !important;
     }
   </style>
 
