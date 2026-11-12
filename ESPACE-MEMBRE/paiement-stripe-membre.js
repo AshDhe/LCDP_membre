@@ -45,7 +45,7 @@
   async function chargerDetailCommande() {
     const [rp, rd] = await Promise.all([
       fetch(String(config.workerAboRezaUrl || config.WORKER_ABOREZA_URL ||
-        (typeof config.apiUrl === 'function' ? config.apiUrl('aboreza-api') : 'https://aboreza-api.lacleduparc.fr')).replace(/\\/+$/, '') +
+        (typeof config.apiUrl === 'function' ? config.apiUrl('aboreza-api') : 'https://aboreza-api.lacleduparc.fr')).replace(/\/+$/, '') +
         '/panier', {credentials:'include',cache:'no-store',headers:{Accept:'application/json'}}),
       fetch(endpoint + '/devis?idpanier=' + encodeURIComponent(idpanier),
         {credentials:'include',cache:'no-store',headers:{Accept:'application/json'}})
