@@ -156,11 +156,16 @@
     }catch(e){message(e.message);}
   }
   function appliquerRoutes(racine){
-    racine.querySelectorAll("[data-site-href]").forEach(a=>{
-      const path=a.dataset.siteHref,scope=a.dataset.siteSpace||a.dataset.siteEspace||"";
-      if(!path)return;
-      if(scope==="public")a.href=(window.LCDP_urlPublic||conf.publicUrl)(path);
-      else a.href=membre(path);
+    // Même convention data-space que MES ACCÈS.
+    racine.querySelectorAll("[data-site-href]").forEach(element=>{
+      const chemin=element.dataset.siteHref||"";
+      const espace=element.dataset.space||"public";
+      element.setAttribute("href",espace==="membre"?membre(chemin):(window.LCDP_urlPublic||conf.publicUrl)(chemin));
+    });
+    racine.querySelectorAll("[data-site-src]").forEach(element=>{
+      const chemin=element.dataset.siteSrc||"";
+      const cheminObjet=chemin.startsWith("/OBJET/")?chemin.slice(6):chemin;
+      element.setAttribute("src",objet(cheminObjet));
     });
   }
   async function fragment(url,slot){
