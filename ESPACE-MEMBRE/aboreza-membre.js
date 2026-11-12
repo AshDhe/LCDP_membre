@@ -337,7 +337,9 @@
           ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut lcdp-aboreza-catalogue__statut--disponible', 'Compatible'));
           contenu.append(ligne);
           contenu.append(elem('span', 'lcdp-aboreza-catalogue__description', 'Abonnement compatible avec votre planning.'));
-          contenu.append(lienPrivilegesAbonnement(offre.formule), lienAjouterPrivileges());
+          const liensPrivileges = elem('span', 'lcdp-aboreza-catalogue__liens-privileges');
+          liensPrivileges.append(lienPrivilegesAbonnement(offre.formule), lienAjouterPrivileges());
+          contenu.append(liensPrivileges);
           const indicateur = elem('span', 'lcdp-aboreza-catalogue__indicateur');
           indicateur.setAttribute('aria-hidden', 'true');
           option.append(radio, contenu, indicateur);
