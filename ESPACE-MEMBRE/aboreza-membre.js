@@ -910,7 +910,7 @@
           timeZone: 'UTC', month: 'long'
         }).format(new Date(cle.slice(0, 7) + '-01T12:00:00Z'));
         const texte = moisTermine
-          ? `Accès à la commande planifié pour ${nomMois(avant)}. Planifier ${nomMois(courant.moisActif)}.`
+          ? `Accès à la commande planifié pour ${nomMois(avant)}.\nPlanifier ${nomMois(courant.moisActif)}.`
           : `Accès planifié. Il reste ${restants} accès à planifier à la commande pour ${moisLibelle(courant.moisActif)}.`;
         // La confirmation passe par le dialogue INFORMATION générique.
         const dialogue = bridge()?.informer?.(texte, {
