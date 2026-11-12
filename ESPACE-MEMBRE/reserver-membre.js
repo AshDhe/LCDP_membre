@@ -5600,6 +5600,7 @@
     return ouvrirDialogueBoutonsSuperpose({
       titre: invitation ? 'Invitation déjà reçue' : 'Accès déjà planifié',
       texte: detail,
+      classe: 'lcdp-planifier-dialogue-etat',
       fermetureLibre: false,
       boutons: [{ label: 'Fermer', valeur: 'fermer', style: 'lcdp-button-primary' }]
     });
