@@ -10,6 +10,12 @@
     "planning-membre-api"
   );
 
+  const ENDPOINT_PLANNING_PARC = construireEndpointApi(
+    "workerPlanningParcUrl",
+    "WORKER_PLANNING_PARC_URL",
+    "planning-parc-api"
+  );
+
   const ENDPOINT_INDEX_MEMBRE = construireEndpointApi(
     "workerIndexMembreUrl",
     "WORKER_INDEX_MEMBRE_URL",
@@ -65,6 +71,7 @@
     "plage4",
     "plage5"
   ];
+  const cacheHorairesParcMois = new Map();
 
   const LEGENDE_AGENDA_MEMBRE = [
     {
@@ -1373,6 +1380,9 @@
     const titre = document.createElement("span");
     titre.className = "lcdp-planning-carte-visite__legende";
     titre.textContent = "Parc de " + nom + " · " + date + (heure ? " · " + heure : "");
+    actualiserHoraireEffectifReservation(reservation, horaire => {
+      titre.textContent = "Parc de " + nom + " · " + date + " · " + horaire;
+    });
     if (!ouvrir.querySelector("img")) {
       const imageAbsente = document.createElement("span");
       imageAbsente.className = "lcdp-planning-carte-visite__sans-image";
@@ -2377,7 +2387,12 @@
     }
 
     if (date) date.textContent = formaterDateCourte(reservation.datebookd);
-    if (heure) heure.textContent = formaterPlageAccesReservation(reservation);
+    if (heure) {
+      heure.textContent = formaterPlageAccesReservation(reservation);
+      actualiserHoraireEffectifReservation(reservation, horaire => {
+        heure.textContent = horaire;
+      });
+    }
     if (parcElement) parcElement.textContent = "Parc de " + nomParc;
 
     if (departementElement) {
@@ -4952,6 +4967,53 @@
   function formaterPlageAccesReservation(reservation) {
     const plage = normaliserPlageReservation(reservation);
     return plage ? libellePlage(plage).replace(/\s*h\s*/g, "h").replace(/\s*–\s*/g, "–") : "";
+  }
+
+  // Horaires réduits depuis le planning canonique du parc, sans nouvel endpoint.
+  // Une lecture par parc et par mois ; si le service ne confirme pas la plage,
+  // la carte conserve sa plage nominale sans fabriquer de réduction.
+  function actualiserHoraireEffectifReservation(reservation, appliquer) {
+    if (!ENDPOINT_PLANNING_PARC) return;
+    const idparc = String(reservation?.idparc || reservation?.parc?.idparc || "").trim();
+    const dateIso = extraireDateFranceReservation(reservation?.datebookd);
+    const plage = normaliserPlageReservation(reservation);
+    if (!idparc || !dateIso || !plage) return;
+    const moisIso = dateIso.slice(0, 7);
+    const cleCache = idparc + "|" + moisIso;
+    if (!cacheHorairesParcMois.has(cleCache)) {
+      const [annee, mois] = moisIso.split("-");
+      const url = ENDPOINT_PLANNING_PARC +
+        "/planning-parc-mois?idparc=" + encodeURIComponent(idparc) +
+        "&annee=" + encodeURIComponent(annee) +
+        "&mois=" + encodeURIComponent(Number(mois)) +
+        "&contexte=membre";
+      const promesse = fetch(url, {
+        method: "GET", credentials: "include", cache: "no-store",
+        headers: { "Accept": "application/json" }
+      }).then(async reponse => {
+        if (!reponse.ok) return null;
+        const data = await reponse.json().catch(() => null);
+        return data?.ok === true && Array.isArray(data.planning) ? data.planning : null;
+      }).catch(() => null);
+      cacheHorairesParcMois.set(cleCache, promesse);
+    }
+    cacheHorairesParcMois.get(cleCache).then(planning => {
+      const jour = planning?.find(entree => entree.date === dateIso);
+      const detail = jour?.plages?.[plage];
+      if (!detail?.ouverte) return;
+      const debut = formaterHeurePlageEffectif(detail.debut);
+      const fin = formaterHeurePlageEffectif(detail.fin);
+      if (debut && fin) appliquer(debut + "–" + fin);
+    });
+  }
+
+  function formaterHeurePlageEffectif(heure) {
+    const match = String(heure || "").match(/^(\d{2}):(\d{2})(?::\d{2})?$/);
+    if (!match) return "";
+    const hh = Number(match[1]);
+    const mm = Number(match[2]);
+    if (hh > 23 || mm > 59) return "";
+    return String(hh) + "h" + (mm === 0 ? "" : String(mm).padStart(2, "0"));
   }
 
   function extraireDateFranceReservation(timestampIso) {
