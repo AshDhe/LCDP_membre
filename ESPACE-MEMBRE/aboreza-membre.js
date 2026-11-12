@@ -826,6 +826,9 @@
           return;
         }
         if(decision!=='recommencer')return;
+        // La commande n'est annulée qu'après validation explicite du dialogue SUPPRESSION.
+        const annulationConfirmee = await bridge()?.confirmerAnnulationPanier?.();
+        if(annulationConfirmee !== true)return;
         afficherAttenteFormules();
         await api('/annuler','POST',{idpanier:enCours.idpanier});
       }
