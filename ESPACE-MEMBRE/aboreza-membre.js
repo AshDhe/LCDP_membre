@@ -228,6 +228,42 @@
     conteneur.append(champGenerique(libelle, controle));
     return conteneur;
   }
+  // Les cinq rubriques viennent exclusivement de prixabo via le Worker.
+  // La lightbox INFORMATION est montée dans le slot de dialogues du wrapper.
+  async function afficherPrivilegesAbonnement(formule) {
+    const titre = 'Privilèges de l’abonnement ' + nomFormule(formule);
+    let texte;
+    try {
+      const reponse = await api('/privileges?formule=' + encodeURIComponent(formule));
+      const p = reponse.privileges;
+      if (!p) {
+        texte = 'Les privilèges de cet abonnement ne sont pas encore configurés.';
+      } else {
+        const nombre = v => v === null || v === undefined ? 'Non renseigné' : String(v);
+        const supplement = (v, libelle) => v === null || v === undefined ? '' : ' (' + libelle + ' : ' + v + ')';
+        texte = [
+          'DUO : maximum ' + nombre(p.maxduo),
+          'DUO+ : ' + nombre(p.duoplus) + supplement(p.freqduoplus, 'fréquence'),
+          'Famille : ' + nombre(p.famille),
+          'Coach : ' + nombre(p.coach) + supplement(p.maxcoach, 'maximum'),
+          'Recherche IA : ' + (p.rechercheia === true ? 'Incluse' : p.rechercheia === false ? 'Non incluse' : 'Non renseignée')
+        ].join('\n');
+      }
+    } catch (erreur) {
+      texte = erreur?.message || 'Impossible de consulter les privilèges de cet abonnement.';
+    }
+    await bridge()?.informer?.(texte, { titre, libelleBouton: 'Fermer' });
+  }
+  function lienPrivilegesAbonnement(formule) {
+    const lien = elem('a', 'lcdp-aboreza-catalogue__privileges', 'Voir les privilèges');
+    lien.href = '#';
+    lien.addEventListener('click', evenement => {
+      evenement.preventDefault();
+      evenement.stopPropagation();
+      afficherPrivilegesAbonnement(formule).catch(console.error);
+    });
+    return lien;
+  }
   async function choisirFormuleCatalogue(offres) {
     return modalComposant('dialogue', 'Nouvel abonnement', (objet, finir) => {
       const workflow = objet.closest('[data-lcdp-box-workflow-abonnement]');
@@ -266,7 +302,7 @@
         const listeDisponibles = section('Abonnement compatible', 'lcdp-aboreza-catalogue__section--disponibles');
         const nomRadio = 'lcdp-aboreza-catalogue-formule';
         disponibles.forEach((offre, index) => {
-          const option = elem('label', 'lcdp-aboreza-catalogue__option');
+          const option = elem('div', 'lcdp-aboreza-catalogue__option');
           const radio = elem('input', 'lcdp-aboreza-catalogue__radio');
           radio.type = 'radio';
           radio.name = nomRadio;
@@ -278,6 +314,7 @@
           ligne.append(elem('span', 'lcdp-aboreza-catalogue__statut lcdp-aboreza-catalogue__statut--disponible', 'Compatible'));
           contenu.append(ligne);
           contenu.append(elem('span', 'lcdp-aboreza-catalogue__description', 'Abonnement compatible avec votre planning.'));
+          contenu.append(lienPrivilegesAbonnement(offre.formule));
           const indicateur = elem('span', 'lcdp-aboreza-catalogue__indicateur');
           indicateur.setAttribute('aria-hidden', 'true');
           option.append(radio, contenu, indicateur);
@@ -285,6 +322,11 @@
             if (!radio.checked) return;
             selection = offre.formule;
             continuer.disabled = false;
+          });
+          option.addEventListener('click', evenement => {
+            if (evenement.target.closest('a')) return;
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change', { bubbles: true }));
           });
           listeDisponibles.append(option);
           if (index === 0) selection = offre.formule;
@@ -348,6 +390,7 @@
               option.append(elem('p', 'lcdp-aboreza-catalogue__description', motif.explication));
             }
           }
+          option.append(lienPrivilegesAbonnement(offre.formule));
           listeIndisponibles.append(option);
         }
       }
