@@ -943,7 +943,17 @@
         if(!reponse.ok||data?.ok!==true)throw new Error(data?.message||"Enregistrement indisponible.");
         fermer();
         await afficherAlerte("Alerte enregistrée. Retrouvez-la dans MON COMPTE → Services.");
-      }catch(err){msg.textContent=err.message;enregistrer.disabled=false;}
+      }catch(err){
+        // TypeError au fetch : aucun statut HTTP récupérable (réseau, DNS,
+        // TLS ou CORS). Ne pas l'attribuer à tort à la session membre.
+        if(err instanceof TypeError){
+          msg.textContent="Connexion à l'API impossible. Vérifier le domaine Cloudflare et l'autorisation CORS de l'origine membre.";
+          console.error("ALERTE PLANIFIER : requête inaboutie vers",endpoint+"/alertes",err);
+        }else{
+          msg.textContent=err?.message||"Enregistrement indisponible.";
+        }
+        enregistrer.disabled=false;
+      }
     },{signal:controller.signal});
   }
 
