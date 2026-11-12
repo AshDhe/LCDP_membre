@@ -2195,17 +2195,27 @@
     const slot = superposition ? document.createElement("div") : (options.slot || obtenirLightboxSlot());
     if (superposition) {
       slot.className = "lcdp-workflow-abonnement-alerte";
+      slot.style.position = "fixed";
+      slot.style.inset = "0";
+      slot.style.zIndex = "12000";
       document.body.appendChild(slot);
     } else if (!options.slot) {
       slot.replaceChildren();
     }
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
-    slot.appendChild(fragment);
+    let fragment;
+    try {
+      fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
+      slot.appendChild(fragment);
+    } catch (error) {
+      if (superposition) slot.remove();
+      throw error;
+    }
     const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="information"]');
     const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
     const texte = slot.querySelector("[data-lcdp-dialogue-message]");
     const bouton = slot.querySelector('[data-lcdp-dialogue-action="compris"]');
     if (!dialogue || !titre || !texte || !bouton) {
+      if (superposition) slot.remove();
       throw new Error("Structure INFORMATION incomplète.");
     }
     titre.textContent = options.titre || "Information";
