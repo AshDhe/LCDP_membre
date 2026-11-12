@@ -614,6 +614,12 @@
       bandeau = elem('section', 'lcdp-aboreza-suivi');
       bandeau.setAttribute('aria-live', 'polite');
     }
+    // Le bandeau est injecté dans le calendrier générique : fixer localement
+    // sa bordure et son positionnement, indépendamment de l'ordre des CSS.
+    bandeau.style.setProperty('border', '2px solid #4e6838', 'important');
+    bandeau.style.setProperty('border-radius', '18px', 'important');
+    bandeau.style.setProperty('box-sizing', 'border-box', 'important');
+    bandeau.style.setProperty('margin-top', '-12px', 'important');
     bandeau.replaceChildren();
 
     const details = elem('div', 'lcdp-aboreza-suivi__details');
