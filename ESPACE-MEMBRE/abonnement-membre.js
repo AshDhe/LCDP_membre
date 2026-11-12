@@ -497,7 +497,7 @@
 
     const resultat = await enregistrerAnnulationAvoir(card);
 
-    await afficherAlerte(
+    await afficherInformationAbonnement(
       resultat?.emailEnvoye === true
         ? "Votre demande d'annulation est enregistrée. L'annulation prendra effet demain à 02 h 00. Un e-mail de confirmation avec le lien vers votre avoir vous a été envoyé."
         : "Votre demande d'annulation est enregistrée. L'annulation prendra effet demain à 02 h 00. Votre avoir est disponible dans Mes factures."
@@ -2189,38 +2189,54 @@
     await afficherConfirmationCommande(data);
   }
 
+  async function afficherInformationAbonnement(message, options = {}) {
+    const slot = options.slot || obtenirLightboxSlot();
+    if (!options.slot) slot.replaceChildren();
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
+    slot.appendChild(fragment);
+    const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="information"]');
+    const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+    const bouton = slot.querySelector('[data-lcdp-dialogue-action="compris"]');
+    if (!dialogue || !titre || !texte || !bouton) {
+      throw new Error("Structure INFORMATION incomplète.");
+    }
+    titre.textContent = options.titre || "Information";
+    texte.textContent = String(message || "");
+    bouton.textContent = options.libelleBouton || "Fermer";
+    if (options.onFermer) {
+      const quitter = () => options.onFermer();
+      bouton.addEventListener("click", quitter, { once: true });
+      dialogue.addEventListener("click", event => {
+        if (event.target === dialogue) quitter();
+      });
+      bouton.focus();
+      return;
+    }
+    return new Promise(resolve => {
+      let resolu = false;
+      bouton.addEventListener("click", () => {
+        if (resolu) return;
+        resolu = true;
+        slot.replaceChildren();
+        resolve(true);
+      }, { once: true });
+      bouton.focus();
+    });
+  }
+
   async function afficherConfirmationCommande(data) {
     const slot = await obtenirWorkflowAbonnementContenu();
     await preparerTransitionWorkflow(slot);
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
-    slot.appendChild(fragment);
-
-    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
-    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
-    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
-    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
-    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
-
-    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
-      throw new Error("Structure confirmation commande incomplète.");
-    }
-
-    appliquerClasseWorkflow(dialogue, "confirmation");
-
-    titre.textContent = "Confirmation de votre commande";
-    texte.textContent = "Votre commande est enregistrée. Merci de votre confiance. Un e-mail vous a été envoyé avec le récapitulatif et nos coordonnées bancaires pour le virement.\nÀ bientôt dans les parcs !";
-    actions.innerHTML = "";
-
-    const quitter = () => {
-      window.location.href = PAGE_ABONNEMENT_MEMBRE;
-    };
-
-    actions.appendChild(creerBouton("OK", "lcdp-button-primary", quitter));
-    boutonFermer.addEventListener("click", quitter);
-    dialogue.addEventListener("click", (event) => {
-      if (event.target === dialogue) quitter();
-    });
+    await afficherInformationAbonnement(
+      "Votre commande est enregistrée. Merci de votre confiance. Un e-mail vous a été envoyé avec le récapitulatif et nos coordonnées bancaires pour le virement.\nÀ bientôt dans les parcs !",
+      {
+        slot,
+        titre: "Confirmation de votre commande",
+        libelleBouton: "OK",
+        onFermer: () => { window.location.href = PAGE_ABONNEMENT_MEMBRE; }
+      }
+    );
   }
 
   function creerPayloadCommande(extra = {}) {
