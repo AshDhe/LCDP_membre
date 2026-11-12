@@ -187,6 +187,51 @@
   border-color:var(--lcdp-color-logo-green);
 }
 
+/* La fenêtre ALERTE est contenue dans le wrapper applicatif c085 (448px).
+   Les overlays centraux sont normalement positionnés par rapport au viewport ;
+   ce périmètre les ancre uniquement à l'accueil membre. */
+body.lcdp-page-accueil-membre > .public-home__app.lcdp-app-wrapper {
+  position:relative;
+  isolation:isolate;
+}
+body.lcdp-page-accueil-membre > .lcdp-app-wrapper #lcdp-lightbox-slot:has(> .lcdp-alerte-planning-dialogue),
+body.lcdp-page-accueil-membre > .lcdp-app-wrapper #lcdp-lightbox-slot:has(> .lcdp-alerte-calendrier-hote) {
+  position:absolute;
+  inset:0;
+  z-index:200;
+  width:100%;
+  min-width:0;
+  min-height:0;
+  height:100%;
+  max-width:100%;
+  max-height:100%;
+  overflow:hidden;
+}
+body.lcdp-page-accueil-membre #lcdp-lightbox-slot > .lcdp-alerte-planning-dialogue {
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  width:100%;
+  max-width:100%;
+  height:100%;
+  max-height:100%;
+  margin:0;
+  padding:10px;
+  overflow:hidden;
+}
+body.lcdp-page-accueil-membre #lcdp-lightbox-slot > .lcdp-alerte-calendrier-hote {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  max-width:100%;
+  max-height:100%;
+  overflow:hidden;
+}
+
 /* ALERTE PLANIFIER : contenu exclusivement dans le wrapper du dialogue commun.
    Aucun style du formulaire MES ACCÈS ou de la page MON COMPTE n'est modifié. */
 #lcdp-lightbox-slot .lcdp-alerte-planning-dialogue {
@@ -195,8 +240,8 @@
 }
 #lcdp-lightbox-slot .lcdp-alerte-planning-dialogue .lcdp-box-dialogue-bouton__card {
   box-sizing:border-box;
-  width:min(100%,600px);
-  max-width:600px;
+  width:100%;
+  max-width:100%;
   max-height:calc(100dvh - 24px);
   overflow-x:hidden;
   overflow-y:auto;
@@ -420,8 +465,9 @@
   #lcdp-lightbox-slot .lcdp-alerte-planning-dialogue .lcdp-alerte-invites {grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 #lcdp-lightbox-slot .lcdp-alerte-calendrier-hote .lcdp-box-calendrier-mois {
-  position:fixed;inset:0;z-index:4000;display:flex;align-items:center;justify-content:center;
-  padding:12px;background:rgba(20,30,25,.42);
+  position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;
+  box-sizing:border-box;width:100%;height:100%;max-width:100%;max-height:100%;
+  padding:10px;background:rgba(20,30,25,.42);
 }
 #lcdp-lightbox-slot .lcdp-alerte-calendrier-hote .lcdp-box-calendrier-mois__card {
   box-sizing:border-box;width:min(100%,550px);max-width:550px;max-height:calc(100dvh - 24px);
