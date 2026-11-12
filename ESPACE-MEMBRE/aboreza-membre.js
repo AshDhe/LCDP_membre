@@ -971,6 +971,9 @@
           return;
         }
         if(decision!=='recommencer')return;
+        masquerAttenteFormules();
+        // Ne pas supprimer un panier existant si une nouvelle commande est interdite.
+        if (!await verifierHorairesNouvelleCommande()) return;
         // La commande n'est annulée qu'après validation explicite du dialogue SUPPRESSION.
         const annulationConfirmee = await bridge()?.confirmerAnnulationPanier?.();
         if(annulationConfirmee !== true)return;
