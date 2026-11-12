@@ -704,19 +704,22 @@
     const nom=noeud("input","lcdp-planning-filtres__select");
     nom.id="lcdp-alerte-nom";nom.required=true;nom.maxLength=80;
     nom.placeholder="Nom de cette alerte";
-    champNom.append(etiquette("Nom de l'alerte",nom.id),nom);
+    nom.setAttribute("aria-label","Nom de l'alerte");
+    champNom.append(nom);
     champs.append(champNom);
-    const groupe=(libelle)=>{
-      const n=noeud("section","lcdp-alerte-critere lcdp-alerte-champ-complet");
+    const groupe=(libelle,maximum,classe="")=>{
+      const n=noeud("section","lcdp-alerte-critere"+(classe?" "+classe:""));
       const titreGroupe=noeud("div","lcdp-alerte-critere__titre",libelle);
+      n.append(titreGroupe);
+      if(maximum)n.append(noeud("span","lcdp-alerte-critere__maximum",maximum+" maximum"));
       const liste=noeud("div","lcdp-alerte-critere__valeurs");
-      n.append(titreGroupe,liste);champs.append(n);
+      n.append(liste);champs.append(n);
       return {n,liste};
     };
-    const departements=groupe("Départements (3 maximum)");
-    const periodes=groupe("Périodes (3 maximum)");
-    const horaires=groupe("Plages horaires (3 maximum)");
-    const invites=groupe("Filtre invités (accès parc)");
+    const departements=groupe("Département",3,"lcdp-alerte-critere--departement");
+    const periodes=groupe("Période",3,"lcdp-alerte-critere--periode");
+    const horaires=groupe("Horaire",3,"lcdp-alerte-critere--horaire");
+    const invites=groupe("Filtre invités (accès parc)",0,"lcdp-alerte-critere--invites");
     const msg=noeud("p","lcdp-alerte-etat");msg.setAttribute("role","status");
     const endpoint=String(CONFIG_PAGE.workerAlertePlanifierUrl||CONFIG_PAGE.WORKER_ALERTE_PLANIFIER_URL||"").replace(/\/+$/,"");
     const getDiginum=async()=>{
@@ -863,30 +866,49 @@
     });
     const choixHoraire=noeud("div","lcdp-alerte-critere__saisie");choixHoraire.append(choixPlage,horaires.ajouter);
     horaires.n.append(choixHoraire);
-    const ligneInvites=noeud("div","lcdp-planning-filtres__invitations lcdp-alerte-invites");
-    for(const [code,libelle] of [["duo","DUO SEUL"],["famille","+ FAMILLE"],["coach","+ COACH"]]){
-      const label=noeud("label","lcdp-planning-filtres__option");
-      const box=document.createElement("input");box.type="checkbox";box.checked=code==="duo";
+    // Même structure visuelle que le filtre Invités du planning du parc.
+    const ligneInvites=noeud("div","lcdp-box-legende__ligne lcdp-alerte-invites");
+    const controlesInvites=new Map();
+    const syncInvites=()=>{
+      for(const [cle,controle] of controlesInvites){
+        controle.checked=cle==="famille-coach"
+          ? etat.categories.length===3
+          : etat.categories.includes(cle);
+      }
+    };
+    for(const [code,libelle,picto] of [
+      ["duo","DUO SEUL","🧑‍🤝‍🧑"],
+      ["famille","+ FAMILLE","🏠"],
+      ["coach","+ COACH","🏋️"],
+      ["famille-coach","TOUS","🌟"]
+    ]){
+      const label=noeud("label","lcdp-box-legende__item lcdp-planifier-filtre-categorie");
+      const box=document.createElement("input");
+      box.type="checkbox";box.className="lcdp-planifier-filtre-categorie__input";box.value=code;
+      box.setAttribute("aria-label","Filtrer "+libelle);
+      const carre=noeud("span","lcdp-box-legende__carre lcdp-box-legende__carre--"+code);
+      carre.setAttribute("aria-hidden","true");
+      carre.append(noeud("span","lcdp-planifier-filtre-categorie__coche","✓"));
+      const labelTexte=noeud("span","lcdp-box-legende__libelle",libelle);
+      const icone=noeud("span","lcdp-planifier-filtre-categorie__picto",picto);
+      icone.setAttribute("aria-hidden","true");
       box.addEventListener("change",()=>{
-        if(box.checked){if(!etat.categories.includes(code))etat.categories.push(code);}
-        else etat.categories=etat.categories.filter(v=>v!==code);
-        tous.checked=etat.categories.length===3;
+        if(code==="famille-coach")etat.categories=box.checked?["duo","famille","coach"]:[];
+        else if(box.checked){
+          if(!etat.categories.includes(code))etat.categories.push(code);
+        }else etat.categories=etat.categories.filter(v=>v!==code);
+        syncInvites();
       },{signal:controller.signal});
-      label.append(box,noeud("span","",libelle));ligneInvites.append(label);
+      label.append(icone,labelTexte,box,carre);
+      ligneInvites.append(label);controlesInvites.set(code,box);
     }
-    const labelTous=noeud("label","lcdp-planning-filtres__option");
-    const tous=document.createElement("input");tous.type="checkbox";
-    tous.addEventListener("change",()=>{
-      etat.categories=tous.checked?["duo","famille","coach"]:[];
-      ligneInvites.querySelectorAll("input").forEach((e,i)=>{if(i<3)e.checked=tous.checked;});
-    },{signal:controller.signal});
-    labelTous.append(tous,noeud("span","","TOUS"));ligneInvites.append(labelTous);
+    syncInvites();
     invites.n.append(ligneInvites);
     formulaire.append(champs);
     const barre=noeud("div","lcdp-alerte-formulaire__actions");
     const effacer=bouton("Effacer",()=>{
       etat.departements=[];etat.periodes=[];etat.plages=[];etat.categories=["duo"];
-      nom.value="";ligneInvites.querySelectorAll("input").forEach((e,i)=>e.checked=i===0);
+      nom.value="";syncInvites();
       msg.textContent="";actualiser();
     });
     const enregistrer=noeud("button","lcdp-button lcdp-button-primary","Enregistrer l’alerte");
