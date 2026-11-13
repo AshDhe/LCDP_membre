@@ -2255,9 +2255,17 @@
     }
 
     if (boutonAdresse) {
+      event.preventDefault();
+      event.stopPropagation();
       const cardReservation = boutonAdresse.closest("[data-lcdp-box-card-reservation-membre]");
-      const idflux = String(boutonAdresse.dataset.id || cardReservation?.dataset.idflux || "").trim();
-      await ouvrirAccesParcReservation(idflux, boutonAdresse);
+      const carteVerso = boutonAdresse.closest(".lcdp-planning-carte-visite");
+      const idflux = String(boutonAdresse.dataset.id || cardReservation?.dataset.idflux ||
+        carteVerso?.dataset.idflux || "").trim();
+      if (carteVerso) {
+        await ouvrirInformationEntreeParcMesAcces(idflux);
+      } else {
+        await ouvrirAccesParcReservation(idflux, boutonAdresse);
+      }
       return;
     }
 
@@ -2286,6 +2294,71 @@
     if (boutonAnnuler) {
       await traiterAnnulationReservation(boutonAnnuler);
     }
+  }
+
+
+  // MES ACCÈS : le picto « Accès » au verso affiche uniquement la première
+  // rubrique d'Accès détail (Parc Admin), dans le dialogue INFORMATION commun.
+  // Les autres vues de réservation continuent d'utiliser 04-card-acces-parc.
+  async function ouvrirInformationEntreeParcMesAcces(idflux) {
+    const reservation = trouverReservationPlanningParId(idflux);
+    if (!reservation) {
+      await afficherAlerte("Réservation introuvable.");
+      return;
+    }
+    const parc = reservation.parc || {};
+    const idReservationParc = String(reservation.idparc || "").trim();
+    const idParcJoint = String(parc.idparc || "").trim();
+    if (idReservationParc && idParcJoint && idReservationParc !== idParcJoint) {
+      await afficherAlerte("Les informations d'accès ne correspondent pas au parc réservé.");
+      return;
+    }
+
+    const nom = String(parc.nom || parc.nomparc || reservation.nomparc || "").trim();
+    const departement = normaliserDepartementCheminImageParc(
+      parc.dptmt || parc.departement || reservation.dptmt || ""
+    );
+    // Le champ entreeparc correspond à une autre information : ne pas le
+    // substituer au texte de la rubrique accesdetail.entree de Parc Admin.
+    const detail = parc.accesdetail || reservation.accesdetail || {};
+    const texteEntree = String(detail?.entree?.texte || "").trim();
+
+    // Convention exacte de Parc Admin : les espaces du nom deviennent "_".
+    // Ne pas appliquer le slug IMAG/PARC : il supprimerait les tirets.
+    const nomDossier = nom.replace(/\s+/g, "_");
+    const urlImage = departement && nomDossier
+      ? construireUrlObjet("/IMAG/ACCESPARC/" + encodeURIComponent(departement) +
+        "/" + encodeURIComponent(nomDossier) + "/entree1.webp")
+      : "";
+
+    await afficherInformationPlanning("", {
+      titre: nom ? "Accès au parc de " + nom : "Accès au parc",
+      remplirContenu(zone) {
+        zone.classList.add("lcdp-mes-acces-entree");
+        const titreEntree = document.createElement("h4");
+        titreEntree.className = "lcdp-mes-acces-entree__titre";
+        titreEntree.textContent = "Entrée";
+
+        const description = document.createElement("p");
+        description.className = "lcdp-mes-acces-entree__texte";
+        description.textContent = texteEntree ||
+          "Les indications d'entrée de ce parc ne sont pas disponibles.";
+
+        zone.append(titreEntree, description);
+        if (!urlImage) return;
+        const figure = document.createElement("figure");
+        figure.className = "lcdp-mes-acces-entree__photo-bloc";
+        const image = document.createElement("img");
+        image.className = "lcdp-mes-acces-entree__photo";
+        image.alt = "Entrée 1 du parc de " + (nom || "votre réservation");
+        image.loading = "lazy";
+        image.decoding = "async";
+        image.addEventListener("error", () => figure.remove(), { once: true });
+        image.src = urlImage;
+        figure.appendChild(image);
+        zone.appendChild(figure);
+      }
+    });
   }
 
   async function ouvrirAccesParcReservation(idflux, declencheur) {
@@ -3583,7 +3656,15 @@
       }
       preparerDialogueDansWrapper(dialogue);
       titre.textContent = options.titre || "Information";
-      texte.textContent = String(message || "");
+      if (typeof options.remplirContenu === "function") {
+        const contenu = document.createElement("div");
+        contenu.id = texte.id;
+        contenu.className = texte.className;
+        options.remplirContenu(contenu);
+        texte.replaceWith(contenu);
+      } else {
+        texte.textContent = String(message || "");
+      }
       bouton.textContent = "Fermer";
       return await new Promise(resolve => {
         let resolu = false;
