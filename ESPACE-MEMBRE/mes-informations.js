@@ -14,6 +14,10 @@
     "workerAboMembreUrl", "WORKER_ABO_MEMBRE_URL", "abo-membre-api"
   );
 
+  const ENDPOINT_PLANNING_COMPTE = construireEndpointApi(
+    "workerPlanningMembreUrl", "WORKER_PLANNING_MEMBRE_URL", "planning-membre-api"
+  );
+
   const ENDPOINT_INVITER_MEMBRE = construireEndpointApi(
     "workerInviterMembreUrl",
     "WORKER_INVITER_MEMBRE_URL",
@@ -976,6 +980,193 @@
     conteneur.appendChild(liste);
   }
 
+  // Comptage par abonnement, indépendamment du nombre d'accès auxquels un
+  // même contact est invité. Les données sont lues sur les routes authentifiées.
+  function jourParisInvitesCompte(valeur) {
+    const date = new Date(valeur || "");
+    if (Number.isNaN(date.getTime())) return "";
+    const parties = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"
+    }).formatToParts(date);
+    const valeurPartie = nom => parties.find(partie => partie.type === nom)?.value || "";
+    return [valeurPartie("year"),valeurPartie("month"),valeurPartie("day")].join("-");
+  }
+
+  function afficherInvitesParAbonnementCompte(conteneur, abonnements) {
+    conteneur.replaceChildren();
+    if (!abonnements.length) {
+      const vide = document.createElement("p");
+      vide.className = "lcdp-compte-relations__vide";
+      vide.textContent = "Aucun abonnement en cours ou à venir.";
+      conteneur.appendChild(vide);
+      return;
+    }
+    for (const abonnement of abonnements) {
+      const section = document.createElement("section");
+      section.className = "lcdp-compte-relations";
+      const entete = document.createElement("div");
+      entete.className = "lcdp-compte-relations__ligne";
+      const nom = document.createElement("span");
+      nom.className = "lcdp-compte-relations__libelle";
+      const dateDebut = formaterDateAbonnementCompte(abonnement.debut);
+      const dateFin = formaterDateAbonnementCompte(abonnement.fin);
+      nom.textContent = [libelleAbonnementCompte(abonnement),
+        dateDebut && dateFin ? "du " + dateDebut + " au " + dateFin : ""]
+        .filter(Boolean).join(" ");
+      const nombre = document.createElement("span");
+      nombre.className = "lcdp-compte-relations__precision";
+      nombre.textContent = abonnement.personnes.length + " invité" +
+        (abonnement.personnes.length > 1 ? "s" : "");
+      entete.append(nom,nombre);
+      section.appendChild(entete);
+      const liste = document.createElement("ul");
+      liste.className = "lcdp-compte-relations__personnes";
+      if (!abonnement.personnes.length) {
+        const vide = document.createElement("li");
+        vide.className = "lcdp-compte-relations__vide";
+        vide.textContent = "Aucun invité.";
+        liste.appendChild(vide);
+      } else {
+        for (const personne of abonnement.personnes) {
+          const item = document.createElement("li");
+          const nomComplet = [personne.prenom,personne.nom].filter(Boolean).join(" ").trim();
+          const identite = document.createElement("span");
+          identite.className = "lcdp-compte-relations__nom";
+          identite.textContent = nomComplet || personne.email;
+          item.appendChild(identite);
+          if (nomComplet && personne.email) {
+            const email = document.createElement("span");
+            email.className = "lcdp-compte-relations__detail";
+            email.textContent = personne.email;
+            item.appendChild(email);
+          }
+          liste.appendChild(item);
+        }
+      }
+      section.appendChild(liste);
+      conteneur.appendChild(section);
+    }
+  }
+
+  async function chargerInvitesParAbonnementCompte(conteneur, compteur, relations) {
+    if (!ENDPOINT_ABONNEMENTS_COMPTE || !ENDPOINT_PLANNING_COMPTE ||
+        !ENDPOINT_INVITER_MEMBRE) throw new Error("Service non configuré.");
+
+    const charger = async url => {
+      const reponse = await fetch(url, {
+        credentials: "include", cache: "no-store",
+        headers: { "Accept": "application/json" }
+      });
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        throw new Error("Session membre inactive.");
+      }
+      const donnees = await reponse.json().catch(() => null);
+      if (!reponse.ok || !donnees || (donnees.ok !== true && donnees.success !== true)) {
+        throw new Error(donnees?.message || "Service indisponible.");
+      }
+      return donnees;
+    };
+    const [donneesAbos, donneesAcces] = await Promise.all([
+      charger(ENDPOINT_ABONNEMENTS_COMPTE + "/mes-abonnements"),
+      charger(ENDPOINT_PLANNING_COMPTE + "/mes-reservations")
+    ]);
+    if (!Array.isArray(donneesAbos.abonnements) ||
+        !Array.isArray(donneesAcces.reservations)) {
+      throw new Error("Liste des abonnements ou des accès invalide.");
+    }
+
+    const aujourdHui = jourParisInvitesCompte(new Date());
+    const groupes = donneesAbos.abonnements.filter(abo => {
+      const statut = String(abo.statutabo || "").trim().toLowerCase();
+      const fin = jourParisInvitesCompte(abo.fin);
+      return !abonnementAnnuleCompte(abo) && statut === "paye" &&
+        fin && fin >= aujourdHui;
+    }).map(abo => ({ ...abo, contacts: new Map(), reservations: [] }))
+      .sort((a,b) => jourParisInvitesCompte(a.debut).localeCompare(jourParisInvitesCompte(b.debut)));
+
+    const identites = new Map();
+    for (const personne of (relations?.invites || [])) {
+      const email = String(personne.email || "").trim().toLowerCase();
+      if (email) identites.set(email, personne);
+    }
+    const ajouter = (abo, contact) => {
+      const email = String(contact.email || contact.emailmembre || "").trim().toLowerCase();
+      if (!email) return;
+      const details = identites.get(email) || {};
+      const nom = String(contact.nom || contact.nommembre || details.nom || "").trim();
+      const prenom = String(contact.prenom || contact.prenommembre || details.prenom || "").trim();
+      const personneExistante = abo.contacts.get(email);
+      if (!personneExistante || (!personneExistante.nom && nom)) {
+        abo.contacts.set(email, { email, nom, prenom });
+      }
+    };
+
+    for (const reservation of donneesAcces.reservations) {
+      if (!reservation?.idflux || reservation.invitation === true ||
+          String(reservation.statut || "").toLowerCase() === "cancd") continue;
+      const dateReservation = jourParisInvitesCompte(reservation.datebookd);
+      if (!dateReservation) continue;
+      const correspondances = groupes.filter(abo =>
+        jourParisInvitesCompte(abo.debut) <= dateReservation &&
+        dateReservation <= jourParisInvitesCompte(abo.fin)
+      );
+      if (correspondances.length > 1) {
+        throw new Error("Rattachement d'abonnement ambigu pour un accès.");
+      }
+      if (correspondances.length === 1) correspondances[0].reservations.push(reservation);
+    }
+
+    // Le carnet inviteabo est par abonnement. Une seule lecture de contexte par
+    // abonnement suffit ; la lecture des accès conserve les invitations historiques.
+    for (const abonnement of groupes) {
+      if (!abonnement.reservations.length) continue;
+      const idflux = String(abonnement.reservations[0].idflux);
+      const urlContexte = ENDPOINT_INVITER_MEMBRE +
+        "/invites-abonnement/contexte?idflux=" + encodeURIComponent(idflux);
+      const reponseContexte = await fetch(urlContexte, {
+        credentials: "include", cache: "no-store",
+        headers: { "Accept": "application/json" }
+      });
+      if (reponseContexte.status === 401) {
+        redirigerConnexionMembre("inactive");
+        throw new Error("Session membre inactive.");
+      }
+      if (reponseContexte.ok) {
+        const contexte = await reponseContexte.json().catch(() => null);
+        if (contexte?.ok !== true || !Array.isArray(contexte.contacts?.duo) ||
+            !Array.isArray(contexte.contacts?.famille)) {
+          throw new Error("Carnet des invités de cet abonnement invalide.");
+        }
+        [...contexte.contacts.duo,...contexte.contacts.famille].forEach(contact =>
+          ajouter(abonnement,contact));
+      } else if (reponseContexte.status !== 404) {
+        throw new Error("Carnet des invités indisponible pour cet abonnement.");
+      }
+      for (let debut = 0; debut < abonnement.reservations.length; debut += 4) {
+        const lot = abonnement.reservations.slice(debut,debut + 4);
+        await Promise.all(lot.map(async reservation => {
+          const data = await charger(ENDPOINT_INVITER_MEMBRE +
+            "/invites?idflux=" + encodeURIComponent(String(reservation.idflux)));
+          if (!Array.isArray(data.invites)) throw new Error("Invités de l'accès invalides.");
+          data.invites.forEach(contact => {
+            if (String(contact.invit || "true").toLowerCase() !== "cancd") {
+              ajouter(abonnement,contact);
+            }
+          });
+        }));
+      }
+    }
+
+    const resultat = groupes.map(abo => ({
+      ...abo,
+      personnes: Array.from(abo.contacts.values())
+        .sort((a,b) => (a.nom || a.email).localeCompare(b.nom || b.email,"fr"))
+    }));
+    afficherInvitesParAbonnementCompte(conteneur, resultat);
+    compteur.textContent = String(resultat.reduce((somme,abo) => somme + abo.personnes.length,0));
+  }
+
   async function chargerRelationsInvitationsCompte(bloc) {
     const invites = bloc.querySelector("#lcdp-compte-relations-invite");
     const invitants = bloc.querySelector("#lcdp-compte-relations-invitant");
@@ -994,14 +1185,20 @@
           !Array.isArray(donnees.invites) || !Array.isArray(donnees.invitants)) {
         throw new Error(donnees?.message || "Service indisponible.");
       }
-      bloc.querySelector('[data-lcdp-relations-nombre="invite"]').textContent =
-        String(donnees.invites.length);
+      const compteurInvites = bloc.querySelector('[data-lcdp-relations-nombre="invite"]');
+      compteurInvites.textContent = "–";
       bloc.querySelector('[data-lcdp-relations-nombre="invitant"]').textContent =
         String(donnees.invitants.length);
-      afficherListeRelationsCompte(invites, donnees.invites,
-        donnees.abonnementEnCours ? "Aucun invité pour cet abonnement." : "Aucun abonnement en cours.", true);
       afficherListeRelationsCompte(invitants, donnees.invitants,
         "Aucun invitant dans votre historique.");
+      void chargerInvitesParAbonnementCompte(invites, compteurInvites, donnees)
+        .catch(erreur => {
+          console.error("Invités par abonnement indisponibles :", erreur);
+          if (!redirectionCompteEnCours) {
+            invites.textContent = "Impossible de charger les invités par abonnement.";
+            compteurInvites.textContent = "–";
+          }
+        });
     } catch (erreur) {
       console.error("Relations d'invitation indisponibles :", erreur);
       if (invites) invites.textContent = "Impossible de charger les invités.";
