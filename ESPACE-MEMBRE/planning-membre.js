@@ -850,20 +850,25 @@
     const suivant = hote.nextSibling;
     if (!parent) throw new Error("Emplacement initial de la fiche manquant.");
 
+    const scrollInitial = main.scrollTop;
+    const contenuInitial = main.querySelector(":scope > .lcdp-page-section");
+    const inertInitial = contenuInitial?.inert === true;
     main.appendChild(hote);
     document.body.classList.add("lcdp-mes-acces-calque-fiche-actif");
-    const contenuInitial = main.querySelector(":scope > .lcdp-page-section");
     if (contenuInitial) contenuInitial.inert = true;
+    // Le calque démarre en haut même si MES ACCÈS était déjà défilé.
+    main.scrollTop = 0;
     let ferme = false;
     return {
       fermer() {
         if (ferme) return;
         ferme = true;
         document.body.classList.remove("lcdp-mes-acces-calque-fiche-actif");
-        if (contenuInitial) contenuInitial.inert = false;
+        if (contenuInitial) contenuInitial.inert = inertInitial;
         if (parent.isConnected) {
           parent.insertBefore(hote, suivant?.parentNode === parent ? suivant : null);
         }
+        main.scrollTop = scrollInitial;
       }
     };
   }
@@ -914,6 +919,9 @@
     const idparc = String(parc?.idparc || parc?.id || "").trim();
     if (!idparc) throw new Error("Identifiant du parc manquant.");
 
+    // Toute réouverture referme d'abord le calque courant, sans perdre
+    // l'état de MES ACCÈS en dessous.
+    if (surfaceFicheMesAcces) fermerVueFicheDansMesAcces();
     const generation = ++ouvertureFicheMesAcces;
     const moteur = await obtenirMoteurFicheMesAcces();
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-shift-detail-parc.html");
@@ -925,7 +933,6 @@
 
     // Le calque Fiche/Carte couvre la surface utile du wrapper.
     // Le contenu MES ACCÈS reste sous le calque, intact et inerte.
-    if (surfaceFicheMesAcces) fermerVueFicheDansMesAcces();
     const surface = ouvrirCalqueFicheMesAcces(hote);
     surfaceFicheMesAcces = surface;
 
@@ -944,7 +951,6 @@
       const controleur = await moteur.monterDansConteneur(contenu, parc, {
         vueInitiale: vue,
         modeUsage: "reservation-membre",
-        masquerActionsVueCarte: true,
         chargerFragmentObjet,
         construireUrlObjet,
         appliquerRoutes: appliquerRoutesSite,
