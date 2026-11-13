@@ -10,6 +10,12 @@
     "mon-compte-membre-api"
   );
 
+  const ENDPOINT_INVITER_MEMBRE = construireEndpointApi(
+    "workerInviterMembreUrl",
+    "WORKER_INVITER_MEMBRE_URL",
+    "inviter-membre-api"
+  );
+
   const ENDPOINT_MAJ_EMAIL_MEMBRE = construireEndpointApi(
     "workerMajEmailMembreUrl",
     "WORKER_MAJ_EMAIL_MEMBRE_URL",
@@ -790,8 +796,8 @@
     const invites = bloc.querySelector("#lcdp-compte-relations-invite");
     const invitants = bloc.querySelector("#lcdp-compte-relations-invitant");
     try {
-      if (!ENDPOINT_MON_COMPTE_MEMBRE) throw new Error("Service non configuré.");
-      const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/relations-invitations", {
+      if (!ENDPOINT_INVITER_MEMBRE) throw new Error("Service non configuré.");
+      const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/relations-invitations", {
         credentials: "include", cache: "no-store",
         headers: { "Accept": "application/json" }
       });
