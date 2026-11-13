@@ -2791,20 +2791,22 @@
 
   async function ouvrirBoxListeInvitesModifiable(idflux, invites, declencheur) {
     const idReservation = String(idflux || "").trim();
-    const conteneur = document.createElement("div");
+    const surface = ouvrirVueSecondairePlanning();
+    if (!surface) return null;
+    const conteneur = surface.conteneur;
     conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
-    document.body.appendChild(conteneur);
 
     let fragment;
     try {
       fragment = await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html");
     } catch (erreur) {
-      conteneur.remove();
+      surface.fermer();
       throw erreur;
     }
     conteneur.appendChild(fragment);
 
     const box = conteneur.querySelector("[data-lcdp-box-card-listinvites-oui-non]");
+    preparerDialogueDansWrapper(box);
     const titre = conteneur.querySelector("[data-lcdp-listinvites-title]");
     const message = conteneur.querySelector("[data-lcdp-listinvites-message]");
     const liste = conteneur.querySelector("[data-lcdp-listinvites-list]");
@@ -2817,7 +2819,7 @@
     const actions = boutonMettreAJour?.closest(".lcdp-box-card-listinvites-oui-non__actions");
     if (!box || !titre || !message || !liste || !zoneAjout || !listeEmails ||
         !boutonAjouterEmail || !boutonMettreAJour || !boutonAnnuler || !actions) {
-      conteneur.remove();
+      surface.fermer();
       throw new Error("Structure du formulaire des invités incomplète.");
     }
 
@@ -2938,12 +2940,12 @@
         if (resolu || enregistrementEnCours) return;
         resolu = true;
         document.removeEventListener("keydown", gererEchap);
-        conteneur.remove();
+        surface.fermer();
         resolve(valeur);
       }
       function gererEchap(event) {
         // La fermeture involontaire ferait perdre toute la saisie.
-        if (event.key === "Escape" && !resolu) {
+        if (event.key === "Escape" && !resolu && vueSecondaireAuPremierPlan(conteneur)) {
           event.preventDefault();
           afficherMessage("Utilisez « Annuler » pour quitter sans enregistrer.");
         }
