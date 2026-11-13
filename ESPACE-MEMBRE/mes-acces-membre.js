@@ -631,7 +631,7 @@
           document.head.appendChild(lien);
         });
       }
-      const reponse = await fetch(urlObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-formulaire-v11"), {cache:"no-store"});
+      const reponse = await fetch(urlObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-champ-c040-v12"), {cache:"no-store"});
       if (!reponse.ok) throw new Error("Formulaire des invitations indisponible.");
       const template = document.createElement("template");
       template.innerHTML = (await reponse.text()).trim();
@@ -810,7 +810,12 @@
           }
         }
       });
-      champ.focus();
+      // Focus initial sur la box ; le champ reste accessible au clavier.
+      const zoneFormulaire = overlay.querySelector("[data-lcdp-invitation-wrapper]");
+      if (zoneFormulaire) {
+        zoneFormulaire.tabIndex = -1;
+        zoneFormulaire.focus({ preventScroll: true });
+      }
     } catch (erreur) {
       restaurerVue();
       await afficherInformationMesAcces(erreur.message || "Impossible de consulter les invitations.", "Information");
