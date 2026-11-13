@@ -57,22 +57,32 @@
       background: #fff;
     }
     html.lcdp-planning-membre-ready #lcdp-planning-attente { display: none; }
-    #lcdp-planning-attente .lcdp-loading-spinner {
-      width: 64px; height: 64px; display:flex; position:relative; align-items:center; justify-content:center;
+    /* Même spinner officiel à l'ouverture d'Inviter, sans écran bloquant. */
+    .lcdp-invitation-attente {
+      display:flex; width:100%; min-height:55vh; align-items:center; justify-content:center;
     }
-    #lcdp-planning-attente .lcdp-loading-spinner > svg {
+    #lcdp-planning-attente .lcdp-loading-spinner,
+    .lcdp-invitation-attente .lcdp-loading-spinner {
+      width:64px; height:64px; display:flex; position:relative; align-items:center; justify-content:center;
+    }
+    #lcdp-planning-attente .lcdp-loading-spinner > svg,
+    .lcdp-invitation-attente .lcdp-loading-spinner > svg {
       position:absolute; inset:0; width:100%; height:100%;
     }
-    #lcdp-planning-attente .lcdp-loading-spinner__track { color:rgba(6,95,70,.1); }
-    #lcdp-planning-attente .lcdp-loading-spinner__arc {
+    #lcdp-planning-attente .lcdp-loading-spinner__track,
+    .lcdp-invitation-attente .lcdp-loading-spinner__track { color:rgba(6,95,70,.1); }
+    #lcdp-planning-attente .lcdp-loading-spinner__arc,
+    .lcdp-invitation-attente .lcdp-loading-spinner__arc {
       color:#e59834; animation:lcdp-planning-attente-tourne .8s linear infinite;
     }
-    #lcdp-planning-attente .lcdp-loading-spinner__dot {
+    #lcdp-planning-attente .lcdp-loading-spinner__dot,
+    .lcdp-invitation-attente .lcdp-loading-spinner__dot {
       width:8px;height:8px;border-radius:50%;background:#4e6838;
     }
     @keyframes lcdp-planning-attente-tourne { to { transform:rotate(360deg); } }
     @media (prefers-reduced-motion:reduce) {
-      #lcdp-planning-attente .lcdp-loading-spinner__arc { animation:none; }
+      #lcdp-planning-attente .lcdp-loading-spinner__arc,
+      .lcdp-invitation-attente .lcdp-loading-spinner__arc { animation:none; }
     }
   </style>
 </head>
@@ -104,6 +114,6 @@
     <div id="lcdp-lightbox-slot"></div>
   </div>
 
-  <script src="./planning-membre.js?interface=spinner-officiel&amp;v=20261113-contexte-rpc-v2"></script>
+  <script src="./planning-membre.js?interface=spinner-officiel&amp;v=20261113-spinner-ouverture-inviter-v3"></script>
 </body>
 </html>
