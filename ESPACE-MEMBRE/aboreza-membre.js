@@ -220,7 +220,64 @@
       }
     });
   }
+  // Reprise d'une commande Stripe : réutilise le dialogue CHOIX de référence,
+  // sans modifier le gabarit générique des autres étapes ABO-RÉZA.
+  async function modalChoixCommande(titre, message, choix) {
+    const cssUrl = cheminObjet('/CSSBASE/lcdp-lightbox-convergence.css');
+    if (![...document.querySelectorAll('link[rel="stylesheet"]')].some(lien => lien.href === cssUrl)) {
+      await new Promise((resolve, reject) => {
+        const lien = document.createElement('link');
+        lien.rel = 'stylesheet';
+        lien.href = cssUrl;
+        lien.onload = resolve;
+        lien.onerror = () => { lien.remove(); reject(new Error('Style CHOIX indisponible.')); };
+        document.head.append(lien);
+      });
+    }
+    const dialogue = await lireObjet('/HTMLBASE/02-dialogue-reference-choix.html',
+      '[data-lcdp-dialogue-reference="choix"]');
+    const titreElement = dialogue.querySelector('[data-lcdp-dialogue-titre]');
+    const texte = dialogue.querySelector('[data-lcdp-dialogue-message]');
+    const actions = dialogue.querySelector('[data-lcdp-dialogue-reference] .lcdp-dialogue-ref__actions') ||
+      dialogue.querySelector('.lcdp-dialogue-ref__actions');
+    const hote = document.getElementById('lcdp-planifier-dialogues-slot') ||
+      document.querySelector('.lcdp-planifier-wrapper');
+    if (!titreElement || !texte || !actions || !hote)
+      throw new Error('Dialogue CHOIX de reprise du paiement incomplet.');
+    titreElement.textContent = titre;
+    texte.textContent = message;
+    // Dans le profil CHOIX, l'action secondaire est à gauche, l'action principale à droite.
+    actions.replaceChildren();
+    const precedent = document.activeElement;
+    return new Promise(resolve => {
+      let ferme = false;
+      const fermer = valeur => {
+        if (ferme) return;
+        ferme = true;
+        if (valeur === 'payer') afficherAttenteFormules('Vérification de votre commande…');
+        dialogue.removeEventListener('keydown', clavier);
+        dialogue.remove();
+        if (precedent?.isConnected && typeof precedent.focus === 'function') precedent.focus();
+        resolve(valeur);
+      };
+      const clavier = evenement => {
+        if (evenement.key === 'Escape') { evenement.preventDefault(); fermer(null); }
+      };
+      for (const choixAction of [...choix].sort((a, b) => Number(Boolean(a.primaire)) - Number(Boolean(b.primaire)))) {
+        const action = elem('button', 'lcdp-dialogue-ref__bouton ' +
+          (choixAction.primaire ? 'lcdp-dialogue-ref__bouton--principal' : 'lcdp-dialogue-ref__bouton--secondaire'),
+          choixAction.texte);
+        action.type = 'button';
+        action.addEventListener('click', () => fermer(choixAction.valeur));
+        actions.append(action);
+      }
+      dialogue.addEventListener('keydown', clavier);
+      hote.append(dialogue);
+      (actions.querySelector('.lcdp-dialogue-ref__bouton--principal') || actions.querySelector('button'))?.focus();
+    });
+  }
   function modal(titre, message, choix) {
+    if (titre === 'Commande en cours') return modalChoixCommande(titre, message, choix);
     return modalComposant('dialogue', titre, (objet, finir) => {
       const texte = objet.querySelector('[data-lcdp-dialogue-text]');
       const actions = objet.querySelector('[data-lcdp-dialogue-actions]');
@@ -934,6 +991,7 @@
     }
     if(occupe)return;
     occupe=true;
+    let navigationPaiementEnCours = false;
     protegerRetourNavigateur();
     try{
       afficherAttenteFormules();
@@ -952,13 +1010,14 @@
             if(action==='payer'){
               afficherAttenteFormules('Vérification de votre commande…');
               try{
-                await window.LCDP_PAIEMENT.reprendrePaiementTransmis(enCours.idpanier);
+                const resultat = await window.LCDP_PAIEMENT.reprendrePaiementTransmis(enCours.idpanier);
+                navigationPaiementEnCours = resultat === 'checkout' || resultat === 'paye';
               }catch(erreur){
                 masquerAttenteFormules();
                 await modal('Paiement à vérifier',
                   erreur.message||'Le paiement ne peut pas être repris pour le moment. Votre commande est conservée.',
                   [{texte:'Fermer',valeur:'fermer',primaire:true}]);
-              }finally{masquerAttenteFormules();}
+              }finally{if (!navigationPaiementEnCours) masquerAttenteFormules();}
             }
             return;
           }
@@ -1042,7 +1101,7 @@
       masquerAttenteFormules();
       await bridge()?.alerter?.(e.message||'Erreur ABO-RÉZA.');
     }
-    finally{masquerAttenteFormules();occupe=false;}
+    finally{if (!navigationPaiementEnCours) masquerAttenteFormules();occupe=false;}
   }
   async function selectionnerAcces(choix){
     if(!courant||occupe)return;
