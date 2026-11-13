@@ -2921,7 +2921,7 @@
       const arreterAttente = afficherAttenteOuvertureInvites();
       let invites;
       try {
-        invites = await chargerInvitesReservation(idReservation, declencheur);
+        invites = await chargerInvitesReservation(idReservation, declencheur, arreterAttente);
       } finally {
         arreterAttente();
       }
@@ -2934,15 +2934,17 @@
     await ouvrirBoxListeInvitesModifiable(idReservation, null, declencheur);
   }
 
-  async function chargerInvitesReservation(idflux, declencheur) {
+  async function chargerInvitesReservation(idflux, declencheur, masquerAttente = () => {}) {
     const idReservation = String(idflux || "").trim();
 
     if (!idReservation) {
+      masquerAttente();
       await afficherAlerteInvitationReservation("Réservation manquante.", declencheur);
       return null;
     }
 
     if (!ENDPOINT_INVITER_MEMBRE) {
+      masquerAttente();
       await afficherAlerteInvitationReservation("Le service invitation membre n’est pas configuré.", declencheur);
       return null;
     }
@@ -2964,6 +2966,7 @@
     }
 
     if (!reponse.ok || !data || !reponseApiOk(data)) {
+      masquerAttente();
       await afficherAlerteInvitationReservation(messageErreurApi(data, "Impossible de charger la liste des invités."), declencheur);
       return null;
     }
