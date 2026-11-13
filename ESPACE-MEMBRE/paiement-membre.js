@@ -686,6 +686,8 @@
         '/HTMLBASE/02-dialogue-reference-information.html',
         '[data-lcdp-dialogue-reference="information"]'
       );
+      // Le slot PLANIFIER neutralise les clics par défaut : réactiver ceux du dialogue de retour paiement.
+      racine.style.pointerEvents = 'auto';
       const titre = racine.querySelector('[data-lcdp-dialogue-titre]');
       const texte = racine.querySelector('[data-lcdp-dialogue-message]');
       const bouton = racine.querySelector('[data-lcdp-dialogue-action="compris"]');
