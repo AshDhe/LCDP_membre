@@ -695,17 +695,27 @@
     const conserver=dialogue.querySelector('[data-lcdp-dialogue-action="conserver"]');
     const supprimer=dialogue.querySelector('[data-lcdp-dialogue-action="supprimer"]');
     supprimer.textContent="Supprimer";
+    const avant=document.activeElement;
     return new Promise(resolve=>{
       let done=false;
       const terminer=confirmation=>{
         if(done)return;done=true;
         document.removeEventListener("keydown",echap);
-        slot.replaceChildren();resolve(confirmation);
+        slot.replaceChildren();
+        if(avant?.isConnected&&typeof avant.focus==="function")avant.focus();
+        resolve(confirmation);
       };
-      const echap=e=>{if(e.key==="Escape")terminer(false);};
+      const echap=e=>{
+        if(e.key==="Escape"){e.preventDefault();terminer(false);}
+        if(e.key==="Tab"){
+          if(e.shiftKey&&document.activeElement===conserver){e.preventDefault();supprimer.focus();}
+          else if(!e.shiftKey&&document.activeElement===supprimer){e.preventDefault();conserver.focus();}
+        }
+      };
       document.addEventListener("keydown",echap);
       conserver.addEventListener("click",()=>terminer(false),{once:true});
       supprimer.addEventListener("click",()=>terminer(true),{once:true});
+      dialogue.addEventListener("click",e=>{if(e.target===dialogue)terminer(false);});
       conserver.focus();
     });
   }
