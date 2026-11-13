@@ -2866,6 +2866,7 @@
     if (titreAjout) {
       titreAjout.hidden = false;
       titreAjout.textContent = "Ajouter des invités";
+      titreAjout.style.setProperty("display", "block", "important");
     }
     listeEmails.replaceChildren();
     const listeSansEmail = document.createElement("ul");
@@ -2921,7 +2922,9 @@
     }
     boutonAjouterEmail.addEventListener("click", () => {
       if (!placeDisponible()) return;
-      listeEmails.appendChild(creerChampEmailInviteSupplementaire(actualiserPlaces));
+      const nouveauChamp = creerChampEmailInviteSupplementaire(actualiserPlaces);
+      listeEmails.appendChild(nouveauChamp);
+      nouveauChamp.querySelector("input")?.focus();
       afficherMessage("");
       actualiserPlaces();
     });
@@ -3004,6 +3007,9 @@
           resultat = await enregistrerListeInvitesReservation(idReservation, {
             invites: majInvites, emails: emails.valeurs, personnesSansEmail
           }, declencheur);
+        } catch (erreur) {
+          afficherMessage(erreur?.message || "Connexion impossible. Votre saisie est conservée.", true);
+          return;
         } finally {
           enregistrementEnCours = false;
           boutonAnnuler.disabled = false;
@@ -3115,7 +3121,6 @@
       if (typeof surRetrait === "function") surRetrait();
     });
     item.append(input, retirer);
-    input.focus();
     return item;
   }
 
@@ -3186,12 +3191,12 @@
   }
 
   function formaterLigneInviteReservation(invite) {
-    const nom = [invite?.prenommembre, invite?.nommembre]
+    const nom = [invite?.prenommembre || invite?.prenom, invite?.nommembre || invite?.nom]
       .map((value) => String(value || "").trim())
       .filter(Boolean)
       .join(" ");
 
-    const email = nettoyerEmail(invite?.emailmembre || "");
+    const email = nettoyerEmail(invite?.emailmembre || invite?.email || "");
 
     if (nom && email) return nom + " — " + email;
     if (nom) return nom;
