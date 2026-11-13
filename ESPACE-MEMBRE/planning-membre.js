@@ -597,6 +597,40 @@
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action--consulter:hover {
         border-color:#7b4ab8 !important;color:#fff !important;background:#7b4ab8 !important;
       }
+      /* Compacter le verso sans modifier le gabarit ni les actions. */
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__face--verso {
+        padding:8px 14px 12px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__contenu {
+        padding:0 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-parc-diaporama__fermer {
+        top:8px !important;right:10px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__body {
+        gap:5px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__content {
+        gap:2px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__place {
+        box-sizing:border-box !important;
+        min-height:28px !important;
+        padding:0 34px 0 0 !important;
+        margin:0 !important;
+        display:flex !important;flex-direction:row !important;
+        align-items:center !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__date {
+        padding:0 !important;margin:0 !important;
+        align-items:center !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-planning-verso-actions {
+        margin-top:3px !important;gap:7px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-planning-verso-liens {
+        margin-top:0 !important;padding-top:0 !important;gap:7px !important;
+      }
       /* Même emplacement pour les trois onglets, y compris quand le calendrier est affiché. */
       #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente,
       #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente.lcdp-box-liste-card--mode-agenda {
