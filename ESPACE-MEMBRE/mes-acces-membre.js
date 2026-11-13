@@ -583,17 +583,115 @@
     await afficherInformationMesAcces('Invitation par : ' + (identite || 'Information indisponible'), 'Invitation reçue');
   }
   async function montrerInvites(r) {
-    if (!invitationsApi) return window.alert('Le service des invitations est indisponible.');
+    if (!invitationsApi) return afficherInformationMesAcces('Le service des invitations est indisponible.', 'Information');
+    let overlay = null;
     try {
-      const data = await getJson(invitationsApi + '/invites?idflux=' + encodeURIComponent(String(r.idflux)));
+      const [data, droits] = await Promise.all([
+        getJson(invitationsApi + '/invites?idflux=' + encodeURIComponent(String(r.idflux))),
+        getJson(invitationsApi + '/reservations-invitables')
+      ]);
       const invites = Array.isArray(data.invites) ? data.invites : [];
-      if (!invites.length) return afficherInformationMesAcces('Aucun invité enregistré pour cet accès.', 'Invités');
-      const lignes = invites.map(i => {
-        const label = [i.prenom || i.prenommembre, i.nom || i.nommembre].filter(Boolean).join(' ');
-        return label || i.email || i.emailinvite || 'Invité';
+      const max = Math.max(0, Number(droits.maxInvit) || 0);
+      const base = typeof window.LCDP_urlObjet === 'function'
+        ? window.LCDP_urlObjet('/HTMLBASE/04-card-listinvites-oui-non.html')
+        : String(config.objetBaseUrl || 'https://lacleduparc.fr/OBJET').replace(/\\/+$/, '') + '/HTMLBASE/04-card-listinvites-oui-non.html';
+      const reponse = await fetch(base,{cache:'no-store'});
+      if (!reponse.ok) throw new Error('Formulaire des invités indisponible.');
+      const template = document.createElement('template');
+      template.innerHTML = (await reponse.text()).trim();
+      overlay = document.createElement('div');
+      overlay.dataset.lcdpInvitationInvitesOverlay = 'true';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.54);z-index:11000;display:grid;place-items:center;padding:12px;overflow-y:auto;';
+      overlay.appendChild(template.content.cloneNode(true));
+      const box = overlay.querySelector('[data-lcdp-box-card-listinvites-oui-non]');
+      const titre = overlay.querySelector('[data-lcdp-listinvites-title]');
+      const liste = overlay.querySelector('[data-lcdp-listinvites-list]');
+      const listeEmails = overlay.querySelector('[data-lcdp-listinvites-emails]');
+      const ajouter = overlay.querySelector('[data-lcdp-listinvites-add-email]');
+      const enregistrer = overlay.querySelector('[data-lcdp-listinvites-update]');
+      const fermer = overlay.querySelector('[data-lcdp-listinvites-cancel]');
+      const croix = overlay.querySelector('[data-lcdp-listinvites-close]');
+      const message = overlay.querySelector('[data-lcdp-listinvites-message]');
+      if (![box,titre,liste,listeEmails,ajouter,enregistrer,fermer,croix,message].every(Boolean))
+        throw new Error('Structure du formulaire des invités incomplète.');
+      box.style.cssText = 'display:block;position:relative;width:100%;max-width:480px;max-height:calc(100dvh - 24px);overflow-y:auto;border-radius:20px;background:white;margin:auto;';
+      const carte = overlay.querySelector('.lcdp-box-card-listinvites-oui-non__card');
+      if (carte) carte.style.cssText = 'padding:22px;position:relative;';
+      croix.style.cssText = 'position:absolute;right:14px;top:10px;background:transparent;border:0;font-size:24px;cursor:pointer;';
+      titre.textContent = 'Invités';
+      liste.style.cssText = 'list-style:none;margin:12px 0;padding:0;display:grid;gap:9px;';
+      listeEmails.style.cssText = 'list-style:none;margin:8px 0;padding:0;display:grid;gap:7px;';
+      const actions = overlay.querySelector('.lcdp-box-card-listinvites-oui-non__actions');
+      if (actions) actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:15px;';
+      const cssBouton = 'min-height:36px;padding:7px 14px;border:1px solid #4b6333;border-radius:14px;background:white;color:#4b6333;font-size:13px;font-weight:700;cursor:pointer;';
+      [ajouter,enregistrer,fermer].forEach(x=>x.style.cssText=cssBouton);
+      enregistrer.style.background='#4b6333';enregistrer.style.color='white';
+      overlay.querySelector('.lcdp-box-card-listinvites-oui-non__ajout-title')?.remove();
+      const etats = new Map();
+      invites.forEach(invite => {
+        const id = String(invite.idmembre || '');
+        if (!id) return;
+        const li = document.createElement('li');
+        li.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #e0e5db;border-radius:12px;padding:9px;';
+        const texte = [invite.prenommembre || invite.prenom, invite.nommembre || invite.nom].filter(Boolean).join(' ');
+        li.appendChild(textEl('span','',texte || invite.emailmembre || invite.email || 'Invité'));
+        const label = document.createElement('label');
+        label.style.cssText = 'display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;';
+        const input = document.createElement('input');
+        input.type='checkbox';input.checked=true;
+        input.setAttribute('aria-label','Conserver cet invité');
+        input.addEventListener('change',()=>etats.set(id,input.checked?'true':'cancd'));
+        label.append(input,document.createTextNode('Conserver'));
+        li.appendChild(label);liste.appendChild(li);
       });
-      await afficherInformationMesAcces('Invités :\n' + lignes.join('\n'), 'Invités');
-    } catch (e) { window.alert(e.message || 'Impossible de consulter les invités.'); }
+      if (!invites.length) {message.hidden=false;message.textContent='Aucun invité enregistré pour cet accès.';}
+      let fermeture=false,travail=false;
+      const place = Math.max(0,max-invites.length);
+      function ajouterChamp() {
+        if (listeEmails.querySelectorAll('input').length >= place) {
+          message.hidden=false;message.textContent='Nombre maximal d’invités atteint.';return;
+        }
+        const li=document.createElement('li');li.style.cssText='display:flex;gap:7px;';
+        const input=document.createElement('input');input.type='email';input.placeholder='E-mail de l’invité';input.autocomplete='email';
+        input.style.cssText='flex:1;min-width:0;padding:9px;border:1px solid #cbd5c2;border-radius:10px;';
+        const sup=document.createElement('button');sup.type='button';sup.textContent='Supprimer';sup.style.cssText=cssBouton;
+        sup.addEventListener('click',()=>li.remove());
+        li.append(input,sup);listeEmails.append(li);input.focus();
+      }
+      ajouter.disabled=place===0;ajouter.addEventListener('click',ajouterChamp);
+      if (place===0) ajouter.title='Nombre maximal d’invités atteint';
+      const close=()=>{
+        if (travail||fermeture) return;
+        fermeture=true;document.removeEventListener('keydown',onKey);
+        overlay?.remove();overlay=null;
+      };
+      const onKey=e=>{if(e.key==='Escape')close();};
+      document.addEventListener('keydown',onKey);
+      fermer.textContent='Fermer';fermer.addEventListener('click',close);croix.addEventListener('click',close);
+      box.addEventListener('click',e=>{if(e.target===box)close();});
+      enregistrer.addEventListener('click',async()=>{
+        if(travail)return;
+        const invitesMaj=Array.from(etats.entries()).map(([idmembre,invit])=>({idmembre,invit}));
+        const emails=Array.from(listeEmails.querySelectorAll('input')).map(x=>x.value.trim().toLowerCase()).filter(Boolean);
+        if(!invitesMaj.length&&!emails.length){close();return;}
+        if(emails.some(v=>!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(v))){
+          message.hidden=false;message.textContent='Une adresse e-mail est invalide.';return;
+        }
+        travail=true;enregistrer.disabled=true;
+        try {
+          const resultat=await getJson(invitationsApi+'/invites',{method:'POST',body:{idflux:r.idflux,invites:invitesMaj,emails}});
+          close();
+          await recharger();
+          await afficherInformationMesAcces(resultat.message||'Liste des invités mise à jour.','Invités');
+        }catch(erreur){
+          message.hidden=false;message.textContent=erreur.message||'Enregistrement impossible.';
+        }finally{travail=false;enregistrer.disabled=false;}
+      });
+      document.body.appendChild(overlay);enregistrer.focus();
+    } catch (erreur) {
+      overlay?.remove();
+      await afficherInformationMesAcces(erreur.message || 'Impossible de consulter les invités.','Information');
+    }
   }
   async function confirmerAnnulationAcces(question, invitationRecue) {
     const urlObjet = chemin => typeof window.LCDP_urlObjet === "function"
