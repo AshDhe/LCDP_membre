@@ -6,7 +6,7 @@
 (function (global) {
   "use strict";
 
-  const conteneur = document.querySelector(".lcdp-page-cle-du-parc .lcdp-site-page .lcdp-page-container");
+  const conteneur = document.querySelector(".lcdp-page-cle-du-parc .lcdp-site-page .lcdp-page-content");
   const controle = document.querySelector("[data-lcdp-control-access]");
   const workflow = document.querySelector("[data-lcdp-cle-workflow]");
   if (!conteneur || !controle || !workflow) return;
