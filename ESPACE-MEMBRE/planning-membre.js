@@ -780,7 +780,7 @@
         position:relative !important;
         box-sizing:border-box !important;
         height:auto !important;
-        padding:42px 18px 20px !important;
+        padding:8px 14px 12px !important;
         overflow:visible !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-jour-inline
@@ -816,7 +816,7 @@
         display:block !important;
         position:relative !important;
         box-sizing:border-box !important;
-        padding:44px 18px 22px !important;
+        padding:8px 14px 12px !important;
         height:auto !important;
         min-height:0 !important;
         overflow:visible !important;
@@ -860,7 +860,7 @@
         min-height:0 !important;
         height:auto !important;
         overflow:visible !important;
-        padding:2px 0 !important;
+        padding:0 !important;
         margin:0 !important;
         line-height:1.5 !important;
       }
