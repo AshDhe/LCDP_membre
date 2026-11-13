@@ -110,6 +110,19 @@
       famille: new Set(contexte.selection.famille.map(String))
     };
     const nouveaux = { duo: [], famille: [] };
+    // Un changement provisoire ne déclenche pas de confirmation s'il a été annulé.
+    const selectionInitiale = {
+      duo: new Set(selection.duo),
+      famille: new Set(selection.famille)
+    };
+    const modificationsEnCours = () =>
+      CATEGORIES.some(categorie => {
+        const initial = selectionInitiale[categorie];
+        const actuel = selection[categorie];
+        return actuel.size !== initial.size ||
+          [...actuel].some(id => !initial.has(id)) ||
+          nouveaux[categorie].some(champ => normaliserEmail(champ.input.value) !== "");
+      });
     let prochain = 0;
     let enregistrementEnCours = false;
     let fermetureEnCours = false;
@@ -312,9 +325,11 @@
       if (enregistrementEnCours || fermetureEnCours || ferme) return;
       fermetureEnCours = true;
       try {
-        // CHOIX obligatoire : ne jamais fermer sans validation explicite.
-        const confirmation = await confirmerQuitter();
-        if (confirmation !== true || ferme) return;
+        // Ne demander confirmation que si la sélection ou une adresse a réellement changé.
+        if (modificationsEnCours()) {
+          const confirmation = await confirmerQuitter();
+          if (confirmation !== true || ferme) return;
+        }
         ferme = true;
         fermer();
       } catch (erreur) {
