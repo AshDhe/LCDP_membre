@@ -541,6 +541,27 @@ body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper > .lcdp-ma-cle-navigation-slot {
   text-align: center;
   color: var(--lcdp-color-text-muted);
 }
+/* Retour réseau du Worker : jamais de blocage de la consultation. */
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__statut {
+  width: 100%;
+  margin: 0 0 var(--lcdp-space-3, 12px);
+  padding: var(--lcdp-space-3, 12px);
+  color: var(--lcdp-color-text, #334155);
+  background: var(--lcdp-color-surface-soft, #f8fafc);
+  border: 1px solid var(--lcdp-color-border, #e2e8f0);
+  border-radius: var(--lcdp-radius-medium, 12px);
+  line-height: 1.45;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__statut[role="alert"] {
+  color: #9f2525;
+  border-color: #cf7878;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__reessayer {
+  display: block;
+  width: max-content;
+  min-height: 44px;
+  margin: 0 auto var(--lcdp-space-3, 12px);
+}
 @media(max-width: 375px) {
   .lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__numero {width: 29px; height: 29px; font-size: 13px;}
   .lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__libelle {font-size: 9px;}
