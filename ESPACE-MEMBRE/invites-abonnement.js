@@ -70,6 +70,13 @@
     if (!vue) throw new Error("Gabarit DUO/FAMILLE : racine introuvable.");
     const formulaire = vue.querySelector("[data-lcdp-invitation-abonnement-form]");
     const envoyer = vue.querySelector("[data-lcdp-invitation-envoyer]");
+    // Garder le libellé fixe et afficher un spinner indépendant de la saisie.
+    const spinnerEnregistrement = creerElement("span", "lcdp-invitation-spinner");
+    spinnerEnregistrement.setAttribute("aria-hidden", "true");
+    spinnerEnregistrement.style.cssText = "display:inline-block;width:17px;height:17px;flex:0 0 17px;margin-left:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:lcdp-button-logo-loading .75s linear infinite;";
+    envoyer.style.display = "inline-flex";
+    envoyer.style.alignItems = "center";
+    envoyer.style.justifyContent = "center";
     const groupe = vue.querySelector("[data-lcdp-invitation-groupe]");
     const fermerCroix = vue.querySelector("[data-lcdp-listinvites-close]");
     const message = vue.querySelector("[data-lcdp-invitation-abonnement-message]");
@@ -344,8 +351,9 @@
       enregistrementEnCours = true;
       envoyer.disabled = true;
       fermerCroix.disabled = true;
-      envoyer.textContent = "Enregistrement…";
-      messageLocal("Enregistrement des invités en cours.");
+      envoyer.setAttribute("aria-busy","true");
+      envoyer.appendChild(spinnerEnregistrement);
+      messageLocal("");
       try {
         const resultat = await enregistrer(idflux,donnees);
         if (resultat?.ok !== true || resultat?.confirme !== true) {
@@ -353,15 +361,20 @@
         }
         ferme = true;
         fermer();
-        await info(resultat.message || "Invitations enregistrées.");
+        const envoiPartiel = Number(resultat.nbEnAttente || 0) > 0 ||
+          Number(resultat.annulationsNonNotifiees || 0) > 0;
+        await info(envoiPartiel
+          ? "Liste mise à jour. Certains destinataires n’ont pas pu être informés."
+          : "Liste mise à jour. Destinataire(s) informé(s).");
       } catch (erreur) {
         messageLocal(erreur?.message || "Enregistrement impossible. Les choix sont conservés.");
       } finally {
         enregistrementEnCours = false;
+        spinnerEnregistrement.remove();
+        envoyer.removeAttribute("aria-busy");
         if (!ferme) {
           envoyer.disabled = false;
           fermerCroix.disabled = false;
-          envoyer.textContent = "Mettre à jour";
         }
       }
     });
