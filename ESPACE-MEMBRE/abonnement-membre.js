@@ -483,7 +483,7 @@
     await afficherEtapeChoixDuree();
   }
 
-  async function afficherSuppressionAbonnement(message) {
+  async function afficherSuppressionAbonnement(message, options = {}) {
     const slot = obtenirLightboxSlot();
     const focusInitial = document.activeElement;
     try {
@@ -506,10 +506,10 @@
       const conserver = slot.querySelector('[data-lcdp-dialogue-action="conserver"]');
       const supprimer = slot.querySelector('[data-lcdp-dialogue-action="supprimer"]');
       if (!dialogue || !titre || !texte || !conserver || !supprimer) throw new Error("Structure SUPPRESSION incomplète.");
-      titre.textContent = "Annuler l’abonnement ?";
+      titre.textContent = options.titre || "Annuler l’abonnement ?";
       texte.textContent = String(message || "");
-      conserver.textContent = "Conserver";
-      supprimer.textContent = "Oui, annuler";
+      conserver.textContent = options.annuler || "Conserver";
+      supprimer.textContent = options.confirmer || "Oui, annuler";
       conserver.focus();
       return await new Promise(resolve => {
         let termine = false;
@@ -555,7 +555,7 @@
     const confirmation = await afficherSuppressionAbonnement("Voulez-vous annuler l'abonnement ?");
     if (!confirmation) return;
 
-    const confirmationRetenue = await afficherAlerte("Des frais de traitement d’annulation s’appliquent conformément aux Conditions Générales de Vente.");
+    const confirmationRetenue = await afficherSuppressionAbonnement("Des frais de traitement d’annulation s’appliquent conformément aux Conditions Générales de Vente.", { titre: "Confirmer l’annulation avec frais ?", annuler: "Conserver", confirmer: "Poursuivre l’annulation" });
     if (!confirmationRetenue) return;
 
     const resultat = await enregistrerAnnulationAvoir(card);
