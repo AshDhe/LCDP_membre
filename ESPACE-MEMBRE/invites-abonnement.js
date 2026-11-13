@@ -201,7 +201,7 @@
       nouveaux[categorie].push(entree);
       liste.appendChild(item);
       actualiserQuotas();
-      champ.focus({preventScroll:true});
+      if (!initial) champ.focus({preventScroll:true});
     }
 
     for (const categorie of CATEGORIES) {
