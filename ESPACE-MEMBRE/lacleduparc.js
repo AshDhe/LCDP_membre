@@ -400,6 +400,7 @@
       document.body.classList.remove("is-cle-active", "is-cle-overstay");
       document.body.classList.add("is-cle-checkout");
       verrouillerNavigation();
+      window.LCDP_ParcoursMaCle?.indiquerEtape(5);
     } catch (error) {
       if (error?.sessionRemplaceeTraitee === true) return;
 
@@ -426,6 +427,7 @@
     document.body.classList.add("is-cle-active");
     actualiserEtatPresence(false);
     verrouillerNavigation();
+    window.LCDP_ParcoursMaCle?.indiquerEtape(4);
   }
 
   async function preparerConfirmation(action) {
@@ -481,6 +483,7 @@
     arreterTransitionPresence();
     deverrouillerNavigation();
     afficherWorkflowCle();
+    window.LCDP_ParcoursMaCle?.indiquerEtape(3);
   }
 
   function afficherEcranActif(disponibiliteBrighta, overstayAt, presenceState, lockExpiresAt) {
@@ -495,6 +498,7 @@
     definirDisponibiliteBrighta(disponibiliteBrighta);
     verrouillerNavigation();
     afficherWorkflowCle();
+    window.LCDP_ParcoursMaCle?.indiquerEtape(4);
   }
 
   function definirEtatPresence(overstayAt, presenceState) {
