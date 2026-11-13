@@ -1877,6 +1877,23 @@ async function afficherRelationsInvitationsMembre(request, env, corsHeaders) {
     });
     const abonnement = abonnements[0] || null;
 
+    // Carnet DUO/FAMILLE de l'abonnement et invitations reçues via les accès.
+    // Les anciens liens "invitant" restent lus pour préserver l'historique.
+    const [contactsDuoFamille, invitationsRecuesParFlux] = await Promise.all([
+      abonnement ? lireToutesRelationsInvitant(env, "inviteabo", {
+        idabo: "eq." + abonnement.idabo,
+        select: "idinviteabo,idmembreinvite,email,categorie,datecreation",
+        order: "datecreation.desc"
+      }) : Promise.resolve([]),
+      lireToutesRelationsInvitant(env, "fluxm", {
+        idmembre: "eq." + idmembre,
+        invitation: "eq.true",
+        idparrain: "not.is.null",
+        select: "idparrain,dateflux",
+        order: "dateflux.desc"
+      })
+    ]);
+
     const [invitesHistoriqueAbo, personnesLiees, invitationsEmail] = await Promise.all([
       abonnement ? lireToutesRelationsInvitant(env, "invitant", {
         idmembre_invitant: "eq." + idmembre,
@@ -1904,7 +1921,9 @@ async function afficherRelationsInvitationsMembre(request, env, corsHeaders) {
 
     const idContacts = new Set([
       ...invitesHistoriqueAbo.map(ligne => ligne.idmembre_invite),
-      ...Array.from(evenementsInvitants.values(), ligne => ligne.idmembre_invitant)
+      ...contactsDuoFamille.map(ligne => ligne.idmembreinvite),
+      ...Array.from(evenementsInvitants.values(), ligne => ligne.idmembre_invitant),
+      ...invitationsRecuesParFlux.map(ligne => ligne.idparrain)
     ].filter(Boolean));
     const identites = await chargerIdentitesRelationsInvitant(env, [...idContacts]);
 
@@ -1925,6 +1944,21 @@ async function afficherRelationsInvitationsMembre(request, env, corsHeaders) {
       });
     }
 
+    // Compléter les invités issus du nouveau carnet, même sans compte validé.
+    for (const contact of contactsDuoFamille) {
+      const adresse = String(contact.email || "").trim().toLowerCase();
+      if (!adresse || invitesVus.has(adresse)) continue;
+      invitesVus.add(adresse);
+      const membre = identites.get(contact.idmembreinvite) || {};
+      invites.push({
+        nom: membre.nommembre || "",
+        prenom: membre.prenommembre || "",
+        email: adresse,
+        categorie: contact.categorie,
+        date: contact.datecreation
+      });
+    }
+
     const invitants = [];
     const invitantsVus = new Set();
     for (const ligne of [...evenementsInvitants.values()].sort(sortDesc)) {
@@ -1937,6 +1971,19 @@ async function afficherRelationsInvitationsMembre(request, env, corsHeaders) {
         prenom: membre.prenommembre || "",
         email: membre.emailmembre || "",
         date: ligne.dateinvitation
+      });
+    }
+
+    for (const flux of invitationsRecuesParFlux) {
+      const cle = String(flux.idparrain || "");
+      if (!cle || invitantsVus.has(cle)) continue;
+      invitantsVus.add(cle);
+      const membre = identites.get(cle) || {};
+      invitants.push({
+        nom: membre.nommembre || "",
+        prenom: membre.prenommembre || "",
+        email: membre.emailmembre || "",
+        date: flux.dateflux
       });
     }
 
