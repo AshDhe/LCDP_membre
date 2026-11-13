@@ -30,18 +30,22 @@
         "/CSSBASE/lcdp-navigation-onglets.css",
         "/CSSBASE/lcdp-carte-acces-visuel.css",
         "/CSSBASE/lcdp-lightbox-convergence.css",
-        "/CSSBASE/lcdp-mes-acces-membre.css"
+        "/CSSBASE/lcdp-mes-acces-membre.css",
+        "/CSSBASE/lcdp-fiche-parc-wrapper.css?v=20261113-mesacces-interne-v3",
+        "/CSSBASE/lcdp-fiche-parc-vue-carte.css?v=20261113-mesacces-interne-v3"
       ].forEach(path => {
         // Comme sur mes-informations.html : conserver l'ordre de cascade CSS
         // avant le style de page, sans chargement asynchrone concurrent.
         document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(path) + '">');
       });
+      document.write('<script src="' + window.LCDP_urlObjet('/JSBASE/03-galerie.js') + '"><\\/script>');
     })();
   </script>
   <link rel="stylesheet" href="./alerte-planifier.css">
   <style>
     /* Masquer toute la coque tant que les fragments et données ne sont pas prêts. */
     #mention-statut-membre[hidden] { display:none !important; }
+    #lcdp-planning-calendrier-slot[hidden], #lcdp-mes-acces-fiche-slot[hidden] { display:none !important; }
     html:not(.lcdp-planning-membre-ready) body.lcdp-app-page > .lcdp-app-wrapper {
       visibility: hidden !important;
     }
@@ -87,6 +91,8 @@
           <div class="lcdp-page-content">
             <header class="lcdp-page-header"><p id="mention-statut-membre" class="lcdp-mention-connexion lcdp-etiquette-statut-membre" aria-live="polite" hidden></p></header>
             <div id="lcdp-planning-calendrier-slot"></div>
+            <!-- Fiche/Carte : vues internes à MES ACCÈS, sans nouvelle page ni onglet. -->
+            <div id="lcdp-mes-acces-fiche-slot" aria-label="Fiche et carte du parc" hidden></div>
           </div>
         </div>
       </section>
@@ -96,6 +102,6 @@
     <div id="lcdp-lightbox-slot"></div>
   </div>
 
-  <script src="./planning-membre.js"></script>
+  <script src="./planning-membre.js?v=20261113-mesacces-interne-v3"></script>
 </body>
 </html>
