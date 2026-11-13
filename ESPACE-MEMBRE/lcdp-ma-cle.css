@@ -2,21 +2,8 @@
    Styles historiques conservés; étapes 1 à 6 ajoutées dans ce même fichier.
    CSSBASE conserve les composants communs de l'application. */
 
-.lcdp-page-cle-du-parc {
-  min-height: 100vh;
-  background: var(--lcdp-color-surface, #ffffff);
-}
-
-.lcdp-page-cle-du-parc .lcdp-site-main {
-  width: 100%;
-}
-
 .lcdp-cle-ecran {
   width: 100%;
-}
-
-.lcdp-cle-ecran[hidden] {
-  display: none;
 }
 
 .lcdp-cle-wait {
@@ -27,16 +14,8 @@
   justify-content: center;
 }
 
-.lcdp-cle-wait[hidden] {
-  display: none !important;
-}
-
 .lcdp-cle-workflow {
   width: 100%;
-}
-
-.lcdp-cle-workflow[hidden] {
-  display: none !important;
 }
 
 .lcdp-cle-box {
@@ -312,13 +291,10 @@
 @media (max-width: 359px) { .lcdp-cle-code-quatre-cases { gap: 8px; } .lcdp-cle-code-quatre-cases input { width: 44px; } }
 
 /* Contrôle d’accès : composant autonome, également utilisé pour les aperçus. */
-.lcdp-acces { position: relative; width: min(100%,520px); min-height: 650px; margin: 0 auto; padding: 28px 24px 24px; display: flex; flex-direction: column; align-items: center; background: var(--lcdp-color-surface); color: var(--lcdp-color-text); font: 17px/1.45 var(--lcdp-font-main); box-sizing: border-box; }
-.lcdp-acces[hidden] { display: none !important; }
-.lcdp-acces * { box-sizing: border-box; }
+.lcdp-acces { position: relative; width: min(100%,520px); min-height: 650px; margin: 0 auto; padding: 28px 24px 24px; display: flex; flex-direction: column; align-items: center; background: var(--lcdp-color-surface);  }
 .lcdp-acces-titre { margin: 0 0 32px; font-size: 23px; font-weight: 600; line-height: 1.25; text-align: center; }
 .lcdp-acces-form { width: 100%; display: flex; flex-direction: column; align-items: center; margin-top: 60px; gap: 20px; }
 .lcdp-acces-form .lcdp-cle-code-quatre-cases { margin: 0; }
-.lcdp-acces-form .lcdp-button { width: 100%; }
 .lcdp-acces-erreur:empty { display: none; }
 .lcdp-acces-erreur, .lcdp-acces-dernier-essai { color: var(--lcdp-color-text); text-align: center; margin: 0; }
 .lcdp-acces-reservation { width: 100%; text-align: center; }
@@ -337,7 +313,6 @@
 .lcdp-acces-lightbox { position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; padding: 22px; background: rgba(0,0,0,.45); }
 .lcdp-acces-lightbox-contenu { width: 100%; padding: 28px 20px; border-radius: var(--lcdp-radius-medium); background: var(--lcdp-color-surface); display: flex; flex-direction: column; align-items: center; gap: 18px; }
 .lcdp-acces-refus { margin: 0 0 6px; color: var(--lcdp-color-text); text-align: center; }
-.lcdp-acces-lightbox .lcdp-button { width: 100%; }
 .lcdp-acces-lightbox button:disabled { opacity: .5; cursor: default; }
 @media (max-width: 359px) { .lcdp-acces { padding-left: 18px; padding-right: 18px; } .lcdp-acces-titre { font-size: 21px; } }
 
@@ -362,30 +337,20 @@
 .lcdp-acces-invites-liste {max-height:360px;max-height:min(45svh,360px);overflow-y:auto;overscroll-behavior-y:contain;min-width:0;}
 .lcdp-acces-invites-liste .lcdp-acces-instructions {margin:0;padding-left:26px;}
 .lcdp-acces-invites-form label {min-width:0;overflow-wrap:anywhere;}
-.lcdp-acces-invites-form input[type="checkbox"] {flex-shrink:0;}
 .lcdp-acces-invites-form > button[type="submit"] {align-self:center;}
 
 /* Nouvelles étapes : timeline et accès détail */
 /* Ma clé : navigation visuelle progressive, sans modification des contrôles existants. */
 .lcdp-page-cle-du-parc .lcdp-parcours-timeline,
 .lcdp-page-cle-du-parc .lcdp-parcours-ecran {
-  box-sizing: border-box;
   width: min(100%, 620px);
   margin-inline: auto;
-  font-family: var(--lcdp-font-main, Arial, sans-serif);
-}
-.lcdp-page-cle-du-parc .lcdp-parcours-timeline[hidden],
-.lcdp-page-cle-du-parc .lcdp-parcours-ecran[hidden] {
-  display: none !important;
 }
 .lcdp-page-cle-du-parc .lcdp-parcours-timeline {
   margin-top: 12px;
   margin-bottom: 24px;
   padding: 10px 4px 12px;
   background: var(--lcdp-color-surface);
-  color: var(--lcdp-color-text, var(--lcdp-color-text));
-  position: relative;
-  z-index: 2;
 }
 .lcdp-page-cle-du-parc .lcdp-parcours-timeline__liste {
   display: grid;
@@ -455,7 +420,6 @@
   align-items: center;
   gap: 22px;
   background: var(--lcdp-color-surface, var(--lcdp-color-surface));
-  color: var(--lcdp-color-text, var(--lcdp-color-text));
 }
 .lcdp-page-cle-du-parc .lcdp-parcours-titre {
   font-size: 25px;
@@ -483,8 +447,6 @@
   line-height: 58px;
 }
 .lcdp-page-cle-du-parc .lcdp-parcours-continuer {
-  width: min(100%, 320px);
-  min-height: 48px;
   margin-top: auto;
 }
 .lcdp-page-cle-du-parc .lcdp-parcours-parc {
@@ -526,7 +488,6 @@
   object-fit: cover;
   background: var(--lcdp-color-surface-soft);
 }
-.lcdp-page-cle-du-parc .lcdp-parcours-slide__image[hidden] { display: none; }
 .lcdp-page-cle-du-parc .lcdp-parcours-indisponible {
   text-align: center;
   padding: 36px 14px;
@@ -539,7 +500,6 @@
   align-items: center;
   gap: 8px;
 }
-.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__navigation[hidden] { display: none; }
 .lcdp-page-cle-du-parc .lcdp-parcours-carrousel__bouton {
   min-width: 105px;
   min-height: 44px;
@@ -566,7 +526,6 @@
   .lcdp-page-cle-du-parc .lcdp-parcours-carrousel__bouton { min-width: 92px; }
 }
 
-
 /* La timeline reste visible au défilement, aussi pendant les captures vidéo.
    Aucun positionnement n'est injecté depuis le JS ou le HTML. */
 .lcdp-page-cle-du-parc [hidden] { display: none !important; }
@@ -578,14 +537,6 @@
   background: var(--lcdp-color-surface);
   max-width: 100%;
 }
-.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon[data-etat="termine"] .lcdp-parcours-timeline__numero,
-.lcdp-page-cle-du-parc .lcdp-parcours-reussite::before {
-  color: #ffffff;
-}
-.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon[data-etat="actif"] .lcdp-parcours-timeline__numero {
-  color: #ffffff;
-}
-.lcdp-page-cle-du-parc .lcdp-parcours-reussite::before { line-height: 58px; }
 
 /* État du contrôle de présence : couleurs fournies par le Worker courant.
    L'attribution à l'état se fait avec une classe, jamais avec element.style. */
@@ -598,11 +549,9 @@
   width: min(100%, 620px);
   margin: 0 auto var(--lcdp-space-3);
   padding: var(--lcdp-space-2);
-  box-sizing: border-box;
   border: 1px solid var(--lcdp-color-border);
   border-radius: var(--lcdp-radius-medium);
   background: var(--lcdp-color-surface);
-  color: var(--lcdp-color-text);
 }
 .lcdp-page-cle-du-parc .lcdp-parcours-details-presence__entete {
   display: block;
@@ -626,13 +575,7 @@
   background: var(--lcdp-color-surface);
 }
 .lcdp-page-cle-du-parc .lcdp-parcours-slide__photos:empty { display: none; }
-.lcdp-page-cle-du-parc .lcdp-parcours-slide__image[hidden] { display: none !important; }
 .lcdp-page-cle-du-parc .lcdp-parcours-carrousel__bouton:disabled { opacity: .45; cursor: not-allowed; }
-.lcdp-page-cle-du-parc .lcdp-parcours-ecran .lcdp-button:focus-visible,
-.lcdp-page-cle-du-parc .lcdp-parcours-details-presence button:focus-visible {
-  outline: 3px solid var(--lcdp-color-focus);
-  outline-offset: 2px;
-}
 /* L'écran rouge de fin de présence demeure dans le flux, sous la timeline. */
 .lcdp-page-cle-du-parc .lcdp-page-container[data-lcdp-parcours-etape="4"] .lcdp-acces[data-screen="expired"] {
   width: min(100%, 620px);
