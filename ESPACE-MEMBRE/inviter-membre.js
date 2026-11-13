@@ -703,7 +703,7 @@
     const fragment = await chargerFragmentObjet(information
       ? "/HTMLBASE/02-dialogue-reference-information.html"
       : choix ? "/HTMLBASE/02-dialogue-reference-choix.html"
-      : "/HTMLBASE/02-alerte.html");
+      : "/HTMLBASE/02-dialogue-reference-erreur.html");
     hote.appendChild(fragment);
 
     if (choix) {
@@ -741,25 +741,20 @@
 
     const alerte = hote.querySelector(information
       ? '[data-lcdp-dialogue-reference="information"]'
-      : "[data-lcdp-box-alerte]");
-    const texte = hote.querySelector(information
-      ? "[data-lcdp-dialogue-message]"
-      : "[data-lcdp-alerte-message]");
-    const boutonFermer = information ? null : hote.querySelector("[data-lcdp-alerte-close]");
+      : '[data-lcdp-dialogue-reference="erreur"]');
+    const texte = hote.querySelector("[data-lcdp-dialogue-message]");
+    const titre = hote.querySelector("[data-lcdp-dialogue-titre]");
     const boutonOk = hote.querySelector(information
       ? '[data-lcdp-dialogue-action="compris"]'
-      : "[data-lcdp-alerte-ok]");
+      : '[data-lcdp-dialogue-action="fermer"]');
 
-    if (!alerte || !texte || !boutonOk || (!information && !boutonFermer)) {
+    if (!alerte || !titre || !texte || !boutonOk) {
       throw new Error("Structure du dialogue incomplète.");
     }
 
-    texte.textContent = message;
-    if (information) {
-      const titre = hote.querySelector("[data-lcdp-dialogue-titre]");
-      if (titre) titre.textContent = options.titre || "Information";
-      boutonOk.textContent = "Fermer";
-    }
+    titre.textContent = options.titre || (information ? "Information" : "Erreur");
+    texte.textContent = message || "";
+    boutonOk.textContent = "Fermer";
 
     return new Promise((resolve) => {
       let resolu = false;
@@ -767,16 +762,20 @@
       function fermer(valeur) {
         if (resolu) return;
         resolu = true;
+        document.removeEventListener("keydown", gererClavier);
         if (superposition) hote.remove();
-        else slot.innerHTML = "";
+        else slot.replaceChildren();
         resolve(valeur);
       }
-
-      boutonFermer?.addEventListener("click", () => fermer(false));
-      boutonOk.addEventListener("click", () => fermer(true));
-      alerte.addEventListener("click", (event) => {
+      function gererClavier(event) {
+        if(event.key === "Escape") { event.preventDefault(); fermer(false); }
+      }
+      boutonOk.addEventListener("click", () => fermer(true), { once:true });
+      alerte.addEventListener("click", event => {
         if (event.target === alerte) fermer(false);
       });
+      document.addEventListener("keydown", gererClavier);
+      boutonOk.focus();
     });
   }
 
