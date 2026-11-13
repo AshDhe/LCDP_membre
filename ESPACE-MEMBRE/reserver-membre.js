@@ -5811,6 +5811,9 @@
         };
         conserver.addEventListener('click', () => fermer(false), { once: true });
         supprimer.addEventListener('click', () => fermer(true), { once: true });
+        dialogue.addEventListener('click', event => {
+          if (event.target === dialogue) fermer(false);
+        });
         document.addEventListener('keydown', echap, true);
         conserver.focus();
       });
