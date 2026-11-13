@@ -917,7 +917,7 @@
       await ouvrirDialogueBoutonsSuperpose({titre:"COACH", texte:message, boutons:[]});
       return;
     }
-    const choix = await afficherAlerteSuperposee(message, "orange", {libelleBouton:"M'abonner"});
+    const choix = await afficherChoixPlanifier(message, { titre: "Abonnement", libelleAnnuler: "Annuler", libelleConfirmer: "M'abonner" });
     if (choix !== true) return;
     // Le catalogue ABO-RÉZA décide des formules réellement disponibles.
     // Aucun paiement ni réservation n'est créé directement ici.
