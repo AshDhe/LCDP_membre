@@ -3254,10 +3254,14 @@
     // l'écran derrière le spinner pleine page.
     const surface = ouvrirSurfaceInvitationPleinePage();
     if (!surface) return null;
-    const chargement = document.createElement("p");
-    chargement.className = "lcdp-text-muted";
+    // Montrer uniquement le spinner officiel pendant le chargement,
+    // sans texte provisoire et sans recouvrir le formulaire une fois monté.
+    const chargement = document.createElement("div");
+    chargement.className = "lcdp-invitation-attente";
     chargement.setAttribute("role", "status");
-    chargement.textContent = "Ouverture du formulaire Inviter…";
+    chargement.setAttribute("aria-label", "Chargement du formulaire Inviter");
+    const spinnerReference = document.querySelector("#lcdp-planning-attente .lcdp-loading-spinner");
+    if (spinnerReference) chargement.appendChild(spinnerReference.cloneNode(true));
     surface.conteneur.appendChild(chargement);
     let terminer;
     let terminee = false;
