@@ -2576,12 +2576,13 @@
         estReservationHorsAbonnement
           ? "Annuler l’invite"
           : "Annuler la réservation";
-      boutonAnnuler.hidden = false;
-      boutonAnnuler.classList.toggle("lcdp-box-card-reservation-membre__micro-action--delai-depasse", delaiActionDepasse);
-      boutonAnnuler.setAttribute("aria-disabled", delaiActionDepasse ? "true" : "false");
+      boutonAnnuler.hidden = estAnnulee;
+      const annulationInterdite = annulationAccesImpossibleParis(reservation);
+      boutonAnnuler.classList.toggle("lcdp-box-card-reservation-membre__micro-action--delai-depasse", annulationInterdite);
+      boutonAnnuler.setAttribute("aria-disabled", annulationInterdite ? "true" : "false");
 
-      if (delaiActionDepasse) {
-        boutonAnnuler.title = "Délai dépassé";
+      if (annulationInterdite) {
+        boutonAnnuler.title = "Annulation impossible après 14h";
       } else {
         boutonAnnuler.removeAttribute("title");
       }
@@ -2964,14 +2965,8 @@
       return;
     }
 
-    const resultat = await ouvrirBoxEmailsInvitationReservation(idReservation, declencheur);
-
-    if (!resultat) return;
-
-    if (invitationReservationCreee(resultat)) {
-      marquerReservationAvecInvitesPlanning(idReservation, declencheur);
-      await afficherAlerteInvitationReservation(resultat.message || "Invitation envoyée.", declencheur, { profil: "information" });
-    }
+    // La liste des invités permet aussi l'ajout lorsque le compteur est à zéro.
+    await ouvrirListeInvitesReservation(idReservation, declencheur);
   }
 
   function trouverReservationPlanningParId(idflux) {
@@ -3356,7 +3351,7 @@
       titreAjout.setAttribute("aria-hidden", "true");
     }
 
-    boutonAjouterEmail.textContent = "Ajouter un membre";
+    boutonAjouterEmail.textContent = "Ajouter un e-mail";
     boutonAnnuler.textContent = "Annuler";
 
     const actions = boutonMettreAJour.closest(".lcdp-box-card-listinvites-oui-non__actions");
@@ -3392,7 +3387,7 @@
       zoneAjout.hidden = false;
       boutonAjouterEmail.hidden = false;
       boutonAjouterEmail.disabled = false;
-      boutonAjouterEmail.textContent = "Ajouter un membre";
+      boutonAjouterEmail.textContent = "Ajouter un e-mail";
     }
 
     function ajouterChampEmailInvite() {
@@ -3572,9 +3567,10 @@
     item.className = "lcdp-box-card-listinvites-oui-non__email-item";
 
     const input = document.createElement("input");
-    input.type = "email";
-    input.placeholder = "Adresse e-mail du membre invité";
+    input.type = "text";
+    input.placeholder = "Adresse e-mail de l’invité";
     input.autocomplete = "email";
+    input.inputMode = "email";
     input.className = "lcdp-box-card-listinvites-oui-non__email-input";
 
     item.appendChild(input);
@@ -3588,12 +3584,7 @@
       .filter(Boolean);
 
     const valeurs = saisies.filter((email, index, array) => array.indexOf(email) === index);
-    const invalide = valeurs.find((email) => !emailValide(email));
-
-    if (invalide) {
-      return { valeurs: [], erreur: "Une adresse e-mail est invalide." };
-    }
-
+    // Aucune vérification de l'existence d'un compte membre à cette étape.
     return { valeurs, erreur: "" };
   }
 
@@ -3692,7 +3683,7 @@
   // Annulation interdite dès 14h à Paris la veille du jour de visite.
   function annulationAccesImpossibleParis(reservation) {
     const dateVisite = extraireDateFranceReservation(reservation?.datebookd);
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateVisite)) return true;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVisite)) return true;
     const maintenant = dateHeureParis(new Date());
     if (!maintenant.dateIso) return true;
     const [annee, mois, jour] = dateVisite.split("-").map(Number);
