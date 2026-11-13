@@ -21,7 +21,7 @@
     {
       titre: "Entrée",
       texte: "L'entrée du parc est à droite de l'entrée principale au niveau de la cour de la ferme.",
-      images: []
+      images: ["entree1.webp"]
     },
     {
       titre: "Check-in",
