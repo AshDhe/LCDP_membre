@@ -41,7 +41,7 @@
   let exclusiviteCle = false;
   let controleAccesEtat = null;
   let controleAccesTimer = null;
-  let controleAccesEnCours = false;
+  let controleAccesRequete = null;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -62,23 +62,31 @@
     }
 
     try {
+      let ouverture;
       try {
-        await appelerApi("/ouvrir", {method:"POST",body:{}});
+        ouverture = await appelerApi("/ouvrir", {method:"POST",body:{}});
       } catch (error) {
         if (error.reason !== "browser_not_owner") throw error;
         masquerAttenteInitiale();
         const coda = await ouvrirDialogueChamp({titre:"MA CLÉ",description:"Votre navigateur n’est pas reconnu. Authentifiez-vous.",longueur:4,mention:"Vous n’avez droit qu’à une seule tentative.",secret:true});
         if (coda === null) { redirigerAccueil(); return; }
-        await appelerApi("/ouvrir", {method:"POST",body:{coda}});
+        ouverture = await appelerApi("/ouvrir", {method:"POST",body:{coda}});
+      }
+      if (ouverture?.success !== true || !ouverture?.accessState?.droit?.reservationId) {
+        throw new Error(ouverture?.message || "Le droit d'accès MA CLÉ n'est pas confirmé.");
       }
       exclusiviteCle = true;
       verrouillerNavigation();
       if(boutonAnnuler) boutonAnnuler.hidden=true;
-      // Le bandeau/footer ne doivent jamais retenir la clé sur le spinner.
-      void initialiserGabaritMembre();
-      await chargerControleAcces();
-      window.LCDP_ParcoursMaCle?.demarrer(controleAccesEtat, {rafraichirControle: chargerControleAcces});
+      // Les deux premières étapes n'attendent pas le contrôle vidéo.
+      window.LCDP_ParcoursMaCle?.demarrer(ouverture, {rafraichirControle: chargerControleAcces});
       masquerAttenteInitiale();
+      // Bandeau et contrôle vidéo se chargent indépendamment, après le rendu.
+      void initialiserGabaritMembre();
+      void chargerControleAcces().catch(error => {
+        console.error("Contrôle vidéo indisponible après ouverture sécurisée :", error);
+        window.LCDP_ParcoursMaCle?.signalerErreurControle(error);
+      });
       controleAccesTimer=window.setInterval(()=>{
         if(document.visibilityState==="visible" && ["guest_pending","guest_waiting_control"].includes(controleAccesEtat?.screen)) chargerControleAcces().catch(console.error);
       },5000);
@@ -1305,9 +1313,8 @@
   }
 
   async function chargerControleAcces() {
-    if(controleAccesEnCours) return;
-    controleAccesEnCours=true;
-    try {
+    if (controleAccesRequete) return controleAccesRequete;
+    controleAccesRequete = (async () => {
       const etat=await appelerApi("/control-access",{method:"GET"});
       if(etat.screen==="active" && etat.role==="abonne") {
         const statut=await appelerApi("/status",{method:"GET"});
@@ -1317,7 +1324,12 @@
         afficherEcranActif(statut.brightaAvailableAt || "",statut.overstayAt || "",statut.presenceState || "active",null);
         window.LCDP_ParcoursMaCle?.synchroniser(etat);
       } else afficherControleAcces(etat);
-    } finally {controleAccesEnCours=false;}
+    })();
+    try {
+      return await controleAccesRequete;
+    } finally {
+      controleAccesRequete = null;
+    }
   }
   function afficherControleAcces(etat) {
     controleAccesEtat=etat;
