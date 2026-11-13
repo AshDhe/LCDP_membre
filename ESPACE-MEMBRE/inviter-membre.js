@@ -1028,7 +1028,7 @@
         document.head.appendChild(link);
       });
     }
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=ajouter-invites");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=ajouter-dom");
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites");
     const dialogue = document.createElement("div");
     dialogue.className = "lcdp-box-dialogue-champ-inviter";
