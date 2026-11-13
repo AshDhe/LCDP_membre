@@ -796,21 +796,56 @@
     await afficherAlerte("Votre parrain peut vous inviter depuis son espace.", { profil: "information" });
   }
 
-  async function gererDeconnexion() {
-    const confirmation = await ouvrirDialogueBoutons({
-      titre: "Confirmer la déconnexion",
-      texte: "Voulez-vous vous déconnecter de votre espace membre ?",
-      boutons: [
-        {
-          label: "Confirmer",
-          valeur: "confirmer",
-          style: "lcdp-button-primary"
-        },
-        { label: "Annuler", valeur: "annuler", style: "lcdp-button-secondary" }
-      ]
-    });
+  async function confirmerDeconnexionMembre() {
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    if (!slot) return false;
+    const avant = document.activeElement;
+    try {
+      slot.replaceChildren(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html"));
+      const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="choix"]');
+      const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+      const annuler = slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
+      const confirmer = slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+      if (!dialogue || !titre || !texte || !annuler || !confirmer) throw new Error("Dialogue CHOIX incomplet.");
+      titre.textContent = "Confirmer la déconnexion";
+      texte.textContent = "Voulez-vous vous déconnecter de votre espace membre ?";
+      annuler.textContent = "Annuler";
+      confirmer.textContent = "Confirmer";
+      return await new Promise(resolve => {
+        let termine = false;
+        function fermer(valeur) {
+          if (termine) return;
+          termine = true;
+          document.removeEventListener("keydown", clavier);
+          slot.replaceChildren();
+          if (avant?.isConnected && typeof avant.focus === "function") avant.focus();
+          resolve(valeur);
+        }
+        function clavier(event) {
+          if (event.key === "Escape") { event.preventDefault(); fermer(false); }
+          if (event.key === "Tab") {
+            if (event.shiftKey && document.activeElement === annuler) { event.preventDefault(); confirmer.focus(); }
+            else if (!event.shiftKey && document.activeElement === confirmer) { event.preventDefault(); annuler.focus(); }
+          }
+        }
+        annuler.addEventListener("click", () => fermer(false), { once: true });
+        confirmer.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => { if (event.target === dialogue) fermer(false); });
+        document.addEventListener("keydown", clavier);
+        annuler.focus();
+      });
+    } catch (erreur) {
+      slot.replaceChildren();
+      if (avant?.isConnected && typeof avant.focus === "function") avant.focus();
+      console.error("Confirmation déconnexion indisponible :", erreur);
+      return false;
+    }
+  }
 
-    if (confirmation !== "confirmer") return;
+  async function gererDeconnexion() {
+    const confirmation = await confirmerDeconnexionMembre();
+    if (!confirmation) return;
 
     if (!ENDPOINT_DECONNEXION_MEMBRE) {
       throw new Error("Le service de déconnexion membre n’est pas configuré.");
