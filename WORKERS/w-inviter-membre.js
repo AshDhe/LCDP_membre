@@ -29,6 +29,16 @@ export default {
         return handleAnnulerInvitationEmail(request, env);
       }
 
+      // Invitants authentifiés : lecture du carnet puis enregistrement catégorisé.
+      if (request.method === "GET" && url.pathname.endsWith("/invites-abonnement/contexte")) {
+        verifierConfigurationBase(env, false);
+        return await handleContexteInvitesAbonnement(request, env, corsHeaders, url);
+      }
+      if (request.method === "POST" && url.pathname.endsWith("/invites-abonnement")) {
+        verifierConfigurationBase(env, false);
+        return await handleEnregistrerInvitesAbonnement(request, env, corsHeaders);
+      }
+
       if (request.method === "POST" && url.pathname.endsWith("/inviter-reservation")) {
         verifierConfigurationBase(env, false);
         return await handleInviterReservation(request, env, corsHeaders, ctx);
@@ -64,6 +74,221 @@ export default {
     }
   }
 };
+
+// Traitement DUO/FAMILLE : l'identité est toujours celle du cookie signé.
+// Le PostgreSQL procède aux contrôles de privilèges et écrit toutes les tables
+// dans la même transaction ; aucun quota n'est accepté depuis le navigateur.
+async function rpcInvitesAbonnement(env, nom, argumentsRpc) {
+  const reponse = await fetch(
+    env.SUPABASE_URL.replace(/\/+$/, "") + "/rest/v1/rpc/" + nom,
+    {
+      method: "POST",
+      headers: supabaseHeaders(env),
+      body: JSON.stringify(argumentsRpc)
+    }
+  );
+  const data = await reponse.json().catch(() => null);
+  if (!reponse.ok) {
+    const erreur = new Error(String(data?.message || "Opération sur les invitations refusée.").slice(0, 240));
+    erreur.status = reponse.status >= 500 ? 502 : 409;
+    throw erreur;
+  }
+  return data;
+}
+
+async function handleEnregistrerInvitesAbonnement(request, env, corsHeaders) {
+  const session = await recupererSessionObligatoire(request, env);
+  const membreInvitant = await chercherMembreValideInscription(env, session.idmembre);
+  if (!membreInvitant) {
+    return jsonResponse({ ok: false, message: "Compte membre invalide." }, 401, corsHeaders);
+  }
+  const brute = await request.text();
+  if (brute.length > 18000) {
+    return jsonResponse({ ok: false, message: "Demande trop volumineuse." }, 413, corsHeaders);
+  }
+  let donnees;
+  try { donnees = JSON.parse(brute); } catch (_erreur) { donnees = null; }
+  const idflux = String(donnees?.idflux || "").trim();
+  const selection = donnees?.selection;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idflux) ||
+      !selection || typeof selection !== "object" || Array.isArray(selection) ||
+      !["duo", "famille"].every(cat =>
+        Array.isArray(selection[cat]?.existants) && Array.isArray(selection[cat]?.nouveaux) &&
+        selection[cat].existants.length <= 100 && selection[cat].nouveaux.length <= 100)) {
+    return jsonResponse({ ok: false, message: "Sélection d'invités invalide." }, 400, corsHeaders);
+  }
+  // Ne pas utiliser un quota dans le corps : la RPC le recalcule sur la commande payée.
+  const resultat = await rpcInvitesAbonnement(env, "lcdp_enregistrer_invites_abonnement", {
+    p_idflux: idflux,
+    p_idmembre: session.idmembre,
+    p_selection: selection
+  });
+  if (!resultat?.ok || !resultat?.confirme) {
+    return jsonResponse({ ok: false, message: "Enregistrement non confirmé." }, 502, corsHeaders);
+  }
+  const source = await chercherReservationSource(env, { idflux, idmembre: session.idmembre });
+  if (!source) {
+    return jsonResponse({ ok: false, confirme: true,
+      message: "Invitations enregistrées, vérification de l'envoi indisponible." }, 502, corsHeaders);
+  }
+  // Une annulation modifie les accès immédiatement et notifie l'invité.
+  const annulationsEmails = Array.isArray(resultat.annulationsEmails) ? resultat.annulationsEmails : [];
+  let annulationsNonNotifiees = 0;
+  for (const email of annulationsEmails) {
+    if (!emailValide(email)) continue;
+    try {
+      await envoyerNotificationAnnulation(env, {
+        to: email,
+        message: "Votre invitation pour un accès à La Clé du Parc a été annulée par la personne qui vous a invité(e)."
+      });
+    } catch (erreur) {
+      annulationsNonNotifiees += 1;
+      console.error("DUO/FAMILLE : notification annulation non confirmée :", erreur?.message || erreur);
+    }
+  }
+  const envois = Array.isArray(resultat.envois) ? resultat.envois : [];
+  let envoyes = 0;
+  let enAttente = 0;
+  for (const cible of envois) {
+    if (!cible?.idinviteacces || !cible?.idmembre || !cible?.idfluxInvite || !emailValide(cible.email)) {
+      enAttente += 1;
+      continue;
+    }
+    const reclame = await rpcInvitesAbonnement(env, "lcdp_reclamer_envoi_invite", {
+      p_idinviteacces: cible.idinviteacces,
+      p_idmembre: session.idmembre
+    });
+    if (reclame !== true) continue; // traité dans une demande concurrente
+    let succes = false;
+    try {
+      if (!env.RESEND_API_KEY) throw new Error("Service d'envoi e-mail non configuré.");
+      const membreInvite = await premierResultat(env,
+        env.SUPABASE_URL.replace(/\/+$/, "") + "/rest/v1/membres" +
+        "?idmembre=eq." + encodeURIComponent(cible.idmembre) +
+        "&select=idmembre,emailmembre,prenommembre,nommembre,emailvalid&limit=1");
+      if (!membreInvite || nettoyerEmail(membreInvite.emailmembre) !== nettoyerEmail(cible.email)) {
+        throw new Error("Destinataire de l'invitation incohérent.");
+      }
+      await envoyerEmailInvitation(env, {
+        invitant: membreInvitant,
+        invite: membreInvite,
+        reservationInvitee: { idflux: cible.idfluxInvite, idmembre: cible.idmembre },
+        reservationSource: source,
+        baseUrl: new URL(request.url).origin
+      });
+      succes = true;
+      envoyes += 1;
+    } catch (erreur) {
+      enAttente += 1;
+      console.error("DUO/FAMILLE : envoi non confirmé :", erreur?.message || erreur);
+    } finally {
+      try {
+        await rpcInvitesAbonnement(env, "lcdp_marquer_envoi_invite", {
+          p_idinviteacces: cible.idinviteacces,
+          p_idmembre: session.idmembre,
+          p_reussi: succes
+        });
+      } catch (erreur) {
+        enAttente += 1;
+        console.error("DUO/FAMILLE : statut d'envoi non confirmé :", erreur?.message || erreur);
+      }
+    }
+  }
+  const message = enAttente || annulationsNonNotifiees
+    ? "Invitations enregistrées. Certains e-mails restent à envoyer : relance possible depuis le formulaire."
+    : envoyes
+      ? "Invitations enregistrées et e-mails transmis au service d'envoi."
+      : "Liste des invités enregistrée.";
+  return jsonResponse({
+    ok: true, success: true, confirme: true, message,
+    nbEnvois: envoyes, nbEnAttente: enAttente, annulationsNonNotifiees,
+    contactsAjoutes: Number(resultat.contactsAjoutes || 0),
+    annulations: Number(resultat.annulations || 0)
+  }, 200, corsHeaders);
+}
+
+// Contrat d'affichage DUO/FAMILLE : lecture seule. Les anciennes routes
+// restent inchangées tant que l'enregistrement transactionnel n'est pas prêt.
+async function handleContexteInvitesAbonnement(request, env, corsHeaders, url) {
+  const session = await recupererSessionObligatoire(request, env);
+  const idflux = String(url.searchParams.get("idflux") || "").trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idflux)) {
+    return jsonResponse({ok:false,success:false,message:"Réservation invalide."},400,corsHeaders);
+  }
+  const source = await chercherReservationSource(env, {
+    idflux, idmembre: session.idmembre
+  });
+  if (!source || source.invitation === true || !["bookd","chekd","full"].includes(source.statut)) {
+    return jsonResponse({ok:false,success:false,message:"Accès personnel indisponible."},403,corsHeaders);
+  }
+  const dateAcces = dateParisPourInvitation(source.datebookd);
+  if (!dateAcces) {
+    return jsonResponse({ok:false,success:false,message:"Date de l'accès indisponible."},409,corsHeaders);
+  }
+  const abo = await determinerAbonnementInvitation(env, session.idmembre, dateAcces);
+  // La sélection est libre à ce stade ; les quotas seront activés plus tard.
+
+  const base = env.SUPABASE_URL.replace(/\/+$/, "") + "/rest/v1/";
+  const carnet = await resultats(env, base + "inviteabo?select=idinviteabo,categorie,email" +
+    "&idabo=eq." + encodeURIComponent(abo.idabo) + "&order=datecreation.asc");
+  const contacts = {duo:[],famille:[]};
+  const idVersCategorie = new Map();
+  for (const contact of carnet) {
+    if (!["duo","famille"].includes(contact.categorie) ||
+        !contact.idinviteabo || !emailValide(contact.email)) {
+      throw erreurConfigurationInvitation("Carnet d'invités incohérent.");
+    }
+    contacts[contact.categorie].push({idinviteabo:contact.idinviteabo,email:contact.email});
+    idVersCategorie.set(contact.idinviteabo,contact.categorie);
+  }
+  const selection = {duo:[],famille:[]};
+  if (carnet.length) {
+    const ids = carnet.map(c => c.idinviteabo);
+    const lignes = await resultats(env,base+"inviteacces?select=idflux,idinviteabo,statut" +
+      "&idinviteabo=in.(" + ids.map(encodeURIComponent).join(",") + ")");
+    for (const ligne of lignes) {
+      if (ligne.statut === "cancd" || ligne.idflux !== idflux) continue;
+      const cat = idVersCategorie.get(ligne.idinviteabo);
+      if (cat) selection[cat].push(ligne.idinviteabo);
+    }
+  }
+  return jsonResponse({
+    ok:true, success:true,
+    idflux, idabo:abo.idabo, contacts, selection
+  },200,corsHeaders);
+}
+
+function dateParisPourInvitation(value) {
+  const date = new Date(value || "");
+  if (!Number.isFinite(date.getTime())) return "";
+  return dateIsoAujourdhuiParis(date);
+}
+
+function erreurConfigurationInvitation(message) {
+  const erreur = new Error(message);
+  erreur.status=409;
+  return erreur;
+}
+
+async function determinerAbonnementInvitation(env,idmembre,dateAcces){
+  const base=env.SUPABASE_URL.replace(/\/+$/, "")+"/rest/v1/";
+  const lignes=await resultats(env,base+"abo?select=idabo,idmembre,idprixabo,orderid,typabo,debut,fin,statutabo"+
+    "&idmembre=eq."+encodeURIComponent(idmembre)+"&statutabo=eq.paye");
+  const candidats=lignes.filter(a =>
+    dateParisPourInvitation(a.debut)<=dateAcces &&
+    dateParisPourInvitation(a.fin)>=dateAcces
+  );
+  if(candidats.length!==1){
+    throw erreurConfigurationInvitation(candidats.length?
+      "Plusieurs abonnements couvrent cet accès : vérification nécessaire.":
+      "Aucun abonnement payé ne couvre cet accès.");
+  }
+  if (!candidats[0].idprixabo) {
+    throw erreurConfigurationInvitation("Tarif commandé indisponible.");
+  }
+  return candidats[0];
+}
+
 
 async function handleInviterReservation(request, env, corsHeaders, ctx) {
   const session = await recupererSessionObligatoire(request, env);
