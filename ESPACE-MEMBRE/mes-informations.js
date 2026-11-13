@@ -607,6 +607,17 @@
 
   // Presentation only: every real field, link and editing control is preserved.
   // Grouping gives each section a stable CSS hook without hardcoded data.
+  // État vide, chargement ou erreur : même emplacement gris qu'une demande enregistrée.
+  function afficherSlotService(liste, message) {
+    const cadre=document.createElement("div");
+    cadre.className="lcdp-compte-alerte lcdp-compte-alerte--vide";
+    const texte=document.createElement("p");
+    texte.className="lcdp-compte-alertes-vide";
+    texte.textContent=message;
+    cadre.appendChild(texte);
+    liste.replaceChildren(cadre);
+  }
+
   function structurerSectionsCompte(form) {
     const fields = form.querySelector("[data-lcdp-formulaire-fields]");
     if (!fields || fields.classList.contains("lcdp-mon-compte-sections")) return;
@@ -656,27 +667,29 @@
     listeAlertes.id="lcdp-compte-alertes-liste";
     listeAlertes.className="lcdp-compte-alertes-liste";
     listeAlertes.setAttribute("aria-live","polite");
-    listeAlertes.textContent="Chargement des alertes…";
+    afficherSlotService(listeAlertes,"Chargement des alertes…");
+    const titreAlertes=document.createElement("h3");
+    titreAlertes.className="lcdp-compte-service__sous-titre";
+    titreAlertes.textContent="ALERTE PLANIFIÉE";
     const titreDuoActif=document.createElement("h3");
     titreDuoActif.className="lcdp-compte-service__sous-titre";
-    titreDuoActif.textContent="Duo actif";
-    titreDuoActif.style.margin="16px 0 8px";
+    titreDuoActif.textContent="DEMANDE DUO ACTIF";
     const listeDuoActif=document.createElement("div");
     listeDuoActif.id="lcdp-compte-duoactif-liste";
     listeDuoActif.className="lcdp-compte-alertes-liste";
     listeDuoActif.setAttribute("aria-live","polite");
-    listeDuoActif.textContent="Chargement des demandes Duo Actif…";
-    services.append(titreServices,listeAlertes,titreDuoActif,listeDuoActif);
+    afficherSlotService(listeDuoActif,"Chargement des demandes Duo Actif…");
+    services.append(titreServices,titreAlertes,listeAlertes,titreDuoActif,listeDuoActif);
     const statutMembre=fields.querySelector('[data-lcdp-compte-section="participation"]');
     if(statutMembre)statutMembre.insertAdjacentElement("afterend",services);
     else fields.insertBefore(services,securite||null);
     chargerAlertesCompte().catch(err=>{
       console.error("SERVICE : alertes indisponibles",err);
-      listeAlertes.textContent="Impossible de charger les alertes.";
+      afficherSlotService(listeAlertes,"Impossible de charger les alertes.");
     });
     chargerDuoActifCompte().catch(err=>{
       console.error("SERVICE : demandes Duo Actif indisponibles",err);
-      listeDuoActif.textContent="Impossible de charger les demandes Duo Actif.";
+      afficherSlotService(listeDuoActif,"Impossible de charger les demandes Duo Actif.");
     });
     fields.classList.add("lcdp-mon-compte-sections");
   }
@@ -740,10 +753,7 @@
     const data=await apiAlertesCompte("/alertes");
     liste.replaceChildren();
     if(!Array.isArray(data.alertes)||!data.alertes.length){
-      const vide=document.createElement("p");
-      vide.className="lcdp-compte-alertes-vide";
-      vide.textContent="Aucune alerte enregistrée.";
-      liste.append(vide);
+      afficherSlotService(liste,"Aucune alerte enregistrée.");
       return;
     }
     for(const alerte of data.alertes){
@@ -825,10 +835,7 @@
     const data=await apiDuoActifCompte();
     liste.replaceChildren();
     if(!Array.isArray(data.demandes)||!data.demandes.length) {
-      const vide=document.createElement("p");
-      vide.className="lcdp-compte-alertes-vide";
-      vide.textContent="Aucune demande Duo Actif enregistrée.";
-      liste.append(vide);
+      afficherSlotService(liste,"Aucune demande enregistrée.");
       return;
     }
     for(const demande of data.demandes) {
