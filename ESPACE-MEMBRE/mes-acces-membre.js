@@ -625,6 +625,14 @@
       if (actions) actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:15px;';
       const cssBouton = 'min-height:36px;padding:7px 14px;border:1px solid #4b6333;border-radius:14px;background:white;color:#4b6333;font-size:13px;font-weight:700;cursor:pointer;';
       [ajouter,enregistrer,fermer].forEach(x=>x.style.cssText=cssBouton);
+      const ajouterSansEmail = document.createElement('button');
+      ajouterSansEmail.type='button';
+      ajouterSansEmail.textContent='Ajouter sans e-mail';
+      ajouterSansEmail.style.cssText=cssBouton;
+      ajouter.insertAdjacentElement('afterend',ajouterSansEmail);
+      const listeSansEmail=document.createElement('ul');
+      listeSansEmail.style.cssText='list-style:none;display:grid;gap:7px;padding:0;margin:8px 0';
+      listeEmails.insertAdjacentElement('afterend',listeSansEmail);
       enregistrer.style.background='#4b6333';enregistrer.style.color='white';
       overlay.querySelector('.lcdp-box-card-listinvites-oui-non__ajout-title')?.remove();
       const etats = new Map();
@@ -647,8 +655,25 @@
       if (!invites.length) {message.hidden=false;message.textContent='Aucun invité enregistré pour cet accès.';}
       let fermeture=false,travail=false;
       const place = Math.max(0,max-invites.length);
+      function placesSaisies() {
+        return listeEmails.querySelectorAll('input').length + listeSansEmail.querySelectorAll('input').length;
+      }
+      function ajouterPersonneSansEmail() {
+        if (placesSaisies() >= place) {
+          message.hidden=false;message.textContent='Nombre maximal d’invités atteint.';return;
+        }
+        const li=document.createElement('li');li.style.cssText='display:flex;gap:7px';
+        const input=document.createElement('input');
+        input.type='text';input.placeholder='Nom ou prénom de l’invité';
+        input.maxLength=120;input.required=true;
+        input.style.cssText='flex:1;min-width:0;padding:9px;border:1px solid #cbd5c2;border-radius:10px';
+        const sup=document.createElement('button');sup.type='button';sup.textContent='Supprimer';sup.style.cssText=cssBouton;
+        sup.addEventListener('click',()=>li.remove());
+        li.append(input,sup);listeSansEmail.append(li);input.focus();
+      }
+      ajouterSansEmail.disabled=place===0;ajouterSansEmail.addEventListener('click',ajouterPersonneSansEmail);
       function ajouterChamp() {
-        if (listeEmails.querySelectorAll('input').length >= place) {
+        if (placesSaisies() >= place) {
           message.hidden=false;message.textContent='Nombre maximal d’invités atteint.';return;
         }
         const li=document.createElement('li');li.style.cssText='display:flex;gap:7px;';
@@ -673,13 +698,17 @@
         if(travail)return;
         const invitesMaj=Array.from(etats.entries()).map(([idmembre,invit])=>({idmembre,invit}));
         const emails=Array.from(listeEmails.querySelectorAll('input')).map(x=>x.value.trim().toLowerCase()).filter(Boolean);
-        if(!invitesMaj.length&&!emails.length){close();return;}
+        const personnesSansEmail=Array.from(listeSansEmail.querySelectorAll('input')).map(x=>({nom:x.value.trim()}));
+        if(personnesSansEmail.some(x=>!x.nom)) {
+          message.hidden=false;message.textContent='Indiquez le nom ou le prénom de chaque invité sans e-mail.';return;
+        }
+        if(!invitesMaj.length&&!emails.length&&!personnesSansEmail.length){close();return;}
         if(emails.some(v=>!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))){
           message.hidden=false;message.textContent='Une adresse e-mail est invalide.';return;
         }
         travail=true;enregistrer.disabled=true;
         try {
-          const resultat=await getJson(invitationsApi+'/invites',{method:'POST',body:{idflux:r.idflux,invites:invitesMaj,emails}});
+          const resultat=await getJson(invitationsApi+'/invites',{method:'POST',body:{idflux:r.idflux,invites:invitesMaj,emails,personnesSansEmail}});
           travail=false;
           close();
           await recharger();
