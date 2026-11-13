@@ -237,6 +237,7 @@
     groupe.addEventListener("click",() =>
       info("La fonction Groupe n'est pas disponible actuellement.")
     );
+    groupe.style.opacity = "0.55";
 
     formulaire.addEventListener("submit",async event => {
       event.preventDefault();
@@ -248,6 +249,7 @@
       for (const categorie of CATEGORIES) {
         for (const contact of nouveaux[categorie]) {
           const email = normaliserEmail(contact.input.value);
+          if (!email) continue;
           if (!EMAIL_VALIDE.test(email)) {
             messageLocal("Veuillez renseigner une adresse e-mail valide dans la rubrique " + categorie.toUpperCase() + ".");
             contact.input.focus();
@@ -261,11 +263,7 @@
           emailsTous.add(email);
         }
       }
-      if (!nbSelectionnes("duo") && !nbSelectionnes("famille")) {
-        messageLocal("Sélectionnez au moins un invité.");
-        return;
-      }
-      const probleme = verifierSelection();
+       const probleme = verifierSelection();
       if (probleme) {
         await info(probleme);
         return;
