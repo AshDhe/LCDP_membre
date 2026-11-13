@@ -111,10 +111,17 @@
   </div>
   <script>
     (() => {
-      const terminer = () => document.getElementById('lcdp-attente-arrivee')?.remove();
+      // Garder le spinner de référence dans le DOM pour les chargements
+      // suivants, sans en créer un second ou changer son apparence.
+      let securite;
+      const terminer = () => {
+        const attente = document.getElementById('lcdp-attente-arrivee');
+        if (attente) attente.style.display = 'none';
+        if (securite) { window.clearTimeout(securite); securite = null; }
+      };
       window.LCDP_terminerAttenteArrivee = terminer;
-      // Sécurité : ne pas bloquer définitivement l'accès en cas d'échec d'un fragment/API.
-      window.setTimeout(terminer, 15000);
+      // Sécurité : ne pas bloquer l'accès lors d'un échec initial.
+      securite = window.setTimeout(terminer, 15000);
       window.addEventListener('pageshow', event => { if (event.persisted) terminer(); });
     })();
   </script>
@@ -152,7 +159,8 @@
       function observerPremierAffichage() {
         const observer = new MutationObserver(verifier);
         function verifier() {
-          if (!document.getElementById('lcdp-attente-arrivee')) { observer.disconnect(); return; }
+          const attente = document.getElementById('lcdp-attente-arrivee');
+          if (!attente || attente.style.display === 'none') { observer.disconnect(); return; }
           const message = document.querySelector('[data-lcdp-liste-card-message]');
           const liste = document.querySelector('[data-lcdp-liste-card-list]');
           const texte = (message?.textContent || '').trim();
