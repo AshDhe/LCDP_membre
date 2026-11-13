@@ -76,6 +76,7 @@
       if(boutonAnnuler) {boutonAnnuler.hidden=true;boutonAnnuler.style.display="none";}
       await initialiserGabaritMembre();
       await chargerControleAcces();
+      window.LCDP_ParcoursMaCle?.configurerEndpoint(ENDPOINT_LA_CLE_DU_PARC);
       window.LCDP_ParcoursMaCle?.demarrer(controleAccesEtat);
       masquerAttenteInitiale();
       controleAccesTimer=window.setInterval(()=>{
