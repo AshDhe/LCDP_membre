@@ -2993,7 +2993,7 @@
     if (!surface) return null;
     const conteneur = surface.conteneur;
     try {
-      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-formulaire-v11"));
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-champ-c040-v12"));
     } catch (erreur) {
       surface.fermer();
       throw erreur;
@@ -3179,7 +3179,13 @@
         fermer(resultat);
         await afficherInformationInvitation(resultat.message || "Liste des invités mise à jour.");
       });
-      champ.focus();
+      // Focus initial sur la box, non sur le champ : évite le contour
+      // d'autofocus et laisse la croix accessible au clavier.
+      const zoneFormulaire = conteneur.querySelector("[data-lcdp-invitation-wrapper]");
+      if (zoneFormulaire) {
+        zoneFormulaire.tabIndex = -1;
+        zoneFormulaire.focus({ preventScroll: true });
+      }
     });
   }
 
