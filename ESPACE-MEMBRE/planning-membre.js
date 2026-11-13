@@ -1666,73 +1666,108 @@
     fermer.focus({preventScroll:true});
   }
 
+  // Une seule surface de travail : toute vue secondaire reste dans Mes accès.
+  // Les vues précédentes demeurent connectées pour conserver cartes, filtres et états.
+  function ouvrirVueSecondairePlanning() {
+    const slot = etat.slotPlanning;
+    if (!slot || !slot.isConnected) return null;
+    const conteneur = document.createElement("section");
+    conteneur.className = "lcdp-planning-vue-secondaire";
+    conteneur.dataset.lcdpPlanningVueSecondaire = "true";
+    const precedents = Array.from(slot.children).map(element => ({
+      element, hidden: element.hidden
+    }));
+    const focusInitial = document.activeElement;
+    precedents.forEach(({element}) => { element.hidden = true; });
+    slot.appendChild(conteneur);
+    if (etat.wrapperPlanning) etat.wrapperPlanning.dataset.lcdpVueSecondaireActive = "true";
+    if (etat.commandeBar) etat.commandeBar.inert = true;
+    let fermee = false;
+    return {
+      conteneur,
+      fermer() {
+        if (fermee) return;
+        fermee = true;
+        conteneur.remove();
+        precedents.forEach(({element, hidden}) => {
+          if (element.parentNode === slot) element.hidden = hidden;
+        });
+        if (!slot.querySelector("[data-lcdp-planning-vue-secondaire]")) {
+          etat.wrapperPlanning?.removeAttribute("data-lcdp-vue-secondaire-active");
+          if (etat.commandeBar) etat.commandeBar.inert = false;
+        }
+        if (focusInitial?.isConnected && !focusInitial.closest("[hidden]") &&
+            typeof focusInitial.focus === "function") {
+          focusInitial.focus({preventScroll:true});
+        }
+      }
+    };
+  }
+
+  function preparerDialogueDansWrapper(element) {
+    if (!element) return;
+    element.removeAttribute("aria-modal");
+    element.setAttribute("role", "region");
+  }
+
   async function ouvrirReservationPlanning(reservation) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
+    const surface = ouvrirVueSecondairePlanning();
+    if (!surface || !etat.templateReservation) return;
+    const slot = surface.conteneur;
 
-    if (!slot || !etat.templateReservation) return;
+    try {
+      const fragmentWorkflow = await chargerFragmentObjet("/HTMLBASE/04-workflow-reservation.html");
+      slot.appendChild(fragmentWorkflow);
+      const workflow = slot.querySelector("[data-lcdp-box-workflow-reservation]");
+      const contenu = slot.querySelector("[data-lcdp-workflow-reservation-content]");
+      if (!workflow || !contenu) throw new Error("Structure workflow réservation incomplète.");
 
-    slot.innerHTML = "";
+      preparerDialogueDansWrapper(workflow);
+      workflow.classList.add(
+        "lcdp-box-workflow-reservation--planning-page",
+        "lcdp-box-workflow-reservation--planning-reservation",
+        "lcdp-planning-jour-workflow-inline"
+      );
 
-    const fragmentWorkflow = await chargerFragmentObjet("/HTMLBASE/04-workflow-reservation.html");
-    slot.appendChild(fragmentWorkflow);
+      const boutonRetour = document.createElement("button");
+      boutonRetour.type = "button";
+      boutonRetour.className = "lcdp-planning-vue-retour";
+      boutonRetour.textContent = "Retour à mes accès";
+      slot.insertBefore(boutonRetour, workflow);
 
-    const workflow = slot.querySelector("[data-lcdp-box-workflow-reservation]");
-    const contenu = slot.querySelector("[data-lcdp-workflow-reservation-content]");
+      const vues = document.createElement("div");
+      vues.className = "lcdp-planning-reservation-vues";
+      vues.dataset.lcdpPlanningReservationVues = "true";
 
-    if (!workflow || !contenu) {
-      slot.innerHTML = "";
-      throw new Error("Structure workflow réservation incomplète.");
-    }
+      const vueReservation = document.createElement("div");
+      vueReservation.className = "lcdp-planning-reservation-vue lcdp-planning-reservation-vue--active";
+      vueReservation.dataset.lcdpPlanningVue = "reservation";
+      vueReservation.appendChild(creerCardReservation(reservation, {contexte:"detail"}));
+      vues.appendChild(vueReservation);
+      contenu.appendChild(vues);
 
-    workflow.classList.add(
-      "lcdp-box-workflow-reservation--planning-reservation",
-      "lcdp-box-workflow-reservation--confirmation",
-      "lcdp-workflow-reservation-box"
-    );
-
-    const vues = document.createElement("div");
-    vues.className = "lcdp-planning-reservation-vues";
-    vues.dataset.lcdpPlanningReservationVues = "true";
-
-    const vueReservation = document.createElement("div");
-    vueReservation.className = "lcdp-planning-reservation-vue lcdp-planning-reservation-vue--active";
-    vueReservation.dataset.lcdpPlanningVue = "reservation";
-
-    const card = creerCardReservation(
-      reservation,
-      {
-        contexte: "detail"
+      function fermer() {
+        document.removeEventListener("keydown", gererEchapReservation);
+        surface.fermer();
       }
-    );
-    vueReservation.appendChild(card);
-    vues.appendChild(vueReservation);
-
-    contenu.appendChild(vues);
-
-    function fermer() {
-      document.removeEventListener("keydown", gererEchapReservation);
-      slot.innerHTML = "";
-    }
-
-    function gererEchapReservation(event) {
-      if (event.key !== "Escape") return;
-
-      if (workflow.classList.contains("lcdp-box-workflow-reservation--acces-parc-ouvert")) {
+      function gererEchapReservation(event) {
+        if (event.key !== "Escape" || !slot.isConnected ||
+            slot.querySelector(".lcdp-planning-vue-secondaire")) return;
         event.preventDefault();
-        fermerAccesParcDansReservation(workflow);
-        return;
+        if (workflow.classList.contains("lcdp-box-workflow-reservation--acces-parc-ouvert")) {
+          fermerAccesParcDansReservation(workflow);
+        } else {
+          fermer();
+        }
       }
-
-      fermer();
+      workflow._lcdpFermerReservationPlanning = fermer;
+      boutonRetour.addEventListener("click", fermer);
+      document.addEventListener("keydown", gererEchapReservation);
+      boutonRetour.focus({preventScroll:true});
+    } catch (error) {
+      surface.fermer();
+      throw error;
     }
-
-    workflow._lcdpFermerReservationPlanning = fermer;
-
-    workflow.addEventListener("click", (event) => {
-      if (event.target === workflow) fermer();
-    });
-
-    document.addEventListener("keydown", gererEchapReservation);
   }
 
   function creerCardReservation(
@@ -1982,8 +2017,6 @@
         return;
       }
 
-      const slot = document.getElementById("lcdp-lightbox-slot");
-      if (slot) slot.innerHTML = "";
       return;
     }
 
@@ -2038,7 +2071,7 @@
 
     const workflow = declencheur
       ? declencheur.closest("[data-lcdp-box-workflow-reservation]")
-      : document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
+      : etat.slotPlanning?.querySelector("[data-lcdp-box-workflow-reservation]");
 
     if (!workflow) return;
 
@@ -2140,7 +2173,7 @@
   }
 
   function fermerAccesParcDansReservation(workflow) {
-    const racine = workflow || document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
+    const racine = workflow || etat.slotPlanning?.querySelector("[data-lcdp-box-workflow-reservation]");
     if (!racine) return;
 
     const vueReservation = racine.querySelector('[data-lcdp-planning-vue="reservation"]');
@@ -2594,86 +2627,74 @@
   }
 
   async function ouvrirBoxListeInvitesLectureSeule(idflux, invites, declencheur) {
-    const conteneur = document.createElement("div");
-    conteneur.className = "lcdp-box-card-listinvites-oui-non lcdp-box-card-listinvites-oui-non--lecture";
+    const surface = ouvrirVueSecondairePlanning();
+    if (!surface) return null;
+    const conteneur = surface.conteneur;
+    conteneur.classList.add("lcdp-box-card-listinvites-oui-non", "lcdp-box-card-listinvites-oui-non--lecture");
     conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
-    conteneur.setAttribute("role", "dialog");
-    conteneur.setAttribute("aria-modal", "true");
+    conteneur.setAttribute("role", "region");
     conteneur.setAttribute("aria-labelledby", "lcdp-listinvites-lecture-title");
-
-    document.body.appendChild(conteneur);
 
     const card = document.createElement("article");
     card.className = "lcdp-box-card-listinvites-oui-non__card lcdp-box-card-listinvites-oui-non__card--lecture";
-
     const titre = document.createElement("h2");
     titre.className = "lcdp-box-card-listinvites-oui-non__title";
     titre.id = "lcdp-listinvites-lecture-title";
     titre.textContent = "Invité(s)";
-
     const liste = document.createElement("ul");
     liste.className = "lcdp-box-card-listinvites-oui-non__list lcdp-box-card-listinvites-oui-non__list--lecture";
-
     const invitesActifs = Array.isArray(invites) ? invites : [];
-
     if (!invitesActifs.length) {
       const message = document.createElement("p");
       message.className = "lcdp-box-card-listinvites-oui-non__message";
       message.textContent = "Aucun invité enregistré pour cette réservation.";
-      card.appendChild(titre);
-      card.appendChild(message);
+      card.append(titre, message);
     } else {
-      invitesActifs.forEach((invite) => {
-        liste.appendChild(creerLigneInviteLectureSeule(invite));
-      });
-
-      card.appendChild(titre);
-      card.appendChild(liste);
+      invitesActifs.forEach(invite => liste.appendChild(creerLigneInviteLectureSeule(invite)));
+      card.append(titre, liste);
     }
-
     const actions = document.createElement("div");
     actions.className = "lcdp-box-card-listinvites-oui-non__actions";
-
     const boutonOk = document.createElement("button");
     boutonOk.type = "button";
     boutonOk.className = "lcdp-button lcdp-button-primary";
     boutonOk.textContent = "OK";
     actions.appendChild(boutonOk);
-
     card.appendChild(actions);
     conteneur.appendChild(card);
-
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       let resolu = false;
-
       function fermer() {
         if (resolu) return;
         resolu = true;
         document.removeEventListener("keydown", gererEchap);
-        conteneur.remove();
+        surface.fermer();
         resolve(true);
       }
-
       function gererEchap(event) {
-        if (event.key === "Escape") fermer();
+        if (event.key === "Escape" && conteneur.isConnected) {
+          event.preventDefault();
+          fermer();
+        }
       }
-
       boutonOk.addEventListener("click", fermer);
       document.addEventListener("keydown", gererEchap);
+      boutonOk.focus({preventScroll:true});
     });
   }
 
   async function ouvrirBoxListeInvitesModifiable(idflux, invites, declencheur) {
     const idReservation = String(idflux || "").trim();
-    const conteneur = document.createElement("div");
+    const surface = ouvrirVueSecondairePlanning();
+    if (!surface) return null;
+    const conteneur = surface.conteneur;
     conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
-
-    document.body.appendChild(conteneur);
 
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html");
     conteneur.appendChild(fragment);
 
     const box = conteneur.querySelector("[data-lcdp-box-card-listinvites-oui-non]");
+    preparerDialogueDansWrapper(box);
     const titre = conteneur.querySelector("[data-lcdp-listinvites-title]");
     const message = conteneur.querySelector("[data-lcdp-listinvites-message]");
     const liste = conteneur.querySelector("[data-lcdp-listinvites-list]");
@@ -2685,7 +2706,7 @@
     const boutonAnnuler = conteneur.querySelector("[data-lcdp-listinvites-cancel]");
 
     if (!box || !titre || !message || !liste || !zoneAjout || !listeEmails || !boutonAjouterEmail || !boutonMettreAJour || !boutonAnnuler) {
-      conteneur.remove();
+      surface.fermer();
       throw new Error("Structure liste invités oui/non incomplète.");
     }
 
@@ -2717,7 +2738,7 @@
     const actions = boutonMettreAJour.closest(".lcdp-box-card-listinvites-oui-non__actions");
 
     if (!actions) {
-      conteneur.remove();
+      surface.fermer();
       throw new Error("Wrapper des actions invités indisponible.");
     }
     // Un seul wrapper pour les quatre actions, avec l'ordre visuel du gabarit.
@@ -2786,12 +2807,15 @@
         if (resolu) return;
         resolu = true;
         document.removeEventListener("keydown", gererEchap);
-        conteneur.remove();
+        surface.fermer();
         resolve(valeur);
       }
 
       function gererEchap(event) {
-        if (event.key === "Escape") fermer(null);
+        if (event.key === "Escape" && conteneur.isConnected && !enregistrementEnCours) {
+          event.preventDefault();
+          fermer(null);
+        }
       }
 
       async function mettreAJour() {
@@ -2879,11 +2903,8 @@
         boutonFermer.addEventListener("click", () => fermer(null));
       }
 
-      box.addEventListener("click", (event) => {
-        if (event.target === box) fermer(null);
-      });
-
       document.addEventListener("keydown", gererEchap);
+      boutonAnnuler.focus({preventScroll:true});
     });
   }
 
@@ -3117,29 +3138,19 @@
   }
 
   async function afficherInformationPlanning(message, options = {}) {
-    const superposition = options.superposition === true;
-    const slot = superposition
-      ? document.createElement("div")
-      : document.getElementById("lcdp-lightbox-slot");
-    if (!slot) return null;
-    if (superposition) {
-      slot.dataset.lcdpInformationPlanningOverlay = "true";
-      slot.style.position = "fixed";
-      slot.style.inset = "0";
-      slot.style.zIndex = "12000";
-      document.body.appendChild(slot);
-    } else {
-      slot.replaceChildren();
-    }
+    const surface = ouvrirVueSecondairePlanning();
+    if (!surface) return null;
+    const conteneur = surface.conteneur;
     try {
-      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html"));
-      const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="information"]');
-      const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
-      const texte = slot.querySelector("[data-lcdp-dialogue-message]");
-      const bouton = slot.querySelector('[data-lcdp-dialogue-action="compris"]');
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html"));
+      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="information"]');
+      const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
+      const bouton = conteneur.querySelector('[data-lcdp-dialogue-action="compris"]');
       if (!dialogue || !titre || !texte || !bouton) {
         throw new Error("Structure INFORMATION incomplète.");
       }
+      preparerDialogueDansWrapper(dialogue);
       titre.textContent = options.titre || "Information";
       texte.textContent = String(message || "");
       bouton.textContent = "Fermer";
@@ -3148,16 +3159,22 @@
         function fermer() {
           if (resolu) return;
           resolu = true;
-          if (superposition) slot.remove();
-          else slot.replaceChildren();
+          document.removeEventListener("keydown", gererEchap);
+          surface.fermer();
           resolve(true);
         }
-        bouton.addEventListener("click", fermer, { once: true });
-        bouton.focus();
+        function gererEchap(event) {
+          if (event.key === "Escape" && conteneur.isConnected) {
+            event.preventDefault();
+            fermer();
+          }
+        }
+        bouton.addEventListener("click", fermer, {once:true});
+        document.addEventListener("keydown", gererEchap);
+        bouton.focus({preventScroll:true});
       });
     } catch (error) {
-      if (superposition) slot.remove();
-      else slot.replaceChildren();
+      surface.fermer();
       throw error;
     }
   }
@@ -3188,17 +3205,16 @@
       await afficherAlerteInvitationReservation("Réservation manquante.", declencheur);
       return null;
     }
-    const conteneur = document.createElement("div");
+    const surface = ouvrirVueSecondairePlanning();
+    if (!surface) return null;
+    const conteneur = surface.conteneur;
     conteneur.dataset.lcdpInvitationEmailsOverlay = "true";
-    conteneur.style.position = "relative";
-    conteneur.style.zIndex = "9000";
-
-    document.body.appendChild(conteneur);
 
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-listemails.html");
     conteneur.appendChild(fragment);
 
     const box = conteneur.querySelector("[data-lcdp-box-card-listemails]");
+    preparerDialogueDansWrapper(box);
     const titre = conteneur.querySelector("[data-lcdp-listemails-title]");
     const message = conteneur.querySelector("[data-lcdp-listemails-message]");
     const liste = conteneur.querySelector("[data-lcdp-listemails-list]");
@@ -3206,7 +3222,7 @@
     const boutonFermer = conteneur.querySelector("[data-lcdp-listemails-close]");
 
     if (!box || !titre || !message || !liste || !actions) {
-      conteneur.remove();
+      surface.fermer();
       throw new Error("Structure liste e-mails incomplète.");
     }
 
@@ -3341,21 +3357,20 @@
         if (resolu) return;
         resolu = true;
         document.removeEventListener("keydown", gererEchap);
-        conteneur.remove();
+        surface.fermer();
         resolve(valeur || null);
       };
 
       function gererEchap(event) {
-        if (event.key === "Escape") fermerBox(null);
+        if (event.key === "Escape" && conteneur.isConnected) {
+          event.preventDefault();
+          fermerBox(null);
+        }
       }
 
       if (boutonFermer) {
         boutonFermer.addEventListener("click", () => fermerBox(null));
       }
-
-      box.addEventListener("click", (event) => {
-        if (event.target === box) fermerBox(null);
-      });
 
       document.addEventListener("keydown", gererEchap);
     });
@@ -3432,48 +3447,42 @@
   }
 
   async function confirmerSuppressionPlanning(message, superposition) {
-    const focusInitial = document.activeElement;
-    let conteneur = null;
+    // Validation destructive impossible si la surface interne est indisponible.
+    const surface = ouvrirVueSecondairePlanning();
+    if (!surface) return false;
+    const conteneur = surface.conteneur;
     try {
-      const css = construireUrlObjet("/CSSBASE/lcdp-lightbox-convergence.css");
-      if (!Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some(lien => lien.href === new URL(css, document.baseURI).href)) {
-        await new Promise((resolve, reject) => {
-          const lien = document.createElement("link");
-          lien.rel = "stylesheet";
-          lien.href = css;
-          lien.onload = resolve;
-          lien.onerror = () => { lien.remove(); reject(new Error("CSS SUPPRESSION indisponible.")); };
-          document.head.appendChild(lien);
-        });
-      }
-      conteneur = document.createElement("div");
       conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html"));
       const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="suppression"]');
       const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
       const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
       const conserver = conteneur.querySelector('[data-lcdp-dialogue-action="conserver"]');
       const supprimer = conteneur.querySelector('[data-lcdp-dialogue-action="supprimer"]');
-      if (!dialogue || !titre || !texte || !conserver || !supprimer) throw new Error("Dialogue SUPPRESSION incomplet.");
+      if (!dialogue || !titre || !texte || !conserver || !supprimer) {
+        throw new Error("Dialogue SUPPRESSION incomplet.");
+      }
+      preparerDialogueDansWrapper(dialogue);
       const mentionInvites = String(message || "").trim();
       titre.textContent = "Annuler cet accès ?" + (mentionInvites ? " " + mentionInvites : "");
       texte.textContent = "Ce créneau sera immédiatement libéré et ne pourra pas être récupéré.";
       conserver.textContent = "Conserver";
       supprimer.textContent = "Oui, annuler";
-      if (superposition) dialogue.style.zIndex = "12000";
-      document.body.appendChild(conteneur);
-      conserver.focus();
+      conserver.focus({preventScroll:true});
       return await new Promise(resolve => {
         let termine = false;
         const fermer = valeur => {
           if (termine) return;
           termine = true;
           document.removeEventListener("keydown", gererClavier);
-          conteneur.remove();
-          if (focusInitial?.isConnected && typeof focusInitial.focus === "function") focusInitial.focus();
+          surface.fermer();
           resolve(valeur);
         };
         const gererClavier = event => {
-          if (event.key === "Escape") { event.preventDefault(); fermer(false); }
+          if (!conteneur.isConnected) return;
+          if (event.key === "Escape") {
+            event.preventDefault();
+            fermer(false);
+          }
           if (event.key === "Tab") {
             const cible = event.shiftKey ? conserver : supprimer;
             if (document.activeElement === cible) {
@@ -3483,15 +3492,13 @@
           }
         };
         document.addEventListener("keydown", gererClavier);
-        conserver.addEventListener("click", () => fermer(false), { once: true });
-        supprimer.addEventListener("click", () => fermer(true), { once: true });
-        dialogue.addEventListener("click", event => { if (event.target === dialogue) fermer(false); });
+        conserver.addEventListener("click", () => fermer(false), {once:true});
+        supprimer.addEventListener("click", () => fermer(true), {once:true});
       });
     } catch (error) {
       console.error("Confirmation d’annulation indisponible :", error);
+      surface.fermer();
       return false;
-    } finally {
-      conteneur?.remove();
     }
   }
 
@@ -3552,8 +3559,6 @@
           ? "Votre invite est annulée."
           : "Votre réservation est annulée."
       );
-      const slot = document.getElementById("lcdp-lightbox-slot");
-      if (slot) slot.innerHTML = "";
       await chargerReservations();
     } catch (error) {
       boutonAnnuler.disabled = false;
@@ -4007,140 +4012,58 @@
     appliquerRoutesSite(slot);
   }
 
-  async function afficherAlerte(message) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return null;
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
-    slot.appendChild(fragment);
-
-    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-    const texte = slot.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      throw new Error("Structure de l’alerte incomplète.");
-    }
-
-    texte.textContent = message || "";
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer(valeur) {
-        if (resolu) return;
-        resolu = true;
-        slot.innerHTML = "";
-        resolve(valeur);
+  async function afficherAlertePlanningDansWrapper(message, avecFermeture = true) {
+    const surface = ouvrirVueSecondairePlanning();
+    if (!surface) return null;
+    const conteneur = surface.conteneur;
+    try {
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-alerte.html"));
+      const alerte = conteneur.querySelector("[data-lcdp-box-alerte]");
+      const texte = conteneur.querySelector("[data-lcdp-alerte-message]");
+      const boutonFermer = conteneur.querySelector("[data-lcdp-alerte-close]");
+      const boutonOk = conteneur.querySelector("[data-lcdp-alerte-ok]");
+      if (!alerte || !texte || !boutonOk || (avecFermeture && !boutonFermer)) {
+        throw new Error("Structure de l’alerte incomplète.");
       }
-
-      boutonFermer.addEventListener("click", () => fermer(false));
-      boutonOk.addEventListener("click", () => fermer(true));
-      alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) fermer(false);
+      preparerDialogueDansWrapper(alerte);
+      texte.textContent = message || "";
+      if (boutonFermer) boutonFermer.hidden = !avecFermeture;
+      return await new Promise(resolve => {
+        let resolu = false;
+        function fermer(valeur) {
+          if (resolu) return;
+          resolu = true;
+          document.removeEventListener("keydown", gererEchap);
+          surface.fermer();
+          resolve(valeur);
+        }
+        function gererEchap(event) {
+          if (event.key === "Escape" && conteneur.isConnected) {
+            event.preventDefault();
+            fermer(false);
+          }
+        }
+        if (boutonFermer) boutonFermer.addEventListener("click", () => fermer(false));
+        boutonOk.addEventListener("click", () => fermer(true));
+        document.addEventListener("keydown", gererEchap);
+        boutonOk.focus({preventScroll:true});
       });
+    } catch (error) {
+      surface.fermer();
+      throw error;
+    }
+  }
 
-      document.addEventListener(
-        "keydown",
-        (event) => {
-          if (event.key === "Escape") fermer(false);
-        },
-        { once: true }
-      );
-    });
+  async function afficherAlerte(message) {
+    return afficherAlertePlanningDansWrapper(message, true);
   }
 
   async function afficherAlerteOk(message) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return null;
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
-    slot.appendChild(fragment);
-
-    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-    const texte = slot.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonOk) {
-      throw new Error("Structure de l’alerte incomplète.");
-    }
-
-    texte.textContent = message || "";
-
-    if (boutonFermer) boutonFermer.hidden = true;
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer() {
-        if (resolu) return;
-        resolu = true;
-        slot.innerHTML = "";
-        resolve(true);
-      }
-
-      boutonOk.addEventListener("click", fermer);
-    });
+    return afficherAlertePlanningDansWrapper(message, false);
   }
 
   async function afficherAlerteOkParDessusLightbox(message) {
-    document.querySelectorAll("[data-lcdp-alerte-ok-overlay]").forEach((element) => element.remove());
-
-    const couche = document.createElement("div");
-    couche.dataset.lcdpAlerteOkOverlay = "true";
-    couche.style.position = "fixed";
-    couche.style.inset = "0";
-    couche.style.zIndex = "12000";
-    couche.style.pointerEvents = "auto";
-    document.body.appendChild(couche);
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
-    couche.appendChild(fragment);
-
-    const alerte = couche.querySelector("[data-lcdp-box-alerte]");
-    const texte = couche.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = couche.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = couche.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonOk) {
-      couche.remove();
-      throw new Error("Structure de l’alerte incomplète.");
-    }
-
-    alerte.style.position = "fixed";
-    alerte.style.inset = "0";
-    alerte.style.zIndex = "12001";
-    alerte.style.display = "flex";
-    alerte.style.alignItems = "center";
-    alerte.style.justifyContent = "center";
-
-    texte.textContent = message || "";
-
-    if (boutonFermer) boutonFermer.hidden = true;
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer() {
-        if (resolu) return;
-        resolu = true;
-        couche.remove();
-        resolve(true);
-      }
-
-      boutonOk.addEventListener("click", fermer);
-      alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) fermer();
-      });
-    });
+    return afficherAlertePlanningDansWrapper(message, false);
   }
 
   function chargerCssObjetUneFois(chemin) {
