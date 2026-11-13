@@ -5775,7 +5775,7 @@
 
   // Confirmation de l'abandon du panier : objet SUPPRESSION normalisé.
   // Aucune requête de suppression n'est effectuée par ce dialogue.
-  async function afficherConfirmationSuppressionPanier() {
+  async function afficherConfirmationSuppressionPanier(options = {}) {
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
@@ -5789,10 +5789,10 @@
         throw new Error('Structure du dialogue SUPPRESSION incomplète.');
       }
       dialogue.dataset.lcdpDialogueContext = 'conteneur';
-      titre.textContent = 'Annuler ce panier ?';
-      message.textContent = 'Cette action annule votre demande d’abonnement en cours de préparation et tous les accès planifiés qui étaient associés.';
-      conserver.textContent = 'Conserver le panier';
-      supprimer.textContent = 'Oui, annuler et recommencer';
+      titre.textContent = options.titre || 'Annuler ce panier ?';
+      message.textContent = options.message || 'Cette action annule votre demande d’abonnement en cours de préparation et tous les accès planifiés qui étaient associés.';
+      conserver.textContent = options.conserver || 'Conserver le panier';
+      supprimer.textContent = options.supprimer || 'Oui, annuler et recommencer';
       return await new Promise(resolve => {
         let termine = false;
         const fermer = confirme => {
@@ -6323,10 +6323,13 @@
         if(parc===false){fermerShiftDetailParc();return "autre";}
       }
       if(reponse==="annuler"){
-        const annuler=panierPlanning.reservations.length ? await ouvrirDialogueBoutonsSuperpose({titre:"Annuler votre planning ?",
-          texte:"Seules les dates en attente sont retirées. Vos réservations déjà enregistrées sont conservées.",
-          boutons:[{label:"NON",valeur:"non",style:"lcdp-button-secondary"},{label:"ANNULER",valeur:"annuler",style:"lcdp-button-orange"}]}) : "annuler";
-        if(annuler==="annuler"){panierPlanning.reservations=[];panierPlanning.calcul=null;panierPlanning.selection=null;panierPlanning.derniereAction=null;fermerShiftDetailParc();return;}
+        const annuler=panierPlanning.reservations.length ? await afficherConfirmationSuppressionPanier({
+          titre:"Annuler votre planning ?",
+          message:"Seules les dates en attente sont retirées. Vos réservations déjà enregistrées sont conservées.",
+          conserver:"NON",
+          supprimer:"ANNULER"
+        }) : true;
+        if(annuler===true){panierPlanning.reservations=[];panierPlanning.calcul=null;panierPlanning.selection=null;panierPlanning.derniereAction=null;fermerShiftDetailParc();return;}
       }
       if(reponse==="planifier"){
         await chargerDonneesPanierPlanning();
@@ -6364,11 +6367,13 @@
           annuler.addEventListener("click", async () => {
             annuler.disabled=true;
             try {
-              const confirmation=await ouvrirDialogueBoutonsSuperpose({
-                titre:"Annuler le planning ?", texte:type.textContent + " · " + nom.textContent + " · " + date.textContent,
-                boutons:[{label:"NON",valeur:"non",style:"lcdp-button-secondary"},{label:"ANNULER",valeur:"annuler",style:"lcdp-button-orange"}]
+              const confirmation=await afficherConfirmationSuppressionPanier({
+                titre:"Annuler le planning ?",
+                message:type.textContent + " · " + nom.textContent + " · " + date.textContent,
+                conserver:"NON",
+                supprimer:"ANNULER"
               });
-              if(confirmation !== "annuler")return;
+              if(confirmation !== true)return;
               const response=await fetch(ENDPOINT_PLANNING_MEMBRE+"/annuler-reservation",{
                 method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json","Accept":"application/json"},
                 body:JSON.stringify({idflux:reservation.idflux})
