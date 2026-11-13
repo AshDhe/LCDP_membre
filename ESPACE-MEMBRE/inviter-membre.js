@@ -1060,7 +1060,10 @@
         if (!resultatHttp.ok || resultat?.ok !== true) {
           throw new Error(resultat?.message || "Invitations non enregistrées.");
         }
-        await chargerReservations();
+        // La mise à jour des autres cartes ne doit pas retarder la confirmation.
+        void chargerReservations().catch(erreur =>
+          console.warn("Actualisation de la liste des réservations indisponible :", erreur)
+        );
         return resultat;
       },
       informer:message => afficherAlerte(message,{profil:"information",superposition:true}),
@@ -1080,7 +1083,28 @@
     return true;
   }
 
+  // Confirmation immédiate du clic, avant le chargement du contexte ou du gabarit.
+  function afficherAttenteInvitations() {
+    const calque = document.createElement("div");
+    calque.setAttribute("role","status");
+    calque.setAttribute("aria-label","Chargement des invités");
+    calque.style.cssText = "position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(22,35,21,.22);";
+    const carte = document.createElement("div");
+    carte.style.cssText = "display:inline-flex;align-items:center;gap:12px;padding:17px 22px;border-radius:16px;background:#fff;box-shadow:0 8px 25px rgba(0,0,0,.14);font:600 15px/1.4 Arial,system-ui,sans-serif;color:#1f2a24;";
+    const spinner = document.createElement("span");
+    spinner.setAttribute("aria-hidden","true");
+    spinner.style.cssText = "display:inline-block;width:24px;height:24px;flex:0 0 24px;border:3px solid #dae2d2;border-top-color:#4b6333;border-radius:50%;animation:lcdp-button-logo-loading .75s linear infinite;";
+    const texte = document.createElement("span");
+    texte.textContent = "Chargement des invités";
+    carte.append(spinner,texte);
+    calque.appendChild(carte);
+    document.body.appendChild(calque);
+    return () => calque.remove();
+  }
+
   async function ouvrirDialogueInvitation(idflux) {
+    const arreterAttente = afficherAttenteInvitations();
+    try {
     if (etatMembre.abonnementSuspendu === true) {
       await gererPaiementSuspensionMembre(etatMembre);
       return;
@@ -1190,6 +1214,9 @@
     });
 
     await ajouterChamp();
+    } finally {
+      arreterAttente();
+    }
   }
 
   async function envoyerInvitations(idflux, emails) {
