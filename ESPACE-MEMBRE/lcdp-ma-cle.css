@@ -181,6 +181,35 @@ body.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-ma-cle-wrapper > 
   box-shadow: none;
 }
 
+.lcdp-cle-action--invites {
+  background: #ffffff;
+  border-color: var(--lcdp-color-logo-green, #355f43);
+  color: var(--lcdp-color-logo-green, #355f43);
+}
+.lcdp-cle-action--invites:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.lcdp-page-cle-du-parc .lcdp-acces-invites-form .lcdp-acces-invites-liste {
+  width: 100%;
+  max-height: min(48dvh, 380px);
+  overflow-y: auto;
+}
+.lcdp-page-cle-du-parc .lcdp-acces-invites-form .lcdp-acces-invites-liste input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--lcdp-color-logo-green, #355f43);
+}
+.lcdp-page-cle-du-parc .lcdp-acces-invites-form .lcdp-acces-invites-liste label {
+  min-height: 48px;
+  align-items: center;
+}
+.lcdp-page-cle-du-parc .lcdp-acces-invites-form button[type="submit"] {
+  min-height: 44px;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 12px;
+}
 .lcdp-cle-action--checkout {
   background: var(--lcdp-color-blue);
   border-color: var(--lcdp-color-blue);
