@@ -563,7 +563,7 @@
       const attribution = await apiPaiement('/numero-commande', {
         method:'POST', body:JSON.stringify({idpanier})
       });
-      if (!/^LCDP-\d{4}-\d{6,}$/.test(attribution.numeroCommande || ''))
+      if (!/^LCDP-\d{6}-[A-F0-9]{12}-[1-9]\d*$/.test(attribution.numeroCommande || ''))
         throw new Error('Le numéro de commande ne peut pas être attribué.');
       const paiement = { termine:false };
       const bonPrepare = monterBon(modeleWorkflow, modeleRecap, panier, devis, paiement, attribution.numeroCommande);
