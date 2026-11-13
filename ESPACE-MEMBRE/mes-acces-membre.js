@@ -635,6 +635,7 @@
       croix.hidden = true;
       croix.style.display = "none";
       titre.textContent = "Invités de la réservation";
+      message.setAttribute("aria-live", "polite");
       liste.style.cssText = "list-style:none;margin:12px 0;padding:0;display:grid;gap:9px;";
       listeEmails.style.cssText = "list-style:none;margin:8px 0;padding:0;display:grid;gap:8px;";
       const cssBouton = "min-height:40px;padding:8px 12px;border:1px solid #4b6333;border-radius:12px;background:white;color:#4b6333;font-size:13px;font-weight:700;cursor:pointer;";
@@ -727,7 +728,10 @@
         if (!id) bouton.title = "Retrait indisponible : identifiant de l’invité manquant";
         function afficherEtat() {
           const actif = id ? etats.get(id) !== "cancd" : actifInitial(invite);
-          statutTexte.textContent = actif ? "Conservé" : "À retirer après enregistrement";
+          const avant = actifInitial(invite);
+          statutTexte.textContent = actif === avant
+            ? (actif ? "Actif" : "Retiré")
+            : (actif ? "À rétablir après enregistrement" : "À retirer après enregistrement");
           bouton.textContent = actif ? "Retirer" : "Rétablir";
           bouton.setAttribute("aria-label", bouton.textContent + " : " + identite);
         }
