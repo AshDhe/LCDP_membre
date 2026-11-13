@@ -599,12 +599,14 @@
     let overlay = null;
     let sectionInitiale = null;
     let etatInitial = null;
+    let defilements = [];
     const restaurerVue = () => {
       overlay?.remove();
       overlay = null;
       if (sectionInitiale && etatInitial) {
         sectionInitiale.hidden = etatInitial.hidden;
         sectionInitiale.inert = etatInitial.inert;
+        defilements.forEach(({element,position}) => { element.scrollTop = position; });
       }
     };
     try {
@@ -621,12 +623,15 @@
       sectionInitiale = main?.querySelector(":scope > .lcdp-page-section");
       if (!main || !sectionInitiale) throw new Error("Surface MES ACCÈS introuvable.");
       etatInitial = { hidden:sectionInitiale.hidden, inert:sectionInitiale.inert };
+      defilements = [main.closest(".lcdp-app-wrapper"), document.scrollingElement]
+        .filter(Boolean).map(element => ({element, position:element.scrollTop}));
       overlay = template.content.firstElementChild;
       if (!overlay) throw new Error("Gabarit invitation indisponible.");
       overlay.dataset.lcdpInvitationVuePage = "true";
       sectionInitiale.hidden = true;
       sectionInitiale.inert = true;
       main.appendChild(overlay);
+      defilements.forEach(({element}) => { element.scrollTop = 0; });
 
       const titre = overlay.querySelector("[data-lcdp-listinvites-title]");
       const liste = overlay.querySelector("[data-lcdp-listinvites-list]");
