@@ -2830,12 +2830,92 @@
     });
   }
 
+  // Même niveau de surface que Fiche/Carte : le contenu MES ACCÈS
+  // (onglets, filtres, listes) reste monté mais n'est plus visible.
+  function ouvrirSurfaceInvitationPleinePage() {
+    const main = document.querySelector("body.lcdp-mes-acces-page > .lcdp-app-wrapper > .lcdp-site-main");
+    const accueil = main?.querySelector(":scope > .lcdp-page-section");
+    if (!main || !accueil || main.querySelector("[data-lcdp-invitation-vue-page]")) return null;
+    const conteneur = document.createElement("div");
+    const precedent = { hidden: accueil.hidden, inert: accueil.inert };
+    const focusInitial = document.activeElement;
+    accueil.hidden = true;
+    accueil.inert = true;
+    main.appendChild(conteneur);
+    let ferme = false;
+    return {
+      conteneur,
+      fermer() {
+        if (ferme) return;
+        ferme = true;
+        conteneur.remove();
+        accueil.hidden = precedent.hidden;
+        accueil.inert = precedent.inert;
+        if (focusInitial?.isConnected && typeof focusInitial.focus === "function") {
+          focusInitial.focus({ preventScroll: true });
+        }
+      }
+    };
+  }
+
+  // Réutilisation des dialogues de référence, au-dessus de la vue pleine page.
+  async function afficherInformationInvitation(texteMessage) {
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
+    const dialogue = fragment.querySelector('[data-lcdp-dialogue-reference="information"]');
+    const titre = dialogue?.querySelector("[data-lcdp-dialogue-titre]");
+    const texte = dialogue?.querySelector("[data-lcdp-dialogue-message]");
+    const bouton = dialogue?.querySelector('[data-lcdp-dialogue-action="compris"]');
+    if (!dialogue || !titre || !texte || !bouton) throw new Error("Dialogue INFORMATION incomplet.");
+    titre.textContent = "Information";
+    texte.textContent = String(texteMessage || "");
+    bouton.textContent = "Fermer";
+    document.body.appendChild(dialogue);
+    return new Promise(resolve => {
+      bouton.addEventListener("click", () => { dialogue.remove(); resolve(true); }, { once:true });
+      bouton.focus({ preventScroll:true });
+    });
+  }
+
+  async function confirmerSuppressionInvitation(identiteInvite) {
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html");
+    const dialogue = fragment.querySelector('[data-lcdp-dialogue-reference="suppression"]');
+    const titre = dialogue?.querySelector("[data-lcdp-dialogue-titre]");
+    const texte = dialogue?.querySelector("[data-lcdp-dialogue-message]");
+    const conserver = dialogue?.querySelector('[data-lcdp-dialogue-action="conserver"]');
+    const supprimer = dialogue?.querySelector('[data-lcdp-dialogue-action="supprimer"]');
+    if (!dialogue || !titre || !texte || !conserver || !supprimer) {
+      throw new Error("Dialogue SUPPRESSION incomplet.");
+    }
+    titre.textContent = "Supprimer cet invité ?";
+    texte.textContent = "Supprimer " + String(identiteInvite || "cet invité") + " de cette réservation ?";
+    conserver.textContent = "Non";
+    supprimer.textContent = "Oui, supprimer";
+    document.body.appendChild(dialogue);
+    return new Promise(resolve => {
+      let resolu = false;
+      const fermer = valeur => {
+        if (resolu) return;
+        resolu = true;
+        document.removeEventListener("keydown", gererEchap);
+        dialogue.remove();
+        resolve(valeur);
+      };
+      const gererEchap = event => {
+        if (event.key === "Escape") { event.preventDefault(); event.stopImmediatePropagation(); fermer(false); }
+      };
+      document.addEventListener("keydown", gererEchap, true);
+      conserver.addEventListener("click", () => fermer(false), { once:true });
+      supprimer.addEventListener("click", () => fermer(true), { once:true });
+      conserver.focus({ preventScroll:true });
+    });
+  }
+
   async function ouvrirBoxListeInvitesModifiable(idflux, invites, declencheur) {
     const idReservation = String(idflux || "").trim();
-    const surface = ouvrirVueSecondairePlanning();
+    const surface = ouvrirSurfaceInvitationPleinePage();
     if (!surface) return null;
     const conteneur = surface.conteneur;
-    conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
+    conteneur.dataset.lcdpInvitationVuePage = "true";
     try {
       conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html"));
     } catch (erreur) {
@@ -2843,7 +2923,10 @@
       throw erreur;
     }
     const box = conteneur.querySelector("[data-lcdp-box-card-listinvites-oui-non]");
-    preparerDialogueDansWrapper(box);
+    if (!box) {
+      surface.fermer();
+      throw new Error("Formulaire des invitations introuvable.");
+    }
     const titre = conteneur.querySelector("[data-lcdp-listinvites-title]");
     const liste = conteneur.querySelector("[data-lcdp-listinvites-list]");
     const champ = conteneur.querySelector("[data-lcdp-invite-email]");
@@ -2853,7 +2936,8 @@
     const sansEmail = conteneur.querySelector("[data-lcdp-listinvites-sans-email]");
     const annuler = conteneur.querySelector("[data-lcdp-listinvites-cancel]");
     const message = conteneur.querySelector("[data-lcdp-listinvites-message]");
-    if (![titre,liste,champ,effacer,ajouter,inviter,sansEmail,annuler,message].every(Boolean)) {
+    const formulaire = conteneur.querySelector("[data-lcdp-invitation-form]");
+    if (![titre,liste,champ,effacer,ajouter,inviter,sansEmail,annuler,message,formulaire].every(Boolean)) {
       surface.fermer();
       throw new Error("Structure du formulaire des invitations incomplète.");
     }
@@ -2876,7 +2960,7 @@
     function afficherMessage(texte, erreur = false) {
       message.hidden = !texte;
       message.textContent = texte || "";
-      message.classList.toggle("lcdp-box-card-listinvites-oui-non__message--erreur", erreur);
+      message.classList.toggle("lcdp-box-dialogue-champ-inviter__erreur", erreur);
     }
     const corbeille = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 4v6m4-6v6"/></svg>';
     const croix = effacer.innerHTML;
@@ -2890,22 +2974,17 @@
         resolve(valeur);
       }
       function gererEchap(event) {
-        if (event.key !== "Escape" || !vueSecondaireAuPremierPlan(conteneur)) return;
+        if (event.key !== "Escape" || resolu || document.querySelector('[data-lcdp-dialogue-reference]')) return;
         event.preventDefault();
         afficherMessage("Utilisez « Annuler » pour fermer ce formulaire.");
       }
       async function demanderRetrait(personne) {
         const id = identifiant(personne);
         if (!id) {
-          await afficherInformationPlanning("Cet invité ne peut pas être supprimé actuellement.");
+          await afficherInformationInvitation("Cet invité ne peut pas être supprimé actuellement.");
           return;
         }
-        const ok = await confirmerSuppressionPlanning("", true, {
-          titre:"Supprimer cet invité ?",
-          message:"Supprimer " + identite(personne) + " de cette réservation ?",
-          conserver:"Non",
-          supprimer:"Oui, supprimer"
-        });
+        const ok = await confirmerSuppressionInvitation(identite(personne));
         if (!ok || resolu) return;
         annulations.set(id,{idmembre:id,invit:"cancd"});
         afficherMessage("");
@@ -2953,12 +3032,16 @@
         champ.focus();
       });
       ajouter.addEventListener("click", () =>
-        afficherInformationPlanning("L’action n’est pas autorisée actuellement.")
+        afficherInformationInvitation("L’action n’est pas autorisée actuellement.")
       );
       sansEmail.addEventListener("click", () =>
-        afficherInformationPlanning("Cette fonctionnalité n’est pas disponible actuellement.")
+        afficherInformationInvitation("Cette fonctionnalité n’est pas disponible actuellement.")
       );
       annuler.addEventListener("click", () => fermer(null));
+      formulaire.addEventListener("submit", event => {
+        event.preventDefault();
+        inviter.click();
+      });
       document.addEventListener("keydown", gererEchap);
       afficherLignes();
 
@@ -3019,7 +3102,7 @@
         }
         actualiserBoutonsInvitationPlanning(idReservation, declencheur);
         fermer(resultat);
-        await afficherInformationPlanning(resultat.message || "Liste des invités mise à jour.");
+        await afficherInformationInvitation(resultat.message || "Liste des invités mise à jour.");
       });
       champ.focus();
     });
