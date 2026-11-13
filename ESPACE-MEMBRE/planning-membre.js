@@ -777,7 +777,10 @@
     }
     // MES ACCÈS : Fiche et Carte sont deux vues du même wrapper membre.
     // Aucune URL publique, aucun nouvel onglet ni rechargement de réservation.
-    const idParc = String(parc.idparc || reservation.idparc || "").trim();
+    // L'identifiant de la réservation (fluxm.idparc) est la référence
+    // autoritative pour le parc réservé. Le parc joint est une donnée
+    // descriptive et ne doit pas prendre la priorité sur cette clé.
+    const idParc = String(reservation.idparc || parc.idparc || parc.id || "").trim();
     if (idParc) {
       const liensParc = document.createElement("div");
       liensParc.className = "lcdp-box-card-parc__actions lcdp-box-card-parc__actions--reserver lcdp-planning-verso-liens";
@@ -800,7 +803,12 @@
         texte.textContent = libelle;
         bouton.append(img, texte);
         bouton.addEventListener("click", () => {
-          void ouvrirVueFicheDansMesAcces({ ...parc, idparc: idParc, dptmt: departement }, vue, bouton)
+          void ouvrirVueFicheDansMesAcces({
+            ...parc,
+            idparc: idParc,
+            dptmt: departement,
+            nom: parc.nom || parc.nomparc || reservation.nomparc || ""
+          }, vue, bouton)
             .catch(error => {
               console.error("MES ACCÈS : Fiche/Carte du parc indisponible", error);
               fermerVueFicheDansMesAcces();
@@ -965,6 +973,21 @@
       const controleur = await moteur.monterDansConteneur(contenu, parc, {
         vueInitiale: vue,
         modeUsage: "reservation-membre",
+        // Le contrôleur utilise le même Worker que PLANIFIER. On valide
+        // la cohérence de son résultat avec l'identifiant du fluxm,
+        // sans jamais afficher un autre parc pour masquer une erreur.
+        chargerFicheParc: async (idRecherche) => {
+          const identifiant = String(idRecherche || "").trim();
+          if (identifiant !== idparc) {
+            throw new Error("Identifiant du parc incohérent avec la réservation.");
+          }
+          const fiche = await moteur.chargerFicheParc(identifiant);
+          const idRetour = String(fiche?.parc?.idparc || fiche?.parc?.id || "").trim();
+          if (!fiche?.parc || (idRetour && idRetour !== idparc)) {
+            throw new Error("La fiche retournée ne correspond pas au parc réservé.");
+          }
+          return fiche;
+        },
         chargerFragmentObjet,
         construireUrlObjet,
         appliquerRoutes: appliquerRoutesSite,
