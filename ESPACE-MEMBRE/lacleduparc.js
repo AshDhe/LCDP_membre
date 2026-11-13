@@ -42,6 +42,7 @@
   let controleAccesEtat = null;
   let controleAccesTimer = null;
   let controleAccesEnCours = false;
+  let parcoursEntreDansParc = false;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -1310,6 +1311,7 @@
     } finally {controleAccesEnCours=false;}
   }
   function afficherControleAcces(etat) {
+    if(etat?.screen==="access_confirmed" && parcoursEntreDansParc)etat={...etat,parcoursEntre:true};
     controleAccesEtat=etat;
     const root=document.querySelector("[data-lcdp-control-access]");
     if(!root || !window.LCDP_ControleAccesUI) throw new Error("Écran du contrôle d’accès indisponible.");
@@ -1318,6 +1320,15 @@
     if(etat.unlocked===true){exclusiviteCle=false;deverrouillerNavigation();window.clearInterval(controleAccesTimer);if(etat.screen==="key_closed"){window.location.href=PAGE_ACCUEIL_MEMBRE;return;}}
     window.LCDP_ControleAccesUI.render(root,etat,{
       onCamera:()=>lancerCaptureControleAcces(),
+      onEnter:async()=>{
+        const etat=controleAccesEtat;
+        if(etat?.screen!=="access_confirmed")return;
+        parcoursEntreDansParc=true;
+        if(etat.guests?.length){afficherControleAcces({...etat,parcoursEntre:true});return;}
+        if(etat.simulation){afficherControleAcces({...etat,screen:"confirmation_done"});return;}
+        try{afficherControleAcces(await appelerApi("/presence",{method:"GET"}));}
+        catch(error){afficherControleAcces({...etat,screen:"capture_error",message:error.message});}
+      },
       onCheckout:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:"checkout"}}));}catch(e){afficherControleAcces({screen:"capture_error",action:"checkout",message:e.message});}},
       onClosed:()=>{if(!controleAccesEtat?.unlocked)return;exclusiviteCle=false;window.clearInterval(suiviVideoTimer);window.clearInterval(controleAccesTimer);window.location.href=PAGE_ACCUEIL_MEMBRE;},
       onRetry:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:controleAccesEtat?.action || "checkin"}}));}catch(error){afficherControleAcces({screen:"capture_error",message:error.message});}},
