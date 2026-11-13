@@ -84,6 +84,21 @@
       #lcdp-planning-attente .lcdp-loading-spinner__arc,
       .lcdp-invitation-attente .lcdp-loading-spinner__arc { animation:none; }
     }
+      /* D-ACTIF : vue réservée au titulaire d'un accès. */
+    .lcdp-dactif-page {box-sizing:border-box;max-width:650px;margin:20px auto;padding:18px 14px;background:#fff;border:1px solid #d7ddd5;border-radius:16px;}
+    .lcdp-dactif-entete {display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:12px;border-bottom:1px solid #d7ddd5;}
+    .lcdp-dactif-entete h2 {font-size:24px;font-weight:800;margin:0;}
+    .lcdp-dactif-fermer {width:38px;height:38px;border:1px solid #ccd5c6;border-radius:50%;background:#f7f8f6;font-size:22px;cursor:pointer;}
+    .lcdp-dactif-compteur {font-size:14px;margin:16px 0 10px;}
+    .lcdp-dactif-liste {display:grid;gap:9px;}
+    .lcdp-dactif-ligne {display:flex;align-items:center;gap:13px;padding:9px;border:1px solid #d7ddd5;border-radius:12px;cursor:pointer;}
+    .lcdp-dactif-portrait {display:block;flex:0 0 54px;width:54px;height:54px;border-radius:50%;background:#bfc3c5;overflow:hidden;}
+    .lcdp-dactif-portrait img {display:block;width:100%;height:100%;object-fit:cover;}
+    .lcdp-dactif-nom {flex:1;min-width:0;font-weight:650;overflow-wrap:anywhere;}
+    .lcdp-dactif-ligne input {width:21px;height:21px;accent-color:#4b6333;}
+    .lcdp-dactif-valider {margin-top:15px;min-height:43px;}
+    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-dactif {border-color:#e5b843!important;background:#fff8e8!important;color:#5d4520!important;}
+    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-annuler {min-width:34px!important;width:34px!important;min-height:34px!important;padding:6px!important;}
   </style>
 </head>
 <body class="lcdp-app-page lcdp-mes-acces-page">
@@ -114,6 +129,6 @@
     <div id="lcdp-lightbox-slot"></div>
   </div>
 
-  <script src="./planning-membre.js?interface=spinner-officiel&amp;v=20261113-spinner-ouverture-inviter-v3"></script>
+  <script src="./planning-membre.js?interface=spinner-officiel&amp;v=20261113-dactif-v4"></script>
 </body>
 </html>
