@@ -3500,10 +3500,12 @@
 
     const actions = boutonMettreAJour.closest(".lcdp-box-card-listinvites-oui-non__actions");
 
-    if (actions && boutonAjouterEmail.parentNode !== actions) {
-      actions.insertBefore(boutonAjouterEmail, boutonMettreAJour);
+    if (!actions) {
+      conteneur.remove();
+      throw new Error("Wrapper des actions invités indisponible.");
     }
-    if (actions) actions.insertBefore(boutonSansEmail,boutonMettreAJour);
+    // Un seul wrapper pour les quatre actions, avec l'ordre visuel du gabarit.
+    actions.replaceChildren(boutonAjouterEmail,boutonMettreAJour,boutonAnnuler,boutonSansEmail);
 
     const invitesListe = Array.isArray(invites) ? invites : [];
     const limiteTotale = limiteEmailsInvitation();
