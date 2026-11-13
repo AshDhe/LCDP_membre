@@ -18,6 +18,63 @@
   }
   function afficherErreur(message) { erreur.textContent = message || 'Paiement indisponible.'; erreur.hidden = false; }
   function retirerErreur() { erreur.hidden = true; erreur.textContent = ''; }
+  const boutonReprise = el('reprendre-paiement');
+  async function proposerRepriseSessionExpiree(code) {
+    if (!['STRIPE_REFERENCES','SESSION_INDISPONIBLE'].includes(String(code || ''))) return false;
+    const reponseEtat = await fetch(endpoint + '/etat?idpanier=' + encodeURIComponent(idpanier), {
+      credentials:'include',cache:'no-store',headers:{Accept:'application/json'}
+    });
+    const etat = await reponseEtat.json().catch(() => null);
+    if (!reponseEtat.ok || !etat?.ok || etat.commande?.statut !== 'attente' ||
+        !/^LCDP-[0-9a-f-]{36}$/i.test(etat.commande.orderid || '')) return false;
+    const diagnosticReponse = await fetch(endpoint + '/diagnostic-stripe?orderid=' +
+      encodeURIComponent(etat.commande.orderid), {
+      credentials:'include',cache:'no-store',headers:{Accept:'application/json'}
+    });
+    const diagnostic = await diagnosticReponse.json().catch(() => null);
+    if (!diagnosticReponse.ok || !diagnostic?.ok ||
+        diagnostic.diagnostic?.commande?.idpanier !== idpanier ||
+        diagnostic.diagnostic?.stripe?.session?.status !== 'expired' ||
+        diagnostic.diagnostic?.stripe?.session?.paymentStatus !== 'unpaid' ||
+        diagnostic.diagnostic?.stripe?.session?.montantCorrespond !== true ||
+        diagnostic.diagnostic?.supabase?.delaiCommandeDepasse !== false) return false;
+    boutonReprise.hidden = false;
+    erreur.textContent = 'La session bancaire a expiré sans paiement. La commande et ses accès sont conservés. Reprenez le paiement pour ouvrir une nouvelle session Stripe.';
+    erreur.hidden = false;
+    boutonReprise.addEventListener('click', async () => {
+      if (boutonReprise.disabled) return;
+      boutonReprise.disabled = true;
+      boutonReprise.textContent = 'Reprise du paiement…';
+      try {
+        const reprise = await fetch(endpoint + '/valider', {
+          method:'POST', credentials:'include', cache:'no-store',
+          headers:{Accept:'application/json','Content-Type':'application/json'},
+          body:JSON.stringify({idpanier,echeancier:'comptant'})
+        });
+        const data = await reprise.json().catch(() => null);
+        if (!reprise.ok || !data?.ok ||
+            (data.commande?.idpanier && data.commande.idpanier !== idpanier))
+          throw new Error(data?.message || 'Impossible de reprendre la session de paiement.');
+        if (data.commande?.statut === 'paye') {
+          location.assign('./reserver-membre.html?paiement=retour&retour=verification&idpanier=' + encodeURIComponent(idpanier));
+          return;
+        }
+        const cible = data.paymentPageUrl || data.checkoutUrl;
+        if (!cible) throw new Error('La nouvelle session bancaire est indisponible.');
+        const destination = new URL(cible, location.href);
+        if (destination.origin !== location.origin ||
+            destination.pathname !== new URL('./paiement-stripe-membre.html', location.href).pathname ||
+            destination.searchParams.get('idpanier') !== idpanier)
+          throw new Error('Adresse de reprise inattendue.');
+        location.assign(destination.href);
+      } catch (e) {
+        afficherErreur(e.message || 'Impossible de reprendre le paiement.');
+        boutonReprise.disabled = false;
+        boutonReprise.textContent = 'Reprendre le paiement';
+      }
+    }, {once:false});
+    return true;
+  }
   const details = el('detail-commande');
   const lienDetails = el('voir-detail-commande');
   const listeDetails = el('detail-commande-lignes');
@@ -128,7 +185,11 @@
     if (typeof d?.montantEcheanceTtc === 'number')
       el('montant-commande').textContent = euros(d.montantEcheanceTtc);
     await detailEnCours;
-    if (!reponse.ok || !d?.ok) throw new Error(d?.message || 'Impossible de charger la commande.');
+    if (!reponse.ok || !d?.ok) {
+      const reprisePossible = await proposerRepriseSessionExpiree(d?.code).catch(() => false);
+      if (reprisePossible) return;
+      throw new Error(d?.message || 'Impossible de charger la commande.');
+    }
     if (!/^pk_(test|live)_[A-Za-z0-9]+$/.test(d.publishableKey || '') ||
         !/^cs_(test|live)_[A-Za-z0-9_]+_secret_[A-Za-z0-9]+$/.test(d.clientSecret || ''))
       throw new Error('Session bancaire sécurisée indisponible.');
