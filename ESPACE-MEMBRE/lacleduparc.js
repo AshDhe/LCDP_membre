@@ -74,7 +74,8 @@
       exclusiviteCle = true;
       verrouillerNavigation();
       if(boutonAnnuler) boutonAnnuler.hidden=true;
-      await initialiserGabaritMembre();
+      // Le bandeau/footer ne doivent jamais retenir la clé sur le spinner.
+      void initialiserGabaritMembre();
       await chargerControleAcces();
       window.LCDP_ParcoursMaCle?.demarrer(controleAccesEtat, {rafraichirControle: chargerControleAcces});
       masquerAttenteInitiale();
@@ -1053,8 +1054,22 @@
       configuration.body = JSON.stringify(options.body);
     }
 
-    const reponse = await fetch(ENDPOINT_LA_CLE_DU_PARC + chemin, configuration);
-    const resultat = await reponse.json().catch(() => null);
+    // Échec fermé côté droits, mais délai borné pour éviter l'écran de chargement perpétuel.
+    const controleur = new AbortController();
+    configuration.signal = controleur.signal;
+    const delai = window.setTimeout(() => controleur.abort(), 12000);
+    let reponse, resultat;
+    try {
+      reponse = await fetch(ENDPOINT_LA_CLE_DU_PARC + chemin, configuration);
+      resultat = await reponse.json().catch(() => null);
+    } catch (erreur) {
+      if (erreur?.name === "AbortError") {
+        throw new Error("Le contrôle d’accès ne répond pas. Réessayez.");
+      }
+      throw erreur;
+    } finally {
+      window.clearTimeout(delai);
+    }
 
     if (resultat?.reason === "key_in_use") {
       window.LCDP_afficherCompteUtilise?.();
