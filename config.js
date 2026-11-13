@@ -258,79 +258,68 @@
     await assurerCssAlerteSessionRemplacee();
 
     let slot = document.getElementById("lcdp-lightbox-slot");
-
     if (!slot) {
       slot = document.createElement("div");
       slot.id = "lcdp-lightbox-slot";
       document.body.appendChild(slot);
     }
-
-    slot.innerHTML = "";
-
+    slot.replaceChildren();
     const reponse = await fetch(
-      buildUrl(objetBase, "/HTMLBASE/02-alerte.html"),
-      {
-        method: "GET",
-        credentials: "omit",
-        cache: "no-cache"
-      }
+      buildUrl(objetBase, "/HTMLBASE/02-dialogue-reference-erreur.html"),
+      { method: "GET", credentials: "omit", cache: "no-cache" }
     );
-
-    if (!reponse.ok) {
-      throw new Error("Box alerte indisponible.");
-    }
-
-    const html = await reponse.text();
+    if (!reponse.ok) throw new Error("Dialogue ERREUR de session indisponible.");
     const template = document.createElement("template");
-    template.innerHTML = html.trim();
+    template.innerHTML = (await reponse.text()).trim();
     slot.appendChild(template.content.cloneNode(true));
 
-    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-    const texte = slot.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      slot.innerHTML = "";
-      throw new Error("Structure de la Box alerte incomplète.");
+    const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="erreur"]');
+    const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+    const boutonOk = slot.querySelector('[data-lcdp-dialogue-action="fermer"]');
+    if (!dialogue || !titre || !texte || !boutonOk) {
+      slot.replaceChildren();
+      throw new Error("Structure ERREUR session remplacée incomplète.");
     }
-
+    titre.textContent = "Session remplacée";
     texte.textContent = MESSAGE_SESSION_REMPLACEE;
     boutonOk.textContent = "OK";
 
-    return new Promise((resolve) => {
+    // Toute fermeture de cet écran doit continuer à rediriger l'ancien navigateur.
+    // Comme avant, le dialogue ne se ferme pas sur Échap.
+    return new Promise(resolve => {
       let resolu = false;
-
-      function fermer() {
+      const fermer = () => {
         if (resolu) return;
         resolu = true;
-        slot.innerHTML = "";
+        slot.replaceChildren();
         resolve(true);
-      }
-
-      boutonFermer.addEventListener("click", fermer);
-      boutonOk.addEventListener("click", fermer);
-      alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) fermer();
+      };
+      boutonOk.addEventListener("click", fermer, { once: true });
+      dialogue.addEventListener("click", event => {
+        if (event.target === dialogue) fermer();
       });
+      boutonOk.focus();
     });
   }
 
   function assurerCssAlerteSessionRemplacee() {
-    const href = buildUrl(objetBase, "/CSSBASE/02-box-alerte.css");
+    const href = buildUrl(objetBase, "/CSSBASE/lcdp-lightbox-convergence.css");
     const existant = Array.from(
       document.querySelectorAll('link[rel="stylesheet"]')
-    ).find((link) => String(link.href || "") === href);
-
+    ).find(link => String(link.href || "") === href);
     if (existant) return Promise.resolve();
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const link = document.createElement("link");
       link.rel = "stylesheet";
       link.href = href;
       link.dataset.lcdpSessionAlerteCss = "true";
       link.onload = resolve;
-      link.onerror = resolve;
+      link.onerror = () => {
+        link.remove();
+        reject(new Error("CSS de convergence indisponible."));
+      };
       document.head.appendChild(link);
     });
   }
