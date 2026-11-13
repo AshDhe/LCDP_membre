@@ -841,7 +841,6 @@
   // Un calque propre à Fiche/Carte, distinct des vues secondaires
   // de MES ACCÈS (réservations, invitations, etc.).
   let surfaceFicheMesAcces = null;
-  let emplacementFicheMesAcces = null;
 
   function ouvrirCalqueFicheMesAcces(hote) {
     const main = document.querySelector("body.lcdp-mes-acces-page > .lcdp-app-wrapper > .lcdp-site-main");
@@ -882,7 +881,6 @@
     if (fiche) fiche.hidden = true;
     surfaceFicheMesAcces?.fermer();
     surfaceFicheMesAcces = null;
-    emplacementFicheMesAcces = null;
     declencheurFicheMesAcces?.focus?.({ preventScroll: true });
     declencheurFicheMesAcces = null;
   }
@@ -1860,6 +1858,24 @@
     const conteneur = document.createElement("section");
     conteneur.className = "lcdp-planning-vue-secondaire";
     conteneur.dataset.lcdpPlanningVueSecondaire = "true";
+    // Évite d'afficher une box vide pendant le chargement de son fragment.
+    // Le spinner disparaît dès qu'un véritable composant est monté.
+    const attente = document.createElement("div");
+    attente.className = "lcdp-mes-acces-calque-attente";
+    attente.setAttribute("role", "status");
+    attente.setAttribute("aria-label", "Chargement");
+    const spinnerOriginal = document.querySelector("#lcdp-planning-attente .lcdp-loading-spinner");
+    attente.appendChild(spinnerOriginal
+      ? spinnerOriginal.cloneNode(true)
+      : document.createTextNode("Chargement…"));
+    conteneur.appendChild(attente);
+    const surveillerContenu = new MutationObserver(() => {
+      if (Array.from(conteneur.children).some(element => element !== attente)) {
+        surveillerContenu.disconnect();
+        attente.remove();
+      }
+    });
+    surveillerContenu.observe(conteneur, { childList: true });
     main.appendChild(conteneur);
     if (etat.wrapperPlanning) etat.wrapperPlanning.dataset.lcdpVueSecondaireActive = "true";
     if (etat.commandeBar) etat.commandeBar.inert = true;
@@ -1870,6 +1886,7 @@
       fermer() {
         if (fermee) return;
         fermee = true;
+        surveillerContenu.disconnect();
         conteneur.remove();
         precedentesVues.forEach(({element, hidden, inert}) => {
           if (element.isConnected) {
