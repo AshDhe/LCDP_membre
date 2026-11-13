@@ -847,7 +847,8 @@
         return;
       }
       const donnees = await reponse.json().catch(() => null);
-      if (!reponse.ok || !donnees || donnees.ok !== true || !Array.isArray(donnees.abonnements)) {
+      if (!reponse.ok || !donnees || (donnees.ok !== true && donnees.success !== true) ||
+          !Array.isArray(donnees.abonnements)) {
         throw new Error(donnees?.message || "Service indisponible.");
       }
       if (version !== versionChargementAbonnementsCompte) return;
