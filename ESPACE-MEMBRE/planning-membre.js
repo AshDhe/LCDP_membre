@@ -2950,7 +2950,7 @@
           return;
         }
         if (!annulations.size && !valeur) {
-          afficherMessage("Saisissez l’adresse e-mail de l’invité.");
+          afficherMessage(actifs.length ? "Aucune modification à enregistrer." : "Saisissez l’adresse e-mail de l’invité.");
           return;
         }
 
