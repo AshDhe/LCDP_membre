@@ -43,6 +43,9 @@
     reservations: [],
     abonnements: [],
     reservationsAvecInvites: new Set(),
+    // Compteurs D-ACTIF par acces : réponse vérifiée du service, jamais calcul fictif.
+    compteursDuoActif: new Map(),
+    requetesCompteursDuoActif: new Map(),
     maxInvitInvitation: 10,
     reservationsParDate: new Map(),
     moisCourant: debutMois(dateAujourdhuiParis()),
@@ -755,10 +758,6 @@
       parcVerso.appendChild(fermer);
       parcVerso.style.marginBottom = "0";
       dateVerso.style.marginTop = "0";
-      if (accesVerso) {
-        accesVerso.classList.add("lcdp-planning-verso-acces");
-        dateVerso.appendChild(accesVerso);
-      }
       if (reservationHorsAbonnementMembre(reservation)) {
         const rond = document.createElement("span");
         rond.title = "Invitation reçue";
@@ -769,8 +768,29 @@
     }
     if (actionsVerso) {
       actionsVerso.classList.add("lcdp-planning-verso-actions");
+      // Ligne 1 : Annuler puis Acces, deux boutons blancs de meme dimension.
+      // Ligne 2 : Invites et D-ACTIF, avec leurs compteurs respectifs.
+      const ligneAcces = document.createElement("div");
+      ligneAcces.className = "lcdp-planning-verso-ligne-acces";
+      const ligneInvites = document.createElement("div");
+      ligneInvites.className = "lcdp-planning-verso-ligne-invites";
+      actionsVerso.prepend(ligneAcces, ligneInvites);
+      if (annulerVerso) {
+        ligneAcces.appendChild(annulerVerso);
+        annulerVerso.classList.add("lcdp-planning-verso-action", "lcdp-planning-verso-annuler");
+        annulerVerso.style.removeProperty("margin-left");
+        annulerVerso.textContent = "Annuler";
+        annulerVerso.setAttribute("aria-label","Annuler cet accès");
+        const bloque = annulationAccesImpossibleParis(reservation);
+        annulerVerso.setAttribute("aria-disabled", String(bloque));
+        annulerVerso.title = bloque ? "Annulation impossible après 14h" : "Annuler cet accès";
+      }
+      if (accesVerso) {
+        ligneAcces.appendChild(accesVerso);
+        accesVerso.classList.add("lcdp-planning-verso-action", "lcdp-planning-verso-acces-bouton");
+      }
       if (inviterVerso) {
-        actionsVerso.prepend(inviterVerso);
+        ligneInvites.appendChild(inviterVerso);
         habillerBoutonInvitesVerso(inviterVerso, reservation);
       }
       if (inviterVerso && !reservationHorsAbonnementMembre(reservation) &&
@@ -780,19 +800,15 @@
         duoActif.className = "lcdp-planning-verso-action lcdp-planning-verso-dactif";
         duoActif.dataset.action = "duoactif";
         duoActif.dataset.id = String(reservation.idflux || "");
-        duoActif.textContent = "D-ACTIF";
         duoActif.setAttribute("aria-label","Consulter les demandes Duo Actif de ce parc");
-        inviterVerso.after(duoActif);
-      }
-      if (annulerVerso) {
-        actionsVerso.append(annulerVerso);
-        annulerVerso.classList.add("lcdp-planning-verso-action", "lcdp-planning-verso-annuler");
-        annulerVerso.style.setProperty("margin-left","auto","important");
-        annulerVerso.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6m0-6l-6 6"/></svg>';
-        annulerVerso.setAttribute("aria-label","Annuler cet accès");
-        const bloque = annulationAccesImpossibleParis(reservation);
-        annulerVerso.setAttribute("aria-disabled", String(bloque));
-        annulerVerso.title = bloque ? "Annulation impossible après 14h" : "Annuler cet accès";
+        const compteur = document.createElement("span");
+        compteur.className = "lcdp-planning-verso-compteur";
+        compteur.textContent = "…";
+        compteur.setAttribute("aria-label","Chargement du nombre de demandes");
+        duoActif.append(document.createTextNode("D-ACTIF"), compteur);
+        ligneInvites.appendChild(duoActif);
+        // Une lecture par acces ; le nombre correspond aux cinq demandes visibles.
+        void chargerCompteurDuoActif(String(reservation.idflux || ""), compteur);
       }
     }
     // MES ACCÈS : Fiche et Carte sont deux vues du même wrapper membre.
@@ -1035,6 +1051,78 @@
       if (generation === ouvertureFicheMesAcces) fermerVueFicheDansMesAcces();
       throw error;
     }
+  }
+
+  function afficherValeurCompteurDuoActif(compteur, nombre) {
+    if (!compteur) return;
+    if (!Number.isInteger(nombre) || nombre < 0) {
+      compteur.textContent = "…";
+      compteur.setAttribute("aria-label","Nombre de demandes indisponible");
+      return;
+    }
+    compteur.textContent = nombre === 0 ? "−" : String(Math.min(nombre,5));
+    compteur.setAttribute("aria-label", nombre === 0 ?
+      "Aucune demande D-ACTIF disponible" : Math.min(nombre,5) + " demandes D-ACTIF disponibles");
+  }
+
+  async function chargerCompteurDuoActif(idflux, compteur) {
+    if (!idflux || !ENDPOINT_INVITER_MEMBRE) {
+      afficherValeurCompteurDuoActif(compteur, null);
+      return;
+    }
+    if (etat.compteursDuoActif.has(idflux)) {
+      afficherValeurCompteurDuoActif(compteur, etat.compteursDuoActif.get(idflux));
+      return;
+    }
+    let requete = etat.requetesCompteursDuoActif.get(idflux);
+    if (!requete) {
+      requete = (async () => {
+        const controleur = new AbortController();
+        const timeout = setTimeout(() => controleur.abort(), 7000);
+        try {
+          const reponse = await fetch(
+            ENDPOINT_INVITER_MEMBRE + "/duoactif/liste?idflux=" + encodeURIComponent(idflux),
+            {method:"GET",credentials:"include",cache:"no-store",
+             headers:{Accept:"application/json"},signal:controleur.signal}
+          );
+          const data = await reponse.json().catch(() => null);
+          if (!reponse.ok || data?.ok !== true || !Array.isArray(data.personnes)) {
+            return null;
+          }
+          // Compter ce que la liste propose effectivement : 0 à 5 personnes.
+          const nombre = Math.min(5, data.personnes.length);
+          etat.compteursDuoActif.set(idflux, nombre);
+          return nombre;
+        } catch (erreur) {
+          console.warn("[MES ACCES] Compteur D-ACTIF indisponible :", erreur);
+          return null;
+        } finally {
+          clearTimeout(timeout);
+          etat.requetesCompteursDuoActif.delete(idflux);
+        }
+      })();
+      etat.requetesCompteursDuoActif.set(idflux, requete);
+    }
+    afficherValeurCompteurDuoActif(compteur, await requete);
+  }
+
+  function actualiserCompteursDuoActifDuParc(idparc) {
+    const parcRecherche = String(idparc || "");
+    if (!parcRecherche) return;
+    for (const reservation of etat.reservations) {
+      if (String(reservation?.idparc || reservation?.parc?.idparc || "") !== parcRecherche) continue;
+      const id = String(reservation?.idflux || "");
+      if (id) etat.compteursDuoActif.delete(id);
+    }
+    document.querySelectorAll('[data-action="duoactif"][data-id]').forEach(bouton => {
+      const id = String(bouton.dataset.id || "");
+      const reservation = trouverReservationPlanningParId(id);
+      if (String(reservation?.idparc || reservation?.parc?.idparc || "") !== parcRecherche) return;
+      const compteur = bouton.querySelector(".lcdp-planning-verso-compteur");
+      if (!compteur) return;
+      compteur.textContent = "…";
+      void chargerCompteurDuoActif(id, compteur);
+    });
   }
 
   function habillerBoutonInvitesVerso(bouton, reservation) {
@@ -2879,6 +2967,8 @@
           etat.reservationsAvecInvites.add(idflux);
           fermer();
           actualiserBoutonsInvitationPlanning(idflux);
+          // La demande acceptee disparait de toutes les listes du meme parc.
+          actualiserCompteursDuoActifDuParc(reservation.idparc || reservation.parc?.idparc);
           await afficherInformationInvitation(resultat.message || "Invitation D-ACTIF enregistrée.");
         } catch(erreur) {
           await afficherErreurInvitation(erreur?.message || "Invitation D-ACTIF indisponible.");
