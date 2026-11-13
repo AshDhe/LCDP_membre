@@ -465,7 +465,7 @@
           if(r.status===401){redirigerConnexionMembre("inactive");return true;}
           if(!d)throw Error("Réponse indisponible");
           // Une réponse termine cette tentative ; aucune boucle d'essais CODA.
-          await afficherAlerteSuperposee(d.message || "La modification n’a pas pu être confirmée.");
+          await afficherAlerteSuperposee(d.message || "La modification n’a pas pu être confirmée.", { profil: r.ok && d.ok ? "information" : "erreur" });
           if(r.ok && d.ok)await chargerWifiBracelet();
           return true;
         }
@@ -2054,7 +2054,7 @@ function afficherResumePointsPassion(compte) {
       });
     } catch(erreur) {
       conteneur.remove();
-      await afficherAlerteSuperposee(message);
+      await afficherAlerteSuperposee(message, { profil: "information" });
     }
   }
 
@@ -2094,7 +2094,7 @@ function afficherResumePointsPassion(compte) {
             nouvelleTentative=!succes && d?.reason==="codr_incorrect";
             if(!d) message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer.";
           } catch { message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer."; }
-          await afficherAlerteSuperposee(message);
+          await afficherAlerteSuperposee(message, { profil: succes ? "information" : "erreur" });
           if(nouvelleTentative){
             const cache=document.getElementById("codr-modification-membre");
             const groupe=cache?.parentNode;
@@ -2629,44 +2629,60 @@ function afficherResumePointsPassion(compte) {
     });
   }
 
-  async function afficherAlerteSuperposee(message) {
+  async function afficherAlerteSuperposee(message, options = {}) {
+    const information = options.profil === "information";
     const conteneur = document.createElement("div");
-    document.body.appendChild(conteneur);
+    const focusInitial = document.activeElement;
 
     try {
-      const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
+      const fragment = await chargerFragmentObjet(information
+        ? "/HTMLBASE/02-dialogue-reference-information.html"
+        : "/HTMLBASE/02-dialogue-reference-erreur.html");
       conteneur.appendChild(fragment);
+      const dialogue = conteneur.querySelector(information
+        ? '[data-lcdp-dialogue-reference="information"]'
+        : '[data-lcdp-dialogue-reference="erreur"]');
+      const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
+      const bouton = conteneur.querySelector(information
+        ? '[data-lcdp-dialogue-action="compris"]'
+        : '[data-lcdp-dialogue-action="fermer"]');
 
-      const alerte = conteneur.querySelector("[data-lcdp-box-alerte]");
-      const texte = conteneur.querySelector("[data-lcdp-alerte-message]");
-      const boutonFermer = conteneur.querySelector("[data-lcdp-alerte-close]");
-      const boutonOk = conteneur.querySelector("[data-lcdp-alerte-ok]");
-
-      if (!alerte || !texte || !boutonFermer || !boutonOk) {
-        throw new Error("Structure de l’alerte incomplète.");
+      if (!dialogue || !titre || !texte || !bouton) {
+        throw new Error("Structure du dialogue superposé incomplète.");
       }
-
+      titre.textContent = information ? "Information" : "Erreur";
       texte.textContent = message || "";
+      bouton.textContent = "Fermer";
+      document.body.appendChild(conteneur);
 
-      await new Promise((resolve) => {
+      await new Promise(resolve => {
         let resolu = false;
-
         function fermer() {
           if (resolu) return;
           resolu = true;
+          document.removeEventListener("keydown", gererClavier);
           conteneur.remove();
+          if (focusInitial?.isConnected && typeof focusInitial.focus === "function") {
+            focusInitial.focus();
+          }
           resolve();
         }
-
-        boutonFermer.addEventListener("click", fermer, { once: true });
-        boutonOk.addEventListener("click", fermer, { once: true });
-
-        alerte.addEventListener("click", (event) => {
-          if (event.target === alerte) fermer();
-        }, { once: true });
+        function gererClavier(event) {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            fermer();
+          }
+        }
+        bouton.addEventListener("click", fermer, { once: true });
+        dialogue.addEventListener("click", event => {
+          if (event.target === dialogue) fermer();
+        });
+        document.addEventListener("keydown", gererClavier);
+        bouton.focus();
       });
     } catch (error) {
-      console.error("Erreur alerte superposée :", error);
+      console.error("Erreur dialogue superposé :", error);
       conteneur.remove();
       alert(message || "");
     }
@@ -2713,37 +2729,47 @@ function afficherResumePointsPassion(compte) {
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) return null;
 
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
+    slot.replaceChildren();
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-erreur.html");
     slot.appendChild(fragment);
+    const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="erreur"]');
+    const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+    const bouton = slot.querySelector('[data-lcdp-dialogue-action="fermer"]');
 
-    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-    const texte = slot.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      throw new Error("Structure de l’alerte incomplète.");
+    if (!dialogue || !titre || !texte || !bouton) {
+      slot.replaceChildren();
+      throw new Error("Structure du dialogue ERREUR incomplète.");
     }
-
+    titre.textContent = "Erreur";
     texte.textContent = message || "";
+    bouton.textContent = "Fermer";
+    const focusInitial = document.activeElement;
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       let resolu = false;
-
       function fermer(valeur) {
         if (resolu) return;
         resolu = true;
-        slot.innerHTML = "";
+        document.removeEventListener("keydown", gererClavier);
+        slot.replaceChildren();
+        if (focusInitial?.isConnected && typeof focusInitial.focus === "function") {
+          focusInitial.focus();
+        }
         resolve(valeur);
       }
-
-      boutonFermer.addEventListener("click", () => fermer(false));
-      boutonOk.addEventListener("click", () => fermer(true));
-      alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) fermer(false);
+      function gererClavier(event) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          fermer(false);
+        }
+      }
+      bouton.addEventListener("click", () => fermer(true), { once: true });
+      dialogue.addEventListener("click", event => {
+        if (event.target === dialogue) fermer(false);
       });
+      document.addEventListener("keydown", gererClavier);
+      bouton.focus();
     });
   }
 
