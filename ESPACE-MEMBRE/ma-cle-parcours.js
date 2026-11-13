@@ -63,7 +63,7 @@
   conteneur.insertBefore(guide,root);
 
   let demarre=false, etape=0, etatCourant=null, slides=[], indexSlide=0, guideCharge=false;
-  let demandeGuide=0;
+  let demandeGuide=0, endpointGuide="";
 
   function numeroEtape(etat){
     if(!etat || !etat.screen)return 3;
@@ -158,7 +158,7 @@
     nomParc.textContent=parc;
     zoneCartes.replaceChildren(noeud("p","lcdp-parcours-indisponible","Chargement des indications d’accès…"));
     // Lecture optionnelle : aucune route administrative ni permission ADMIN utilisée.
-    const endpoint=String(global.SITE_CONFIG?.workerLaCleDuParcUrl || global.SITE_CONFIG?.WORKER_LA_CLE_DU_PARC_URL || "").replace(/\/+$/,"");
+    const endpoint=endpointGuide || String(global.SITE_CONFIG?.workerLaCleDuParcUrl || global.SITE_CONFIG?.WORKER_LA_CLE_DU_PARC_URL || global.SITE_CONFIG?.W_LA_CLE_DU_PARC_URL || "").replace(/\/+$/,"");
     if(!endpoint){normaliserGuide({});return;}
     try{
       const reponse=await fetch(endpoint+"/access-guide",{method:"GET",credentials:"include",cache:"no-store",headers:{"Accept":"application/json"}});
@@ -195,5 +195,5 @@
     afficherEtape(n);
   }
 
-  global.LCDP_ParcoursMaCle={demarrer,actualiser,afficherEtape};
+  global.LCDP_ParcoursMaCle={demarrer,actualiser,afficherEtape,configurerEndpoint(url){endpointGuide=String(url || "").replace(/\/+$/,"");}};
 })(window);
