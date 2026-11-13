@@ -559,7 +559,7 @@
       const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
       const bouton = conteneur.querySelector(erreur ? '[data-lcdp-dialogue-action="fermer"]' : '[data-lcdp-dialogue-action="compris"]');
       if (!dialogue || !elementTitre || !texte || !bouton) throw new Error("Dialogue de référence incomplet.");
-      if (document.querySelector('[data-lcdp-invitation-invites-overlay]')) dialogue.style.zIndex = "12000";
+
       elementTitre.textContent = titre;
       texte.textContent = String(message || "");
       bouton.textContent = "Fermer";
@@ -597,6 +597,16 @@
       return afficherInformationMesAcces("Le service des invitations est indisponible.", "Information");
     }
     let overlay = null;
+    let sectionInitiale = null;
+    let etatInitial = null;
+    const restaurerVue = () => {
+      overlay?.remove();
+      overlay = null;
+      if (sectionInitiale && etatInitial) {
+        sectionInitiale.hidden = etatInitial.hidden;
+        sectionInitiale.inert = etatInitial.inert;
+      }
+    };
     try {
       const data = await getJson(invitationsApi + "/invites?idflux=" + encodeURIComponent(String(r.idflux)));
       const invites = Array.isArray(data.invites) ? data.invites : [];
@@ -607,10 +617,16 @@
       if (!reponse.ok) throw new Error("Formulaire des invitations indisponible.");
       const template = document.createElement("template");
       template.innerHTML = (await reponse.text()).trim();
-      overlay = document.createElement("div");
-      overlay.dataset.lcdpInvitationInvitesOverlay = "true";
-      overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.54);z-index:11000;display:grid;place-items:center;padding:12px;overflow-y:auto";
-      overlay.appendChild(template.content.cloneNode(true));
+      const main = document.querySelector("body.lcdp-mes-acces-page > .lcdp-app-wrapper > .lcdp-site-main");
+      sectionInitiale = main?.querySelector(":scope > .lcdp-page-section");
+      if (!main || !sectionInitiale) throw new Error("Surface MES ACCÈS introuvable.");
+      etatInitial = { hidden:sectionInitiale.hidden, inert:sectionInitiale.inert };
+      overlay = template.content.firstElementChild;
+      if (!overlay) throw new Error("Gabarit invitation indisponible.");
+      overlay.dataset.lcdpInvitationVuePage = "true";
+      sectionInitiale.hidden = true;
+      sectionInitiale.inert = true;
+      main.appendChild(overlay);
 
       const titre = overlay.querySelector("[data-lcdp-listinvites-title]");
       const liste = overlay.querySelector("[data-lcdp-listinvites-list]");
@@ -621,7 +637,8 @@
       const sansEmail = overlay.querySelector("[data-lcdp-listinvites-sans-email]");
       const annuler = overlay.querySelector("[data-lcdp-listinvites-cancel]");
       const message = overlay.querySelector("[data-lcdp-listinvites-message]");
-      if (![titre,liste,champ,effacer,ajouter,inviter,sansEmail,annuler,message].every(Boolean)) {
+      const formulaire = overlay.querySelector("[data-lcdp-invitation-form]");
+      if (![titre,liste,champ,effacer,ajouter,inviter,sansEmail,annuler,message,formulaire].every(Boolean)) {
         throw new Error("Structure du formulaire des invitations incomplète.");
       }
       titre.textContent = "Inviter";
@@ -641,17 +658,16 @@
       function afficherMessage(texte, erreur = false) {
         message.hidden = !texte;
         message.textContent = texte || "";
-        message.classList.toggle("lcdp-box-card-listinvites-oui-non__message--erreur", erreur);
+        message.classList.toggle("lcdp-box-dialogue-champ-inviter__erreur", erreur);
       }
       function fermer() {
         if (enregistrementEnCours || fermeture) return;
         fermeture = true;
         document.removeEventListener("keydown", gererEchap);
-        overlay?.remove();
-        overlay = null;
+        restaurerVue();
       }
       function gererEchap(event) {
-        if (event.key !== "Escape" || document.querySelector('[data-lcdp-dialogue-reference="suppression"]')) return;
+        if (event.key !== "Escape" || document.querySelector('[data-lcdp-dialogue-reference]')) return;
         event.preventDefault();
         afficherMessage("Utilisez « Annuler » pour fermer ce formulaire.");
       }
@@ -722,6 +738,10 @@
         await afficherInformationMesAcces("Cette fonctionnalité n’est pas disponible actuellement.", "Information");
       });
       annuler.addEventListener("click",fermer);
+      formulaire.addEventListener("submit", event => {
+        event.preventDefault();
+        inviter.click();
+      });
       document.addEventListener("keydown",gererEchap);
       afficherLignes();
 
@@ -773,10 +793,9 @@
           }
         }
       });
-      document.body.appendChild(overlay);
       champ.focus();
     } catch (erreur) {
-      overlay?.remove();
+      restaurerVue();
       await afficherInformationMesAcces(erreur.message || "Impossible de consulter les invitations.", "Information");
     }
   }
