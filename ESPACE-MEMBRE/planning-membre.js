@@ -3470,12 +3470,19 @@
 
     boutonAjouterEmail.textContent = "Ajouter un e-mail";
     boutonAnnuler.textContent = "Annuler";
+    const boutonSansEmail=document.createElement('button');
+    boutonSansEmail.type='button';boutonSansEmail.className='lcdp-button lcdp-button-secondary';
+    boutonSansEmail.textContent='Ajouter sans e-mail';
+    const listeSansEmail=document.createElement('ul');
+    listeSansEmail.style.cssText='list-style:none;padding:0;margin:6px 0;display:grid;gap:7px';
+    listeEmails.insertAdjacentElement('afterend',listeSansEmail);
 
     const actions = boutonMettreAJour.closest(".lcdp-box-card-listinvites-oui-non__actions");
 
     if (actions && boutonAjouterEmail.parentNode !== actions) {
       actions.insertBefore(boutonAjouterEmail, boutonMettreAJour);
     }
+    if (actions) actions.insertBefore(boutonSansEmail,boutonMettreAJour);
 
     const invitesListe = Array.isArray(invites) ? invites : [];
     const limiteTotale = limiteEmailsInvitation();
@@ -3500,15 +3507,17 @@
       zoneAjout.hidden = true;
       boutonAjouterEmail.hidden = true;
       boutonAjouterEmail.disabled = true;
+      boutonSansEmail.disabled = true;
     } else {
       zoneAjout.hidden = false;
       boutonAjouterEmail.hidden = false;
       boutonAjouterEmail.disabled = false;
+      boutonSansEmail.disabled = false;
       boutonAjouterEmail.textContent = "Ajouter un e-mail";
     }
 
     function ajouterChampEmailInvite() {
-      if (listeEmails.querySelectorAll("input[type='email']").length >= placesDisponibles) {
+      if (listeEmails.querySelectorAll("input[type='email']").length+listeSansEmail.querySelectorAll("input").length >= placesDisponibles) {
         afficherMessage("Votre droit d'invitation est limité à " + String(limiteTotale) + " invité" + (limiteTotale > 1 ? "s" : "") + ".", true);
         return;
       }
@@ -3517,6 +3526,18 @@
     }
 
     boutonAjouterEmail.addEventListener("click", ajouterChampEmailInvite);
+    boutonSansEmail.addEventListener("click",()=>{
+      if (listeEmails.querySelectorAll("input[type='email']").length+listeSansEmail.querySelectorAll('input').length >= placesDisponibles) {
+        afficherMessage("Nombre maximal d’invités atteint.", true);return;
+      }
+      const li=document.createElement('li');
+      const input=document.createElement('input');input.type='text';input.placeholder='Nom ou prénom';
+      input.maxLength=120;input.style.cssText='padding:8px;border:1px solid #cbd5c2;border-radius:10px';
+      const retirer=document.createElement('button');retirer.type='button';retirer.textContent='Supprimer';
+      retirer.className='lcdp-button lcdp-button-secondary';
+      retirer.addEventListener('click',()=>li.remove());
+      li.append(input,retirer);listeSansEmail.append(li);input.focus();
+    });
 
     return new Promise((resolve) => {
       let resolu = false;
@@ -3559,7 +3580,11 @@
           return;
         }
 
-        if (!majInvites.length && !emails.valeurs.length) {
+        const personnesSansEmail=Array.from(listeSansEmail.querySelectorAll('input')).map(input=>({nom:input.value.trim()}));
+        if (personnesSansEmail.some(p=>!p.nom)) {
+          afficherMessage("Indiquez le nom ou le prénom de chaque invité sans e-mail.",true);return;
+        }
+        if (!majInvites.length && !emails.valeurs.length && !personnesSansEmail.length) {
           afficherMessage("Aucun invité à mettre à jour.", true);
           return;
         }
@@ -3573,7 +3598,8 @@
 
         const resultat = await enregistrerListeInvitesReservation(idReservation, {
           invites: majInvites,
-          emails: emails.valeurs
+          emails: emails.valeurs,
+          personnesSansEmail
         }, declencheur);
 
         enregistrementEnCours = false;
@@ -3715,6 +3741,7 @@
     const donnees = payload || {};
     const invites = Array.isArray(donnees.invites) ? donnees.invites : [];
     const emails = Array.isArray(donnees.emails) ? donnees.emails : [];
+    const personnesSansEmail = Array.isArray(donnees.personnesSansEmail) ? donnees.personnesSansEmail : [];
 
     if (!idReservation) {
       await afficherAlerteInvitationReservation("Réservation manquante.", declencheur);
@@ -3737,7 +3764,8 @@
       body: JSON.stringify({
         idflux: idReservation,
         invites,
-        emails
+        emails,
+        personnesSansEmail
       })
     });
 
