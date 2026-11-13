@@ -2985,27 +2985,44 @@
   }
 
   async function essayerOuvrirInvitesAbonnement(idReservation, declencheur) {
-    if (!ENDPOINT_INVITER_MEMBRE) return null;
-    const url = ENDPOINT_INVITER_MEMBRE + "/invites-abonnement/contexte?idflux=" +
-      encodeURIComponent(idReservation);
-    const reponse = await fetch(url, {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-      headers: { Accept: "application/json" }
-    });
-    // Tant que le nouveau Worker n'est pas déployé, conserver l'ancien parcours.
-    if (reponse.status === 404) return null;
-    const contexte = await reponse.json().catch(() => null);
-    if (!reponse.ok || !contexte?.ok) {
-      throw new Error(contexte?.message || "Droits d'invitation indisponibles.");
-    }
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js");
+    // Afficher le formulaire DUO/FAMILLE indépendamment du déploiement Worker.
+    // Une route absente ne doit plus ramener à l'ancien formulaire.
     await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css");
-    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?formulaire=duo-famille");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=duo-famille");
     if (!window.LCDP_InvitationsAbonnement?.monter) {
-      throw new Error("Contrôleur du formulaire DUO/FAMILLE indisponible.");
+      throw new Error("Formulaire DUO/FAMILLE indisponible.");
     }
+
+    let contexte = {
+      contacts: { duo: [], famille: [] },
+      selection: { duo: [], famille: [] }
+    };
+    let enregistrementDisponible = false;
+    if (ENDPOINT_INVITER_MEMBRE) {
+      try {
+        const reponse = await fetch(
+          ENDPOINT_INVITER_MEMBRE + "/invites-abonnement/contexte?idflux=" +
+            encodeURIComponent(idReservation),
+          {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+            headers: { Accept: "application/json" }
+          }
+        );
+        const resultat = await reponse.json().catch(() => null);
+        if (reponse.ok && resultat?.ok === true) {
+          contexte = resultat;
+          enregistrementDisponible = true;
+        } else if (reponse.status !== 404) {
+          console.warn("Lecture du carnet DUO/FAMILLE indisponible :", reponse.status);
+        }
+      } catch (erreur) {
+        console.warn("Service DUO/FAMILLE non joignable :", erreur);
+      }
+    }
+
     const surface = ouvrirSurfaceInvitationPleinePage();
     if (!surface) return null;
     let terminer;
@@ -3024,6 +3041,9 @@
         fragment,
         chargerContexte: async () => contexte,
         enregistrer: async (idflux, selection) => {
+          if (!enregistrementDisponible) {
+            throw new Error("Le formulaire est prêt, mais l'enregistrement des invités DUO/FAMILLE n'est pas encore disponible.");
+          }
           const resultatHttp = await fetch(ENDPOINT_INVITER_MEMBRE + "/invites-abonnement", {
             method: "POST",
             credentials: "include",
@@ -3039,7 +3059,7 @@
             await chargerStatutsInvitationsPlanning();
             actualiserBoutonsInvitationPlanning(idReservation, declencheur);
           } catch (erreur) {
-            console.warn("Actualisation de l'affichage des invitations indisponible :", erreur);
+            console.warn("Actualisation des invitations indisponible :", erreur);
           }
           return resultat;
         },
