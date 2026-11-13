@@ -225,14 +225,23 @@
     window.LCDP_echecAccueilMembre = function () {
       const attente = document.getElementById("lcdp-accueil-attente");
       if (attente) attente.style.display = "none";
+      const attenteNavigation = document.getElementById("lcdp-navigation-attente");
+      if (attenteNavigation) attenteNavigation.hidden = true;
       document.body.classList.remove("public-home--loading");
       document.getElementById("lcdp-accueil-contenu").hidden = true;
       document.getElementById("lcdp-accueil-erreur").hidden = false;
     };
   </script>
-  <script>document.write('<script src="' + window.LCDP_urlPublic("/ESPACE-PUBLIC/controle-acces-accueil.js") + '"><\/script>');</script>
+  <script>document.write('<script src="' + window.LCDP_urlPublic("/ESPACE-PUBLIC/controle-acces-accueil.js") + '?v=20261113-recuperation"><\/script>');</script>
   <script src="./alerte-planifier-navigation.js"></script>
   <script src="./alerte-planifier-formulaire.js"></script>
-  <script src="./accueil-membre.js" onerror="window.LCDP_echecAccueilMembre()"></script>
+  <script>
+    // Le chargement du compte ne doit jamais laisser le mobile sur un spinner infini.
+    window.LCDP_delaiAccueilMembre = window.setTimeout(() => {
+      const contenu = document.getElementById("lcdp-accueil-contenu");
+      if (contenu?.hidden) window.LCDP_echecAccueilMembre?.();
+    }, 18000);
+  </script>
+  <script src="./accueil-membre.js?v=20261113-recuperation" onerror="window.LCDP_echecAccueilMembre()"></script>
 </body>
 </html>
