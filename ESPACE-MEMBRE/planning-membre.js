@@ -1409,6 +1409,45 @@
     ouvrir.setAttribute("aria-label",
       "Voir les détails de la visite au " + nomAvecDepartement + " le " + date +
       (heure ? ", de " + heure : ""));
+    // Présentation du verso MES ACCÈS : parc, date/horaires, puis actions.
+    const zoneDetails = cardReservation.querySelector(".lcdp-box-card-reservation-membre__content");
+    const ligneParc = cardReservation.querySelector(".lcdp-box-card-reservation-membre__place");
+    const ligneDate = cardReservation.querySelector(".lcdp-box-card-reservation-membre__date");
+    const actionsVerso = cardReservation.querySelector(".lcdp-box-card-reservation-membre__actions");
+    const annulerVerso = cardReservation.querySelector("[data-action='annuler']");
+    const inviterVerso = cardReservation.querySelector("[data-action='invitation']");
+    const accesVerso = cardReservation.querySelector("[data-action='adresse']");
+    if (zoneDetails && ligneParc && ligneDate) {
+      zoneDetails.insertBefore(ligneParc, ligneDate);
+      zoneDetails.style.gap = "4px";
+      ligneParc.style.marginBottom = "0";
+      ligneDate.style.marginTop = "0";
+      if (reservationHorsAbonnementMembre(reservation)) {
+        const rond = document.createElement("span");
+        rond.title = "Invitation reçue";
+        rond.setAttribute("aria-label", "Invitation reçue");
+        rond.style.cssText = "display:inline-block;flex:0 0 12px;width:12px;height:12px;border-radius:50%;background:#e78db3;margin-right:3px;";
+        ligneDate.insertBefore(rond, ligneDate.firstChild);
+      }
+    }
+    if (actionsVerso) {
+      if (annulerVerso && !annulerVerso.hidden) {
+        annulerVerso.textContent = "Annuler";
+        actionsVerso.insertBefore(annulerVerso, actionsVerso.firstChild);
+      }
+      if (inviterVerso && !inviterVerso.hidden && !reservationHorsAbonnementMembre(reservation)) {
+        const nombre = nombreInvitesEnvoyesPlanning(reservation);
+        const picto = document.createElement("span");
+        picto.setAttribute("aria-hidden", "true");
+        picto.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>';
+        picto.style.cssText = "display:inline-flex;vertical-align:middle;margin-right:6px;";
+        const compteur = document.createElement("span");
+        compteur.textContent = nombre > 0 ? String(nombre) : "-";
+        compteur.style.cssText = "border-radius:999px;background:rgba(75,99,51,.1);padding:1px 6px;margin-left:6px;font-size:.85em;";
+        inviterVerso.replaceChildren(picto, document.createTextNode("Invités"), compteur);
+        actionsVerso.insertBefore(inviterVerso, accesVerso || null);
+      }
+    }
     contenu.appendChild(cardReservation);
     const basculer = ouvert => {
       // Éviter de conserver un décalage vertical du recto dans le verso.
