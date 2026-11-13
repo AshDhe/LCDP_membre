@@ -1028,8 +1028,8 @@
         document.head.appendChild(link);
       });
     }
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js");
-    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?formulaire=inviter-invites");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites");
     const dialogue = document.createElement("div");
     dialogue.className = "lcdp-box-dialogue-champ-inviter";
     dialogue.setAttribute("role", "dialog");
