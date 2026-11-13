@@ -647,14 +647,32 @@
       try{
         const reponse=await apiPaiement('/etat?idpanier='+encodeURIComponent(id));
         if(reponse.commande?.statut==='paye'){
-          window.location.replace(urlMembre('/ESPACE-MEMBRE/accueil-membre.html'));return;
+          await afficherRetourEnAttente(
+            'Votre paiement est confirmé. Merci pour votre confiance et à très bientôt dans les parcs !',
+            null, true
+          );
+          return;
         }
       }catch(e){console.error('État Paiement',e);}
       await new Promise(resolve=>setTimeout(resolve,1500));
     }
-    afficherRetourEnAttente('Paiement en cours de vérification. Ne recommencez pas le règlement.');
+    const dialogue = await afficherRetourEnAttente(
+      'Merci pour votre règlement. Nous attendons sa confirmation définitive. Vous pouvez retrouver votre accueil pendant cette vérification.'
+    );
+    // Continuer la vérification sans bloquer le membre ni proposer un second paiement.
+    for (let tentative=0; tentative<30 && dialogue?.racine?.isConnected; tentative++) {
+      await new Promise(resolve=>setTimeout(resolve,3000));
+      try {
+        const reponse=await apiPaiement('/etat?idpanier='+encodeURIComponent(id));
+        if(reponse.commande?.statut==='paye') {
+          dialogue.titre.textContent='Paiement confirmé';
+          dialogue.texte.textContent='Votre paiement est confirmé. Merci pour votre confiance et à très bientôt dans les parcs !';
+          return;
+        }
+      } catch (e) { console.error('Confirmation Paiement',e); }
+    }
   }
-  async function afficherRetourEnAttente(message, panierAReprendre=null){
+  async function afficherRetourEnAttente(message, panierAReprendre=null, confirme=false){
     try {
       // Le retour de paiement conserve sa propre action, mais partage le profil visuel INFORMATION.
       const urlCss = cheminObjet('/CSSBASE/lcdp-lightbox-convergence.css');
@@ -672,7 +690,7 @@
       const texte = racine.querySelector('[data-lcdp-dialogue-message]');
       const bouton = racine.querySelector('[data-lcdp-dialogue-action="compris"]');
       if (!titre || !texte || !bouton) throw new Error('Structure INFORMATION paiement incomplète.');
-      titre.textContent = panierAReprendre ? 'Reprise du paiement' : 'Vérification du paiement';
+      titre.textContent = confirme ? 'Paiement confirmé' : (panierAReprendre ? 'Reprise du paiement' : 'Merci pour votre commande');
       texte.textContent = message;
       const fermer = () => {
         racine.remove();
@@ -710,6 +728,7 @@
       if (!hote) throw new Error('Conteneur du retour paiement absent.');
       hote.append(racine);
       bouton.focus();
+      return {racine,titre,texte,bouton};
     } catch (e) { console.error('Retour Paiement', e); }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',traiterRetourStripe);
