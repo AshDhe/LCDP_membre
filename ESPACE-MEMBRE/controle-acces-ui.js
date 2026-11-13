@@ -24,6 +24,11 @@
       const sortie=etat.action==="checkout";
       root.appendChild(element("p","lcdp-acces-message",sortie?"Contrôle de sortie validé.":"Contrôle d’accès validé."));
       if(!sortie && etat.screen!=="guest_list" && etat.presence?.image)ajouterImagePresence(root,etat.presence);
+      // Le nouveau tunnel conserve le résultat du check-in à l’étape 3
+      // jusqu’à l’action explicite Entrer dans le parc.
+      if(!sortie && etat.screen==="access_confirmed" && actions.onEnter && etat.parcoursEntre!==true){
+        root.appendChild(bouton("Entrer dans le parc",()=>actions.onEnter?.()));return;
+      }
       if(etat.screen==="guest_list"){
         const form=element("form","lcdp-acces-invites-form");
         const liste=element("ul","lcdp-acces-instructions");
@@ -40,7 +45,7 @@
       if(etat.guests?.length){root.appendChild(element("p","lcdp-acces-message",sortie?"Cochez les invités qui sortent avec vous.":"Confirmez des invités."));const ouvrirInvites=element("button","lcdp-acces-camera");ouvrirInvites.type="button";ouvrirInvites.setAttribute("aria-label","Valider mes invités");ouvrirInvites.addEventListener("click",()=>actions.onGuests?.());
       const imageInvites=element("img","lcdp-acces-camera-image");imageInvites.alt="";imageInvites.setAttribute("aria-hidden","true");imageInvites.src=typeof global.LCDP_urlObjet==="function"?global.LCDP_urlObjet("/IMAG/BOUTON/controle-invites.webp"):String(global.SITE_CONFIG?.objetBaseUrl || "/OBJET").replace(/\/+$/,"")+"/IMAG/BOUTON/controle-invites.webp";ouvrirInvites.appendChild(imageInvites);root.appendChild(ouvrirInvites);}
       else root.appendChild(bouton("OK",()=>sortie?actions.onGuestConfirm?.([]):actions.onConfirmed?.()));
-      if(etat.checkoutEnabled)root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));
+      if(etat.checkoutEnabled && !(actions.onEnter && !sortie && etat.screen==="access_confirmed" && etat.guests?.length))root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));
       return;
     }
     if(etat.screen==="capture_error"){
