@@ -223,15 +223,12 @@
     checkout.createPaymentElement({layout:{type:'accordion'}}).mount('#stripe-payment-element');
     const email = el('email-paiement');
     const emailCompte = typeof d.emailMembre === 'string' ? d.emailMembre.trim() : '';
-    if (emailCompte) {
-      email.value = emailCompte;
-      if (email.validity.valid) {
-        // L'adresse validée du compte membre est déjà connue : ne pas la ressaisir.
-        email.hidden = true;
-        email.style.display = 'none';
-        const etiquette = document.querySelector('label[for="email-paiement"]');
-        if (etiquette) { etiquette.hidden = true; etiquette.style.display = 'none'; }
-      }
+    if (emailCompte) email.value = emailCompte;
+    if (!email.validity.valid) {
+      // L'email est absent ou invalide : afficher seulement alors la saisie de secours.
+      email.hidden = false;
+      const etiquette = document.querySelector('label[for="email-paiement"]');
+      if (etiquette) etiquette.hidden = false;
     }
     const synchroniser = () => {
       bouton.disabled = !email.validity.valid || !actions.getSession()?.canConfirm;
