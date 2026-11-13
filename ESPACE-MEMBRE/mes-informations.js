@@ -2520,7 +2520,7 @@ function afficherResumePointsPassion(compte) {
     if (!promesseChargementDiginumCompte) {
       promesseChargementDiginumCompte = new Promise((resolve, reject) => {
         const script = document.createElement("script");
-        script.src = construireUrlObjet("/JSBASE/07-diginum.js");
+        script.src = construireUrlObjet("/JSBASE/07-diginum.js?v=20261113-departement-transition-v2");
         script.onload = () => {
           if (typeof window.LCDP_diginum?.ouvrir === "function") resolve(window.LCDP_diginum);
           else reject(new Error("Le pavé Diginum n'est pas disponible."));
