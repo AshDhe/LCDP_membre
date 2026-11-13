@@ -167,8 +167,8 @@
 
   function preparerSlides(liste,rubriques,photosParFichier){
     return liste.map(g=>{
-      const item=rubriques[g.cle];
-      if(!item || typeof item!=="object")return null;
+      const valeur=rubriques[g.cle];
+      const item=valeur && typeof valeur==="object" && !Array.isArray(valeur) ? valeur : {};
       const texte=typeof item.texte==="string" ? item.texte.trim() : "";
       const imagesBrutes=[
         ...(Array.isArray(item.images)?item.images:[]),
