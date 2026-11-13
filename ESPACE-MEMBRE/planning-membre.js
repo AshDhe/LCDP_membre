@@ -1498,22 +1498,21 @@
   }
 
   function afficherAttenteOuvertureInvites() {
-    const calque = document.createElement("div");
-    calque.className = "lcdp-invitation-attente";
-    calque.setAttribute("role", "status");
-    calque.setAttribute("aria-label", "Chargement des invités");
-    calque.style.cssText = "position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(22,35,21,.22);";
-    const encart = document.createElement("div");
-    encart.style.cssText = "display:inline-flex;align-items:center;gap:12px;padding:17px 22px;border-radius:16px;background:#fff;box-shadow:0 8px 25px rgba(0,0,0,.14);font:600 15px/1.4 Arial,system-ui,sans-serif;color:#1f2a24;";
-    const spinner = document.createElement("span");
-    spinner.setAttribute("aria-hidden", "true");
-    spinner.style.cssText = "display:inline-block;width:24px;height:24px;flex:0 0 24px;border:3px solid #dae2d2;border-top-color:#4b6333;border-radius:50%;animation:lcdp-button-logo-loading .75s linear infinite;";
-    const texte = document.createElement("span");
-    texte.textContent = "Chargement des invités";
-    encart.append(spinner, texte);
-    calque.appendChild(encart);
-    document.body.appendChild(calque);
-    return () => calque.remove();
+    // Réutiliser LE spinner pleine page de MES ACCÈS, sans créer d'overlay.
+    const attente = document.getElementById("lcdp-planning-attente");
+    if (!attente) return () => {};
+    const affichageInitial = attente.style.display;
+    const libelleInitial = attente.getAttribute("aria-label");
+    attente.setAttribute("aria-label", "Chargement des invités");
+    attente.style.display = "flex";
+    let terminee = false;
+    return () => {
+      if (terminee) return;
+      terminee = true;
+      attente.style.display = affichageInitial;
+      if (libelleInitial === null) attente.removeAttribute("aria-label");
+      else attente.setAttribute("aria-label", libelleInitial);
+    };
   }
 
   function ajusterMoisCourantSelonPeriode() {
