@@ -450,7 +450,7 @@
         }
         boutonOk.addEventListener("click", fermer, { once: true });
         alerte.addEventListener("click", event => {
-          if (!redirectUrl && event.target === alerte) fermer();
+          if (event.target === alerte) fermer();
         });
         if (!redirectUrl) document.addEventListener("keydown", gererClavier);
         boutonOk.focus();
