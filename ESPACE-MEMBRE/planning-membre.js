@@ -901,7 +901,7 @@
     if (!chargementMoteurFicheMesAcces) {
       chargementMoteurFicheMesAcces = new Promise((resolve, reject) => {
         const script = document.createElement("script");
-        script.src = construireUrlPublic("/ESPACE-PUBLIC/fiche-parc.js?v=20261113-gabarit-commun-acces-v1");
+        script.src = construireUrlPublic("/ESPACE-PUBLIC/fiche-parc.js?v=20261113-acces-ma-cle-brief-v2");
         script.onload = () => {
           if (typeof window.LCDP_FicheParc?.monterDansConteneur === "function") {
             resolve(window.LCDP_FicheParc);
