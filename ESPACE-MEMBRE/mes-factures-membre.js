@@ -653,24 +653,41 @@
       return;
     }
 
+    const focusInitial = document.activeElement;
     try {
-      slot.innerHTML = "";
-      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-alerte.html"));
-      const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-      const texte = slot.querySelector("[data-lcdp-alerte-message]");
-      const fermer = slot.querySelector("[data-lcdp-alerte-close]");
-      const ok = slot.querySelector("[data-lcdp-alerte-ok]");
+      slot.replaceChildren(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-erreur.html"));
 
-      if (!alerte || !texte || !fermer || !ok) throw new Error("Structure alerte incomplète.");
+      const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="erreur"]');
+      const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+      const fermerBouton = slot.querySelector('[data-lcdp-dialogue-action="fermer"]');
+
+      if (!dialogue || !titre || !texte || !fermerBouton) {
+        throw new Error("Structure ERREUR incomplète.");
+      }
+
+      titre.textContent = "Erreur";
       texte.textContent = message || "";
-      const nettoyer = () => { slot.innerHTML = ""; };
-      fermer.addEventListener("click", nettoyer, { once: true });
-      ok.addEventListener("click", nettoyer, { once: true });
-      alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) nettoyer();
-      });
-    } catch {
-      slot.innerHTML = "";
+      fermerBouton.textContent = "Fermer";
+
+      let termine = false;
+      const clore = () => {
+        if (termine) return;
+        termine = true;
+        document.removeEventListener("keydown", clavier);
+        slot.replaceChildren();
+        if (focusInitial?.isConnected && typeof focusInitial.focus === "function") focusInitial.focus();
+      };
+      const clavier = event => {
+        if (event.key === "Escape") { event.preventDefault(); clore(); }
+      };
+      fermerBouton.addEventListener("click", clore, { once: true });
+      dialogue.addEventListener("click", event => { if (event.target === dialogue) clore(); });
+      document.addEventListener("keydown", clavier);
+      fermerBouton.focus();
+    } catch (erreur) {
+      slot.replaceChildren();
+      console.error("Affichage ERREUR indisponible :", erreur);
       window.alert(message || "");
     }
   }
