@@ -97,25 +97,54 @@
     .lcdp-dactif-nom {flex:1;min-width:0;font-weight:650;overflow-wrap:anywhere;}
     .lcdp-dactif-ligne input {width:21px;height:21px;accent-color:#4b6333;}
     .lcdp-dactif-valider {margin-top:15px;min-height:43px;}
-    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-dactif {border-color:#e5b843!important;background:#fff8e8!important;color:#5d4520!important;}
+    /* Verso des acces : Annuler / Acces, puis Invites / D-ACTIF. */
     #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-actions {
-      display:flex!important;flex-wrap:nowrap!important;align-items:center!important;
-      width:100%!important;min-width:0!important;gap:6px!important;
+      display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;
+      align-items:stretch!important;width:100%!important;min-width:0!important;
+      gap:7px!important;
+    }
+    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite :is(
+      .lcdp-planning-verso-ligne-acces,.lcdp-planning-verso-ligne-invites
+    ) {
+      display:flex!important;align-items:center!important;gap:7px!important;
+      width:100%!important;min-width:0!important;flex-wrap:nowrap!important;
     }
     #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action {
-      flex-shrink:0!important;font-weight:600!important;gap:5px!important;
-      padding:7px 10px!important;white-space:nowrap!important;
+      flex:0 1 auto!important;font-weight:600!important;gap:6px!important;
+      padding:7px 11px!important;min-height:34px!important;white-space:nowrap!important;
     }
-    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-dactif {
+    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-ligne-acces
+      :is(.lcdp-planning-verso-annuler,.lcdp-planning-verso-acces-bouton) {
+      display:inline-flex!important;align-items:center!important;justify-content:center!important;
+      flex:0 0 80px!important;width:80px!important;min-width:80px!important;
+      max-width:80px!important;height:34px!important;min-height:34px!important;
+      padding:6px 10px!important;margin:0!important;
+      border:1px solid rgba(75,99,51,.35)!important;border-radius:16px!important;
+      background:#fff!important;color:#4b6333!important;
+      font-size:12px!important;font-weight:600!important;line-height:1.2!important;
+    }
+    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite
+      .lcdp-planning-verso-ligne-acces :is(.lcdp-planning-verso-annuler,.lcdp-planning-verso-acces-bouton):hover {
+      border-color:#4b6333!important;background:#4b6333!important;color:#fff!important;
+    }
+    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite
+      .lcdp-planning-verso-dactif {
       border-color:#e5b843!important;background:#fff8e8!important;color:#5d4520!important;
     }
-    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-annuler {
-      flex:0 0 34px!important;min-width:34px!important;width:34px!important;
-      min-height:34px!important;padding:6px!important;margin-left:auto!important;
+    @media(max-width:600px) {
+      /* Libelles Fiche parc / Carte reduits de 12 % sans changer les pictos. */
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite
+        .lcdp-planning-verso-liens .lcdp-box-card-parc__action-libelle {
+        font-size:.88em!important;
+      }
     }
     @media(max-width:370px) {
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action {
         gap:4px!important;padding:6px 7px!important;font-size:11px!important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite
+        .lcdp-planning-verso-ligne-acces :is(.lcdp-planning-verso-annuler,.lcdp-planning-verso-acces-bouton) {
+        flex-basis:74px!important;width:74px!important;min-width:74px!important;max-width:74px!important;
       }
     }
   </style>
@@ -148,6 +177,6 @@
     <div id="lcdp-lightbox-slot"></div>
   </div>
 
-  <script src="./planning-membre.js?interface=spinner-officiel&amp;v=20261113-invites-ux-v5"></script>
+  <script src="./planning-membre.js?interface=spinner-officiel&amp;v=20261113-cartes-compteur-dactif-v6"></script>
 </body>
 </html>
