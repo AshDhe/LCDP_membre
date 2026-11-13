@@ -2840,6 +2840,7 @@
     }
 
     titre.textContent = "Invités de la réservation";
+    message.setAttribute("aria-live", "polite");
     if (boutonFermer) boutonFermer.hidden = true;
     const invitesListe = Array.isArray(invites) ? invites : [];
     const limiteTotale = limiteEmailsInvitation();
@@ -3080,7 +3081,9 @@
     bouton.className = "lcdp-button lcdp-button-secondary";
     bouton.style.cssText = "padding:7px 10px;min-height:36px";
     function afficherEtat() {
-      etatTexte.textContent = toggle.checked ? "Conservé" : "À retirer après enregistrement";
+      etatTexte.textContent = toggle.checked === (item.dataset.initialActive === "true")
+        ? (toggle.checked ? "Actif" : "Retiré")
+        : (toggle.checked ? "À rétablir après enregistrement" : "À retirer après enregistrement");
       bouton.textContent = toggle.checked ? "Retirer" : "Rétablir";
       bouton.setAttribute("aria-label", bouton.textContent + " : " + identite.textContent);
       item.classList.toggle("lcdp-box-card-listinvites-oui-non__item--cancd", !toggle.checked);
