@@ -2480,26 +2480,8 @@
       return;
     }
 
-    if (reservationAvecInvitesPlanning(reservation)) {
-      await ouvrirListeInvitesReservation(idReservation, declencheur);
-      return;
-    }
-
-    const blocageInvitation = determinerBlocageInvitationReservation(reservation);
-
-    if (blocageInvitation) {
-      await afficherAlerteInvitationReservation(blocageInvitation, declencheur, { profil: "information" });
-      return;
-    }
-
-    const blocageAcces = determinerBlocageReservationPlanning(etat.membre || creerEtatMembreFallback());
-
-    if (blocageAcces) {
-      await afficherAlerteInvitationReservation(blocageAcces, declencheur, { profil: "information" });
-      return;
-    }
-
-    // La liste des invités permet aussi l'ajout lorsque le compteur est à zéro.
+    // Inviter et Invité(s) ouvrent la même surface ; les droits restent
+    // contrôlés à l'enregistrement côté service.
     await ouvrirListeInvitesReservation(idReservation, declencheur);
   }
 
