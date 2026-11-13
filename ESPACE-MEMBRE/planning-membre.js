@@ -28,6 +28,13 @@
     "inviter-membre-api"
   );
 
+  // Même service public de lecture Entrée que la fiche parc.
+  const ENDPOINT_PARC_ADMIN_PUBLIC = construireEndpointApi(
+    "workerParcAdminUrl",
+    "WORKER_PARC_ADMIN_URL",
+    "parc-admin-api"
+  );
+
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   let pageInitialisee = false;
   let promesseActualisationEtatMembre = null;
@@ -2348,9 +2355,45 @@
   }
 
 
-  // MES ACCÈS : le picto « Accès » au verso affiche uniquement la première
-  // rubrique d'Accès détail (Parc Admin), dans le dialogue INFORMATION commun.
-  // Les autres vues de réservation continuent d'utiliser 04-card-acces-parc.
+  // MES ACCÈS : reprendre le bloc Accès Ma Clé de la fiche publique,
+  // avec l'image Entrée 1, sans répéter les intitulés dans le corps.
+  async function chargerTexteEntreeFicheParcMesAcces(idparc, parc, reservation) {
+    // Le service /mes-reservations ne transmet pas systématiquement
+    // accesdetail : utiliser le service déjà employé par la fiche parc.
+    const local = [
+      parc?.accesfiche?.entree,
+      reservation?.accesfiche?.entree,
+      parc?.accesdetail?.entree?.texte,
+      reservation?.accesdetail?.entree?.texte
+    ].find(value => typeof value === "string" && value.trim());
+
+    if (!idparc || !ENDPOINT_PARC_ADMIN_PUBLIC) {
+      if (local) return local.trim();
+      throw new Error("Service d'accès au parc indisponible.");
+    }
+
+    const reponse = await fetch(
+      ENDPOINT_PARC_ADMIN_PUBLIC + "/photoeditorial-public?idparc=" + encodeURIComponent(idparc),
+      {
+        method: "GET",
+        credentials: "omit",
+        cache: "no-store",
+        headers: { Accept: "application/json" }
+      }
+    );
+    if (!reponse.ok) {
+      if (local) return local.trim();
+      throw new Error("Lecture des informations d'entrée impossible.");
+    }
+    const donnees = await reponse.json().catch(() => null);
+    const entreePublique = donnees?.success === true ? donnees?.accesfiche?.entree : null;
+    if (typeof entreePublique === "string" && entreePublique.trim()) {
+      return entreePublique.trim();
+    }
+    if (local) return local.trim();
+    throw new Error("Texte d'entrée absent de la réponse du service public.");
+  }
+
   async function ouvrirInformationEntreeParcMesAcces(idflux) {
     const reservation = trouverReservationPlanningParId(idflux);
     if (!reservation) {
@@ -2369,33 +2412,48 @@
     const departement = normaliserDepartementCheminImageParc(
       parc.dptmt || parc.departement || reservation.dptmt || ""
     );
-    // Le champ entreeparc correspond à une autre information : ne pas le
-    // substituer au texte de la rubrique accesdetail.entree de Parc Admin.
-    const detail = parc.accesdetail || reservation.accesdetail || {};
-    const texteEntree = String(detail?.entree?.texte || "").trim();
 
-    // Convention exacte de Parc Admin : les espaces du nom deviennent "_".
-    // Ne pas appliquer le slug IMAG/PARC : il supprimerait les tirets.
+    let texteEntree;
+    try {
+      texteEntree = await chargerTexteEntreeFicheParcMesAcces(
+        idReservationParc || idParcJoint, parc, reservation
+      );
+    } catch (error) {
+      console.error("[LCDP MES ACCÈS] lecture Entrée du parc :", error);
+      await afficherAlerte("Impossible de charger les informations d'accès de ce parc. Veuillez réessayer.");
+      return;
+    }
+
+    // Pour le dossier image, respecter exactement le nom de Parc Admin.
     const nomDossier = nom.replace(/\s+/g, "_");
     const urlImage = departement && nomDossier
       ? construireUrlObjet("/IMAG/ACCESPARC/" + encodeURIComponent(departement) +
         "/" + encodeURIComponent(nomDossier) + "/entree1.webp")
       : "";
+    const nomTitre = nom
+      ? nom + (departement && !nom.endsWith("(" + departement + ")")
+        ? " (" + departement + ")" : "")
+      : "";
 
     await afficherInformationPlanning("", {
-      titre: nom ? "Accès au parc de " + nom : "Accès au parc",
+      titre: nomTitre ? "Accès au parc de " + nomTitre : "Accès au parc",
       remplirContenu(zone) {
         zone.classList.add("lcdp-mes-acces-entree");
-        const titreEntree = document.createElement("h4");
-        titreEntree.className = "lcdp-mes-acces-entree__titre";
-        titreEntree.textContent = "Entrée";
 
+        // Même bloc que la fiche parc : trois lignes, sans ligne blanche.
+        const lignes = [
+          texteEntree,
+          "L’accès détaillé au parc est communiqué avec votre CLÉ.",
+          "Votre contact La Clé du Parc dans l'application : @camille."
+        ];
         const description = document.createElement("p");
         description.className = "lcdp-mes-acces-entree__texte";
-        description.textContent = texteEntree ||
-          "Les indications d'entrée de ce parc ne sont pas disponibles.";
+        lignes.forEach((ligne, index) => {
+          if (index) description.appendChild(document.createElement("br"));
+          description.appendChild(document.createTextNode(ligne));
+        });
+        zone.appendChild(description);
 
-        zone.append(titreEntree, description);
         if (!urlImage) return;
         const figure = document.createElement("figure");
         figure.className = "lcdp-mes-acces-entree__photo-bloc";
