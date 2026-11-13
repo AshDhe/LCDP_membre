@@ -758,13 +758,6 @@
       parcVerso.appendChild(fermer);
       parcVerso.style.marginBottom = "0";
       dateVerso.style.marginTop = "0";
-      if (reservationHorsAbonnementMembre(reservation)) {
-        const rond = document.createElement("span");
-        rond.title = "Invitation reçue";
-        rond.setAttribute("aria-label", "Invitation reçue");
-        rond.style.cssText = "display:inline-block;width:1em;height:1em;flex:0 0 1em;border-radius:50%;background:#e78db3;";
-        dateVerso.prepend(rond);
-      }
     }
     if (actionsVerso) {
       actionsVerso.classList.add("lcdp-planning-verso-actions");
@@ -775,6 +768,14 @@
       const ligneInvites = document.createElement("div");
       ligneInvites.className = "lcdp-planning-verso-ligne-invites";
       actionsVerso.prepend(ligneAcces, ligneInvites);
+      if (reservationHorsAbonnementMembre(reservation)) {
+        const rond = document.createElement("span");
+        rond.className = "lcdp-planning-verso-pastille lcdp-planning-verso-pastille--invitation";
+        rond.title = "Invitation reçue";
+        rond.setAttribute("role", "img");
+        rond.setAttribute("aria-label", "Invitation reçue");
+        ligneAcces.appendChild(rond);
+      }
       if (annulerVerso) {
         ligneAcces.appendChild(annulerVerso);
         annulerVerso.classList.add("lcdp-planning-verso-action", "lcdp-planning-verso-annuler");
@@ -1230,14 +1231,15 @@
     // Même référence visuelle que la vue COACH de PLANIFIER.
     // Le service Mes accès ne fournit pas de catégories de présence Coach :
     // laisser les quatre filtres visibles mais inactifs, sans filtrage fictif.
-    const coach = document.createElement("fieldset");
-    coach.className = "lcdp-box-legende lcdp-planifier-legende-autorisations lcdp-mes-acces-filtres-coach";
+    const coach = document.createElement("div");
+    coach.className = "lcdp-planning-filtres__champ lcdp-mes-acces-filtres-coach";
     coach.dataset.lcdpMesAccesFiltresCoach = "true";
-    coach.disabled = true;
-    coach.setAttribute("aria-describedby","lcdp-mes-acces-filtres-coach-info");
-    const titreCoach = document.createElement("legend");
-    titreCoach.className = "lcdp-box-legende__titre";
-    titreCoach.textContent = "FILTRE COACH (PRÉSENCE PARC)";
+    coach.setAttribute("role","group");
+    coach.setAttribute("aria-labelledby","lcdp-mes-acces-filtres-coach-titre");
+    const titreCoach = document.createElement("div");
+    titreCoach.id = "lcdp-mes-acces-filtres-coach-titre";
+    titreCoach.className = "lcdp-planning-filtres__label lcdp-mes-acces-filtres-coach__titre";
+    titreCoach.textContent = "Coach";
     const ligneCoach = document.createElement("div");
     ligneCoach.className = "lcdp-box-legende__ligne";
     for (const [categorie, picto, libelle] of [
@@ -1272,11 +1274,7 @@
       etiquette.append(icone, texte, controle, pastille);
       ligneCoach.appendChild(etiquette);
     }
-    const noteCoach = document.createElement("p");
-    noteCoach.id = "lcdp-mes-acces-filtres-coach-info";
-    noteCoach.className = "lcdp-mes-acces-filtres-coach__note";
-    noteCoach.textContent = "Filtres indisponibles tant que les présences Coach ne sont pas renseignées dans vos accès.";
-    coach.append(titreCoach, ligneCoach, noteCoach);
+    coach.append(titreCoach, ligneCoach);
     formulaire.appendChild(coach);
 
     const pied = document.createElement("div");
@@ -1309,7 +1307,7 @@
     commandeFiltres.setAttribute("aria-controls", "lcdp-planning-filtres-contenu");
     commandeFiltres.setAttribute("aria-expanded", "false");
     commandeFiltres.setAttribute("aria-label", "Afficher les filtres");
-    commandeFiltres.style.cssText = "display:flex;align-items:center;justify-content:space-between;width:100%;padding:8px 12px;border:1px solid #d7ddd5;border-radius:10px;background:transparent;color:inherit;font:inherit;cursor:pointer;";
+    commandeFiltres.style.cssText = "display:flex;align-items:center;justify-content:space-between;width:100%;padding:8px 12px;border:1px solid rgba(75,99,51,.25);border-radius:10px;background:rgba(75,99,51,.10);color:#3e562e;font:inherit;font-weight:650;cursor:pointer;";
     const libelleFiltres = document.createElement("span");
     libelleFiltres.textContent = "Filtres";
     const signeFiltres = document.createElement("span");
