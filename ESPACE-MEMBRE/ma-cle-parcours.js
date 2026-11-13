@@ -185,7 +185,7 @@
     afficherRubriques(numero===2?donnees.etape2:donnees.etape4);
     afficherEtape(etape);
     fermer.focus();
-    consultation.scrollIntoView({block:"start",behavior:"instant"});
+    consultation.scrollIntoView({block:"start",behavior:"auto"});
   }
 
   function fermerDetails(){
