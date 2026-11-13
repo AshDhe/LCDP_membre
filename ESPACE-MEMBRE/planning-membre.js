@@ -575,20 +575,14 @@
         border-radius:12px !important;font-size:10px !important;font-weight:400 !important;
         line-height:1.1 !important;white-space:nowrap !important;
       }
-      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-liens {
-        display:flex;align-items:center;flex-wrap:wrap;gap:8px;
-        margin-top:4px;padding-top:2px;
+      /* Raccourcis du parc : réutiliser les classes CSS de la carte Parc,
+         sans recréer la taille, les couleurs, les bordures ou les pictogrammes. */
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-parc__actions--reserver.lcdp-planning-verso-liens {
+        margin:0;
       }
-      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-lien {
-        display:inline-flex;justify-content:center;align-items:center;gap:6px;
-        border-radius:14px;padding:6px 10px;min-height:32px;
-        font-size:12px;font-weight:400 !important;text-decoration:none;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-lien .lcdp-box-card-parc__action-libelle {
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-parc__actions--reserver.lcdp-planning-verso-liens .lcdp-box-card-parc__action,
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-parc__actions--reserver.lcdp-planning-verso-liens .lcdp-box-card-parc__action-libelle {
         font-weight:400 !important;
-      }
-      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-lien img {
-        width:18px;height:18px;object-fit:contain;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action--consulter {
         border-color:rgba(123,74,184,.4) !important;color:#7b4ab8 !important;
@@ -1565,7 +1559,7 @@
     const idParc = String(parc.idparc || reservation.idparc || "").trim();
     if (idParc) {
       const liensParc = document.createElement("div");
-      liensParc.className = "lcdp-planning-verso-liens";
+      liensParc.className = "lcdp-box-card-parc__actions lcdp-box-card-parc__actions--reserver lcdp-planning-verso-liens";
       liensParc.setAttribute("aria-label", "Consulter le parc");
       const baseFiche = "https://lacleduparc.fr/ESPACE-PUBLIC/fiche-parc.html?idparc=" + encodeURIComponent(idParc);
       for (const [libelle, url, icone, variante] of [
@@ -1576,13 +1570,15 @@
         lien.href = url;
         lien.target = "_blank";
         lien.rel = "noopener noreferrer";
-        lien.className = "lcdp-button lcdp-box-card-parc__action lcdp-box-card-parc__action--" + variante + " lcdp-planning-verso-lien";
+        lien.className = "lcdp-button lcdp-box-card-parc__action lcdp-box-card-parc__action--" + variante;
         lien.setAttribute("aria-label", libelle + " : " + nomAvecDepartement);
         const img = document.createElement("img");
+        img.className = "lcdp-box-card-parc__action-icone lcdp-box-card-parc__action-icone--" + icone;
         img.src = construireUrlObjet("/IMAG/PICTO/picto-" + icone + ".svg");
         img.alt = "";
         img.setAttribute("aria-hidden", "true");
         const texte = document.createElement("span");
+        texte.className = "lcdp-box-card-parc__action-libelle";
         texte.textContent = libelle;
         lien.append(img, texte);
         liensParc.appendChild(lien);
