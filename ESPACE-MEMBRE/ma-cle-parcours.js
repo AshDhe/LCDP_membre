@@ -238,6 +238,10 @@
     try {
       return await promesseGuideAcces;
     } catch(error) {
+      if (!guideAcces && actif && etape === 2) {
+        nomParc.textContent = String(dernierEtat?.reservation?.parkName ||
+          "Informations du parc indisponibles");
+      }
       afficherEtatGuide(String(error?.message || "Informations d’accès indisponibles."),true);
       throw error;
     } finally {
