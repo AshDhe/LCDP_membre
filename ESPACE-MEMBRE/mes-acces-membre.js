@@ -594,7 +594,7 @@
       const max = Math.max(0, Number(droits.maxInvit) || 0);
       const base = typeof window.LCDP_urlObjet === 'function'
         ? window.LCDP_urlObjet('/HTMLBASE/04-card-listinvites-oui-non.html')
-        : String(config.objetBaseUrl || 'https://lacleduparc.fr/OBJET').replace(/\\/+$/, '') + '/HTMLBASE/04-card-listinvites-oui-non.html';
+        : String(config.objetBaseUrl || 'https://lacleduparc.fr/OBJET').replace(/\/+$/, '') + '/HTMLBASE/04-card-listinvites-oui-non.html';
       const reponse = await fetch(base,{cache:'no-store'});
       if (!reponse.ok) throw new Error('Formulaire des invités indisponible.');
       const template = document.createElement('template');
