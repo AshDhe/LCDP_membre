@@ -928,7 +928,7 @@
     chargerRelationsInvitationsCompte(bloc);
   }
 
-  function afficherListeRelationsCompte(conteneur, personnes, messageVide) {
+  function afficherListeRelationsCompte(conteneur, personnes, messageVide, avecSources = false) {
     if (!conteneur) return;
     conteneur.replaceChildren();
     if (!personnes.length) {
@@ -940,7 +940,7 @@
     }
     const liste = document.createElement("ul");
     liste.className = "lcdp-compte-relations__personnes";
-    personnes.forEach(personne => {
+    personnes.forEach((personne, index) => {
       const ligne = document.createElement("li");
       const identite = document.createElement("span");
       identite.className = "lcdp-compte-relations__nom";
@@ -967,9 +967,104 @@
         mention.textContent = "Invitation du " + date.toLocaleDateString("fr-FR");
         ligne.appendChild(mention);
       }
+      if (avecSources) {
+        const source = document.createElement("span");
+        source.className = "lcdp-compte-relations__detail";
+        source.dataset.lcdpRelationsSource = String(index);
+        source.textContent = "Recherche de l'accès source…";
+        ligne.appendChild(source);
+      }
       liste.appendChild(ligne);
     });
     conteneur.appendChild(liste);
+  }
+
+  // Les sources sont recoupées avec les accès et invités du membre, via les
+  // routes authentifiées existantes. Aucun rapprochement par nom seul.
+  async function completerSourcesInvitationsCompte(conteneur, personnes) {
+    if (!conteneur || !personnes.length || !ENDPOINT_INVITER_MEMBRE) return;
+    const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/reservations-invitables", {
+      credentials: "include", cache: "no-store",
+      headers: { "Accept": "application/json" }
+    });
+    const donnees = await reponse.json().catch(() => null);
+    if (!reponse.ok || !Array.isArray(donnees?.reservations)) {
+      throw new Error("Réservations sources indisponibles.");
+    }
+
+    const sources = new Map();
+    const ajouterSource = (cle, idflux, libelle) => {
+      if (!cle) return;
+      if (!sources.has(cle)) sources.set(cle, new Map());
+      sources.get(cle).set(idflux, libelle);
+    };
+    const reservations = donnees.reservations.filter(reservation => {
+      if (!reservation?.idflux) return false;
+      const stats = reservation.invitationStats || reservation.invitationsStats;
+      const nombre = stats ? Number(stats.in ?? stats.actifs ?? stats.invites) : NaN;
+      return !Number.isFinite(nombre) || nombre > 0;
+    });
+    let erreurs = 0;
+    for (let debut = 0; debut < reservations.length; debut += 4) {
+      await Promise.all(reservations.slice(debut, debut + 4).map(async reservation => {
+        try {
+          const url = ENDPOINT_INVITER_MEMBRE + "/invites?idflux=" +
+            encodeURIComponent(String(reservation.idflux));
+          const resultat = await fetch(url, {
+            credentials: "include", cache: "no-store",
+            headers: { "Accept": "application/json" }
+          });
+          const donneesInvites = await resultat.json().catch(() => null);
+          if (!resultat.ok || !Array.isArray(donneesInvites?.invites)) {
+            throw new Error("Invités de l'accès indisponibles.");
+          }
+          const parc = reservation.parc || {};
+          const nomParc = String(parc.nom || parc.nomparc || reservation.nomparc || "").trim();
+          const date = new Date(reservation.datebookd || "");
+          const dateAcces = Number.isNaN(date.getTime()) ? "" :
+            new Intl.DateTimeFormat("fr-FR", {
+              timeZone: "Europe/Paris", day: "2-digit", month: "2-digit",
+              year: "numeric", hour: "2-digit", minute: "2-digit"
+            }).format(date);
+          const libelle = [
+            nomParc ? "Parc de " + nomParc : "",
+            dateAcces
+          ].filter(Boolean).join(" · ");
+          if (!libelle) return;
+          for (const personne of donneesInvites.invites) {
+            if (String(personne.invit ?? "true").toLowerCase() === "cancd") continue;
+            const id = String(personne.idmembre || "").trim();
+            const email = String(personne.emailmembre || personne.email || "").trim().toLowerCase();
+            ajouterSource(id && "id:" + id, String(reservation.idflux), libelle);
+            ajouterSource(email && "email:" + email, String(reservation.idflux), libelle);
+          }
+        } catch (erreur) {
+          erreurs += 1;
+          console.warn("Source d'invitation non vérifiable :", erreur);
+        }
+      }));
+    }
+
+    personnes.forEach((personne, index) => {
+      const emplacement = conteneur.querySelector(
+        '[data-lcdp-relations-source="' + index + '"]'
+      );
+      if (!emplacement) return;
+      const id = String(personne.idmembre || "").trim();
+      const email = String(personne.email || "").trim().toLowerCase();
+      const identifiants = [id && "id:" + id, email && "email:" + email].filter(Boolean);
+      const origines = new Set();
+      identifiants.forEach(cle => {
+        for (const libelle of (sources.get(cle)?.values() || [])) origines.add(libelle);
+      });
+      if (!origines.size) {
+        emplacement.textContent = erreurs
+          ? "Accès source : information indisponible"
+          : "Accès source : non identifié dans les réservations disponibles";
+        return;
+      }
+      emplacement.textContent = "Accès source : " + Array.from(origines).join(" ; ");
+    });
   }
 
   async function chargerRelationsInvitationsCompte(bloc) {
@@ -995,7 +1090,13 @@
       bloc.querySelector('[data-lcdp-relations-nombre="invitant"]').textContent =
         String(donnees.invitants.length);
       afficherListeRelationsCompte(invites, donnees.invites,
-        donnees.abonnementEnCours ? "Aucun invité pour cet abonnement." : "Aucun abonnement en cours.");
+        donnees.abonnementEnCours ? "Aucun invité pour cet abonnement." : "Aucun abonnement en cours.", true);
+      void completerSourcesInvitationsCompte(invites, donnees.invites).catch(erreur => {
+        console.warn("Sources des invitations indisponibles :", erreur);
+        invites.querySelectorAll("[data-lcdp-relations-source]").forEach(source => {
+          source.textContent = "Accès source : information indisponible";
+        });
+      });
       afficherListeRelationsCompte(invitants, donnees.invitants,
         "Aucun invitant dans votre historique.");
     } catch (erreur) {
