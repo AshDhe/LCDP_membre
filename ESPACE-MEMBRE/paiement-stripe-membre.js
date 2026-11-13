@@ -176,9 +176,17 @@
       if (reprisePossible) return;
       throw new Error(d?.message || 'Impossible de charger la commande.');
     }
-    if (!/^pk_(test|live)_[A-Za-z0-9]+$/.test(d.publishableKey || '') ||
-        !/^cs_(test|live)_[A-Za-z0-9_]+_secret_[A-Za-z0-9]+$/.test(d.clientSecret || ''))
-      throw new Error('Session bancaire sécurisée indisponible.');
+    // Ne pas rejeter les identifiants Stripe sur un alphabet supposé.
+    // Le Worker a déjà contrôlé le statut, le montant, la devise et les références.
+    const clePublique = typeof d.publishableKey === 'string' ? d.publishableKey.trim() : '';
+    const secretSession = typeof d.clientSecret === 'string' ? d.clientSecret : '';
+    const modeCle = clePublique.startsWith('pk_test_') ? 'test' :
+      clePublique.startsWith('pk_live_') ? 'live' : '';
+    const modeSession = secretSession.startsWith('cs_test_') ? 'test' :
+      secretSession.startsWith('cs_live_') ? 'live' : '';
+    if (!modeCle || !modeSession || modeCle !== modeSession ||
+        !secretSession.includes('_secret_'))
+      throw new Error('Les paramètres Stripe de la session ne correspondent pas au même environnement.');
     if (typeof window.Stripe !== 'function') throw new Error('Le service sécurisé Stripe ne s’est pas chargé.');
     el('environnement-test').hidden = !d.publishableKey.startsWith('pk_test_');
     el('reference-commande').textContent = d.orderid || '—';
