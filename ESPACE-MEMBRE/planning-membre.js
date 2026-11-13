@@ -3183,6 +3183,8 @@
   }
 
   async function essayerOuvrirInvitesAbonnement(idReservation, declencheur) {
+    const arreterAttente = afficherAttenteOuvertureInvites();
+    try {
     // Afficher le formulaire DUO/FAMILLE indépendamment du déploiement Worker.
     // Une route absente ne doit plus ramener à l'ancien formulaire.
     await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css");
@@ -3222,7 +3224,10 @@
     }
 
     const surface = ouvrirSurfaceInvitationPleinePage();
-    if (!surface) return null;
+    if (!surface) {
+      arreterAttente();
+      return null;
+    }
     let terminer;
     let terminee = false;
     const fin = new Promise(resolve => { terminer = resolve; });
@@ -3230,6 +3235,9 @@
       if (terminee) return;
       terminee = true;
       surface.fermer();
+      // Le planning était temporairement détaché du DOM : ses boutons
+      // redeviennent accessibles seulement après la fermeture.
+      actualiserBoutonsInvitationPlanning(idReservation, declencheur);
       terminer(true);
     };
     try {
@@ -3253,12 +3261,17 @@
           if (!resultatHttp.ok || resultat?.ok !== true) {
             throw new Error(resultat?.message || "Enregistrement DUO/FAMILLE non confirmé.");
           }
-          try {
-            await chargerStatutsInvitationsPlanning();
-            actualiserBoutonsInvitationPlanning(idReservation, declencheur);
-          } catch (erreur) {
-            console.warn("Actualisation des invitations indisponible :", erreur);
+          // Sélection confirmée par le POST : compteur exact sans
+          // deuxième requête générale bloquante.
+          const nombre = selection.duo.existants.length + selection.duo.nouveaux.length +
+            selection.famille.existants.length + selection.famille.nouveaux.length;
+          const reservation = trouverReservationPlanningParId(idReservation);
+          if (reservation) {
+            reservation.invitationStats = { ...(reservation.invitationStats || {}), in: nombre };
           }
+          if (nombre > 0) etat.reservationsAvecInvites.add(idReservation);
+          else etat.reservationsAvecInvites.delete(idReservation);
+          actualiserBoutonsInvitationPlanning(idReservation, declencheur);
           return resultat;
         },
         informer: afficherInformationInvitation,
@@ -3270,13 +3283,22 @@
       fermer();
       throw erreur;
     }
+    arreterAttente();
     return fin;
+    } catch (erreur) {
+      arreterAttente();
+      throw erreur;
+    }
   }
 
   async function ouvrirBoxListeInvitesModifiable(idflux, invites, declencheur) {
     const idReservation = String(idflux || "").trim();
     const vueAbonnement = await essayerOuvrirInvitesAbonnement(idReservation, declencheur);
     if (vueAbonnement) return vueAbonnement;
+    const invitations = Array.isArray(invites)
+      ? invites
+      : await chargerInvitesReservation(idReservation, declencheur);
+    if (!invitations) return null;
     // Cette page utilise planning-membre.js, et non mes-acces-membre.js :
     // attendre le CSS du formulaire AVANT d'ouvrir la vue pleine page.
     await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-ajouter-retabli-v17");
@@ -3310,7 +3332,7 @@
       throw new Error("Structure du formulaire des invitations incomplète.");
     }
     titre.textContent = "Inviter";
-    const anciens = (Array.isArray(invites) ? invites : []).filter(x =>
+    const anciens = invitations.filter(x =>
       normaliserStatutInvitationInvite(x?.invit) !== "cancd"
     );
     const annulations = new Map();
