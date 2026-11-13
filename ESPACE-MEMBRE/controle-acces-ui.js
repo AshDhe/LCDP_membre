@@ -13,7 +13,7 @@
     if(etat.screen==="checkout_done" || etat.screen==="key_closed"){
       root.appendChild(element("p","lcdp-acces-message",etat.screen==="checkout_done"?"Check-out validé.":"Le processus Ma clé est terminé."));
       if(etat.simulation)root.appendChild(element("p","lcdp-acces-message","Sortie simulée : le verrou réel reste inchangé."));
-      if(etat.unlocked)root.appendChild(bouton("Retour à l’accueil",()=>actions.onClosed?.()));return;
+      if(etat.unlocked)root.appendChild(bouton(actions.onEnter?"Quitter ma clé":"Retour à l’accueil",()=>actions.onClosed?.()));return;
     }
     if(etat.simulation)root.appendChild(element("p","lcdp-acces-message","Mode test — validation simulée"));
     if(etat.screen==="processing" || etat.screen==="uploading"){
@@ -73,9 +73,11 @@
     }
     if(etat.screen==="camera_ready"){
       const ol=element("ol","lcdp-acces-instructions");
-      [...(etat.hasBracelet===false?[]:[etat.action==="checkout"?"Préparez votre bracelet.":"Allumez votre bracelet."]),"Allumez le contrôleur.","Préparez-vous à filmer.","Lancez la caméra et suivez les indications de l’application."].forEach(t=>ol.appendChild(element("li","",t)));
+      (actions.onEnter
+        ? [...(etat.hasBracelet===false?[]:[etat.action==="checkout"?"Préparez votre bracelet.":"Allumez votre bracelet."]),"Allumer le boîtier.","Filmer le boîtier avec la caméra.","Suivez les deux séquences affichées si votre configuration les demande."]
+        : [...(etat.hasBracelet===false?[]:[etat.action==="checkout"?"Préparez votre bracelet.":"Allumez votre bracelet."]),"Allumez le contrôleur.","Préparez-vous à filmer.","Lancez la caméra et suivez les indications de l’application."]).forEach(t=>ol.appendChild(element("li","",t)));
       root.appendChild(ol);
-      const camera=element("button","lcdp-acces-camera");camera.type="button";camera.disabled=etat.cameraEnabled!==true;camera.addEventListener("click",()=>actions.onCamera?.());camera.setAttribute("aria-label","Contrôle d’accès");
+      const camera=element("button","lcdp-acces-camera");camera.type="button";camera.disabled=etat.cameraEnabled!==true;camera.addEventListener("click",()=>actions.onCamera?.());camera.setAttribute("aria-label",actions.onEnter?"Filmer le boîtier":"Contrôle d’accès");
       const image=element("img","lcdp-acces-camera-image");
       image.src=typeof global.LCDP_urlObjet === "function"
         ? global.LCDP_urlObjet("/IMAG/BOUTON/controle-acces.webp")
