@@ -827,7 +827,7 @@
     if(!Array.isArray(data.demandes)||!data.demandes.length) {
       const vide=document.createElement("p");
       vide.className="lcdp-compte-alertes-vide";
-      vide.textContent="Aucune demande Duo Actif en cours.";
+      vide.textContent="Aucune demande Duo Actif enregistrée.";
       liste.append(vide);
       return;
     }
