@@ -782,15 +782,13 @@
     return 2;
   }
 
-  function trierAbonnementsCompte(abonnements, aujourdHui) {
+  function trierAbonnementsCompte(abonnements) {
+    // Un seul ordre pour l'historique : date de début la plus récente d'abord.
+    // Aucun regroupement par statut, les abonnements ne se chevauchent pas.
     return abonnements.slice().sort((a, b) => {
-      const rangA = rangAbonnementCompte(a, aujourdHui);
-      const rangB = rangAbonnementCompte(b, aujourdHui);
-      if (rangA !== rangB) return rangA - rangB;
       const dateA = lireDateAbonnementCompte(a?.debut)?.getTime() ?? -Infinity;
       const dateB = lireDateAbonnementCompte(b?.debut)?.getTime() ?? -Infinity;
-      // À venir : date de début croissante ; en cours et passé : décroissante.
-      return rangA === 1 ? dateA - dateB : dateB - dateA;
+      return dateB - dateA;
     });
   }
 
@@ -860,7 +858,7 @@
 
       const maintenant = new Date();
       const aujourdHui = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate());
-      const tries = trierAbonnementsCompte(abonnements, aujourdHui);
+      const tries = trierAbonnementsCompte(abonnements);
       const principal = tries.find(abo => rangAbonnementCompte(abo, aujourdHui) === 0) ||
         tries.find(abo => rangAbonnementCompte(abo, aujourdHui) === 1);
       if (principal) {
