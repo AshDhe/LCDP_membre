@@ -34,11 +34,12 @@
     .lcdp-stripe__detail-reference{display:flex;justify-content:space-between;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid #e7e5e4;font-size:12px}
     .lcdp-stripe__detail-reference span{color:#78716c}
     .lcdp-stripe__detail-reference strong{text-align:right;overflow-wrap:anywhere}
+    .lcdp-stripe__email[hidden], .lcdp-stripe__label[hidden]{display:none!important}
     .lcdp-stripe__reprendre{display:block;width:100%;margin:12px 0 0;padding:13px 15px;border:0;border-radius:12px;background:#4b6333;color:white;font:inherit;font-weight:750;cursor:pointer}
     .lcdp-stripe__reprendre:disabled{opacity:.55;cursor:wait}
     .lcdp-stripe__reprendre[hidden]{display:none!important}
   </style>
-  <script defer src="./paiement-stripe-membre.js?v=20261113-email-stripe-v6"></script>
+  <script defer src="./paiement-stripe-membre.js?v=20261113-email-sans-flash-v7"></script>
 </head>
 <body class="lcdp-page-reserver lcdp-stripe-page">
   <main class="lcdp-stripe" aria-labelledby="paiement-titre">
@@ -66,8 +67,8 @@
       </section>
       <form id="paiement-formulaire" novalidate>
         <h2>Payer par carte bancaire</h2>
-        <label class="lcdp-stripe__label" for="email-paiement">Adresse e-mail</label>
-        <input class="lcdp-stripe__email" id="email-paiement" name="email" type="email" autocomplete="email" inputmode="email" placeholder="email@exemple.com" required>
+        <label class="lcdp-stripe__label" for="email-paiement" hidden>Adresse e-mail</label>
+        <input class="lcdp-stripe__email" hidden id="email-paiement" name="email" type="email" autocomplete="email" inputmode="email" placeholder="email@exemple.com" required>
         <div id="stripe-payment-element" aria-label="Formulaire bancaire sécurisé Stripe"></div>
         <p class="lcdp-stripe__erreur" id="paiement-erreur" role="alert" hidden></p>
         <button type="button" class="lcdp-stripe__reprendre" id="reprendre-paiement" hidden>Reprendre le paiement</button>
