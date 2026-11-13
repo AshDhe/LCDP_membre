@@ -981,6 +981,7 @@
         const fermer = valeur => {
           if (resolu) return;
           resolu = true;
+          document.removeEventListener("keydown", gererEchap);
           slot.replaceChildren();
           resolve(valeur);
         };
@@ -990,10 +991,17 @@
           if (event.target === dialogue) fermer(false);
         });
         const gererEchap = event => {
-          if (event.key === "Escape") fermer(false);
+          if (event.key === "Escape") { event.preventDefault(); fermer(false); }
+          if (event.key === "Tab") {
+            if (event.shiftKey && document.activeElement === annuler) {
+              event.preventDefault(); confirmer.focus();
+            } else if (!event.shiftKey && document.activeElement === confirmer) {
+              event.preventDefault(); annuler.focus();
+            }
+          }
         };
-        document.addEventListener("keydown", gererEchap, { once: true });
-        confirmer.focus();
+        document.addEventListener("keydown", gererEchap);
+        annuler.focus();
       });
     } catch (erreur) {
       slot.replaceChildren();
