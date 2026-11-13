@@ -1170,6 +1170,9 @@
   async function chargerRelationsInvitationsCompte(bloc) {
     const invites = bloc.querySelector("#lcdp-compte-relations-invite");
     const invitants = bloc.querySelector("#lcdp-compte-relations-invitant");
+    const compteurInvites = bloc.querySelector('[data-lcdp-relations-nombre="invite"]');
+    compteurInvites.textContent = "–";
+    let donnees = null;
     try {
       if (!ENDPOINT_INVITER_MEMBRE) throw new Error("Service non configuré.");
       const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/relations-invitations", {
@@ -1180,30 +1183,31 @@
         redirigerConnexionMembre("inactive");
         return;
       }
-      const donnees = await reponse.json().catch(() => null);
+      donnees = await reponse.json().catch(() => null);
       if (!reponse.ok || donnees?.ok !== true ||
           !Array.isArray(donnees.invites) || !Array.isArray(donnees.invitants)) {
         throw new Error(donnees?.message || "Service indisponible.");
       }
-      const compteurInvites = bloc.querySelector('[data-lcdp-relations-nombre="invite"]');
-      compteurInvites.textContent = "–";
       bloc.querySelector('[data-lcdp-relations-nombre="invitant"]').textContent =
         String(donnees.invitants.length);
       afficherListeRelationsCompte(invitants, donnees.invitants,
         "Aucun invitant dans votre historique.");
-      void chargerInvitesParAbonnementCompte(invites, compteurInvites, donnees)
-        .catch(erreur => {
-          console.error("Invités par abonnement indisponibles :", erreur);
-          if (!redirectionCompteEnCours) {
-            invites.textContent = "Impossible de charger les invités par abonnement.";
-            compteurInvites.textContent = "–";
-          }
-        });
     } catch (erreur) {
-      console.error("Relations d'invitation indisponibles :", erreur);
-      if (invites) invites.textContent = "Impossible de charger les invités.";
+      // L'absence de relations historiques ne doit pas masquer les futurs
+      // abonnements ni empêcher leur comptage indépendant.
+      donnees = null;
+      console.error("Relations des invitants indisponibles :", erreur);
       if (invitants) invitants.textContent = "Impossible de charger les invitants.";
     }
+
+    void chargerInvitesParAbonnementCompte(invites, compteurInvites, donnees)
+      .catch(erreur => {
+        console.error("Invités par abonnement indisponibles :", erreur);
+        if (!redirectionCompteEnCours) {
+          invites.textContent = "Impossible de charger les invités par abonnement.";
+          compteurInvites.textContent = "–";
+        }
+      });
   }
 
   const ENDPOINT_ALERTES_COMPTE=String(CONFIG_PAGE.workerAlertePlanifierUrl||
