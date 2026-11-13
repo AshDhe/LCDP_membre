@@ -318,14 +318,15 @@
     nom.textContent = lieu + ' · ' + dat + (h ? ' à ' + h : '');
     titre.textContent = lieu;
     recto.setAttribute('aria-label', 'Détails de votre accès au ' + lieu + ', le ' + dat);
-    description.textContent = [dat + (h ? ' à ' + h : ''), dept ? 'Département ' + dept : '', labelType]
-      .filter(Boolean).join(' · ');
-
-    if (r.parc?.adresse1 || r.parc?.entreeparc) {
-      const infos = [r.parc?.adresse1, r.parc?.adresse2, r.parc?.adresse3, r.parc?.entreeparc]
-        .map(v => String(v || '').trim()).filter(Boolean).join(' — ');
-      if (infos) description.appendChild(textEl('span', '', ' · ' + infos));
+    description.textContent = dat + (h ? ' à ' + h : '');
+    if (estRecue(r)) {
+      const rond = document.createElement('span');
+      rond.title = 'Invitation reçue';
+      rond.setAttribute('aria-label', 'Invitation reçue');
+      rond.style.cssText = 'display:inline-block;width:1em;height:1em;border-radius:50%;background:#e78db3;vertical-align:middle;margin-right:6px';
+      description.prepend(rond);
     }
+
     const ajouterBouton = (libelle, action, style='lcdp-button-secondary') => {
       const b = textEl('button', 'lcdp-button lcdp-box-card-parc__action ' + style, libelle);
       b.type = 'button';
@@ -333,20 +334,26 @@
       actions.appendChild(b);
     };
 
-    // Invitations déjà enregistrées : consultation via le Worker existant.
-    if (estRecue(r)) {
-      ajouterBouton('Invitation reçue', () => montrerParrain(r));
-    } else if (estEnvoyee(r)) {
-      ajouterBouton('Voir les invités', () => montrerInvites(r));
-    }
     if (etat.periode === 'avenir' && !statutAnnule(r)) {
-      const delaiDepasse = dateValide(r) !== null && Date.now() >= dateValide(r) - 30 * 60 * 1000;
-      const annuler = textEl('button', 'lcdp-button lcdp-box-card-parc__action lcdp-button-orange', estRecue(r) ? 'Annuler mon invitation' : 'Annuler cet accès');
+      const annuler = textEl('button', 'lcdp-button lcdp-box-card-parc__action lcdp-button-secondary', 'Annuler');
       annuler.type = 'button';
-      annuler.disabled = delaiDepasse;
-      if (delaiDepasse) annuler.title = 'Délai d’annulation dépassé';
       annuler.addEventListener('click', () => void demanderAnnulation(r));
       actions.appendChild(annuler);
+      if (!estRecue(r)) {
+        const nombre = etat.disponibiliteStats ? statsActifs(r) : null;
+        const inviter = textEl('button', 'lcdp-button lcdp-box-card-parc__action lcdp-button-secondary', '');
+        inviter.type = 'button';
+        const icone = document.createElement('span');
+        icone.setAttribute('aria-hidden', 'true');
+        icone.style.cssText = 'display:inline-flex;vertical-align:middle;margin-right:6px';
+        icone.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>';
+        inviter.append(icone, document.createTextNode('Invités '));
+        const compteur = textEl('span', '', nombre === null ? '…' : nombre === 0 ? '-' : String(nombre));
+        compteur.style.cssText = 'border-radius:999px;background:rgba(75,99,51,.1);padding:1px 6px;font-size:.85em';
+        inviter.appendChild(compteur);
+        inviter.addEventListener('click', () => void montrerInvites(r));
+        actions.appendChild(inviter);
+      }
     }
     function retourner(ouvert) {
       article.classList.toggle('is-retourne', ouvert);
@@ -618,7 +625,7 @@
       const conserver = conteneur.querySelector('[data-lcdp-dialogue-action="conserver"]');
       const supprimer = conteneur.querySelector('[data-lcdp-dialogue-action="supprimer"]');
       if (!dialogue || !titre || !texte || !conserver || !supprimer) return false;
-      titre.textContent = invitationRecue ? "Annuler cette invitation reçue ?" : "Annuler cet accès ?";
+      titre.textContent = "Annuler cet accès ?";
       texte.textContent = question;
       conserver.textContent = "Conserver";
       supprimer.textContent = "Oui, annuler";
@@ -694,8 +701,7 @@
           <div class="lcdp-box-card-parc-diaporama__contenu">
             <div class="lcdp-box-card-parc__body">
               <div class="lcdp-box-card-parc__text"><h3 class="lcdp-box-card-parc__title" data-lcdp-diaporama-nom-dos></h3></div>
-              <div class="lcdp-box-card-parc__actions--reserver" data-lcdp-diaporama-actions></div>
-              <p class="lcdp-box-card-parc__description" data-lcdp-diaporama-description></p>
+              <p class="lcdp-box-card-parc__description" data-lcdp-diaporama-description style="margin:2px 0 8px"></p>\n               <div class="lcdp-box-card-parc__actions--reserver" data-lcdp-diaporama-actions></div>
             </div>
           </div>
         </div>
