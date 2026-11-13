@@ -3965,6 +3965,69 @@
     }
   }
 
+  async function confirmerSuppressionPlanning(message, superposition) {
+    const focusInitial = document.activeElement;
+    let conteneur = null;
+    try {
+      const css = construireUrlObjet("/CSSBASE/lcdp-lightbox-convergence.css");
+      if (!Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some(lien => lien.href === new URL(css, document.baseURI).href)) {
+        await new Promise((resolve, reject) => {
+          const lien = document.createElement("link");
+          lien.rel = "stylesheet";
+          lien.href = css;
+          lien.onload = resolve;
+          lien.onerror = () => { lien.remove(); reject(new Error("CSS SUPPRESSION indisponible.")); };
+          document.head.appendChild(lien);
+        });
+      }
+      conteneur = document.createElement("div");
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html"));
+      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="suppression"]');
+      const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
+      const conserver = conteneur.querySelector('[data-lcdp-dialogue-action="conserver"]');
+      const supprimer = conteneur.querySelector('[data-lcdp-dialogue-action="supprimer"]');
+      if (!dialogue || !titre || !texte || !conserver || !supprimer) throw new Error("Dialogue SUPPRESSION incomplet.");
+      titre.textContent = "Confirmer l’annulation";
+      texte.textContent = message;
+      conserver.textContent = "Non";
+      supprimer.textContent = "Oui";
+      if (superposition) dialogue.style.zIndex = "12000";
+      document.body.appendChild(conteneur);
+      conserver.focus();
+      return await new Promise(resolve => {
+        let termine = false;
+        const fermer = valeur => {
+          if (termine) return;
+          termine = true;
+          document.removeEventListener("keydown", gererClavier);
+          conteneur.remove();
+          if (focusInitial?.isConnected && typeof focusInitial.focus === "function") focusInitial.focus();
+          resolve(valeur);
+        };
+        const gererClavier = event => {
+          if (event.key === "Escape") { event.preventDefault(); fermer(false); }
+          if (event.key === "Tab") {
+            const cible = event.shiftKey ? conserver : supprimer;
+            if (document.activeElement === cible) {
+              event.preventDefault();
+              (event.shiftKey ? supprimer : conserver).focus();
+            }
+          }
+        };
+        document.addEventListener("keydown", gererClavier);
+        conserver.addEventListener("click", () => fermer(false), { once: true });
+        supprimer.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => { if (event.target === dialogue) fermer(false); });
+      });
+    } catch (error) {
+      console.error("Confirmation d’annulation indisponible :", error);
+      return false;
+    } finally {
+      conteneur?.remove();
+    }
+  }
+
   async function traiterAnnulationReservation(boutonAnnuler) {
     const idflux = boutonAnnuler ? String(boutonAnnuler.dataset.id || "").trim() : "";
 
@@ -4000,30 +4063,12 @@
       reservationHorsAbonnementMembre(
         reservation
       );
-    const optionsDialogue = {
-      titre: "Confirmer l’annulation",
-      texte: estInvite
-        ? "Voulez-vous vraiment annuler cette invite ?"
-        : "Voulez-vous vraiment annuler cette réservation ?",
-      boutons: [
-        {
-          label: "Non",
-          valeur: "non",
-          style: "lcdp-button-secondary"
-        },
-        {
-          label: "Oui",
-          valeur: "oui",
-          style: "lcdp-button-primary"
-        }
-      ]
-    };
+    const confirmation = await confirmerSuppressionPlanning(
+      estInvite ? "Voulez-vous vraiment annuler cette invite ?" : "Voulez-vous vraiment annuler cette réservation ?",
+      Boolean(workflowReservation)
+    );
 
-    const confirmation = workflowReservation
-      ? await ouvrirDialogueBoutonsParDessusLightbox(optionsDialogue)
-      : await ouvrirDialogueBoutons(optionsDialogue);
-
-    if (confirmation !== "oui") return;
+    if (!confirmation) return;
 
     const texteInitial = boutonAnnuler.textContent;
     boutonAnnuler.disabled = true;
@@ -4624,135 +4669,6 @@
       alerte.addEventListener("click", (event) => {
         if (event.target === alerte) fermer();
       });
-    });
-  }
-
-  async function ouvrirDialogueBoutonsParDessusLightbox(options) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return null;
-
-    const coucheExistante = slot.querySelector("[data-lcdp-dialogue-bouton-overlay]");
-    if (coucheExistante) coucheExistante.remove();
-
-    const couche = document.createElement("div");
-    couche.dataset.lcdpDialogueBoutonOverlay = "true";
-    slot.appendChild(couche);
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
-    couche.appendChild(fragment);
-
-    const dialogue = couche.querySelector("[data-lcdp-box-dialogue-bouton]");
-    const titre = couche.querySelector("[data-lcdp-dialogue-title]");
-    const texte = couche.querySelector("[data-lcdp-dialogue-text]");
-    const actions = couche.querySelector("[data-lcdp-dialogue-actions]");
-    const boutonFermer = couche.querySelector("[data-lcdp-dialogue-close]");
-
-    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
-      couche.remove();
-      throw new Error("Structure de dialogue bouton incomplète.");
-    }
-
-    titre.textContent = options.titre || "";
-    texte.textContent = options.texte || "";
-    actions.innerHTML = "";
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer(valeur) {
-        if (resolu) return;
-        resolu = true;
-        document.removeEventListener("keydown", gererEchap);
-        couche.remove();
-        resolve(valeur || null);
-      }
-
-      function gererEchap(event) {
-        if (event.key === "Escape") fermer(null);
-      }
-
-      (options.boutons || []).forEach((configuration) => {
-        const bouton = document.createElement("button");
-        bouton.type = "button";
-        bouton.className = "lcdp-button " + (configuration.style || "lcdp-button-primary");
-        bouton.textContent = configuration.label || "Valider";
-
-        bouton.addEventListener("click", () => {
-          fermer(configuration.valeur || configuration.label || true);
-        });
-
-        actions.appendChild(bouton);
-      });
-
-      boutonFermer.addEventListener("click", () => fermer(null));
-      dialogue.addEventListener("click", (event) => {
-        if (event.target === dialogue) fermer(null);
-      });
-
-      document.addEventListener("keydown", gererEchap);
-    });
-  }
-
-  async function ouvrirDialogueBoutons(options) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return null;
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
-    slot.appendChild(fragment);
-
-    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
-    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
-    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
-    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
-    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
-
-    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
-      throw new Error("Structure de dialogue bouton incomplète.");
-    }
-
-    titre.textContent = options.titre || "";
-    texte.textContent = options.texte || "";
-    actions.innerHTML = "";
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer(valeur) {
-        if (resolu) return;
-        resolu = true;
-        slot.innerHTML = "";
-        resolve(valeur || null);
-      }
-
-      (options.boutons || []).forEach((configuration) => {
-        const bouton = document.createElement("button");
-        bouton.type = "button";
-        bouton.className = "lcdp-button " + (configuration.style || "lcdp-button-primary");
-        bouton.textContent = configuration.label || "Valider";
-
-        bouton.addEventListener("click", () => {
-          fermer(configuration.valeur || configuration.label || true);
-        });
-
-        actions.appendChild(bouton);
-      });
-
-      boutonFermer.addEventListener("click", () => fermer(null));
-      dialogue.addEventListener("click", (event) => {
-        if (event.target === dialogue) fermer(null);
-      });
-
-      document.addEventListener(
-        "keydown",
-        (event) => {
-          if (event.key === "Escape") fermer(null);
-        },
-        { once: true }
-      );
     });
   }
 
