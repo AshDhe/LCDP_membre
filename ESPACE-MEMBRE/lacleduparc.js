@@ -81,12 +81,9 @@
       // Les deux premières étapes n'attendent pas le contrôle vidéo.
       window.LCDP_ParcoursMaCle?.demarrer(ouverture, {rafraichirControle: chargerControleAcces});
       masquerAttenteInitiale();
-      // Bandeau et contrôle vidéo se chargent indépendamment, après le rendu.
+      // Étapes 1 et 2 : uniquement ouverture/CODA et préparation de l'accès.
+      // Le contrôle de check-in ne démarre qu'au passage volontaire à l'étape 3.
       void initialiserGabaritMembre();
-      void chargerControleAcces().catch(error => {
-        console.error("Contrôle vidéo indisponible après ouverture sécurisée :", error);
-        window.LCDP_ParcoursMaCle?.signalerErreurControle(error);
-      });
       controleAccesTimer=window.setInterval(()=>{
         if(document.visibilityState==="visible" && ["guest_pending","guest_waiting_control"].includes(controleAccesEtat?.screen)) chargerControleAcces().catch(console.error);
       },5000);
