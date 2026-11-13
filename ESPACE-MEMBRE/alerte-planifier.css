@@ -656,3 +656,46 @@ body.lcdp-page-mon-compte #lcdp-lightbox-slot > .lcdp-alerte-calendrier-hote {
   padding:10px;
   overflow:hidden;
 }
+
+/* MES ACCÈS : contenu Entrée de Parc Admin dans le dialogue INFORMATION. */
+body.lcdp-mes-acces-page .lcdp-planning-vue-secondaire .lcdp-mes-acces-entree {
+  display:flex;
+  flex-direction:column;
+  gap:var(--lcdp-space-2, 8px);
+  min-width:0;
+  text-align:left;
+  white-space:normal;
+}
+body.lcdp-mes-acces-page .lcdp-mes-acces-entree__titre {
+  margin:0;
+  color:var(--lcdp-color-primary, #4b6333);
+  font-size:1.15rem;
+  line-height:1.4;
+}
+body.lcdp-mes-acces-page .lcdp-mes-acces-entree__texte {
+  margin:0;
+  padding:var(--lcdp-space-3, 12px);
+  color:var(--lcdp-color-text, #1f2937);
+  background:var(--lcdp-color-surface-soft, #f8faf7);
+  border:1px solid var(--lcdp-color-border, #dbe2d9);
+  border-radius:var(--lcdp-radius-medium, 12px);
+  line-height:1.55;
+  font-size:0.9rem;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+body.lcdp-mes-acces-page .lcdp-mes-acces-entree__photo-bloc {
+  margin:0;
+  padding:var(--lcdp-space-2, 8px);
+  background:var(--lcdp-color-surface, #fff);
+  border:1px solid var(--lcdp-color-border, #dbe2d9);
+  border-radius:var(--lcdp-radius-medium, 12px);
+}
+body.lcdp-mes-acces-page .lcdp-mes-acces-entree__photo {
+  display:block;
+  width:100%;
+  height:auto;
+  max-height:360px;
+  object-fit:contain;
+  border-radius:var(--lcdp-radius-small, 8px);
+}
