@@ -7,9 +7,11 @@
   "use strict";
 
   const conteneur = document.querySelector(".lcdp-page-cle-du-parc .lcdp-site-page .lcdp-page-content");
+  const zoneDefilante = document.querySelector(".lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper > .lcdp-site-main");
+  const sousHeader = document.getElementById("lcdp-ma-cle-navigation-slot");
   const controle = document.querySelector("[data-lcdp-control-access]");
   const workflow = document.querySelector("[data-lcdp-cle-workflow]");
-  if (!conteneur || !controle || !workflow) return;
+  if (!conteneur || !zoneDefilante || !sousHeader || !controle || !workflow) return;
 
   const NOM_ETAPES = ["Session", "Accès au parc", "Check-in", "Présence", "Check-out", "Terminé"];
   const PARC_DEMO = "TEST 1 - 41";
@@ -83,8 +85,9 @@
   const contenuDetail = element("div", "lcdp-ma-cle-detail__contenu");
   ecranDetail.append(enteteDetail, contenuDetail);
 
-  // Le détail remplace l'écran 2 dans le wrapper existant. Aucune modale.
-  conteneur.insertBefore(timeline, controle);
+  // Le chemin est un vrai sous-header du wrapper, HORS de la zone défilante.
+  // Les écrans seuls défilent, sous le bandeau et le chemin de navigation.
+  sousHeader.appendChild(timeline);
   conteneur.insertBefore(ecranSession, controle);
   conteneur.insertBefore(ecranAcces, controle);
   conteneur.insertBefore(ecranDetail, controle);
@@ -101,6 +104,7 @@
   let derniereErreurControle = "";
 
   function mettreTimeline(numero) {
+    sousHeader.hidden = false;
     timeline.hidden = false;
     jalons.forEach((li, index) => {
       const position = index + 1;
@@ -190,6 +194,7 @@
       }
       actif = false;
       detailVisible = false;
+      sousHeader.hidden = true;
       timeline.hidden = true;
       ecranSession.hidden = true;
       ecranAcces.hidden = true;
@@ -215,14 +220,16 @@
     if (!actif || etape !== 2) return;
     detailVisible = true;
     rendre();
-    ecranDetail.scrollIntoView({block: "start", behavior: "auto"});
-    fermerDetail.focus();
+    // Le défilement appartient au corps du wrapper, jamais à la page globale.
+    zoneDefilante.scrollTop = 0;
+    fermerDetail.focus({preventScroll: true});
   });
   fermerDetail.addEventListener("click", () => {
     if (!actif || !detailVisible) return;
     detailVisible = false;
     rendre();
-    ouvrirDetail.focus();
+    zoneDefilante.scrollTop = 0;
+    ouvrirDetail.focus({preventScroll: true});
   });
 
   function demarrer(etat, options) {
