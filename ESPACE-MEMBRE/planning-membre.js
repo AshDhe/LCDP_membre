@@ -2821,9 +2821,12 @@
     const conteneur = document.createElement("div");
     const precedent = { hidden: accueil.hidden, inert: accueil.inert };
     const focusInitial = document.activeElement;
+    const defilements = [main.closest(".lcdp-app-wrapper"), document.scrollingElement]
+      .filter(Boolean).map(element => ({element, position:element.scrollTop}));
     accueil.hidden = true;
     accueil.inert = true;
     main.appendChild(conteneur);
+    defilements.forEach(({element}) => { element.scrollTop = 0; });
     let ferme = false;
     return {
       conteneur,
@@ -2833,6 +2836,7 @@
         conteneur.remove();
         accueil.hidden = precedent.hidden;
         accueil.inert = precedent.inert;
+        defilements.forEach(({element,position}) => { element.scrollTop = position; });
         if (focusInitial?.isConnected && typeof focusInitial.focus === "function") {
           focusInitial.focus({ preventScroll: true });
         }
