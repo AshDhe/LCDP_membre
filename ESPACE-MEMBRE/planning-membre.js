@@ -773,13 +773,26 @@
         actionsVerso.prepend(inviterVerso);
         habillerBoutonInvitesVerso(inviterVerso, reservation);
       }
+      if (inviterVerso && !reservationHorsAbonnementMembre(reservation) &&
+          !reservationAnnuleePlanning(reservation) && !reservationPasseePlanning(reservation)) {
+        const duoActif = document.createElement("button");
+        duoActif.type = "button";
+        duoActif.className = "lcdp-planning-verso-action lcdp-planning-verso-dactif";
+        duoActif.dataset.action = "duoactif";
+        duoActif.dataset.id = String(reservation.idflux || "");
+        duoActif.textContent = "D-ACTIF";
+        duoActif.setAttribute("aria-label","Consulter les demandes Duo Actif de ce parc");
+        inviterVerso.after(duoActif);
+      }
       if (annulerVerso) {
-        actionsVerso.prepend(annulerVerso);
-        annulerVerso.textContent = "Annuler";
-        annulerVerso.classList.add("lcdp-planning-verso-action");
+        actionsVerso.append(annulerVerso);
+        annulerVerso.classList.add("lcdp-planning-verso-action", "lcdp-planning-verso-annuler");
+        annulerVerso.style.setProperty("margin-left","auto","important");
+        annulerVerso.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6m0-6l-6 6"/></svg>';
+        annulerVerso.setAttribute("aria-label","Annuler cet accès");
         const bloque = annulationAccesImpossibleParis(reservation);
         annulerVerso.setAttribute("aria-disabled", String(bloque));
-        annulerVerso.title = bloque ? "Annulation impossible après 14h" : "";
+        annulerVerso.title = bloque ? "Annulation impossible après 14h" : "Annuler cet accès";
       }
     }
     // MES ACCÈS : Fiche et Carte sont deux vues du même wrapper membre.
@@ -1045,7 +1058,7 @@
       const compteur = document.createElement("span");
       compteur.className = "lcdp-planning-verso-compteur";
       compteur.textContent = nombre > 0 ? String(nombre) : "−";
-      bouton.replaceChildren(icone, document.createTextNode("Inviter"), compteur);
+      bouton.replaceChildren(icone, document.createTextNode("Invités"), compteur);
       bouton.setAttribute("aria-label", "Gérer ou ajouter des invités (" + nombre + " actifs)");
       bouton.title = "Gérer les invités";
     }
@@ -2214,23 +2227,22 @@
       );
 
       if (estReservationHorsAbonnement) {
-        boutonInvitation.textContent = "Invit’";
+        boutonInvitation.textContent = "Invités";
         boutonInvitation.classList.add("lcdp-box-card-reservation-membre__micro-action--invit-recu");
         boutonInvitation.setAttribute("aria-disabled", "false");
         boutonInvitation.removeAttribute("disabled");
         boutonInvitation.disabled = false;
         boutonInvitation.style.pointerEvents = "auto";
-        boutonInvitation.title = "Afficher le parrain";
+        boutonInvitation.title = "Consulter les invités";
         if (options.contexte !== "liste") boutonInvitation.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
-          afficherParrainReservationInvitee(reservation).catch((error) => {
-            console.error("[LCDP invitation reçue] affichage parrain impossible", error);
-            afficherErreurCalendrier(formaterParrainInvitationRecue(reservation));
-          });
+          ouvrirListeInvitesPourInvite(idFlux, boutonInvitation).catch(error =>
+            afficherErreurCalendrier(error?.message || "Liste des invités indisponible.")
+          );
         });
       } else {
-        boutonInvitation.textContent = reservationAvecInvitesPlanning(reservation) ? "Invité(s)" : "Inviter";
+        boutonInvitation.textContent = "Invités";
         boutonInvitation.setAttribute("aria-disabled", "false");
         boutonInvitation.removeAttribute("title");
       }
@@ -2288,6 +2300,7 @@
     const boutonFermerReservation = event.target.closest("[data-action='fermer']");
     const boutonAdresse = event.target.closest("[data-action='adresse']");
     const boutonInvitation = event.target.closest("[data-action='invitation']");
+    const boutonDuoActif = event.target.closest("[data-action='duoactif']");
     const boutonAnnuler = event.target.closest("[data-action='annuler']");
 
     if (boutonRetourAcces) {
@@ -2326,6 +2339,20 @@
       return;
     }
 
+    if (boutonDuoActif) {
+      event.preventDefault();
+      event.stopPropagation();
+      const idflux = String(boutonDuoActif.dataset.id || boutonDuoActif.closest(".lcdp-planning-carte-visite")?.dataset.idflux || "").trim();
+      const reservation = trouverReservationPlanningParId(idflux);
+      if (!reservation || reservationHorsAbonnementMembre(reservation)) return;
+      try {
+        await ouvrirDuoActifPourAcces(idflux);
+      } catch (erreur) {
+        await afficherAlerteInvitationReservation(erreur?.message || "Service D-ACTIF indisponible.",boutonDuoActif);
+      }
+      return;
+    }
+
     if (boutonInvitation) {
       const cardReservation = boutonInvitation.closest("[data-lcdp-box-card-reservation-membre]");
       const idflux = String(boutonInvitation.dataset.id || cardReservation?.dataset.idflux || "").trim();
@@ -2334,13 +2361,7 @@
       if (reservationHorsAbonnementMembre(reservation)) {
         event.preventDefault();
         event.stopPropagation();
-        if (boutonInvitation.closest(".lcdp-planning-carte-visite")) {
-          await ouvrirListeInvitesReservation(
-            String(reservation?.idfluxparrain || idflux), boutonInvitation, { lectureSeule: true }
-          );
-        } else {
-          await afficherParrainReservationInvitee(reservation);
-        }
+        await ouvrirListeInvitesPourInvite(idflux,boutonInvitation);
         return;
       }
 
@@ -2728,6 +2749,144 @@
     return String(Math.round(nombre * 1000000) / 1000000);
   }
 
+  async function ouvrirListeInvitesPourInvite(idflux, declencheur) {
+    if (!ENDPOINT_INVITER_MEMBRE) throw new Error("Service des invités indisponible.");
+    const attente = afficherAttenteOuvertureInvites();
+    let invites;
+    try {
+      const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/invites-acces/lecture?idflux=" + encodeURIComponent(idflux),{
+        method:"GET",credentials:"include",cache:"no-store",headers:{"Accept":"application/json"}
+      });
+      const data = await reponse.json().catch(() => null);
+      if (!reponse.ok || data?.ok !== true || !Array.isArray(data.invites)) {
+        throw new Error(data?.message || "Impossible de consulter les invités.");
+      }
+      invites = data.invites.map(prefix => ({email:String(prefix)}));
+    } finally {
+      attente();
+    }
+    return ouvrirBoxListeInvitesLectureSeule(idflux,invites,declencheur);
+  }
+
+  // Liste des demandes D-ACTIF : seuls les cinq demandeurs les plus anciens
+  // encore actifs sur ce parc sont transmis, sans exposer leurs e-mails.
+  async function ouvrirDuoActifPourAcces(idflux) {
+    if (!ENDPOINT_INVITER_MEMBRE) throw new Error("Service D-ACTIF indisponible.");
+    const reservation = trouverReservationPlanningParId(idflux);
+    if (!reservation || reservationHorsAbonnementMembre(reservation)) return;
+    const surface = ouvrirSurfaceInvitationPleinePage();
+    if (!surface) return;
+    const racine = document.createElement("section");
+    racine.className = "lcdp-dactif-page";
+    const entete = document.createElement("div");
+    entete.className = "lcdp-dactif-entete";
+    const titre = document.createElement("h2");
+    titre.textContent = "D-ACTIF";
+    const fermerBouton = document.createElement("button");
+    fermerBouton.type = "button";
+    fermerBouton.className = "lcdp-dactif-fermer";
+    fermerBouton.setAttribute("aria-label","Fermer D-ACTIF");
+    fermerBouton.textContent = "×";
+    entete.append(titre,fermerBouton);
+    const contenu = document.createElement("div");
+    racine.append(entete,contenu);
+    surface.conteneur.replaceChildren(racine);
+    const fermer = () => surface.fermer();
+    fermerBouton.addEventListener("click",fermer);
+    const attente = document.createElement("div");
+    attente.className = "lcdp-invitation-attente";
+    attente.setAttribute("role","status");
+    attente.setAttribute("aria-label","Chargement des demandes D-ACTIF");
+    const spinner = document.querySelector("#lcdp-planning-attente .lcdp-loading-spinner");
+    if (spinner) attente.appendChild(spinner.cloneNode(true));
+    contenu.replaceChildren(attente);
+    try {
+      const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/duoactif/liste?idflux=" + encodeURIComponent(idflux),{
+        method:"GET",credentials:"include",cache:"no-store",headers:{"Accept":"application/json"}
+      });
+      const data = await reponse.json().catch(() => null);
+      if (!reponse.ok || data?.ok !== true || !Array.isArray(data.personnes)) {
+        throw new Error(data?.message || "Liste D-ACTIF indisponible.");
+      }
+      const description = document.createElement("p");
+      description.className = "lcdp-dactif-compteur";
+      description.textContent = data.total + " demande(s) D-ACTIF en cours pour ce parc.";
+      contenu.replaceChildren(description);
+      if (!data.personnes.length) {
+        const vide = document.createElement("p");
+        vide.textContent = "Aucune demande D-ACTIF disponible sur ce parc.";
+        contenu.appendChild(vide);
+        return;
+      }
+      const form = document.createElement("form");
+      const liste = document.createElement("div");
+      liste.className = "lcdp-dactif-liste";
+      let choix = "";
+      for (const personne of data.personnes.slice(0,5)) {
+        const ligne = document.createElement("label");
+        ligne.className = "lcdp-dactif-ligne";
+        const portrait = document.createElement("span");
+        portrait.className = "lcdp-dactif-portrait";
+        const contenuPhoto = String(personne.selfie || "");
+        if (/^[A-Za-z0-9+/=]+$/.test(contenuPhoto) && contenuPhoto.length > 100 && contenuPhoto.length < 400000) {
+          const img = document.createElement("img");
+          img.src = "data:image/jpeg;base64," + contenuPhoto;
+          img.alt = "";
+          img.addEventListener("error", () => img.remove(),{once:true});
+          portrait.appendChild(img);
+        }
+        const nom = document.createElement("span");
+        nom.className = "lcdp-dactif-nom";
+        nom.textContent = [personne.prenom,personne.nom].map(x=>String(x || "").trim()).filter(Boolean).join(" ") || "Membre";
+        const select = document.createElement("input");
+        select.type = "radio";
+        select.name = "choix-duoactif";
+        select.value = String(personne.idduoactif || "");
+        select.setAttribute("aria-label","Sélectionner " + nom.textContent);
+        select.addEventListener("change",()=>{choix=select.value;});
+        ligne.append(portrait,nom,select);
+        liste.appendChild(ligne);
+      }
+      const envoyer = document.createElement("button");
+      envoyer.type = "submit";
+      envoyer.className = "lcdp-button lcdp-button-primary lcdp-dactif-valider";
+      envoyer.textContent = "Inviter";
+      form.append(liste,envoyer);
+      contenu.appendChild(form);
+      form.addEventListener("submit",async e=>{
+        e.preventDefault();
+        if (!choix || envoyer.disabled) return;
+        envoyer.disabled=true;
+        envoyer.textContent="Enregistrement…";
+        try {
+          const response = await fetch(ENDPOINT_INVITER_MEMBRE + "/duoactif/inviter",{
+            method:"POST",credentials:"include",cache:"no-store",
+            headers:{"Content-Type":"application/json","Accept":"application/json"},
+            body:JSON.stringify({idflux,idduoactif:choix})
+          });
+          const resultat = await response.json().catch(()=>null);
+          if (!response.ok || resultat?.ok!==true || resultat?.confirme!==true) {
+            throw new Error(resultat?.message || "Invitation D-ACTIF non confirmée.");
+          }
+          const n = Number(reservation.invitationStats?.in || 0)+1;
+          reservation.invitationStats={...(reservation.invitationStats||{}),in:n};
+          etat.reservationsAvecInvites.add(idflux);
+          fermer();
+          actualiserBoutonsInvitationPlanning(idflux);
+          await afficherInformationInvitation(resultat.message || "Invitation D-ACTIF enregistrée.");
+        } catch(erreur) {
+          await afficherErreurInvitation(erreur?.message || "Invitation D-ACTIF indisponible.");
+        } finally {
+          envoyer.disabled=false;
+          envoyer.textContent="Inviter";
+        }
+      });
+    } catch(erreur) {
+      fermer();
+      throw erreur;
+    }
+  }
+
   async function ouvrirPageInvitation(idflux, declencheur) {
     const idReservation = String(idflux || "").trim();
 
@@ -2961,17 +3120,17 @@
       );
 
       if (reservationHorsAbonnementMembre(reservation) && !bouton.closest(".lcdp-planning-carte-visite")) {
-        bouton.textContent = "Invit’";
+        bouton.textContent = "Invités";
         bouton.classList.add("lcdp-box-card-reservation-membre__micro-action--invit-recu");
         bouton.setAttribute("aria-disabled", "false");
-        bouton.title = "Afficher le parrain";
+        bouton.title = "Consulter les invités";
         return;
       }
 
       if (bouton.closest(".lcdp-planning-carte-visite")) {
         habillerBoutonInvitesVerso(bouton, reservation);
       } else {
-        bouton.textContent = reservationAvecInvitesPlanning(reservation) ? "Invité(s)" : "Inviter";
+        bouton.textContent = "Invités";
       }
       bouton.setAttribute("aria-disabled", "false");
       bouton.removeAttribute("title");
@@ -2981,6 +3140,9 @@
   async function ouvrirListeInvitesReservation(idflux, declencheur, options = {}) {
     const idReservation = String(idflux || "").trim();
     const reservation = trouverReservationPlanningParId(idReservation);
+    if (reservationHorsAbonnementMembre(reservation)) {
+      return ouvrirListeInvitesPourInvite(idReservation,declencheur);
+    }
     if (options.lectureSeule === true || (reservation && reservationDelaiActionDepasse(reservation))) {
       const arreterAttente = afficherAttenteOuvertureInvites();
       let invites;
