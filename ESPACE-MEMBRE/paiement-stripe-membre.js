@@ -43,17 +43,27 @@
     return Number.isFinite(nombre) ? fmtEuro.format(nombre) : 'Non disponible';
   }
   async function chargerDetailCommande() {
-    const [rp, rd] = await Promise.all([
+    const [rp, rd, re] = await Promise.all([
       fetch(String(config.workerAboRezaUrl || config.WORKER_ABOREZA_URL ||
         (typeof config.apiUrl === 'function' ? config.apiUrl('aboreza-api') : 'https://aboreza-api.lacleduparc.fr')).replace(/\/+$/, '') +
         '/panier', {credentials:'include',cache:'no-store',headers:{Accept:'application/json'}}),
       fetch(endpoint + '/devis?idpanier=' + encodeURIComponent(idpanier),
+        {credentials:'include',cache:'no-store',headers:{Accept:'application/json'}}),
+      fetch(endpoint + '/etat?idpanier=' + encodeURIComponent(idpanier),
         {credentials:'include',cache:'no-store',headers:{Accept:'application/json'}})
     ]);
-    const [dp, dd] = await Promise.all([rp.json().catch(()=>null),rd.json().catch(()=>null)]);
+    const [dp, dd, de] = await Promise.all([rp.json().catch(()=>null),rd.json().catch(()=>null),re.json().catch(()=>null)]);
+    const commande = re.ok && de?.ok && de.commande?.idpanier === idpanier ? de.commande : null;
+    if (commande) {
+      el('reference-commande').textContent = commande.orderid || '—';
+      if (Number.isFinite(Number(commande.premiereEcheanceTtc)))
+        el('montant-commande').textContent = euros(commande.premiereEcheanceTtc);
+    }
     if (!rp.ok || !dp?.ok || dp?.panier?.idpanier !== idpanier || !rd.ok || !dd?.ok || !dd.devis)
       throw new Error('Le détail de cette commande ne peut pas être vérifié.');
     const panier = dp.panier, devis = dd.devis;
+    if (!commande) throw new Error('Référence de commande indisponible.');
+    const reglementEchelonne = Number(commande.nbEcheances) > 1;
     listeDetails.replaceChildren();
     const montantValide = valeur => valeur !== null && valeur !== undefined &&
       valeur !== '' && Number.isFinite(Number(valeur));
@@ -82,13 +92,12 @@
       ajouterLigneDetail('Crédit abonnements inclus', '− ' + euros(devis.creditAbonnementsInclus));
     if (prixAvantRemise !== null)
       ajouterLigneDetail('Prix avant remise comptant', euros(prixAvantRemise), true);
-    if (montantComptant !== null) {
-      if (remise > 0) ajouterLigneDetail('Remise uniquement si paiement en une fois', '− ' + euros(remise));
-      ajouterLigneDetail('À payer en une fois', euros(montantComptant), true);
+    if (!reglementEchelonne && montantComptant !== null) {
+      if (remise > 0) ajouterLigneDetail('Remise paiement comptant', '− ' + euros(remise));
+      ajouterLigneDetail('Montant réglé en une fois', euros(montantComptant), true);
     }
-    if (validEcheances && echeances.length > 1) {
-      ajouterLigneDetail('À payer en ' + echeances.length + ' fois (sans remise comptant)',
-        euros(sommeEcheances), true);
+    if (reglementEchelonne && validEcheances && echeances.length > 1) {
+      ajouterLigneDetail('Total du règlement échelonné', euros(sommeEcheances), true);
       echeances.forEach((montant, index) => {
         const date = index === 0 ? 'à la commande' :
           (Array.isArray(devis.datesEcheances) && devis.datesEcheances[index]
@@ -96,10 +105,12 @@
         ajouterLigneDetail('Échéance ' + (index + 1) + ' (' + date + ')', euros(montant));
       });
     }
-    statutDetails.textContent = 'Deux possibilités de règlement. La remise comptant ne s’applique pas au paiement échelonné. Seule l’échéance choisie est payable sur cet écran.';
+    statutDetails.textContent = reglementEchelonne
+      ? 'Paiement en plusieurs échéances. La remise pour règlement comptant ne s’applique pas.'
+      : 'Paiement comptant. La remise pour règlement en une fois est comprise dans le montant dû.';
     el('description-commande').textContent = 'Abonnement ' + String(panier.formule || '') +
       ' · Conditions de paiement consultables ci-dessous.';
-    return {panier,devis};
+    return {panier,devis,commande};
   }
   async function demarrer() {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idpanier))
