@@ -1977,22 +1977,10 @@ function afficherResumePointsPassion(compte) {
     if(demandeGeoEnCours)return;
     demandeGeoEnCours=true;
     try{
-      const slot=document.getElementById("lcdp-lightbox-slot");
-      if(!slot)throw new Error("Dialogue indisponible.");
-      slot.innerHTML="";
-      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html"));
-      slot.querySelector("[data-lcdp-dialogue-title]").textContent="Mettre à jour votre autorisation de géolocalisation ?";
-      slot.querySelector("[data-lcdp-dialogue-text]").textContent="Cette opération vous déconnectera.";
-      const actions=slot.querySelector("[data-lcdp-dialogue-actions]");
-      const confirmer=await new Promise(resolve=>{
-        const fermer=valeur=>{slot.innerHTML="";resolve(valeur);};
-        for(const [texte,valeur] of [["OK",true],["Annuler",false]]){
-          const bouton=document.createElement("button");bouton.type="button";
-          bouton.className="lcdp-button "+(valeur?"lcdp-button-primary":"lcdp-button-secondary");
-          bouton.textContent=texte;bouton.addEventListener("click",()=>fermer(valeur),{once:true});actions.appendChild(bouton);
-        }
-        slot.querySelector("[data-lcdp-dialogue-close]").addEventListener("click",()=>fermer(false),{once:true});
-      });
+      const confirmer=await afficherChoixMesInformations(
+        "Cette opération vous déconnectera.",
+        {titre:"Mettre à jour votre autorisation de géolocalisation ?",libelleAnnuler:"Annuler",libelleConfirmer:"OK"}
+      );
       if(confirmer){
         const cfg=window.SITE_CONFIG||{};
         const endpoint=String(cfg.workerDeconnexionMembreUrl||cfg.WORKER_DECONNEXION_MEMBRE_URL||cfg.W_DECONNEXION_URL||(typeof cfg.apiUrl==="function"?cfg.apiUrl("deconnexion-membre-api"):"https://deconnexion-membre-api.lacleduparc.fr")).replace(/\/+$/,"");
@@ -2010,22 +1998,10 @@ function afficherResumePointsPassion(compte) {
     if (demandeCodrEnCours) return;
     demandeCodrEnCours=true;
     try {
-      const slot=document.getElementById("lcdp-lightbox-slot");
-      if (!slot) throw new Error("Dialogue indisponible");
-      slot.innerHTML="";
-      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html"));
-      slot.querySelector("[data-lcdp-dialogue-title]").textContent="Modifier votre CODR";
-      slot.querySelector("[data-lcdp-dialogue-text]").textContent="Souhaitez-vous transmettre une demande de modification de votre CODR à l’administrateur de l’application ?";
-      const actions=slot.querySelector("[data-lcdp-dialogue-actions]");
-      const confirmer=await new Promise(resolve=>{
-        const fermer=valeur=>{slot.innerHTML="";resolve(valeur);};
-        for (const [texte,valeur] of [["OK",true],["Annuler",false]]) {
-          const bouton=document.createElement("button");bouton.type="button";
-          bouton.className="lcdp-button "+(valeur?"lcdp-button-primary":"lcdp-button-secondary");
-          bouton.textContent=texte;bouton.addEventListener("click",()=>fermer(valeur),{once:true});actions.appendChild(bouton);
-        }
-        slot.querySelector("[data-lcdp-dialogue-close]").addEventListener("click",()=>fermer(false),{once:true});
-      });
+      const confirmer=await afficherChoixMesInformations(
+        "Souhaitez-vous transmettre une demande de modification de votre CODR à l’administrateur de l’application ?",
+        {titre:"Modifier votre CODR",libelleAnnuler:"Annuler",libelleConfirmer:"OK"}
+      );
       if (!confirmer) return;
       const reponse=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/codr-admin-request",{
         method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({})
