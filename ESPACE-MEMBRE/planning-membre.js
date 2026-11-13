@@ -568,6 +568,32 @@
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__content {
         gap:3px !important;
       }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-acces {
+        display:inline-flex !important;align-items:center !important;justify-content:center !important;
+        flex:0 0 auto;min-height:24px !important;max-width:100%;
+        margin:0 0 0 4px !important;padding:3px 9px !important;
+        border-radius:12px !important;font-size:10px !important;font-weight:800 !important;
+        line-height:1.1 !important;white-space:nowrap !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-liens {
+        display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+        margin-top:4px;padding-top:2px;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-lien {
+        display:inline-flex;justify-content:center;align-items:center;gap:6px;
+        border-radius:14px;padding:6px 10px;min-height:32px;
+        font-size:12px;font-weight:750;text-decoration:none;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-lien img {
+        width:18px;height:18px;object-fit:contain;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action--consulter {
+        border-color:rgba(123,74,184,.4) !important;color:#7b4ab8 !important;
+        background:#fff !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action--consulter:hover {
+        border-color:#7b4ab8 !important;color:#fff !important;background:#7b4ab8 !important;
+      }
       /* Même emplacement pour les trois onglets, y compris quand le calendrier est affiché. */
       #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente,
       #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente.lcdp-box-liste-card--mode-agenda {
@@ -1445,10 +1471,15 @@
     const actionsVerso = cardReservation.querySelector(".lcdp-box-card-reservation-membre__actions");
     const annulerVerso = cardReservation.querySelector("[data-action='annuler']");
     const inviterVerso = cardReservation.querySelector("[data-action='invitation']");
+    const accesVerso = cardReservation.querySelector("[data-action='adresse']");
     if (detailVerso && parcVerso && dateVerso) {
       detailVerso.prepend(parcVerso);
       parcVerso.style.marginBottom = "0";
       dateVerso.style.marginTop = "0";
+      if (accesVerso) {
+        accesVerso.classList.add("lcdp-planning-verso-acces");
+        dateVerso.appendChild(accesVerso);
+      }
       if (reservationHorsAbonnementMembre(reservation)) {
         const rond = document.createElement("span");
         rond.title = "Invitation reçue";
@@ -1459,7 +1490,7 @@
     }
     if (actionsVerso) {
       actionsVerso.classList.add("lcdp-planning-verso-actions");
-      if (inviterVerso && !reservationHorsAbonnementMembre(reservation)) {
+      if (inviterVerso) {
         actionsVerso.prepend(inviterVerso);
         habillerBoutonInvitesVerso(inviterVerso, reservation);
       }
@@ -1471,6 +1502,34 @@
         annulerVerso.setAttribute("aria-disabled", String(bloque));
         annulerVerso.title = bloque ? "Annulation impossible après 14h" : "";
       }
+    }
+    // Deux raccourcis publics, séparés des actions liées à la réservation.
+    const idParc = String(parc.idparc || reservation.idparc || "").trim();
+    if (idParc) {
+      const liensParc = document.createElement("div");
+      liensParc.className = "lcdp-planning-verso-liens";
+      liensParc.setAttribute("aria-label", "Consulter le parc");
+      const baseFiche = "https://lacleduparc.fr/ESPACE-PUBLIC/fiche-parc.html?idparc=" + encodeURIComponent(idParc);
+      for (const [libelle, url, icone, variante] of [
+        ["Fiche parc", baseFiche, "presentation", "vert-plein"],
+        ["Carte", baseFiche + "&vue=carte", "localiser", "vert-contour"]
+      ]) {
+        const lien = document.createElement("a");
+        lien.href = url;
+        lien.target = "_blank";
+        lien.rel = "noopener noreferrer";
+        lien.className = "lcdp-button lcdp-box-card-parc__action lcdp-box-card-parc__action--" + variante + " lcdp-planning-verso-lien";
+        lien.setAttribute("aria-label", libelle + " : " + nomAvecDepartement);
+        const img = document.createElement("img");
+        img.src = construireUrlObjet("/IMAG/PICTO/picto-" + icone + ".svg");
+        img.alt = "";
+        img.setAttribute("aria-hidden", "true");
+        const texte = document.createElement("span");
+        texte.textContent = libelle;
+        lien.append(img, texte);
+        liensParc.appendChild(lien);
+      }
+      cardReservation.querySelector(".lcdp-box-card-reservation-membre__body")?.appendChild(liensParc);
     }
     contenu.appendChild(cardReservation);
     const basculer = ouvert => {
@@ -1495,18 +1554,30 @@
   }
 
   function habillerBoutonInvitesVerso(bouton, reservation) {
-    if (!bouton || reservationHorsAbonnementMembre(reservation)) return;
+    if (!bouton) return;
+    const estInviteRecu = reservationHorsAbonnementMembre(reservation);
     bouton.classList.add("lcdp-planning-verso-action");
+    bouton.classList.toggle("lcdp-planning-verso-action--consulter", estInviteRecu);
+    bouton.classList.remove("lcdp-box-card-reservation-membre__micro-action--invit-recu");
     const icone = document.createElement("span");
     icone.setAttribute("aria-hidden", "true");
     icone.style.cssText = "display:inline-flex;width:16px;height:16px;";
-    icone.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>';
-    const nombre = nombreInvitesEnvoyesPlanning(reservation);
-    const compteur = document.createElement("span");
-    compteur.className = "lcdp-planning-verso-compteur";
-    compteur.textContent = nombre > 0 ? String(nombre) : "-";
-    bouton.replaceChildren(icone, document.createTextNode("Invités"), compteur);
-    bouton.setAttribute("aria-label", "Gérer les invités (" + nombre + ")");
+    icone.innerHTML = estInviteRecu
+      ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2m7-10a4 4 0 100-8 4 4 0 000 8zm8 10v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>';
+    if (estInviteRecu) {
+      bouton.replaceChildren(icone, document.createTextNode("Invités"));
+      bouton.setAttribute("aria-label", "Consulter les invités");
+      bouton.title = "Consulter la liste des invités";
+    } else {
+      const nombre = nombreInvitesEnvoyesPlanning(reservation);
+      const compteur = document.createElement("span");
+      compteur.className = "lcdp-planning-verso-compteur";
+      compteur.textContent = String(nombre);
+      bouton.replaceChildren(icone, document.createTextNode("Inviter"), compteur);
+      bouton.setAttribute("aria-label", "Gérer ou ajouter des invités (" + nombre + " actifs)");
+      bouton.title = "Gérer les invités";
+    }
   }
 
   function rafraichirListeFiltreePlanningMembre() {
@@ -2546,7 +2617,7 @@
         boutonInvitation.disabled = false;
         boutonInvitation.style.pointerEvents = "auto";
         boutonInvitation.title = "Afficher le parrain";
-        boutonInvitation.addEventListener("click", (event) => {
+        if (options.contexte !== "liste") boutonInvitation.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
           afficherParrainReservationInvitee(reservation).catch((error) => {
@@ -2657,7 +2728,13 @@
       if (reservationHorsAbonnementMembre(reservation)) {
         event.preventDefault();
         event.stopPropagation();
-        await afficherParrainReservationInvitee(reservation);
+        if (boutonInvitation.closest(".lcdp-planning-carte-visite")) {
+          await ouvrirListeInvitesReservation(
+            String(reservation?.idfluxparrain || idflux), boutonInvitation, { lectureSeule: true }
+          );
+        } else {
+          await afficherParrainReservationInvitee(reservation);
+        }
         return;
       }
 
@@ -3172,7 +3249,7 @@
         "lcdp-box-card-reservation-membre__micro-action--invit-recu"
       );
 
-      if (reservationHorsAbonnementMembre(reservation)) {
+      if (reservationHorsAbonnementMembre(reservation) && !bouton.closest(".lcdp-planning-carte-visite")) {
         bouton.textContent = "Invit’";
         bouton.classList.add("lcdp-box-card-reservation-membre__micro-action--invit-recu");
         bouton.setAttribute("aria-disabled", "false");
@@ -3190,14 +3267,14 @@
     });
   }
 
-  async function ouvrirListeInvitesReservation(idflux, declencheur) {
+  async function ouvrirListeInvitesReservation(idflux, declencheur, options = {}) {
     const idReservation = String(idflux || "").trim();
     const reservation = trouverReservationPlanningParId(idReservation);
     const invites = await chargerInvitesReservation(idReservation, declencheur);
 
     if (!invites) return;
 
-    if (reservation && reservationDelaiActionDepasse(reservation)) {
+    if (options.lectureSeule === true || (reservation && reservationDelaiActionDepasse(reservation))) {
       await ouvrirBoxListeInvitesLectureSeule(idReservation, invites, declencheur);
       return;
     }
