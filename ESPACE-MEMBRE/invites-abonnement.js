@@ -31,17 +31,34 @@
     }
     // Le carnet reste consultable sans Worker actif, mais les droits ne
     // peuvent être inventés : ils sont fournis par la commande payée.
-    const avecQuotas = contexte.privileges != null || contexte.utilisation != null;
-    if (avecQuotas && (!contexte.privileges || !contexte.utilisation ||
+    // Compatibilite avec le Worker 13/11 : avant alignement sur la RPC SQL,
+    // les compteurs etaient renvoyes par un entier top-level et deux listes.
+    // On ne devine aucun droit : les privileges restent ceux du serveur,
+    // et seule l'utilisation observable est reconstruite.
+    const utilisation = contexte.utilisation || (
+      contexte.privileges &&
+      Number.isInteger(contexte.duoplusUtilisesMois) &&
+      contexte.duoplusUtilisesMois >= 0
+        ? {
+            duoCarnet: contexte.contacts.duo.length,
+            familleCarnet: contexte.contacts.famille.length,
+            duoplusUtilisesMois: contexte.duoplusUtilisesMois,
+            duoSelectionnesAcces: contexte.selection.duo.length,
+            familleSelectionnesAcces: contexte.selection.famille.length
+          }
+        : null
+    );
+    const avecQuotas = contexte.privileges != null || utilisation != null;
+    if (avecQuotas && (!contexte.privileges || !utilisation ||
         !CLES_DROITS.every(cle => Number.isInteger(contexte.privileges[cle]) && contexte.privileges[cle] >= 0) ||
-        !CLES_UTILISATION.every(cle => Number.isInteger(contexte.utilisation[cle]) && contexte.utilisation[cle] >= 0))) {
+        !CLES_UTILISATION.every(cle => Number.isInteger(utilisation[cle]) && utilisation[cle] >= 0))) {
       throw erreurDonnees();
     }
     return {
       contacts: contexte.contacts,
       selection: contexte.selection,
       privileges: avecQuotas ? contexte.privileges : null,
-      utilisation: avecQuotas ? contexte.utilisation : null
+      utilisation: avecQuotas ? utilisation : null
     };
   }
 
