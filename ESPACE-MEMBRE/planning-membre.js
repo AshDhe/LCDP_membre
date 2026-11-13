@@ -2950,6 +2950,25 @@
     });
   }
 
+  async function afficherErreurInvitation(texteMessage) {
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-erreur.html");
+    const dialogue = fragment.querySelector('[data-lcdp-dialogue-reference="erreur"]');
+    const titre = dialogue?.querySelector("[data-lcdp-dialogue-titre]");
+    const texte = dialogue?.querySelector("[data-lcdp-dialogue-message]");
+    const bouton = dialogue?.querySelector('[data-lcdp-dialogue-action="fermer"]');
+    if (!dialogue || !titre || !texte || !bouton) {
+      throw new Error("Dialogue ERREUR incomplet.");
+    }
+    titre.textContent = "Erreur";
+    texte.textContent = String(texteMessage || "");
+    bouton.textContent = "Fermer";
+    document.body.appendChild(dialogue);
+    return new Promise(resolve => {
+      bouton.addEventListener("click", () => { dialogue.remove(); resolve(true); }, { once:true });
+      bouton.focus({preventScroll:true});
+    });
+  }
+
   async function confirmerQuitterInvitationSansEnregistrer() {
     const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html");
     const dialogue = fragment.querySelector('[data-lcdp-dialogue-reference="choix"]');
@@ -3114,6 +3133,7 @@
           return resultat;
         },
         informer: afficherInformationInvitation,
+        erreur: afficherErreurInvitation,
         confirmerQuitter: confirmerQuitterInvitationSansEnregistrer,
         fermer
       });
