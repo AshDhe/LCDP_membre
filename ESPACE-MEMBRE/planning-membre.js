@@ -2950,6 +2950,56 @@
     });
   }
 
+  async function confirmerQuitterInvitationSansEnregistrer() {
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html");
+    const dialogue = fragment.querySelector('[data-lcdp-dialogue-reference="choix"]');
+    const titre = dialogue?.querySelector("[data-lcdp-dialogue-titre]");
+    const texte = dialogue?.querySelector("[data-lcdp-dialogue-message]");
+    const rester = dialogue?.querySelector('[data-lcdp-dialogue-action="annuler"]');
+    const quitter = dialogue?.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+    if (!dialogue || !titre || !texte || !rester || !quitter) {
+      throw new Error("Dialogue CHOIX incomplet.");
+    }
+    titre.textContent = "Quitter sans enregistrer ?";
+    texte.textContent = "Les modifications de la liste des invités ne seront pas enregistrées.";
+    rester.textContent = "Rester";
+    quitter.textContent = "Quitter sans enregistrer";
+    document.body.appendChild(dialogue);
+    const ancienFocus = document.activeElement;
+    return new Promise(resolve => {
+      let resolu = false;
+      const terminer = validation => {
+        if (resolu) return;
+        resolu = true;
+        document.removeEventListener("keydown", clavier, true);
+        dialogue.remove();
+        if (!validation && ancienFocus?.isConnected) ancienFocus.focus({ preventScroll:true });
+        resolve(validation);
+      };
+      const clavier = event => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          terminer(false);
+        } else if (event.key === "Tab") {
+          const premier = rester;
+          const dernier = quitter;
+          if (event.shiftKey && document.activeElement === premier) {
+            event.preventDefault();
+            dernier.focus();
+          } else if (!event.shiftKey && document.activeElement === dernier) {
+            event.preventDefault();
+            premier.focus();
+          }
+        }
+      };
+      document.addEventListener("keydown", clavier, true);
+      rester.addEventListener("click", () => terminer(false), { once:true });
+      quitter.addEventListener("click", () => terminer(true), { once:true });
+      rester.focus({ preventScroll:true });
+    });
+  }
+
   async function confirmerSuppressionInvitation(identiteInvite) {
     const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html");
     const dialogue = fragment.querySelector('[data-lcdp-dialogue-reference="suppression"]');
@@ -3064,6 +3114,7 @@
           return resultat;
         },
         informer: afficherInformationInvitation,
+        confirmerQuitter: confirmerQuitterInvitationSansEnregistrer,
         fermer
       });
     } catch (erreur) {
