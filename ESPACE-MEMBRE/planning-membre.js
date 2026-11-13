@@ -2839,27 +2839,28 @@
   // (onglets, filtres, listes) reste monté mais n'est plus visible.
   function ouvrirSurfaceInvitationPleinePage() {
     const main = document.querySelector("body.lcdp-mes-acces-page > .lcdp-app-wrapper > .lcdp-site-main");
-    const accueil = main?.querySelector(":scope > .lcdp-page-section");
-    if (!main || !accueil || main.querySelector("[data-lcdp-invitation-vue-page]")) return null;
+    if (!main || !etat.slotPlanning?.isConnected || main.querySelector("[data-lcdp-invitation-vue-page]")) return null;
+
     const conteneur = document.createElement("div");
-    const precedent = { hidden: accueil.hidden, inert: accueil.inert };
+    conteneur.dataset.lcdpInvitationVuePage = "true";
+    const contenuInitial = Array.from(main.childNodes);
     const focusInitial = document.activeElement;
-    const defilements = [main.closest(".lcdp-app-wrapper"), document.scrollingElement]
-      .filter(Boolean).map(element => ({element, position:element.scrollTop}));
-    accueil.hidden = true;
-    accueil.inert = true;
-    main.appendChild(conteneur);
-    defilements.forEach(({element}) => { element.scrollTop = 0; });
-    let ferme = false;
+    const scrollers = [main.closest(".lcdp-app-wrapper"), document.scrollingElement]
+      .filter(Boolean).map(element => ({ element, position: element.scrollTop }));
+    // On sort matériellement MES ACCÈS du DOM affiché, au lieu de seulement
+    // masquer sa liste. Le composant intégral et tous ses écouteurs sont conservés.
+    main.replaceChildren(conteneur);
+    scrollers.forEach(({ element }) => { element.scrollTop = 0; });
+
+    let fermee = false;
     return {
       conteneur,
       fermer() {
-        if (ferme) return;
-        ferme = true;
-        conteneur.remove();
-        accueil.hidden = precedent.hidden;
-        accueil.inert = precedent.inert;
-        defilements.forEach(({element,position}) => { element.scrollTop = position; });
+        if (fermee) return;
+        fermee = true;
+        if (conteneur.parentNode === main) main.replaceChildren(...contenuInitial);
+        else conteneur.remove();
+        scrollers.forEach(({ element, position }) => { element.scrollTop = position; });
         if (focusInitial?.isConnected && typeof focusInitial.focus === "function") {
           focusInitial.focus({ preventScroll: true });
         }
@@ -2924,9 +2925,8 @@
     const surface = ouvrirSurfaceInvitationPleinePage();
     if (!surface) return null;
     const conteneur = surface.conteneur;
-    conteneur.dataset.lcdpInvitationVuePage = "true";
     try {
-      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html"));
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-wrapper-v6"));
     } catch (erreur) {
       surface.fermer();
       throw erreur;
@@ -3050,7 +3050,6 @@
       annuler.addEventListener("click", () => fermer(null));
       formulaire.addEventListener("submit", event => {
         event.preventDefault();
-        inviter.click();
       });
       document.addEventListener("keydown", gererEchap);
       afficherLignes();
