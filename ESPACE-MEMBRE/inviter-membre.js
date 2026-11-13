@@ -696,7 +696,7 @@
 
     const information = options.profil === "information";
     const choix = options.profil === "choix";
-    const superposition = (information || choix) && options.superposition === true;
+    const superposition = options.superposition === true;
     const hote = superposition ? document.createElement("div") : slot;
     if (superposition) document.body.appendChild(hote);
     else slot.innerHTML = "";
@@ -1064,6 +1064,7 @@
         return resultat;
       },
       informer:message => afficherAlerte(message,{profil:"information",superposition:true}),
+      erreur:message => afficherAlerte(message,{profil:"erreur",superposition:true}),
       confirmerQuitter:() => afficherAlerte(
         "Les modifications de la liste des invités ne seront pas enregistrées.",
         {
