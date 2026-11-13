@@ -3,13 +3,20 @@
 (function(global){
   "use strict";
   const NOMS = ["Session", "Accès au parc", "Check-in", "Présence", "Check-out", "Terminé"];
-  const GUIDES = [
+  // Rubriques et noms d'images confirmés par AccesDetail.js (administration).
+  // Le circuit de diffusion des données reste à définir : aucune lecture ADMIN
+  // n'est déclenchée ici depuis le navigateur membre.
+  const ENTREES = [
     {cle:"entree",titre:"Entrée du parc",images:["entree1.webp","entree2.webp"]},
-    {cle:"checkin",titre:"Point de check-in",images:["checkin1.webp","checkin2.webp"]},
+    {cle:"checkin",titre:"Point de check-in",images:["checkin1.webp","checkin2.webp"]}
+  ];
+  const ZONES_PRESENCE = [
     {cle:"chemin1",titre:"Chemin d’accès à la zone réservée 1",images:["chemin1.webp"]},
     {cle:"chemin2",titre:"Chemin d’accès à la zone réservée 2",images:["chemin2.webp"]},
     {cle:"zonereservee1",titre:"Zone réservée 1",images:["zonereservee11.webp","zonereservee12.webp"]},
-    {cle:"zonereservee2",titre:"Zone réservée 2",images:["zonereservee21.webp","zonereservee22.webp"]}
+    {cle:"zonereservee2",titre:"Zone réservée 2",images:["zonereservee21.webp","zonereservee22.webp"]},
+    {cle:"presence",titre:"Présence 1",images:["presence11.webp","presence12.webp"]},
+    {cle:"presence2",titre:"Présence 2",images:["presence21.webp","presence22.webp"]}
   ];
   const root = document.querySelector("[data-lcdp-control-access]");
   const workflow = document.querySelector("[data-lcdp-cle-workflow]");
@@ -62,8 +69,26 @@
   conteneur.insertBefore(session,root);
   conteneur.insertBefore(guide,root);
 
-  let demarre=false, etape=0, etatCourant=null, slides=[], indexSlide=0, guideCharge=false;
-  let demandeGuide=0, endpointGuide="";
+  // Consultation à l'étape 4 sans sortir du contrôle de présence existant.
+  const detailsPresence=noeud("details","lcdp-parcours-details-presence");
+  detailsPresence.hidden=true;
+  detailsPresence.appendChild(noeud("summary","lcdp-parcours-details-presence__entete","Voir le détail des accès et de la présence"));
+  const contenuPresence=noeud("div","lcdp-parcours-details-presence__contenu");
+  const zonePresence=noeud("div","lcdp-parcours-carrousel");
+  zonePresence.setAttribute("aria-live","polite");
+  const navigationPresence=noeud("div","lcdp-parcours-carrousel__navigation");
+  const precedentPresence=noeud("button","lcdp-button lcdp-button-secondary lcdp-parcours-carrousel__bouton","Précédent");
+  const compteurPresence=noeud("span","lcdp-parcours-carrousel__compteur");
+  const suivantPresence=noeud("button","lcdp-button lcdp-button-secondary lcdp-parcours-carrousel__bouton","Suivant");
+  precedentPresence.type=suivantPresence.type="button";
+  navigationPresence.append(precedentPresence,compteurPresence,suivantPresence);
+  contenuPresence.append(zonePresence,navigationPresence);
+  detailsPresence.appendChild(contenuPresence);
+  conteneur.insertBefore(detailsPresence,root);
+
+  let demarre=false, etape=0, etatCourant=null;
+  const carrouselEntree={zone:zoneCartes,navigation,precedent,suivant,compteur,slides:[],index:0};
+  const carrouselPresence={zone:zonePresence,navigation:navigationPresence,precedent:precedentPresence,suivant:suivantPresence,compteur:compteurPresence,slides:[],index:0};
 
   function numeroEtape(etat){
     if(!etat || !etat.screen)return 3;
@@ -80,6 +105,7 @@
     nav.hidden=false;
     session.hidden=numero!==1;
     guide.hidden=numero!==2;
+    detailsPresence.hidden=numero!==4;
     const intermediaire=numero===1 || numero===2;
     // Ne détruit pas les écrans existants : ne modifie que leur visibilité.
     if(intermediaire){root.hidden=true;if(workflow)workflow.hidden=true;}
@@ -100,82 +126,94 @@
     nav.scrollLeft=0;
   }
 
-  function afficherSlide(){
-    zoneCartes.replaceChildren();
-    if(!slides.length){
-      zoneCartes.appendChild(noeud("p","lcdp-parcours-indisponible","Les indications d’accès de ce parc ne sont pas encore disponibles."));
-      navigation.hidden=true;
+  function afficherSlide(carrousel){
+    carrousel.zone.replaceChildren();
+    if(!carrousel.slides.length){
+      carrousel.zone.appendChild(noeud("p","lcdp-parcours-indisponible","Les détails de ce parc ne sont pas encore disponibles."));
+      carrousel.navigation.hidden=true;
       return;
     }
-    indexSlide=Math.max(0,Math.min(indexSlide,slides.length-1));
-    const slide=slides[indexSlide];
+    carrousel.index=Math.max(0,Math.min(carrousel.index,carrousel.slides.length-1));
+    const slide=carrousel.slides[carrousel.index];
     const carte=noeud("article","lcdp-parcours-slide");
     carte.appendChild(noeud("h2","lcdp-parcours-slide__titre",slide.titre));
     if(slide.texte)carte.appendChild(noeud("p","lcdp-parcours-slide__texte",slide.texte));
-    if(slide.images?.length){
+    if(slide.images.length){
       const photos=noeud("div","lcdp-parcours-slide__photos");
-      slide.images.forEach(src=>{
+      slide.images.forEach((src,index)=>{
         const img=noeud("img","lcdp-parcours-slide__image");
         img.src=src;
-        img.alt=slide.titre;
+        img.alt=slide.titre+" — photo "+(index+1);
         img.loading="lazy";
         img.addEventListener("error",()=>{img.hidden=true;},{once:true});
         photos.appendChild(img);
       });
       carte.appendChild(photos);
     }
-    zoneCartes.appendChild(carte);
-    navigation.hidden=slides.length<=1;
-    precedent.disabled=indexSlide===0;
-    suivant.disabled=indexSlide===slides.length-1;
-    compteur.textContent=(indexSlide+1)+" / "+slides.length;
+    carrousel.zone.appendChild(carte);
+    carrousel.navigation.hidden=carrousel.slides.length<=1;
+    carrousel.precedent.disabled=carrousel.index===0;
+    carrousel.suivant.disabled=carrousel.index===carrousel.slides.length-1;
+    carrousel.compteur.textContent=(carrousel.index+1)+" / "+carrousel.slides.length;
   }
 
-  function normaliserGuide(data){
-    const rubriques=data?.rubriques || data?.accesdetail || data?.parc?.accesdetail || {};
-    const parc=data?.parc || {};
-    const departement=String(parc.dptmt || parc.departement || "");
-    const nom=String(parc.nom || parc.name || etatCourant?.reservation?.parkName || "");
-    const dossier=String(parc.dossier || "").trim();
-    nomParc.textContent=nom;
-    slides=GUIDES.filter(g=>rubriques[g.cle]?.texte).map(g=>{
-      const entree=rubriques[g.cle];
-      const images=Array.isArray(entree.images) ? entree.images.filter(url=>typeof url==="string" && /^https:\/\//i.test(url)) : [];
-      if(images.length===0 && departement && dossier){
-        const base=typeof global.LCDP_urlObjet==="function" ? global.LCDP_urlObjet("/IMAG/ACCESPARC/") : "";
-        if(base)g.images.forEach(f=>images.push(base+encodeURIComponent(departement)+"/"+encodeURIComponent(dossier)+"/"+f));
-      }
-      return {titre:g.titre,texte:String(entree.texte || ""),images};
-    });
-    indexSlide=0;
-    afficherSlide();
-  }
-
-  async function chargerGuide(){
-    if(guideCharge)return;
-    guideCharge=true;
-    const numeroDemande=++demandeGuide;
-    const parc=etatCourant?.reservation?.parkName || "";
-    nomParc.textContent=parc;
-    zoneCartes.replaceChildren(noeud("p","lcdp-parcours-indisponible","Chargement des indications d’accès…"));
-    // Lecture optionnelle : aucune route administrative ni permission ADMIN utilisée.
-    const endpoint=endpointGuide || String(global.SITE_CONFIG?.workerLaCleDuParcUrl || global.SITE_CONFIG?.WORKER_LA_CLE_DU_PARC_URL || global.SITE_CONFIG?.W_LA_CLE_DU_PARC_URL || "").replace(/\/+$/,"");
-    if(!endpoint){normaliserGuide({});return;}
+  function urlPhotoSure(chemin){
+    if(typeof chemin!=="string" || !chemin.trim())return null;
     try{
-      const reponse=await fetch(endpoint+"/access-guide",{method:"GET",credentials:"include",cache:"no-store",headers:{"Accept":"application/json"}});
-      const payload=await reponse.json().catch(()=>null);
-      if(numeroDemande!==demandeGuide)return;
-      if(!reponse.ok || payload?.success!==true){normaliserGuide({});return;}
-      normaliserGuide(payload);
-    }catch(error){
-      if(numeroDemande===demandeGuide)normaliserGuide({});
-    }
+      const url=new URL(chemin,global.location.href);
+      return url.protocol==="https:" ? url.href : null;
+    }catch{return null;}
   }
 
-  poursuivreSession.addEventListener("click",()=>{afficherEtape(2);chargerGuide();});
+  function preparerSlides(liste,rubriques,photosParFichier){
+    return liste.map(g=>{
+      const item=rubriques[g.cle];
+      if(!item || typeof item!=="object")return null;
+      const texte=typeof item.texte==="string" ? item.texte.trim() : "";
+      const imagesBrutes=[
+        ...(Array.isArray(item.images)?item.images:[]),
+        ...(Array.isArray(item.photos)?item.photos:[]),
+        ...g.images.map(f=>photosParFichier[f]).filter(Boolean)
+      ];
+      const images=[...new Set(imagesBrutes.map(urlPhotoSure).filter(Boolean))];
+      return texte || images.length ? {titre:g.titre,texte,images} : null;
+    }).filter(Boolean);
+  }
+
+  // Point d'entrée réservé au futur canal membre autorisé.
+  // Aucune URL/autorisation de l'administration n'est supposée ici.
+  function recevoirAccesDetail(donnees){
+    if(!donnees || donnees.success===false)return false;
+    const parc=donnees.parc || {};
+    const attendu=String(etatCourant?.parkId || etatCourant?.reservation?.parkId || "").trim();
+    const recu=String(parc.idparc || parc.parkId || "").trim();
+    // Ne jamais afficher les informations d'un autre parc.
+    if(!attendu || !recu || attendu!==recu)return false;
+    const rubriques=donnees.rubriques || donnees.accesdetail || parc.accesdetail;
+    if(!rubriques || typeof rubriques!=="object" || Array.isArray(rubriques))return false;
+    const photosParFichier=donnees.photosParFichier && typeof donnees.photosParFichier==="object"
+      ? donnees.photosParFichier : {};
+    nomParc.textContent=String(parc.nom || etatCourant?.reservation?.parkName || "");
+    carrouselEntree.slides=preparerSlides(ENTREES,rubriques,photosParFichier);
+    carrouselPresence.slides=preparerSlides(ZONES_PRESENCE,rubriques,photosParFichier);
+    carrouselEntree.index=0;
+    carrouselPresence.index=0;
+    afficherSlide(carrouselEntree);
+    afficherSlide(carrouselPresence);
+    return true;
+  }
+
+  poursuivreSession.addEventListener("click",()=>{
+    nomParc.textContent=String(etatCourant?.reservation?.parkName || "");
+    afficherSlide(carrouselEntree);
+    afficherEtape(2);
+  });
   poursuivreGuide.addEventListener("click",()=>afficherEtape(3));
-  precedent.addEventListener("click",()=>{indexSlide--;afficherSlide();});
-  suivant.addEventListener("click",()=>{indexSlide++;afficherSlide();});
+  precedent.addEventListener("click",()=>{carrouselEntree.index--;afficherSlide(carrouselEntree);});
+  suivant.addEventListener("click",()=>{carrouselEntree.index++;afficherSlide(carrouselEntree);});
+  precedentPresence.addEventListener("click",()=>{carrouselPresence.index--;afficherSlide(carrouselPresence);});
+  suivantPresence.addEventListener("click",()=>{carrouselPresence.index++;afficherSlide(carrouselPresence);});
+  afficherSlide(carrouselPresence);
 
   function demarrer(etat){
     etatCourant=etat || etatCourant;
@@ -196,5 +234,5 @@
     afficherEtape(n);
   }
 
-  global.LCDP_ParcoursMaCle={demarrer,actualiser,afficherEtape,configurerEndpoint(url){endpointGuide=String(url || "").replace(/\/+$/,"");}};
+  global.LCDP_ParcoursMaCle={demarrer,actualiser,afficherEtape,recevoirAccesDetail};
 })(window);
