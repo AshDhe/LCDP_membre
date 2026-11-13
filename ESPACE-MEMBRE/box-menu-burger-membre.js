@@ -455,83 +455,100 @@
   }
 
   async function afficherAlerteBurger(message, options = {}) {
-    const container = document.createElement("div");
-    container.className = "lcdp-burger-alerte";
-    document.body.appendChild(container);
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
-    container.appendChild(fragment);
-
-    const alerte = container.querySelector("[data-lcdp-box-alerte]");
-    const texte = container.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = container.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = container.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      container.remove();
-      alert(message || "");
-      return true;
-    }
-
-    texte.textContent = message || "";
-    boutonOk.textContent = options.boutonOk || "OK";
-
-    const boutonActionConfiguration = options.boutonAction && typeof options.boutonAction === "object"
-      ? options.boutonAction
-      : null;
-    let boutonAction = null;
-
-    if (boutonActionConfiguration) {
-      boutonAction = document.createElement("button");
-      boutonAction.type = "button";
-      boutonAction.className = "lcdp-button " + (boutonActionConfiguration.style || "lcdp-button-mini");
-      boutonAction.textContent = boutonActionConfiguration.label || "Payer";
-
-      const zoneActions = boutonOk.parentElement || texte.parentElement || alerte;
-
-      if (boutonOk.parentElement === zoneActions) {
-        zoneActions.insertBefore(boutonAction, boutonOk);
-      } else {
-        zoneActions.appendChild(boutonAction);
-      }
-    }
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer(valeur) {
-        if (resolu) return;
-        resolu = true;
-        container.remove();
-        resolve(valeur);
-      }
-
-      boutonFermer.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        fermer(false);
-      });
-      boutonOk.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        fermer(true);
-      });
-      if (boutonAction) {
-        boutonAction.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          fermer("action");
-
-          if (typeof boutonActionConfiguration.action === "function") {
-            boutonActionConfiguration.action();
-          }
+    const boutonAction = options.boutonAction && typeof options.boutonAction === "object"
+      ? options.boutonAction : null;
+    // Avec une action complémentaire, les deux résultats utiles sont agir / fermer.
+    const profil = boutonAction || options.profil === "choix" ? "choix"
+      : options.profil === "information" ? "information" : "erreur";
+    const conteneur = document.createElement("div");
+    conteneur.className = "lcdp-burger-alerte";
+    const focusInitial = document.activeElement;
+    try {
+      const cssUrl = construireUrlObjet("/CSSBASE/lcdp-lightbox-convergence.css");
+      if (![...document.querySelectorAll('link[rel="stylesheet"]')]
+        .some(lien => lien.href === new URL(cssUrl, document.baseURI).href)) {
+        await new Promise((resolve, reject) => {
+          const lien = document.createElement("link");
+          lien.rel = "stylesheet";
+          lien.href = cssUrl;
+          lien.onload = resolve;
+          lien.onerror = () => { lien.remove(); reject(new Error("CSS dialogue indisponible.")); };
+          document.head.appendChild(lien);
         });
       }
-      alerte.addEventListener("click", (event) => {
-        event.stopPropagation();
-        if (event.target === alerte) fermer(false);
+      const fragment = {
+        choix: "/HTMLBASE/02-dialogue-reference-choix.html",
+        information: "/HTMLBASE/02-dialogue-reference-information.html",
+        erreur: "/HTMLBASE/02-dialogue-reference-erreur.html"
+      }[profil];
+      conteneur.appendChild(await chargerFragmentObjet(fragment));
+      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="' + profil + '"]');
+      const titre = dialogue?.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = dialogue?.querySelector("[data-lcdp-dialogue-message]");
+      const valider = dialogue?.querySelector(profil === "choix"
+        ? '[data-lcdp-dialogue-action="confirmer"]'
+        : profil === "information" ? '[data-lcdp-dialogue-action="compris"]'
+        : '[data-lcdp-dialogue-action="fermer"]');
+      const annuler = profil === "choix"
+        ? dialogue?.querySelector('[data-lcdp-dialogue-action="annuler"]') : null;
+      if (!dialogue || !titre || !texte || !valider || (profil === "choix" && !annuler)) {
+        throw new Error("Structure dialogue menu membre incomplète.");
+      }
+      titre.textContent = options.titre || (
+        profil === "choix" ? "Choisir une action" :
+        profil === "information" ? "Information" : "Erreur"
+      );
+      texte.textContent = message || "";
+      valider.textContent = boutonAction?.label || options.boutonOk || (profil === "choix" ? "Continuer" : "OK");
+      if (annuler) annuler.textContent = options.boutonAnnuler || "Fermer";
+      if (boutonAction?.style) {
+        for (const classe of String(boutonAction.style).split(/\s+/).filter(Boolean)) {
+          valider.classList.add(classe);
+        }
+      }
+
+      document.body.appendChild(conteneur);
+      return await new Promise(resolve => {
+        let termine = false;
+        const fermer = (valeur, executerAction = false) => {
+          if (termine) return;
+          termine = true;
+          document.removeEventListener("keydown", clavier);
+          conteneur.remove();
+          if (focusInitial?.isConnected && typeof focusInitial.focus === "function") {
+            focusInitial.focus({ preventScroll: true });
+          }
+          resolve(valeur);
+          if (executerAction && typeof boutonAction?.action === "function") {
+            try { boutonAction.action(); }
+            catch (error) { console.error("Action dialogue burger membre :", error); }
+          }
+        };
+        const clavier = event => {
+          if (event.key === "Escape") { event.preventDefault(); fermer(false); }
+          if (annuler && event.key === "Tab") {
+            if (event.shiftKey && document.activeElement === annuler) {
+              event.preventDefault(); valider.focus();
+            } else if (!event.shiftKey && document.activeElement === valider) {
+              event.preventDefault(); annuler.focus();
+            }
+          }
+        };
+        valider.addEventListener("click", () => fermer(boutonAction ? "action" : true, Boolean(boutonAction)), { once: true });
+        annuler?.addEventListener("click", () => fermer(false), { once: true });
+        dialogue.addEventListener("click", event => {
+          if (event.target === dialogue) fermer(false);
+        });
+        document.addEventListener("keydown", clavier);
+        (annuler || valider).focus();
       });
-    });
+    } catch (erreur) {
+      conteneur.remove();
+      console.error("Dialogue burger membre indisponible :", erreur);
+      window.alert(message || "");
+      // Ne pas déclencher de navigation en cas de dialogue indisponible.
+      return false;
+    }
   }
 
   function ouvrirMenu(boutonBurger, navBurger) {
@@ -784,7 +801,7 @@
   }
 
   async function redirigerVersAbonnementPourRegularisationBurger() {
-    const ok = await afficherAlerteBurger("Votre abonnement est suspendu (non payé). Vous allez être redirigé vers la page d’abonnement.");
+    const ok = await afficherAlerteBurger("Votre abonnement est suspendu (non payé). Vous allez être redirigé vers la page d’abonnement.", { profil: "choix", boutonOk: "Continuer", boutonAnnuler: "Fermer" });
 
     if (!ok) return;
 
@@ -1116,7 +1133,7 @@
     // Aucune DA enregistrée : ouverture du parcours existant.
     if (!statuda) {
       if (daactive === false && datenext && !dateDaAtteinteBurger(datenext)) {
-        await afficherAlerteBurger("Vous pouvez transmettre votre DA à partir du " + formaterDateDa(datenext) + ".");
+        await afficherAlerteBurger("Vous pouvez transmettre votre DA à partir du " + formaterDateDa(datenext) + ".", { profil: "information" });
         return;
       }
       await ouvrirPremiereDaDepuisBurger(contexte, boutonBurger, navBurger);
