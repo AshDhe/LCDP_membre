@@ -631,6 +631,24 @@
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-planning-verso-liens {
         margin-top:0 !important;padding-top:0 !important;gap:7px !important;
       }
+      /* Même ligne réelle pour le titre du parc et le bouton de fermeture. */
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__place {
+        justify-content:space-between !important;
+        align-items:center !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-box-card-reservation-membre__place-line {
+        flex:1 1 auto !important;
+        min-width:0 !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite.is-retourne .lcdp-planning-verso-fermer-inline {
+        position:static !important;
+        inset:auto !important;
+        top:auto !important;right:auto !important;
+        margin:0 0 0 8px !important;
+        flex:0 0 28px !important;
+        width:28px !important;height:28px !important;
+        padding:0 !important;
+      }
       /* Même emplacement pour les trois onglets, y compris quand le calendrier est affiché. */
       #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente,
       #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente.lcdp-box-liste-card--mode-agenda {
@@ -1511,6 +1529,9 @@
     const accesVerso = cardReservation.querySelector("[data-action='adresse']");
     if (detailVerso && parcVerso && dateVerso) {
       detailVerso.prepend(parcVerso);
+      // La croix partage réellement la ligne du nom du parc.
+      fermer.classList.add("lcdp-planning-verso-fermer-inline");
+      parcVerso.appendChild(fermer);
       parcVerso.style.marginBottom = "0";
       dateVerso.style.marginTop = "0";
       if (accesVerso) {
