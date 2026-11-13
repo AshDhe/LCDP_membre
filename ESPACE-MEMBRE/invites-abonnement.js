@@ -75,9 +75,9 @@
     const spinnerOfficiel = document.querySelector(
       "#lcdp-planning-attente .lcdp-loading-spinner, #lcdp-attente-arrivee .lcdp-loading-spinner"
     );
-    if (!spinnerOfficiel) throw new Error("Spinner de référence indisponible.");
-    const spinnerEnregistrement = spinnerOfficiel.cloneNode(true);
-    spinnerEnregistrement.setAttribute("aria-hidden", "true");
+    // L'absence du spinner ne doit jamais bloquer l'ouverture du formulaire.
+    const spinnerEnregistrement = spinnerOfficiel ? spinnerOfficiel.cloneNode(true) : null;
+    spinnerEnregistrement?.setAttribute("aria-hidden", "true");
     envoyer.style.display = "inline-flex";
     envoyer.style.alignItems = "center";
     envoyer.style.justifyContent = "center";
@@ -356,7 +356,7 @@
       envoyer.disabled = true;
       fermerCroix.disabled = true;
       envoyer.setAttribute("aria-busy","true");
-      envoyer.appendChild(spinnerEnregistrement);
+      if (spinnerEnregistrement) envoyer.appendChild(spinnerEnregistrement);
       messageLocal("");
       try {
         const resultat = await enregistrer(idflux,donnees);
@@ -374,7 +374,7 @@
         messageLocal(erreur?.message || "Enregistrement impossible. Les choix sont conservés.");
       } finally {
         enregistrementEnCours = false;
-        spinnerEnregistrement.remove();
+        spinnerEnregistrement?.remove();
         envoyer.removeAttribute("aria-busy");
         if (!ferme) {
           envoyer.disabled = false;
