@@ -243,7 +243,7 @@
         if (!ferme) {
           envoyer.disabled = false;
           fermerCroix.disabled = false;
-          envoyer.textContent = "Inviter";
+          envoyer.textContent = "Enregistrer les invités";
         }
       }
     });
