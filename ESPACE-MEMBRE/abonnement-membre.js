@@ -3824,98 +3824,74 @@
     }
   }
 
-  async function afficherAlerteSuperposee(message, options = {}) {
-    const config = options && typeof options === "object" ? options : {};
-    const container = document.createElement("div");
-    container.className = "lcdp-workflow-abonnement-alerte";
-    document.body.appendChild(container);
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
-    container.appendChild(fragment);
-
-    const alerte = container.querySelector("[data-lcdp-box-alerte]");
-    const texte = container.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = container.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = container.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      container.remove();
-      throw new Error("Structure de l’alerte incomplète.");
+  async function afficherErreurAbonnement(message, options = {}) {
+    const superposition = options.superposition === true;
+    const container = superposition ? document.createElement("div") : obtenirLightboxSlot();
+    const focusInitial = document.activeElement;
+    if (superposition) {
+      container.className = "lcdp-workflow-abonnement-alerte";
+      document.body.appendChild(container);
+    } else {
+      container.replaceChildren();
     }
 
-    texte.textContent = message || "";
-    boutonOk.textContent = config.boutonOk || boutonOk.textContent || "OK";
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer(valeur) {
-        if (resolu) return;
-        resolu = true;
-        container.remove();
-        resolve(valeur);
+    try {
+      container.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-erreur.html"));
+      const dialogue = container.querySelector('[data-lcdp-dialogue-reference="erreur"]');
+      const titre = container.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = container.querySelector("[data-lcdp-dialogue-message]");
+      const bouton = container.querySelector('[data-lcdp-dialogue-action="fermer"]');
+      if (!dialogue || !titre || !texte || !bouton) {
+        throw new Error("Structure ERREUR abonnement incomplète.");
       }
+      titre.textContent = "Erreur";
+      texte.textContent = message || "";
+      bouton.textContent = options.boutonOk || "OK";
 
-      boutonFermer.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        fermer(false);
+      return await new Promise(resolve => {
+        let resolu = false;
+        const fermer = valeur => {
+          if (resolu) return;
+          resolu = true;
+          document.removeEventListener("keydown", clavier);
+          if (superposition) container.remove();
+          else container.replaceChildren();
+          if (focusInitial?.isConnected && typeof focusInitial.focus === "function") {
+            focusInitial.focus();
+          }
+          resolve(valeur);
+        };
+        const clavier = event => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            fermer(false);
+          }
+        };
+        bouton.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          fermer(true);
+        }, { once: true });
+        dialogue.addEventListener("click", event => {
+          event.stopPropagation();
+          if (event.target === dialogue) fermer(false);
+        });
+        document.addEventListener("keydown", clavier);
+        bouton.focus();
       });
-      boutonOk.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        fermer(true);
-      });
-      alerte.addEventListener("click", (event) => {
-        event.stopPropagation();
-        if (event.target === alerte) fermer(false);
-      });
-    });
+    } catch (error) {
+      if (superposition) container.remove();
+      else container.replaceChildren();
+      throw error;
+    }
+  }
+
+  async function afficherAlerteSuperposee(message, options = {}) {
+    return afficherErreurAbonnement(message, { ...options, superposition: true });
   }
 
   async function afficherAlerte(message) {
-    const slot = obtenirLightboxSlot();
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
-    slot.appendChild(fragment);
-
-    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-    const texte = slot.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      throw new Error("Structure de l’alerte incomplète.");
-    }
-
-    texte.textContent = message || "";
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer(valeur) {
-        if (resolu) return;
-        resolu = true;
-        slot.innerHTML = "";
-        resolve(valeur);
-      }
-
-      boutonFermer.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        fermer(false);
-      });
-      boutonOk.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        fermer(true);
-      });
-      alerte.addEventListener("click", (event) => {
-        event.stopPropagation();
-        if (event.target === alerte) fermer(false);
-      });
-    });
+    return afficherErreurAbonnement(message);
   }
 
   function afficherErreurChamp(element, message) {
