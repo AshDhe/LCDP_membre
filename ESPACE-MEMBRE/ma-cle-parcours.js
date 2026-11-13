@@ -1,9 +1,7 @@
-/* MA CLÉ — pilote des étapes 1 et 2.
-   S'insère dans le wrapper MA CLÉ déjà ouvert. La progression couvre
-   les six écrans sans modifier les décisions du contrôle d'accès, la vidéo,
-   la présence, les invitations ni le checkout.
-   Les textes/photos TEST 1 - 41 sont des données pilotes vérifiées :
-   le raccordement dynamique sécurisé Accès détail sera réalisé séparément. */
+/* MA CLÉ — progression des six étapes, informations Accès détail dynamiques.
+   Les données d'accès proviennent exclusivement du Worker MA CLÉ qui vérifie
+   la session et la réservation du parc, puis lit Park Admin (Supabase).
+   Aucune modification des droits, contrôles vidéo ou règles de présence. */
 (function (global) {
   "use strict";
 
@@ -15,21 +13,6 @@
   if (!conteneur || !zoneDefilante || !sousHeader || !controle || !workflow) return;
 
   const NOM_ETAPES = ["Session", "Accès au parc", "Check-in", "Accès", "Check-out", "Terminé"];
-  const PARC_DEMO = "TEST 1 - 41";
-  const PARC_DEMO_ID = "dceeefb1-1fe4-54bb-a3f2-5bc6607e2531";
-  const RUBRIQUES_DEMO = [
-    {
-      titre: "Entrée",
-      texte: "L'entrée du parc est à droite de l'entrée principale au niveau de la cour de la ferme.",
-      images: ["entree1.webp"]
-    },
-    {
-      titre: "Check-in",
-      texte: "L'activation de LA CLÉ se fait dans la grange à gauche avant de continuer et sortir par la porte d'écurie.",
-      images: ["checkin1.webp"]
-    }
-  ];
-
   function element(tag, classe, texte) {
     const el = document.createElement(tag);
     if (classe) el.className = classe;
@@ -83,8 +66,13 @@
   const fermerDetail = bouton("×", "lcdp-ma-cle-detail__fermer");
   fermerDetail.setAttribute("aria-label", "Fermer les informations d’accès");
   enteteDetail.append(titreDetail, fermerDetail);
+  const statutDetail = element("p", "lcdp-ma-cle-detail__statut");
+  statutDetail.setAttribute("role", "status");
+  statutDetail.hidden = true;
+  const reessayerDetail = bouton("Réessayer", "lcdp-ma-cle-detail__reessayer");
+  reessayerDetail.hidden = true;
   const contenuDetail = element("div", "lcdp-ma-cle-detail__contenu");
-  ecranDetail.append(enteteDetail, contenuDetail);
+  ecranDetail.append(enteteDetail, statutDetail, reessayerDetail, contenuDetail);
 
   // Le chemin est un vrai sous-header du wrapper, HORS de la zone défilante.
   // Les écrans seuls défilent, sous le bandeau et le chemin de navigation.
@@ -103,6 +91,9 @@
   let repriseEnCours = false;
   let controleAccesDisponible = false;
   let derniereErreurControle = "";
+  let obtenirGuideAcces = null;
+  let guideAcces = null;
+  let promesseGuideAcces = null;
 
   // La progression reflète l'état confirmé par les écrans existants.
   // Elle ne décide jamais des droits et ne lance aucun appel au Worker.
@@ -153,50 +144,105 @@
     etape = numero;
     detailVisible = false;
     if (numero === 2) {
-      const droit = dernierEtat?.accessState?.droit || dernierEtat?.droit;
-      nomParc.textContent = String(dernierEtat?.reservation?.parkName ||
-        (droit?.parkId === PARC_DEMO_ID ? PARC_DEMO : "Parc"));
+      nomParc.textContent = String(guideAcces?.parc?.nom ||
+        dernierEtat?.reservation?.parkName || "Chargement des informations du parc…");
       messageErreurControle.hidden = !derniereErreurControle;
       messageErreurControle.textContent = derniereErreurControle;
       suiteAcces.disabled = false;
-      dessinerDetail();
+      // Lecture asynchrone, sans retarder la navigation de l'étape 2.
+      void chargerGuideAcces().catch(() => {});
     }
     rendre();
   }
 
-  function urlPhoto(nomFichier) {
-    if (typeof global.LCDP_urlObjet !== "function") return null;
-    return global.LCDP_urlObjet("/IMAG/ACCESPARC/41/TEST_1_-_41/" + nomFichier);
+  function photoUrl(nomFichier) {
+    const parc = guideAcces?.parc;
+    if (!parc || typeof global.LCDP_urlObjet !== "function") return null;
+    const nom = String(nomFichier || "");
+    const dptmt = String(parc.dptmt || "");
+    const dossier = String(parc.dossier || "");
+    if (!/^[a-z0-9_-]+\.webp$/i.test(nom) ||
+        !/^(?:[0-9]{1,3}|2A|2B)$/.test(dptmt) ||
+        !dossier || dossier.length > 160 || /[\\/]/.test(dossier) ||
+        dossier === "." || dossier === "..") return null;
+    return global.LCDP_urlObjet("/IMAG/ACCESPARC/" +
+      encodeURIComponent(dptmt) + "/" + encodeURIComponent(dossier) + "/" + nom);
   }
 
+  // Aucune donnée de démonstration: cette fonction n'affiche que la réponse
+  // obtenue du Worker pour le parc de la réservation verrouillée.
   function dessinerDetail() {
     contenuDetail.replaceChildren();
-    // Aucune donnée de parc réel ne doit être publiée dans le code client.
-    // La donnée pilote ne sert que sur le nom exact du parc de test identifié
-    // dans la réponse serveur après /ouvrir et /control-access.
-    if (nomParc.textContent !== PARC_DEMO) {
+    if (!guideAcces) return;
+    const rubriques = Array.isArray(guideAcces.rubriques) ? guideAcces.rubriques : [];
+    if (!rubriques.length) {
       contenuDetail.appendChild(element("p", "lcdp-ma-cle-detail__vide",
-        "Les informations d’accès de ce parc ne sont pas encore disponibles dans cette version de test."));
+        "Aucune consigne d’accès n’est actuellement renseignée pour ce parc."));
       return;
     }
-    RUBRIQUES_DEMO.forEach(rubrique => {
+    rubriques.forEach(rubrique => {
+      if (!rubrique || typeof rubrique.titre !== "string") return;
+      const texte = typeof rubrique.texte === "string" ? rubrique.texte : "";
+      const images = Array.isArray(rubrique.images) ? rubrique.images : [];
+      if (!texte && !images.length) return;
       const bloc = element("section", "lcdp-ma-cle-detail__rubrique");
       bloc.appendChild(element("h2", "lcdp-ma-cle-detail__rubrique-titre", rubrique.titre));
-      if (rubrique.texte) bloc.appendChild(element("p", "lcdp-ma-cle-detail__texte", rubrique.texte));
-      rubrique.images.forEach(fichier => {
-        const url = urlPhoto(fichier);
+      if (texte) bloc.appendChild(element("p", "lcdp-ma-cle-detail__texte", texte));
+      images.forEach(nom => {
+        const url = photoUrl(nom);
         if (!url) return;
-        const imageBloc = element("figure", "lcdp-ma-cle-detail__photo-bloc");
+        const figure = element("figure", "lcdp-ma-cle-detail__photo-bloc");
         const photo = element("img", "lcdp-ma-cle-detail__photo");
         photo.src = url;
-        photo.alt = rubrique.titre + " — photographie du parc";
+        photo.alt = rubrique.titre + " — " + nom;
         photo.loading = "lazy";
-        photo.addEventListener("error", () => { imageBloc.hidden = true; }, {once: true});
-        imageBloc.appendChild(photo);
-        bloc.appendChild(imageBloc);
+        photo.addEventListener("error", () => { figure.hidden = true; }, {once: true});
+        figure.appendChild(photo);
+        bloc.appendChild(figure);
       });
       contenuDetail.appendChild(bloc);
     });
+  }
+
+  function afficherEtatGuide(message, erreur) {
+    statutDetail.textContent = message || "";
+    statutDetail.hidden = !message || !detailVisible;
+    statutDetail.setAttribute("role", erreur ? "alert" : "status");
+    reessayerDetail.hidden = !erreur || !detailVisible;
+  }
+
+  async function chargerGuideAcces() {
+    if (guideAcces) return guideAcces;
+    if (promesseGuideAcces) return promesseGuideAcces;
+    promesseGuideAcces = (async () => {
+      if (typeof obtenirGuideAcces !== "function") {
+        throw new Error("Les informations d’accès ne sont pas encore disponibles.");
+      }
+      afficherEtatGuide("Chargement des informations d’accès du parc…",false);
+      const resultat = await obtenirGuideAcces();
+      if (resultat?.success !== true || !resultat.parc || !Array.isArray(resultat.rubriques)) {
+        throw new Error(resultat?.message || "Impossible de charger les accès de ce parc.");
+      }
+      const droit = dernierEtat?.accessState?.droit || dernierEtat?.droit;
+      if (!droit?.parkId || !droit?.reservationId ||
+          String(resultat.parc.idparc) !== String(droit.parkId) ||
+          String(resultat.reservationId) !== String(droit.reservationId)) {
+        throw new Error("Les informations reçues ne correspondent pas à votre réservation.");
+      }
+      guideAcces = resultat;
+      nomParc.textContent = String(resultat.parc.nom || "Parc");
+      afficherEtatGuide("",false);
+      if (detailVisible) dessinerDetail();
+      return guideAcces;
+    })();
+    try {
+      return await promesseGuideAcces;
+    } catch(error) {
+      afficherEtatGuide(String(error?.message || "Informations d’accès indisponibles."),true);
+      throw error;
+    } finally {
+      promesseGuideAcces = null;
+    }
   }
 
   async function terminerIntroduction() {
@@ -245,7 +291,18 @@
     rendre();
     // Le défilement appartient au corps du wrapper, jamais à la page globale.
     zoneDefilante.scrollTop = 0;
+    if (guideAcces) {
+      afficherEtatGuide("",false);
+      dessinerDetail();
+    } else {
+      afficherEtatGuide("Chargement des informations d’accès du parc…",false);
+      void chargerGuideAcces().catch(() => {});
+    }
     fermerDetail.focus({preventScroll: true});
+  });
+  reessayerDetail.addEventListener("click", () => {
+    afficherEtatGuide("Chargement des informations d’accès du parc…",false);
+    void chargerGuideAcces().catch(() => {});
   });
   fermerDetail.addEventListener("click", () => {
     if (!actif || !detailVisible) return;
@@ -257,6 +314,9 @@
 
   function demarrer(etat, options) {
     dernierEtat = etat || null;
+    guideAcces = null;
+    promesseGuideAcces = null;
+    obtenirGuideAcces = options?.obtenirGuideAcces || null;
     controleAccesDisponible = Boolean(options?.controlePret);
     rafraichirControle = options?.rafraichirControle || null;
     // Ne jamais réinitialiser une présence déjà commencée ou un checkout.
@@ -290,11 +350,9 @@
       if (etapeControle) indiquerEtape(etapeControle);
     }
     if (actif) {
-      if (etape === 2) {
-        const droit = dernierEtat?.accessState?.droit || dernierEtat?.droit;
+      if (etape === 2 && !guideAcces) {
         nomParc.textContent = String(dernierEtat?.reservation?.parkName ||
-          (droit?.parkId === PARC_DEMO_ID ? PARC_DEMO : "Parc"));
-        dessinerDetail();
+          "Chargement des informations du parc…");
       }
       rendre();
     }
