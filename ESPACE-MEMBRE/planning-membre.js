@@ -2986,11 +2986,14 @@
 
   async function ouvrirBoxListeInvitesModifiable(idflux, invites, declencheur) {
     const idReservation = String(idflux || "").trim();
+    // Cette page utilise planning-membre.js, et non mes-acces-membre.js :
+    // attendre le CSS du formulaire AVANT d'ouvrir la vue pleine page.
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-inviter-cadre-v10");
     const surface = ouvrirSurfaceInvitationPleinePage();
     if (!surface) return null;
     const conteneur = surface.conteneur;
     try {
-      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-wrapper-v6"));
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-cadre-v10"));
     } catch (erreur) {
       surface.fermer();
       throw erreur;
