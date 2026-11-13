@@ -690,12 +690,12 @@
   }
 
   async function proposerTransfertNavigateur() {
-    const choix = await ouvrirDialogueBoutons({
+    const choix = await afficherConfirmationChoixMembre({
       titre: "Navigateur propriétaire",
       texte: "Ce navigateur n’est pas votre navigateur propriétaire. Le changement retirera l’autorisation de Ma clé à l’ancien navigateur.",
-      boutons: [{ label: "Utiliser ce navigateur à la place", valeur: "transferer" }]
+      confirmer: "Utiliser ce navigateur à la place"
     });
-    if (choix !== "transferer") return;
+    if (choix !== true) return;
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) return;
     const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
@@ -796,7 +796,7 @@
     await afficherAlerte("Votre parrain peut vous inviter depuis son espace.", { profil: "information" });
   }
 
-  async function confirmerDeconnexionMembre() {
+  async function afficherConfirmationChoixMembre(options = {}) {
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) return false;
     const avant = document.activeElement;
@@ -808,10 +808,10 @@
       const annuler = slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
       const confirmer = slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
       if (!dialogue || !titre || !texte || !annuler || !confirmer) throw new Error("Dialogue CHOIX incomplet.");
-      titre.textContent = "Confirmer la déconnexion";
-      texte.textContent = "Voulez-vous vous déconnecter de votre espace membre ?";
+      titre.textContent = options.titre || "Confirmer la déconnexion";
+      texte.textContent = options.texte || "Voulez-vous vous déconnecter de votre espace membre ?";
       annuler.textContent = "Annuler";
-      confirmer.textContent = "Confirmer";
+      confirmer.textContent = options.confirmer || "Confirmer";
       return await new Promise(resolve => {
         let termine = false;
         function fermer(valeur) {
@@ -838,13 +838,13 @@
     } catch (erreur) {
       slot.replaceChildren();
       if (avant?.isConnected && typeof avant.focus === "function") avant.focus();
-      console.error("Confirmation déconnexion indisponible :", erreur);
+      console.error("Confirmation CHOIX membre indisponible :", erreur);
       return false;
     }
   }
 
   async function gererDeconnexion() {
-    const confirmation = await confirmerDeconnexionMembre();
+    const confirmation = await afficherConfirmationChoixMembre();
     if (!confirmation) return;
 
     if (!ENDPOINT_DECONNEXION_MEMBRE) {
@@ -999,71 +999,6 @@
       document.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && confirmation && !boutonFermer.hidden) fermer(false);
       }, { once: true });
-    });
-  }
-
-  async function ouvrirDialogueBoutons(options) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return null;
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
-    slot.appendChild(fragment);
-
-    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
-    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
-    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
-    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
-    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
-
-    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
-      throw new Error("Structure de dialogue bouton incomplète.");
-    }
-
-    titre.textContent = options.titre || "";
-    texte.textContent = options.texte || "";
-    actions.innerHTML = "";
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer(valeur) {
-        if (resolu) return;
-        resolu = true;
-        slot.innerHTML = "";
-        resolve(valeur || null);
-      }
-
-      (options.boutons || []).forEach((configuration) => {
-        const bouton = document.createElement("button");
-        bouton.type = "button";
-        bouton.className = "lcdp-button " + (configuration.style || "lcdp-button-primary");
-        bouton.textContent = configuration.label || "Valider";
-        bouton.disabled = configuration.disabled === true;
-        if (configuration.description) bouton.title = configuration.description;
-
-        bouton.addEventListener("click", () => {
-          fermer(configuration.valeur || configuration.label || true);
-        });
-
-        actions.appendChild(bouton);
-      });
-
-      boutonFermer.addEventListener("click", () => fermer(null));
-
-      dialogue.addEventListener("click", (event) => {
-        if (event.target === dialogue) fermer(null);
-      });
-
-      document.addEventListener(
-        "keydown",
-        (event) => {
-          if (event.key === "Escape") fermer(null);
-        },
-        { once: true }
-      );
     });
   }
 
