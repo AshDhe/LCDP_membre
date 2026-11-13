@@ -1184,11 +1184,69 @@
     });
   }
 
+  // Source authentifiée des invitants : les réservations reçues comportent
+  // idparrain et l'identité associée, indépendamment de tout abonnement.
+  async function chargerInvitantsDepuisPlanningCompte(conteneur, compteur) {
+    if (!ENDPOINT_PLANNING_COMPTE) throw new Error("Service de planning non configuré.");
+    const reponse = await fetch(ENDPOINT_PLANNING_COMPTE + "/mes-reservations", {
+      credentials: "include", cache: "no-store",
+      headers: { "Accept": "application/json" }
+    });
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return;
+    }
+    const donnees = await reponse.json().catch(() => null);
+    if (!reponse.ok || !donnees ||
+        (donnees.ok !== true && donnees.success !== true) ||
+        !Array.isArray(donnees.reservations)) {
+      throw new Error(donnees?.message || "Impossible de charger les invitants.");
+    }
+    const personnes = donnees.reservations.filter(reservation =>
+      reservation && (reservation.invitation === true || reservation.invitation === "true")
+    ).map(reservation => {
+      const parrain = reservation.parrain || {};
+      const affichage = reservation.parrainInvitation || {};
+      const id = String(reservation.idparrain || parrain.idmembre ||
+        affichage.idmembre || "").trim();
+      const prenom = String(parrain.prenommembre || parrain.prenom ||
+        affichage.prenommembre || "").trim();
+      const nom = String(parrain.nommembre || parrain.nom ||
+        affichage.nommembre || "").trim();
+      const email = String(parrain.emailmembre || parrain.email || "").trim();
+      const alias = String(parrain.alias || affichage.alias ||
+        affichage.affichage || "").trim();
+      if (!id && !email) return null;
+      return {
+        idmembre_invitant: id,
+        prenom: prenom || (!nom && !email ? alias : ""),
+        nom,
+        email
+      };
+    }).filter(Boolean);
+    const invitantsUniques = dedoublonnerInvitantsCompte(personnes);
+    compteur.textContent = String(invitantsUniques.length);
+    afficherListeRelationsCompte(conteneur, invitantsUniques,
+      "Aucun invitant dans votre historique.");
+  }
+
   async function chargerRelationsInvitationsCompte(bloc) {
     const invites = bloc.querySelector("#lcdp-compte-relations-invite");
     const invitants = bloc.querySelector("#lcdp-compte-relations-invitant");
     const compteurInvites = bloc.querySelector('[data-lcdp-relations-nombre="invite"]');
+    const compteurInvitants = bloc.querySelector('[data-lcdp-relations-nombre="invitant"]');
     compteurInvites.textContent = "–";
+    compteurInvitants.textContent = "–";
+    // Les invitants sont chargés séparément : une route d'invitations absente
+    // ne doit pas masquer ceux qui figurent dans les accès reçus.
+    void chargerInvitantsDepuisPlanningCompte(invitants, compteurInvitants)
+      .catch(erreur => {
+        console.error("Invitants depuis le planning indisponibles :", erreur);
+        if (!redirectionCompteEnCours) {
+          invitants.textContent = "Impossible de charger les invitants.";
+          compteurInvitants.textContent = "–";
+        }
+      });
     let donnees = null;
     try {
       if (!ENDPOINT_INVITER_MEMBRE) throw new Error("Service non configuré.");
@@ -1205,17 +1263,12 @@
           !Array.isArray(donnees.invites) || !Array.isArray(donnees.invitants)) {
         throw new Error(donnees?.message || "Service indisponible.");
       }
-      const invitantsUniques = dedoublonnerInvitantsCompte(donnees.invitants);
-      bloc.querySelector('[data-lcdp-relations-nombre="invitant"]').textContent =
-        String(invitantsUniques.length);
-      afficherListeRelationsCompte(invitants, invitantsUniques,
-        "Aucun invitant dans votre historique.");
+
     } catch (erreur) {
       // L'absence de relations historiques ne doit pas masquer les futurs
       // abonnements ni empêcher leur comptage indépendant.
       donnees = null;
-      console.error("Relations des invitants indisponibles :", erreur);
-      if (invitants) invitants.textContent = "Impossible de charger les invitants.";
+      console.error("Relations des invités indisponibles :", erreur);
     }
 
     void chargerInvitesParAbonnementCompte(invites, compteurInvites, donnees)
