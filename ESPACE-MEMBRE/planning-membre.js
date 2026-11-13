@@ -3456,7 +3456,7 @@
       if (!dialogue || !titre || !texte || !conserver || !supprimer) throw new Error("Dialogue SUPPRESSION incomplet.");
       const mentionInvites = String(message || "").trim();
       titre.textContent = "Annuler cet accès ?" + (mentionInvites ? " " + mentionInvites : "");
-      texte.textContent = "Ce créneau sera annulé. Les invités concernés seront informés.";
+      texte.textContent = "Ce créneau sera immédiatement libéré et ne pourra pas être récupéré.";
       conserver.textContent = "Conserver";
       supprimer.textContent = "Oui, annuler";
       if (superposition) dialogue.style.zIndex = "12000";
