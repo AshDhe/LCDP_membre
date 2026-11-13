@@ -73,9 +73,10 @@
       }
       exclusiviteCle = true;
       verrouillerNavigation();
-      if(boutonAnnuler) {boutonAnnuler.hidden=true;boutonAnnuler.style.display="none";}
+      if(boutonAnnuler) boutonAnnuler.hidden=true;
       await initialiserGabaritMembre();
       await chargerControleAcces();
+      window.LCDP_ParcoursMaCle?.demarrer(controleAccesEtat, {rafraichirControle: chargerControleAcces});
       masquerAttenteInitiale();
       controleAccesTimer=window.setInterval(()=>{
         if(document.visibilityState==="visible" && ["guest_pending","guest_waiting_control"].includes(controleAccesEtat?.screen)) chargerControleAcces().catch(console.error);
@@ -657,10 +658,6 @@
     const saisieQuatreCases = options.secret === true;
     boutonAnnuler.hidden = saisieQuatreCases;
     boutonFermer.hidden = saisieQuatreCases;
-    if (saisieQuatreCases) {
-      boutonAnnuler.style.display = "none";
-      boutonFermer.style.display = "none";
-    }
     if (options.description) {
       const description=document.createElement("p");
       description.className="lcdp-cle-dialogue-description";
@@ -1303,6 +1300,7 @@
         document.querySelector("[data-lcdp-control-access]").hidden=true;
         bluetoothActif=statut.bluetooth || null;
         afficherEcranActif(statut.brightaAvailableAt || "",statut.overstayAt || "",statut.presenceState || "active",null);
+        window.LCDP_ParcoursMaCle?.synchroniser(etat);
       } else afficherControleAcces(etat);
     } finally {controleAccesEnCours=false;}
   }
@@ -1329,6 +1327,7 @@
         window.location.href=PAGE_ACCUEIL_MEMBRE;
       }
     });
+    window.LCDP_ParcoursMaCle?.synchroniser(etat);
   }
 
   let geolocRequete=false,geolocProchainEssai=0;
