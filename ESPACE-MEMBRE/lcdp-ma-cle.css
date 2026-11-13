@@ -1,10 +1,15 @@
 /* MA CLÉ : styles propres au tunnel. Les composants communs sont fournis par CSSBASE. */
 
 .lcdp-cle-wait {
-  min-height: 180px;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  width: 100%;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--lcdp-color-surface, #ffffff);
 }
 
 .lcdp-cle-box {
@@ -538,17 +543,16 @@
   .lcdp-page-cle-du-parc .lcdp-ma-cle-pilote {padding-inline: var(--lcdp-space-2);}
 }
 
-/* Wrapper applicatif de MA CLÉ : même structure que PLANIFIER. */
-.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper {
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: var(--lcdp-color-bg, #ffffff);
+/* Le conteneur .lcdp-app-wrapper reçoit bordure, rayon, ombre, hauteur
+   et défilement depuis c085, comme PLANIFIER. Ne pas réimposer 100dvh. */
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper {
+  min-width: 0;
 }
-.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-page-container.lcdp-page-content {
-  width: 100%;
-  max-width: var(--lcdp-text-width, 760px);
-  margin-inline: auto;
-  box-sizing: border-box;
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper > .lcdp-site-main > .lcdp-page-section {
+  padding: 14px 12px 24px;
+}
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-page-content.lcdp-stack-large {
+  gap: 10px;
 }
 .lcdp-page-cle-du-parc .lcdp-ma-cle-pilote__erreur {
   width: 100%;
