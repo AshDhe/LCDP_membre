@@ -1814,6 +1814,13 @@
     element.setAttribute("role", "region");
   }
 
+  // Échap et fermeture agissent uniquement sur la dernière vue ouverte.
+  function vueSecondaireAuPremierPlan(conteneur) {
+    if (!conteneur?.isConnected || !etat.slotPlanning) return false;
+    const vues = etat.slotPlanning.querySelectorAll(":scope > [data-lcdp-planning-vue-secondaire]");
+    return vues.length > 0 && vues[vues.length - 1] === conteneur;
+  }
+
   async function ouvrirReservationPlanning(reservation) {
     const surface = ouvrirVueSecondairePlanning();
     if (!surface || !etat.templateReservation) return;
@@ -1855,8 +1862,7 @@
         surface.fermer();
       }
       function gererEchapReservation(event) {
-        if (event.key !== "Escape" || !slot.isConnected ||
-            slot.querySelector(".lcdp-planning-vue-secondaire")) return;
+        if (event.key !== "Escape" || !vueSecondaireAuPremierPlan(slot)) return;
         event.preventDefault();
         if (workflow.classList.contains("lcdp-box-workflow-reservation--acces-parc-ouvert")) {
           fermerAccesParcDansReservation(workflow);
@@ -2035,11 +2041,7 @@
           event.stopPropagation();
           afficherParrainReservationInvitee(reservation).catch((error) => {
             console.error("[LCDP invitation reçue] affichage parrain impossible", error);
-            try {
-              window.alert(formaterParrainInvitationRecue(reservation));
-            } catch {
-              window.alert("Invitation par : Parrain non renseigné");
-            }
+            afficherErreurCalendrier(formaterParrainInvitationRecue(reservation));
           });
         });
       } else {
@@ -2475,7 +2477,7 @@
       await afficherInformationPlanning(message, { superposition: true });
     } catch (error) {
       console.error("[LCDP invitation reçue] alerte objet impossible", error);
-      window.alert(message);
+      afficherErreurCalendrier(message);
     }
   }
 
@@ -2776,7 +2778,7 @@
         resolve(true);
       }
       function gererEchap(event) {
-        if (event.key === "Escape" && conteneur.isConnected) {
+        if (event.key === "Escape" && vueSecondaireAuPremierPlan(conteneur)) {
           event.preventDefault();
           fermer();
         }
@@ -2916,7 +2918,7 @@
       }
 
       function gererEchap(event) {
-        if (event.key === "Escape" && conteneur.isConnected && !enregistrementEnCours) {
+        if (event.key === "Escape" && vueSecondaireAuPremierPlan(conteneur) && !enregistrementEnCours) {
           event.preventDefault();
           fermer(null);
         }
@@ -3268,7 +3270,7 @@
           resolve(true);
         }
         function gererEchap(event) {
-          if (event.key === "Escape" && conteneur.isConnected) {
+          if (event.key === "Escape" && vueSecondaireAuPremierPlan(conteneur)) {
             event.preventDefault();
             fermer();
           }
@@ -3285,21 +3287,9 @@
 
   async function afficherAlerteInvitationReservation(message, declencheur, options = {}) {
     if (options.profil === "information") {
-      const workflow = declencheur
-        ? declencheur.closest("[data-lcdp-box-workflow-reservation]")
-        : document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
-      return afficherInformationPlanning(message, { superposition: Boolean(workflow) });
+      return afficherInformationPlanning(message);
     }
-    const workflow = declencheur
-      ? declencheur.closest("[data-lcdp-box-workflow-reservation]")
-      : document.querySelector("#lcdp-lightbox-slot [data-lcdp-box-workflow-reservation]");
-
-    if (workflow) {
-      await afficherAlerteOkParDessusLightbox(message);
-      return;
-    }
-
-    await afficherAlerteOk(message);
+    return afficherAlerteOk(message);
   }
 
   async function ouvrirBoxEmailsInvitationReservation(idflux, declencheur) {
@@ -3466,7 +3456,7 @@
       };
 
       function gererEchap(event) {
-        if (event.key === "Escape" && conteneur.isConnected) {
+        if (event.key === "Escape" && vueSecondaireAuPremierPlan(conteneur)) {
           event.preventDefault();
           fermerBox(null);
         }
@@ -3582,7 +3572,7 @@
           resolve(valeur);
         };
         const gererClavier = event => {
-          if (!conteneur.isConnected) return;
+          if (!vueSecondaireAuPremierPlan(conteneur)) return;
           if (event.key === "Escape") {
             event.preventDefault();
             fermer(false);
@@ -4142,7 +4132,7 @@
           resolve(valeur);
         }
         function gererEchap(event) {
-          if (event.key === "Escape" && conteneur.isConnected) {
+          if (event.key === "Escape" && vueSecondaireAuPremierPlan(conteneur)) {
             event.preventDefault();
             fermer(false);
           }
