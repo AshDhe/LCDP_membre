@@ -226,7 +226,14 @@ async function handleContexteInvitesAbonnement(request, env, corsHeaders, url) {
     return jsonResponse({ok:false,success:false,message:"Date de l'accès indisponible."},409,corsHeaders);
   }
   const abo = await determinerAbonnementInvitation(env, session.idmembre, dateAcces);
-  // La sélection est libre à ce stade ; les quotas seront activés plus tard.
+  // Droits effectifs calculés côté Supabase, source unique pour lecture et écriture.
+  const droits = await rpcInvitesAbonnement(env, "lcdp_quotas_invites_abonnement", {
+    p_idflux: idflux,
+    p_idmembre: session.idmembre
+  });
+  if (!droits?.privileges || !droits?.utilisation || droits.idabo !== abo.idabo) {
+    throw erreurConfigurationInvitation("Privilèges DUO/FAMILLE indisponibles ou incohérents.");
+  }
 
   const base = env.SUPABASE_URL.replace(/\/+$/, "") + "/rest/v1/";
   const carnet = await resultats(env, base + "inviteabo?select=idinviteabo,categorie,email" +
@@ -254,7 +261,10 @@ async function handleContexteInvitesAbonnement(request, env, corsHeaders, url) {
   }
   return jsonResponse({
     ok:true, success:true,
-    idflux, idabo:abo.idabo, contacts, selection
+    idflux, idabo:abo.idabo, contacts, selection,
+    privileges:droits.privileges,
+    utilisation:droits.utilisation,
+    moisAcces:droits.moisAcces
   },200,corsHeaders);
 }
 
