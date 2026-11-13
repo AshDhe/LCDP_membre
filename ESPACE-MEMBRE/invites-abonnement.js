@@ -1,18 +1,6 @@
-/* DUO / FAMILLE — contrôleur préparé, non activé sans Worker compatible.
- * Ne contient aucune donnée inventée : le Worker fournit le carnet,
- * les droits achetés (avec options) et l'utilisation DUO+ du mois.
- *
- * Contrat attendu du Worker via les callbacks du module hôte :
- * chargerContexte(idflux) -> {
- *   privileges: {maxduo,duoplus,freqduoplus,famille},
- *   duoplusUtilisesMois: number,
- *   contacts: {duo:[{idinviteabo,email}],famille:[{idinviteabo,email}]},
- *   selection: {duo:[idinviteabo],famille:[idinviteabo]}
- * }
- * enregistrer(idflux,selection) -> {ok:true,confirme:true,message:string}
- * Le Worker doit verrouiller l'abonnement et revérifier quotas/fréquence,
- * enregistrer les deux tables avant d'envoyer les invitations,
- * y compris pour un destinataire sans compte.
+/* Formulaire Inviter : saisie DUO/FAMILLE et sélection de contacts enregistrés.
+ * Le serveur reste seul responsable de confirmer l'enregistrement.
+ * Les quotas sont traités dans une étape distincte.
  */
 (() => {
   "use strict";
@@ -20,8 +8,7 @@
   const EMAIL_VALIDE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const CATEGORIES = ["duo","famille"];
   const normaliserEmail = valeur => String(valeur || "").trim().toLowerCase();
-  const entier = valeur => Number.isInteger(valeur) && valeur >= 0;
-  const erreurDonnees = () => new Error("Privilèges DUO/FAMILLE indisponibles : envoi non autorisé.");
+  const erreurDonnees = () => new Error("Liste des invités DUO/FAMILLE invalide.");
 
   function analyserContexte(contexte) {
     if (!contexte.contacts || !contexte.selection || !CATEGORIES.every(categorie =>
@@ -58,7 +45,7 @@
         typeof enregistrer !== "function" || typeof informer !== "function" ||
         typeof fermer !== "function") throw new Error("Contrôleur DUO/FAMILLE incomplet.");
 
-    // Rien n'est monté tant que la réponse fiable du Worker n'a pas été contrôlée.
+    // Le conteneur fonctionne avec un carnet vide quand la nouvelle route est absente.
     const contexte = analyserContexte(await chargerContexte(idflux));
     const vue = fragment.cloneNode(true);
     const formulaire = vue.querySelector("[data-lcdp-invitation-abonnement-form]");
@@ -89,8 +76,7 @@
     const emailsNouveaux = categorie =>
       nouveaux[categorie].map(c => normaliserEmail(c.input.value)).filter(Boolean);
 
-    // Première étape : ajouter et sélectionner librement, quotas appliqués ultérieurement.
-    function verifierSelection() { return ""; }
+    // Première étape : l'ajout des contacts ne dépend pas du quota.
     function actualiserQuotas() {
       for (const categorie of CATEGORIES) {
         const bouton = vue.querySelector('[data-lcdp-invitation-ajouter="' + categorie + '"]');
@@ -104,26 +90,25 @@
     }
 
     function creerLigneExistante(categorie, contact) {
-      const item = creerElement("li","lcdp-box-champ-formulaire");
-      const etiquette = creerElement("label","lcdp-box-champ-formulaire__checkbox-line");
+      const item = creerElement("li", "lcdp-box-champ-formulaire");
+      item.setAttribute("data-lcdp-invite-email-row", "");
+      const adresse = creerElement("input");
+      adresse.type = "email";
+      adresse.readOnly = true;
+      adresse.value = contact.email;
+      adresse.setAttribute("aria-label", "Adresse e-mail de l'invité " + categorie.toUpperCase());
+      adresse.setAttribute("data-lcdp-invite-email", "");
+      const etiquette = creerElement("label", "lcdp-box-champ-formulaire__checkbox-line");
       const caseACocher = creerElement("input");
       caseACocher.type = "checkbox";
       caseACocher.checked = selection[categorie].has(String(contact.idinviteabo));
-      caseACocher.setAttribute("aria-label", "Inviter " + contact.email);
-      const texte = creerElement("span",null,contact.email);
-      etiquette.append(caseACocher,texte);
-      item.appendChild(etiquette);
-      caseACocher.addEventListener("change", async () => {
+      caseACocher.setAttribute("aria-label", "Sélectionner " + contact.email);
+      etiquette.appendChild(caseACocher);
+      item.append(adresse, etiquette);
+      caseACocher.addEventListener("change", () => {
         const id = String(contact.idinviteabo);
         if (caseACocher.checked) selection[categorie].add(id);
         else selection[categorie].delete(id);
-        const probleme = verifierSelection();
-        if (probleme) {
-          if (caseACocher.checked) selection[categorie].delete(id);
-          else selection[categorie].add(id);
-          caseACocher.checked = !caseACocher.checked;
-          await info(probleme);
-        }
       });
       return item;
     }
@@ -135,6 +120,7 @@
       if (!initial) item.setAttribute("data-lcdp-invite-email-row","");
       const champ = creerElement("input");
       champ.type = "email";
+      champ.setAttribute("data-lcdp-invite-email", "");
       champ.inputMode = "email";
       champ.autocomplete = "email";
       champ.placeholder = "nom@exemple.fr";
@@ -207,11 +193,6 @@
           }
           emailsTous.add(email);
         }
-      }
-       const probleme = verifierSelection();
-      if (probleme) {
-        await info(probleme);
-        return;
       }
       const donnees = {
         duo: {
