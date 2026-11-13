@@ -118,9 +118,9 @@
   background: var(--lcdp-color-logo-green);
 }
 
-.lcdp-page-cle-du-parc.is-cle-active,
-.lcdp-page-cle-du-parc.is-cle-active .lcdp-site-page,
-.lcdp-page-cle-du-parc.is-cle-active .lcdp-site-main {
+/* La présence et le dépassement colorent uniquement le contenu CENTRAL.
+   Bandeau, sous-header et footer restent dans le wrapper, comme PLANIFIER. */
+body.lcdp-page-cle-du-parc.is-cle-active .lcdp-ma-cle-wrapper > .lcdp-site-main {
   background: var(--lcdp-color-logo-green);
 }
 
@@ -129,18 +129,9 @@
   color: #ffffff;
 }
 
-.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay,
-.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-site-page,
-.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-site-main,
+body.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-ma-cle-wrapper > .lcdp-site-main,
 .lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-cle-ecran--active .lcdp-box-formulaire-page__inner {
   background: var(--lcdp-color-orange);
-}
-
-.lcdp-page-cle-du-parc.is-cle-active #lcdp-bandeau-slot,
-.lcdp-page-cle-du-parc.is-cle-active #lcdp-footer-slot,
-.lcdp-page-cle-du-parc.is-cle-checkout #lcdp-bandeau-slot,
-.lcdp-page-cle-du-parc.is-cle-checkout #lcdp-footer-slot {
-  display: none;
 }
 
 .lcdp-cle-ecran--active .lcdp-box-formulaire {
@@ -323,7 +314,7 @@
 .lcdp-acces[data-screen="access_confirmed"] .lcdp-presence-image{max-height:35vh}
 
 /* Fin du créneau : le verrou reste actif jusqu'à sortie validée ou fin + 10 h. */
-.lcdp-acces[data-screen="expired"]{position:fixed;inset:0;z-index:11000;overflow:auto;background:#E90505;color:#fff;padding:calc(env(safe-area-inset-top,0px) + 2rem) 1.25rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;}
+.lcdp-acces[data-screen="expired"]{position:relative;inset:auto;z-index:auto;overflow:visible;min-height:450px;width:100%;background:#E90505;color:#fff;padding:2rem 1.25rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;border-radius:12px;}
 .lcdp-acces[data-screen="expired"] .lcdp-acces-titre,.lcdp-acces[data-screen="expired"] .lcdp-acces-message{color:#fff;}
 
 /* Pointage invités : liste défilable, actions hors de la zone défilante. */
@@ -652,4 +643,45 @@ body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-page-content.lcdp-stack-la
 .lcdp-page-cle-du-parc .lcdp-ma-cle-pilote__continuer:disabled {
   cursor: progress;
   opacity: 0.55;
+}
+
+/* Étapes techniques 3 à 6 : mêmes dimensions et défilement que les étapes 1/2. */
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-acces,
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-cle-workflow {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-acces {
+  min-height: max(340px, calc(100dvh - 250px));
+  padding: 22px 14px 24px;
+}
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-acces-titre {
+  margin-bottom: 22px;
+}
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-acces-instructions {
+  margin-top: 22px;
+}
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-acces-message {
+  margin-top: 30px;
+  max-width: 100%;
+}
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-presence-image,
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-acces-video {
+  max-width: 100%;
+  max-height: min(55dvh, 460px);
+}
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-cle-box {
+  width: 100%;
+  max-width: 100%;
+}
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-box-formulaire-page__inner {
+  max-width: 100%;
+}
+/* Les commandes du contrôle restent actives ; seul le corps du wrapper défile. */
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper > #lcdp-bandeau-slot,
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper > #lcdp-footer-slot,
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper > .lcdp-ma-cle-navigation-slot {
+  flex-shrink: 0;
 }
