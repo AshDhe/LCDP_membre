@@ -1307,7 +1307,7 @@
     commandeFiltres.setAttribute("aria-controls", "lcdp-planning-filtres-contenu");
     commandeFiltres.setAttribute("aria-expanded", "false");
     commandeFiltres.setAttribute("aria-label", "Afficher les filtres");
-    commandeFiltres.style.cssText = "display:flex;align-items:center;justify-content:space-between;width:100%;padding:8px 12px;border:1px solid rgba(75,99,51,.25);border-radius:10px;background:rgba(75,99,51,.10);color:#3e562e;font:inherit;font-weight:650;cursor:pointer;";
+    commandeFiltres.style.cssText = "display:flex;align-items:center;justify-content:space-between;width:100%;padding:8px 12px;border:1px solid rgba(75,99,51,.20);border-radius:10px;background:#ecfdf5;color:#4b6333;font:inherit;font-weight:650;cursor:pointer;";
     const libelleFiltres = document.createElement("span");
     libelleFiltres.textContent = "Filtres";
     const signeFiltres = document.createElement("span");
