@@ -155,7 +155,7 @@
     rendre();
   }
 
-  function photoUrl(nomFichier) {
+  function photoUrl(nomFichier, version) {
     const parc = guideAcces?.parc;
     if (!parc || typeof global.LCDP_urlObjet !== "function") return null;
     const nom = String(nomFichier || "");
@@ -165,8 +165,10 @@
         !/^(?:[0-9]{1,3}|2A|2B)$/.test(dptmt) ||
         !dossier || dossier.length > 160 || /[\\/]/.test(dossier) ||
         dossier === "." || dossier === "..") return null;
-    return global.LCDP_urlObjet("/IMAG/ACCESPARC/" +
+    const url = global.LCDP_urlObjet("/IMAG/ACCESPARC/" +
       encodeURIComponent(dptmt) + "/" + encodeURIComponent(dossier) + "/" + nom);
+    const sha = String(version || "");
+    return /^[a-f0-9]{40}$/.test(sha) ? url + "?v=" + sha : url;
   }
 
   // Aucune donnée de démonstration: cette fonction n'affiche que la réponse
@@ -189,7 +191,7 @@
       bloc.appendChild(element("h2", "lcdp-ma-cle-detail__rubrique-titre", rubrique.titre));
       if (texte) bloc.appendChild(element("p", "lcdp-ma-cle-detail__texte", texte));
       images.forEach(nom => {
-        const url = photoUrl(nom);
+        const url = photoUrl(nom, rubrique.versions?.[nom]);
         if (!url) return;
         const figure = element("figure", "lcdp-ma-cle-detail__photo-bloc");
         const photo = element("img", "lcdp-ma-cle-detail__photo");
