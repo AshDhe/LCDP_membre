@@ -1167,6 +1167,23 @@
     compteur.textContent = String(resultat.reduce((somme,abo) => somme + abo.personnes.length,0));
   }
 
+  // Une même personne peut figurer plusieurs fois dans l'historique :
+  // le nombre d'invitants est un nombre de membres distincts, pas d'envois.
+  function dedoublonnerInvitantsCompte(personnes) {
+    const ids = new Set();
+    const emails = new Set();
+    return personnes.filter(personne => {
+      if (!personne || typeof personne !== "object") return false;
+      const id = String(personne.idmembre_invitant || personne.idmembreInvitant ||
+        personne.idmembre || "").trim().toLowerCase();
+      const email = String(personne.email || personne.emailmembre || "").trim().toLowerCase();
+      if ((id && ids.has(id)) || (email && emails.has(email))) return false;
+      if (id) ids.add(id);
+      if (email) emails.add(email);
+      return true;
+    });
+  }
+
   async function chargerRelationsInvitationsCompte(bloc) {
     const invites = bloc.querySelector("#lcdp-compte-relations-invite");
     const invitants = bloc.querySelector("#lcdp-compte-relations-invitant");
@@ -1188,9 +1205,10 @@
           !Array.isArray(donnees.invites) || !Array.isArray(donnees.invitants)) {
         throw new Error(donnees?.message || "Service indisponible.");
       }
+      const invitantsUniques = dedoublonnerInvitantsCompte(donnees.invitants);
       bloc.querySelector('[data-lcdp-relations-nombre="invitant"]').textContent =
-        String(donnees.invitants.length);
-      afficherListeRelationsCompte(invitants, donnees.invitants,
+        String(invitantsUniques.length);
+      afficherListeRelationsCompte(invitants, invitantsUniques,
         "Aucun invitant dans votre historique.");
     } catch (erreur) {
       // L'absence de relations historiques ne doit pas masquer les futurs
