@@ -238,7 +238,7 @@
       } catch (erreur) {
         console.error("Dialogue CHOIX DA :", erreur);
         conteneur.remove();
-        return window.confirm(message || "");
+        return false;
       }
     }
     if (options.profil === "information") {
@@ -289,7 +289,6 @@
     } catch (error) {
       console.error("Fragment alerte DA :", error);
       container.remove();
-      if (options.mode === "confirmation") return window.confirm(message || "");
       window.alert(message || "");
       return true;
     }
@@ -301,7 +300,6 @@
     const boutonOk = container.querySelector("[data-lcdp-alerte-ok]");
     if (!alerte || !texte || !boutonFermer || !boutonOk) {
       container.remove();
-      if (options.mode === "confirmation") return window.confirm(message || "");
       window.alert(message || "");
       return true;
     }
