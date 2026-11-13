@@ -76,6 +76,7 @@
       if(boutonAnnuler) {boutonAnnuler.hidden=true;boutonAnnuler.style.display="none";}
       await initialiserGabaritMembre();
       await chargerControleAcces();
+      window.LCDP_ParcoursMaCle?.demarrer(controleAccesEtat);
       masquerAttenteInitiale();
       controleAccesTimer=window.setInterval(()=>{
         if(document.visibilityState==="visible" && ["guest_pending","guest_waiting_control"].includes(controleAccesEtat?.screen)) chargerControleAcces().catch(console.error);
@@ -1303,6 +1304,7 @@
         document.querySelector("[data-lcdp-control-access]").hidden=true;
         bluetoothActif=statut.bluetooth || null;
         afficherEcranActif(statut.brightaAvailableAt || "",statut.overstayAt || "",statut.presenceState || "active",null);
+        window.LCDP_ParcoursMaCle?.actualiser(etat);
       } else afficherControleAcces(etat);
     } finally {controleAccesEnCours=false;}
   }
@@ -1329,6 +1331,7 @@
         window.location.href=PAGE_ACCUEIL_MEMBRE;
       }
     });
+    window.LCDP_ParcoursMaCle?.actualiser(etat);
   }
 
   let geolocRequete=false,geolocProchainEssai=0;
