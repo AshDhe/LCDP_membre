@@ -62,7 +62,12 @@
 
     // Le conteneur fonctionne avec un carnet vide quand la nouvelle route est absente.
     const contexte = analyserContexte(await chargerContexte(idflux));
-    const vue = fragment.cloneNode(true);
+    // Ne pas conserver un DocumentFragment comme racine interactive :
+    // replaceChildren() en déplace les enfants et vide le fragment.
+    // Les boutons doivent rechercher leurs champs dans l'élément DOM monté.
+    const copie = fragment.cloneNode(true);
+    const vue = copie.querySelector("[data-lcdp-invitation-abonnement]");
+    if (!vue) throw new Error("Gabarit DUO/FAMILLE : racine introuvable.");
     const formulaire = vue.querySelector("[data-lcdp-invitation-abonnement-form]");
     const envoyer = vue.querySelector("[data-lcdp-invitation-envoyer]");
     const groupe = vue.querySelector("[data-lcdp-invitation-groupe]");
