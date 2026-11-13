@@ -263,7 +263,7 @@
           afficherErreur(emailResultat.error?.message || 'Adresse e-mail non valide.');
           synchroniser(); return;
         }
-        const resultat = await actions.confirm({returnUrl:retour.href, email:email.value.trim()});
+        const resultat = await actions.confirm({email:email.value.trim()});
         if (resultat.type === 'error') {
           afficherErreur(resultat.error?.message || 'Le paiement a été refusé.');
           synchroniser();
