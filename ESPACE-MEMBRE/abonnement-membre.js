@@ -483,13 +483,76 @@
     await afficherEtapeChoixDuree();
   }
 
+  async function afficherSuppressionAbonnement(message) {
+    const slot = obtenirLightboxSlot();
+    const focusInitial = document.activeElement;
+    try {
+      const css = construireUrlObjet("/CSSBASE/lcdp-lightbox-convergence.css");
+      if (!Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some(lien => lien.href === new URL(css, document.baseURI).href)) {
+        await new Promise((resolve, reject) => {
+          const lien = document.createElement("link");
+          lien.rel = "stylesheet";
+          lien.href = css;
+          lien.onload = resolve;
+          lien.onerror = () => { lien.remove(); reject(new Error("CSS SUPPRESSION indisponible.")); };
+          document.head.appendChild(lien);
+        });
+      }
+      slot.replaceChildren();
+      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html"));
+      const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="suppression"]');
+      const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+      const conserver = slot.querySelector('[data-lcdp-dialogue-action="conserver"]');
+      const supprimer = slot.querySelector('[data-lcdp-dialogue-action="supprimer"]');
+      if (!dialogue || !titre || !texte || !conserver || !supprimer) throw new Error("Structure SUPPRESSION incomplète.");
+      titre.textContent = "Annuler l’abonnement ?";
+      texte.textContent = String(message || "");
+      conserver.textContent = "Conserver";
+      supprimer.textContent = "Oui, annuler";
+      conserver.focus();
+      return await new Promise(resolve => {
+        let termine = false;
+        function fermer(valeur) {
+          if (termine) return;
+          termine = true;
+          document.removeEventListener("keydown", gererClavier);
+          slot.replaceChildren();
+          if (focusInitial?.isConnected && typeof focusInitial.focus === "function") focusInitial.focus();
+          resolve(valeur);
+        }
+        function gererClavier(event) {
+          if (event.key === "Escape") { event.preventDefault(); fermer(false); }
+          if (event.key === "Tab") {
+            const cible = event.shiftKey ? conserver : supprimer;
+            if (document.activeElement === cible) {
+              event.preventDefault();
+              (event.shiftKey ? supprimer : conserver).focus();
+            }
+          }
+        }
+        document.addEventListener("keydown", gererClavier);
+        conserver.addEventListener("click", () => fermer(false), { once: true });
+        supprimer.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => {
+          if (event.target === dialogue) fermer(false);
+        });
+      });
+    } catch (error) {
+      slot.replaceChildren();
+      if (focusInitial?.isConnected && typeof focusInitial.focus === "function") focusInitial.focus();
+      console.error("Confirmation SUPPRESSION indisponible :", error);
+      return false;
+    }
+  }
+
   async function demanderAnnulationAvoir(card) {
     if (!card) {
       await afficherAlerte("Abonnement introuvable.");
       return;
     }
 
-    const confirmation = await afficherAlerte("Voulez-vous annuler l'abonnement ?");
+    const confirmation = await afficherSuppressionAbonnement("Voulez-vous annuler l'abonnement ?");
     if (!confirmation) return;
 
     const confirmationRetenue = await afficherAlerte("Des frais de traitement d’annulation s’appliquent conformément aux Conditions Générales de Vente.");
