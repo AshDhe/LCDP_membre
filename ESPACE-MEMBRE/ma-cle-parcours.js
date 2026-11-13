@@ -69,7 +69,8 @@
     if(!etat || !etat.screen)return 3;
     if(etat.screen==="checkout_done" || etat.screen==="key_closed")return 6;
     if(etat.action==="checkout" || etat.screen==="exit_confirmed")return etat.screen==="exit_confirmed"?6:5;
-    if(["active","presence","access_confirmed","guest_list","confirmation_done","expired"].includes(etat.screen))return 4;
+    if(etat.screen==="access_confirmed")return etat.parcoursEntre===true?4:3;
+    if(["active","presence","guest_list","confirmation_done","expired"].includes(etat.screen))return 4;
     return 3;
   }
 
