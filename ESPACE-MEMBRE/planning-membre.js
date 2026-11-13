@@ -1811,22 +1811,35 @@
     fermer.focus({preventScroll:true});
   }
 
-  // Une seule surface de travail : toute vue secondaire reste dans Mes accès.
-  // Les vues précédentes demeurent connectées pour conserver cartes, filtres et états.
+  // Une seule surface de wrapper pour toutes les boxes : les vues
+  // secondaires s'empilent au niveau du main, jamais dans la liste MES ACCÈS.
+  // Aucun conteneur ne devient un second élément défilant.
   function ouvrirVueSecondairePlanning() {
-    const slot = etat.slotPlanning;
-    if (!slot || !slot.isConnected) return null;
+    const main = document.querySelector("body.lcdp-mes-acces-page > .lcdp-app-wrapper > .lcdp-site-main");
+    if (!main || !etat.slotPlanning?.isConnected) return null;
+    const contenuInitial = main.querySelector(":scope > .lcdp-page-section");
+    const precedentesVues = Array.from(
+      main.querySelectorAll(":scope > [data-lcdp-planning-vue-secondaire]")
+    ).map(element => ({ element, hidden: element.hidden, inert: element.inert }));
+    const etatInitial = {
+      hidden: contenuInitial?.hidden === true,
+      inert: contenuInitial?.inert === true,
+      scroll: main.scrollTop,
+      commandesInertes: etat.commandeBar?.inert === true
+    };
+    const focusInitial = document.activeElement;
+    precedentesVues.forEach(({ element }) => { element.hidden = true; element.inert = true; });
+    if (contenuInitial) {
+      contenuInitial.hidden = true;
+      contenuInitial.inert = true;
+    }
     const conteneur = document.createElement("section");
     conteneur.className = "lcdp-planning-vue-secondaire";
     conteneur.dataset.lcdpPlanningVueSecondaire = "true";
-    const precedents = Array.from(slot.children).map(element => ({
-      element, hidden: element.hidden
-    }));
-    const focusInitial = document.activeElement;
-    precedents.forEach(({element}) => { element.hidden = true; });
-    slot.appendChild(conteneur);
+    main.appendChild(conteneur);
     if (etat.wrapperPlanning) etat.wrapperPlanning.dataset.lcdpVueSecondaireActive = "true";
     if (etat.commandeBar) etat.commandeBar.inert = true;
+    main.scrollTop = 0;
     let fermee = false;
     return {
       conteneur,
@@ -1834,16 +1847,25 @@
         if (fermee) return;
         fermee = true;
         conteneur.remove();
-        precedents.forEach(({element, hidden}) => {
-          if (element.parentNode === slot) element.hidden = hidden;
+        precedentesVues.forEach(({element, hidden, inert}) => {
+          if (element.isConnected) {
+            element.hidden = hidden;
+            element.inert = inert;
+          }
         });
-        if (!slot.querySelector("[data-lcdp-planning-vue-secondaire]")) {
+        const autresVues = main.querySelector(":scope > [data-lcdp-planning-vue-secondaire]");
+        if (!autresVues) {
+          if (contenuInitial) {
+            contenuInitial.hidden = etatInitial.hidden;
+            contenuInitial.inert = etatInitial.inert;
+          }
           etat.wrapperPlanning?.removeAttribute("data-lcdp-vue-secondaire-active");
-          if (etat.commandeBar) etat.commandeBar.inert = false;
+          if (etat.commandeBar) etat.commandeBar.inert = etatInitial.commandesInertes;
         }
+        main.scrollTop = etatInitial.scroll;
         if (focusInitial?.isConnected && !focusInitial.closest("[hidden]") &&
-            typeof focusInitial.focus === "function") {
-          focusInitial.focus({preventScroll:true});
+            !focusInitial.closest("[inert]") && typeof focusInitial.focus === "function") {
+          focusInitial.focus({ preventScroll: true });
         }
       }
     };
@@ -1857,9 +1879,10 @@
 
   // Échap et fermeture agissent uniquement sur la dernière vue ouverte.
   function vueSecondaireAuPremierPlan(conteneur) {
-    if (!conteneur?.isConnected || !etat.slotPlanning) return false;
-    const vues = etat.slotPlanning.querySelectorAll(":scope > [data-lcdp-planning-vue-secondaire]");
-    return vues.length > 0 && vues[vues.length - 1] === conteneur;
+    if (!conteneur?.isConnected) return false;
+    const main = document.querySelector("body.lcdp-mes-acces-page > .lcdp-app-wrapper > .lcdp-site-main");
+    const vues = main?.querySelectorAll(":scope > [data-lcdp-planning-vue-secondaire]");
+    return !!vues?.length && vues[vues.length - 1] === conteneur;
   }
 
   async function ouvrirReservationPlanning(reservation) {
