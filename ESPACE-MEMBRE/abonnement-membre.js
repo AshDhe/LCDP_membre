@@ -1014,7 +1014,7 @@
       });
 
       boutonSupprimer.addEventListener("click", async () => {
-        const ok = await afficherAlerteSuperposee("Supprimer cet invité famille ?");
+        const ok = await confirmerSuppressionInviteFamille();
         if (!ok) return;
 
         etat.workflow.emails.splice(index, 1);
@@ -3764,6 +3764,63 @@
       if (superposition) slot.remove();
       else slot.replaceChildren();
       throw error;
+    }
+  }
+
+  async function confirmerSuppressionInviteFamille() {
+    const focusInitial = document.activeElement;
+    const container = document.createElement("div");
+    container.className = "lcdp-workflow-abonnement-alerte";
+    try {
+      container.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html"));
+      const dialogue = container.querySelector('[data-lcdp-dialogue-reference="suppression"]');
+      const titre = container.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = container.querySelector("[data-lcdp-dialogue-message]");
+      const conserver = container.querySelector('[data-lcdp-dialogue-action="conserver"]');
+      const supprimer = container.querySelector('[data-lcdp-dialogue-action="supprimer"]');
+      if (!dialogue || !titre || !texte || !conserver || !supprimer) {
+        throw new Error("Structure SUPPRESSION invité famille incomplète.");
+      }
+      titre.textContent = "Supprimer cet invité famille ?";
+      texte.textContent = "Retirer cet invité de la préparation de l’abonnement Famille ?";
+      conserver.textContent = "Conserver";
+      supprimer.textContent = "Supprimer";
+      document.body.appendChild(container);
+      return await new Promise(resolve => {
+        let termine = false;
+        const fermer = valeur => {
+          if (termine) return;
+          termine = true;
+          document.removeEventListener("keydown", clavier);
+          container.remove();
+          if (focusInitial?.isConnected && typeof focusInitial.focus === "function") {
+            focusInitial.focus();
+          }
+          resolve(valeur);
+        };
+        const clavier = event => {
+          if (event.key === "Escape") { event.preventDefault(); fermer(false); }
+          if (event.key === "Tab") {
+            if (event.shiftKey && document.activeElement === conserver) {
+              event.preventDefault(); supprimer.focus();
+            } else if (!event.shiftKey && document.activeElement === supprimer) {
+              event.preventDefault(); conserver.focus();
+            }
+          }
+        };
+        conserver.addEventListener("click", () => fermer(false), { once: true });
+        supprimer.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => {
+          if (event.target === dialogue) fermer(false);
+        });
+        document.addEventListener("keydown", clavier);
+        conserver.focus();
+      });
+    } catch (erreur) {
+      console.error("Confirmation retrait invité famille indisponible :", erreur);
+      return false;
+    } finally {
+      container.remove();
     }
   }
 
