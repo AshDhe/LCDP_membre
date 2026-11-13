@@ -100,7 +100,7 @@
       }else{
         // En attendant les images définitives : couleur explicitement fournie par le serveur.
         if(!/^#[0-9a-f]{6}$/i.test(indicateur.color||""))throw new Error("Couleur de présence invalide.");
-        zone.style.backgroundColor=indicateur.color;zone.appendChild(element("p","",indicateur.label));
+        zone.classList.add("lcdp-acces-presence--"+indicateur.state);zone.appendChild(element("p","",indicateur.label));
       }
       zone.setAttribute("role","status");root.appendChild(zone);return;
     }
@@ -150,7 +150,7 @@
       const face=stream.getVideoTracks()[0]?.getSettings?.().facingMode;
       if(face && face!==mode)throw Error("La caméra demandée n’est pas disponible sur cet appareil.");
       cameraPrete=true;
-      video.style.transform=mode==="user"?"scaleX(-1)":"none";
+      video.classList.toggle("lcdp-acces-video--miroir",mode==="user");
     }
     function dessiner(){
       if(closed)return;
