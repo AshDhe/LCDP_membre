@@ -681,8 +681,10 @@
     afficherSlotService(listeDuoActif,"Chargement des demandes Duo Actif…");
     services.append(titreServices,titreAlertes,listeAlertes,titreDuoActif,listeDuoActif);
     const statutMembre=fields.querySelector('[data-lcdp-compte-section="participation"]');
-    if(statutMembre)statutMembre.insertAdjacentElement("afterend",services);
-    else fields.insertBefore(services,securite||null);
+    if(statutMembre) {
+      statutMembre.insertAdjacentElement("afterend",services);
+      ajouterBlocRelationsInvitationsCompte(statutMembre);
+    } else fields.insertBefore(services,securite||null);
     chargerAlertesCompte().catch(err=>{
       console.error("SERVICE : alertes indisponibles",err);
       afficherSlotService(listeAlertes,"Impossible de charger les alertes.");
@@ -692,6 +694,129 @@
       afficherSlotService(listeDuoActif,"Impossible de charger les demandes Duo Actif.");
     });
     fields.classList.add("lcdp-mon-compte-sections");
+  }
+
+
+  // Deux raccourcis dans Statut membre, sous le bloc Points club / badges.
+  // Les listes proviennent exclusivement du Worker de compte authentifié.
+  function ajouterBlocRelationsInvitationsCompte(statut) {
+    if (!statut || statut.querySelector("#lcdp-compte-relations")) return;
+    const bloc = document.createElement("div");
+    bloc.id = "lcdp-compte-relations";
+    bloc.className = "lcdp-compte-relations";
+    bloc.innerHTML = `
+      <button type="button" class="lcdp-compte-relations__ligne"
+        data-lcdp-relations-ouvrir="invite" aria-expanded="false"
+        aria-controls="lcdp-compte-relations-invite">
+        <span class="lcdp-compte-relations__libelle">Invité</span>
+        <span class="lcdp-compte-relations__action">
+          <span data-lcdp-relations-nombre="invite" aria-label="Nombre d'invités">–</span>
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span>Voir</span>
+        </span>
+      </button>
+      <div id="lcdp-compte-relations-invite" class="lcdp-compte-relations__liste"
+        aria-live="polite" hidden>Chargement des invités…</div>
+      <button type="button" class="lcdp-compte-relations__ligne"
+        data-lcdp-relations-ouvrir="invitant" aria-expanded="false"
+        aria-controls="lcdp-compte-relations-invitant">
+        <span class="lcdp-compte-relations__libelle">Invitant <span class="lcdp-compte-relations__precision">(« parrain »)</span></span>
+        <span class="lcdp-compte-relations__action">
+          <span data-lcdp-relations-nombre="invitant" aria-label="Nombre d'invitants">–</span>
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span>Voir</span>
+        </span>
+      </button>
+      <div id="lcdp-compte-relations-invitant" class="lcdp-compte-relations__liste"
+        aria-live="polite" hidden>Chargement des invitants…</div>`;
+    statut.appendChild(bloc);
+
+    bloc.querySelectorAll("[data-lcdp-relations-ouvrir]").forEach(bouton => {
+      bouton.addEventListener("click", () => {
+        const type = bouton.dataset.lcdpRelationsOuvrir;
+        const liste = bloc.querySelector("#lcdp-compte-relations-" + type);
+        if (!liste) return;
+        const ouvrir = liste.hidden;
+        bloc.querySelectorAll("[data-lcdp-relations-ouvrir]").forEach(autre => {
+          autre.setAttribute("aria-expanded", String(autre === bouton && ouvrir));
+        });
+        bloc.querySelectorAll(".lcdp-compte-relations__liste").forEach(autre => {
+          autre.hidden = autre !== liste || !ouvrir;
+        });
+      });
+    });
+    chargerRelationsInvitationsCompte(bloc);
+  }
+
+  function afficherListeRelationsCompte(conteneur, personnes, messageVide) {
+    if (!conteneur) return;
+    conteneur.replaceChildren();
+    if (!personnes.length) {
+      const vide = document.createElement("p");
+      vide.className = "lcdp-compte-relations__vide";
+      vide.textContent = messageVide;
+      conteneur.appendChild(vide);
+      return;
+    }
+    const liste = document.createElement("ul");
+    liste.className = "lcdp-compte-relations__personnes";
+    personnes.forEach(personne => {
+      const ligne = document.createElement("li");
+      const identite = document.createElement("span");
+      identite.className = "lcdp-compte-relations__nom";
+      identite.textContent = [personne.prenom, personne.nom].filter(Boolean).join(" ") ||
+        String(personne.email || "").trim() || "Membre";
+      ligne.appendChild(identite);
+      const email = String(personne.email || "").trim();
+      if (email && identite.textContent.toLowerCase() !== email.toLowerCase()) {
+        const adresse = document.createElement("span");
+        adresse.className = "lcdp-compte-relations__detail";
+        adresse.textContent = email;
+        ligne.appendChild(adresse);
+      }
+      const date = personne.date ? new Date(personne.date) : null;
+      if (date && !Number.isNaN(date.getTime())) {
+        const mention = document.createElement("span");
+        mention.className = "lcdp-compte-relations__detail";
+        mention.textContent = "Invitation du " + date.toLocaleDateString("fr-FR");
+        ligne.appendChild(mention);
+      }
+      liste.appendChild(ligne);
+    });
+    conteneur.appendChild(liste);
+  }
+
+  async function chargerRelationsInvitationsCompte(bloc) {
+    const invites = bloc.querySelector("#lcdp-compte-relations-invite");
+    const invitants = bloc.querySelector("#lcdp-compte-relations-invitant");
+    try {
+      if (!ENDPOINT_MON_COMPTE_MEMBRE) throw new Error("Service non configuré.");
+      const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/relations-invitations", {
+        credentials: "include", cache: "no-store",
+        headers: { "Accept": "application/json" }
+      });
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+      const donnees = await reponse.json().catch(() => null);
+      if (!reponse.ok || donnees?.ok !== true ||
+          !Array.isArray(donnees.invites) || !Array.isArray(donnees.invitants)) {
+        throw new Error(donnees?.message || "Service indisponible.");
+      }
+      bloc.querySelector('[data-lcdp-relations-nombre="invite"]').textContent =
+        String(donnees.invites.length);
+      bloc.querySelector('[data-lcdp-relations-nombre="invitant"]').textContent =
+        String(donnees.invitants.length);
+      afficherListeRelationsCompte(invites, donnees.invites,
+        donnees.abonnementEnCours ? "Aucun invité pour cet abonnement." : "Aucun abonnement en cours.");
+      afficherListeRelationsCompte(invitants, donnees.invitants,
+        "Aucun invitant dans votre historique.");
+    } catch (erreur) {
+      console.error("Relations d'invitation indisponibles :", erreur);
+      if (invites) invites.textContent = "Impossible de charger les invités.";
+      if (invitants) invitants.textContent = "Impossible de charger les invitants.";
+    }
   }
 
   const ENDPOINT_ALERTES_COMPTE=String(CONFIG_PAGE.workerAlertePlanifierUrl||
