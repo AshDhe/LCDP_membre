@@ -99,6 +99,7 @@
     const commande = re.ok && de?.ok && de.commande?.idpanier === idpanier ? de.commande : null;
     if (commande) {
       el('reference-commande').textContent = commande.orderid || '—';
+      if (commande.numeroCommande) el('numero-commande').textContent = commande.numeroCommande;
       if (Number.isFinite(Number(commande.premiereEcheanceTtc)))
         el('montant-commande').textContent = euros(commande.premiereEcheanceTtc);
     }
@@ -106,6 +107,16 @@
       throw new Error('Le détail de cette commande ne peut pas être vérifié.');
     const panier = dp.panier, devis = dd.devis;
     if (!commande) throw new Error('Référence de commande indisponible.');
+    if (!commande.numeroCommande) {
+      const rNumero = await fetch(endpoint + '/numero-commande', {
+        method:'POST',credentials:'include',cache:'no-store',
+        headers:{Accept:'application/json','Content-Type':'application/json'},
+        body:JSON.stringify({idpanier})
+      });
+      const attribue = await rNumero.json().catch(()=>null);
+      if (rNumero.ok && attribue?.ok && attribue.numeroCommande)
+        el('numero-commande').textContent = attribue.numeroCommande;
+    }
     const reglementEchelonne = Number(commande.nbEcheances) > 1;
     listeDetails.replaceChildren();
     const montantValide = valeur => valeur !== null && valeur !== undefined &&
@@ -168,6 +179,7 @@
     });
     const d = await reponse.json().catch(() => null);
     if (d?.orderid) el('reference-commande').textContent = d.orderid;
+    if (d?.numeroCommande) el('numero-commande').textContent = d.numeroCommande;
     if (typeof d?.montantEcheanceTtc === 'number')
       el('montant-commande').textContent = euros(d.montantEcheanceTtc);
     await detailEnCours;
