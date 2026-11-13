@@ -20,26 +20,12 @@
   function retirerErreur() { erreur.hidden = true; erreur.textContent = ''; }
   const boutonReprise = el('reprendre-paiement');
   async function proposerRepriseSessionExpiree(code) {
+    // Seul le serveur décide si la session expirée peut être renouvelée.
+    // Aucun diagnostic annexe ne doit masquer le bouton de reprise :
+    // /valider vérifie la commande et la preuve d'expiration Stripe.
     if (!['STRIPE_REFERENCES','SESSION_INDISPONIBLE'].includes(String(code || ''))) return false;
-    const reponseEtat = await fetch(endpoint + '/etat?idpanier=' + encodeURIComponent(idpanier), {
-      credentials:'include',cache:'no-store',headers:{Accept:'application/json'}
-    });
-    const etat = await reponseEtat.json().catch(() => null);
-    if (!reponseEtat.ok || !etat?.ok || etat.commande?.statut !== 'attente' ||
-        !/^LCDP-[0-9a-f-]{36}$/i.test(etat.commande.orderid || '')) return false;
-    const diagnosticReponse = await fetch(endpoint + '/diagnostic-stripe?orderid=' +
-      encodeURIComponent(etat.commande.orderid), {
-      credentials:'include',cache:'no-store',headers:{Accept:'application/json'}
-    });
-    const diagnostic = await diagnosticReponse.json().catch(() => null);
-    if (!diagnosticReponse.ok || !diagnostic?.ok ||
-        diagnostic.diagnostic?.commande?.idpanier !== idpanier ||
-        diagnostic.diagnostic?.stripe?.session?.status !== 'expired' ||
-        diagnostic.diagnostic?.stripe?.session?.paymentStatus !== 'unpaid' ||
-        diagnostic.diagnostic?.stripe?.session?.montantCorrespond !== true ||
-        diagnostic.diagnostic?.supabase?.delaiCommandeDepasse !== false) return false;
     boutonReprise.hidden = false;
-    erreur.textContent = 'La session bancaire a expiré sans paiement. La commande et ses accès sont conservés. Reprenez le paiement pour ouvrir une nouvelle session Stripe.';
+    erreur.textContent = 'La session bancaire est indisponible ou expirée. Vous pouvez reprendre le paiement de cette commande ; le serveur vérifiera qu’aucun paiement n’a été réalisé.';
     erreur.hidden = false;
     boutonReprise.addEventListener('click', async () => {
       if (boutonReprise.disabled) return;
