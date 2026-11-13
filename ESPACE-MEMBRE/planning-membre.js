@@ -784,7 +784,7 @@
       const baseFiche = "https://lacleduparc.fr/ESPACE-PUBLIC/fiche-parc.html?idparc=" + encodeURIComponent(idParc);
       for (const [libelle, url, icone, variante] of [
         ["Fiche parc", baseFiche, "presentation", "vert-plein"],
-        ["Carte", baseFiche + "&vue=carte", "localiser", "vert-contour"]
+        ["Carte", baseFiche + "&vue=carte", "localiser", "vert-plein"]
       ]) {
         const lien = document.createElement("a");
         lien.href = url;
