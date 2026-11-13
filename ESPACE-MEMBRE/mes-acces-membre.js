@@ -697,7 +697,7 @@
   async function confirmerAnnulationAcces(question, invitationRecue) {
     const urlObjet = chemin => typeof window.LCDP_urlObjet === "function"
       ? window.LCDP_urlObjet(chemin)
-      : String(config.objetBaseUrl || config.OBJET_BASE || "https://lacleduparc.fr/OBJET").replace(/\\/+$/, "") + chemin;
+      : String(config.objetBaseUrl || config.OBJET_BASE || "https://lacleduparc.fr/OBJET").replace(/\/+$/, "") + chemin;
     const focusInitial = document.activeElement;
     let conteneur = null;
     try {
