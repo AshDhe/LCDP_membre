@@ -588,13 +588,82 @@
       await afficherInformationMesAcces('Invités :\n' + lignes.join('\n'), 'Invités');
     } catch (e) { window.alert(e.message || 'Impossible de consulter les invités.'); }
   }
+  async function confirmerAnnulationAcces(question, invitationRecue) {
+    const urlObjet = chemin => typeof window.LCDP_urlObjet === "function"
+      ? window.LCDP_urlObjet(chemin)
+      : String(config.objetBaseUrl || config.OBJET_BASE || "https://lacleduparc.fr/OBJET").replace(/\\/+$/, "") + chemin;
+    const focusInitial = document.activeElement;
+    let conteneur = null;
+    try {
+      const css = urlObjet("/CSSBASE/lcdp-lightbox-convergence.css");
+      if (![...document.querySelectorAll('link[rel="stylesheet"]')].some(lien => lien.href === new URL(css, document.baseURI).href)) {
+        await new Promise((resolve, reject) => {
+          const lien = document.createElement("link");
+          lien.rel = "stylesheet";
+          lien.href = css;
+          lien.onload = resolve;
+          lien.onerror = () => { lien.remove(); reject(new Error("CSS SUPPRESSION indisponible.")); };
+          document.head.appendChild(lien);
+        });
+      }
+      const reponse = await fetch(urlObjet("/HTMLBASE/02-dialogue-reference-suppression.html"), { cache: "no-cache" });
+      if (!reponse.ok) return false;
+      const modele = document.createElement("template");
+      modele.innerHTML = (await reponse.text()).trim();
+      conteneur = document.createElement("div");
+      conteneur.appendChild(modele.content.cloneNode(true));
+      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="suppression"]');
+      const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
+      const conserver = conteneur.querySelector('[data-lcdp-dialogue-action="conserver"]');
+      const supprimer = conteneur.querySelector('[data-lcdp-dialogue-action="supprimer"]');
+      if (!dialogue || !titre || !texte || !conserver || !supprimer) return false;
+      titre.textContent = invitationRecue ? "Annuler cette invitation reçue ?" : "Annuler cet accès ?";
+      texte.textContent = question;
+      conserver.textContent = "Conserver";
+      supprimer.textContent = "Oui, annuler";
+      document.body.appendChild(conteneur);
+      conserver.focus();
+      return await new Promise(resolve => {
+        let termine = false;
+        function fermer(valeur) {
+          if (termine) return;
+          termine = true;
+          document.removeEventListener("keydown", gererClavier);
+          conteneur.remove();
+          if (focusInitial?.isConnected && typeof focusInitial.focus === "function") focusInitial.focus();
+          resolve(valeur);
+        }
+        function gererClavier(event) {
+          if (event.key === "Escape") { event.preventDefault(); fermer(false); }
+          if (event.key === "Tab") {
+            const cible = event.shiftKey ? conserver : supprimer;
+            if (document.activeElement === cible) {
+              event.preventDefault();
+              (event.shiftKey ? supprimer : conserver).focus();
+            }
+          }
+        }
+        document.addEventListener("keydown", gererClavier);
+        conserver.addEventListener("click", () => fermer(false), { once: true });
+        supprimer.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => { if (event.target === dialogue) fermer(false); });
+      });
+    } catch (erreur) {
+      console.error("Confirmation d'annulation indisponible :", erreur);
+      return false;
+    } finally {
+      conteneur?.remove();
+    }
+  }
+
   async function demanderAnnulation(r) {
     if (etat.annulationEnCours || etat.periode !== 'avenir') return;
     if (!r.idflux) return window.alert('Identifiant de réservation manquant.');
     const question = estRecue(r)
       ? 'Annuler cette invitation reçue ? L’invitant sera informé selon les règles du service.'
       : 'Annuler cet accès ? Les invitations associées seront traitées par le service de réservation.';
-    if (!window.confirm(question)) return;
+    if (!await confirmerAnnulationAcces(question, estRecue(r))) return;
     etat.annulationEnCours = true;
     try {
       await getJson(planningApi + '/annuler-reservation', {method:'POST', body: {idflux: r.idflux}});
