@@ -2791,16 +2791,20 @@
 
   async function ouvrirBoxListeInvitesModifiable(idflux, invites, declencheur) {
     const idReservation = String(idflux || "").trim();
-    const surface = ouvrirVueSecondairePlanning();
-    if (!surface) return null;
-    const conteneur = surface.conteneur;
+    const conteneur = document.createElement("div");
     conteneur.dataset.lcdpInvitationInvitesOverlay = "true";
+    document.body.appendChild(conteneur);
 
-    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html");
+    let fragment;
+    try {
+      fragment = await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html");
+    } catch (erreur) {
+      conteneur.remove();
+      throw erreur;
+    }
     conteneur.appendChild(fragment);
 
     const box = conteneur.querySelector("[data-lcdp-box-card-listinvites-oui-non]");
-    preparerDialogueDansWrapper(box);
     const titre = conteneur.querySelector("[data-lcdp-listinvites-title]");
     const message = conteneur.querySelector("[data-lcdp-listinvites-message]");
     const liste = conteneur.querySelector("[data-lcdp-listinvites-list]");
@@ -2810,49 +2814,64 @@
     const boutonFermer = conteneur.querySelector("[data-lcdp-listinvites-close]");
     const boutonMettreAJour = conteneur.querySelector("[data-lcdp-listinvites-update]");
     const boutonAnnuler = conteneur.querySelector("[data-lcdp-listinvites-cancel]");
-
-    if (!box || !titre || !message || !liste || !zoneAjout || !listeEmails || !boutonAjouterEmail || !boutonMettreAJour || !boutonAnnuler) {
-      surface.fermer();
-      throw new Error("Structure liste invités oui/non incomplète.");
+    const actions = boutonMettreAJour?.closest(".lcdp-box-card-listinvites-oui-non__actions");
+    if (!box || !titre || !message || !liste || !zoneAjout || !listeEmails ||
+        !boutonAjouterEmail || !boutonMettreAJour || !boutonAnnuler || !actions) {
+      conteneur.remove();
+      throw new Error("Structure du formulaire des invités incomplète.");
     }
 
-    titre.textContent = "Invité(s)";
-    liste.innerHTML = "";
-    listeEmails.innerHTML = "";
-
-    const titreAjout = conteneur.querySelector(".lcdp-box-card-listinvites-oui-non__ajout-title");
-
-    if (boutonFermer) {
-      boutonFermer.hidden = true;
-      boutonFermer.setAttribute("aria-hidden", "true");
-    }
-
-    if (titreAjout) {
-      titreAjout.hidden = true;
-      titreAjout.setAttribute("aria-hidden", "true");
-    }
-
-    boutonAjouterEmail.textContent = "Ajouter un e-mail";
-    boutonAnnuler.textContent = "Annuler";
-    const boutonSansEmail=document.createElement('button');
-    boutonSansEmail.type='button';boutonSansEmail.className='lcdp-button lcdp-button-secondary';
-    boutonSansEmail.textContent='Ajouter sans e-mail';
-    const listeSansEmail=document.createElement('ul');
-    listeSansEmail.style.cssText='list-style:none;padding:0;margin:6px 0;display:grid;gap:7px';
-    listeEmails.insertAdjacentElement('afterend',listeSansEmail);
-
-    const actions = boutonMettreAJour.closest(".lcdp-box-card-listinvites-oui-non__actions");
-
-    if (!actions) {
-      surface.fermer();
-      throw new Error("Wrapper des actions invités indisponible.");
-    }
-    // Un seul wrapper pour les quatre actions, avec l'ordre visuel du gabarit.
-    actions.replaceChildren(boutonAjouterEmail,boutonMettreAJour,boutonAnnuler,boutonSansEmail);
-
+    titre.textContent = "Invités de la réservation";
+    if (boutonFermer) boutonFermer.hidden = true;
     const invitesListe = Array.isArray(invites) ? invites : [];
     const limiteTotale = limiteEmailsInvitation();
-    const placesDisponibles = Math.max(0, limiteTotale - invitesListe.length);
+
+    const sousTitre = document.createElement("p");
+    sousTitre.style.cssText = "margin:8px 0 12px;font-size:13px;color:#526048";
+    titre.insertAdjacentElement("afterend", sousTitre);
+
+    const titreListe = document.createElement("h3");
+    titreListe.textContent = "Invités enregistrés";
+    titreListe.style.cssText = "font-size:15px;margin:14px 0 8px";
+    liste.insertAdjacentElement("beforebegin", titreListe);
+    liste.replaceChildren();
+    if (!invitesListe.length) {
+      const vide = document.createElement("li");
+      vide.textContent = "Aucun invité enregistré.";
+      vide.style.cssText = "font-size:13px;padding:8px 0;list-style:none";
+      liste.appendChild(vide);
+    } else {
+      invitesListe.forEach(invite => liste.appendChild(creerLigneInviteOuiNon(invite)));
+    }
+
+    const titreAjout = zoneAjout.querySelector(".lcdp-box-card-listinvites-oui-non__ajout-title");
+    if (titreAjout) {
+      titreAjout.hidden = false;
+      titreAjout.textContent = "Ajouter des invités";
+    }
+    listeEmails.replaceChildren();
+    const listeSansEmail = document.createElement("ul");
+    listeSansEmail.style.cssText = "list-style:none;padding:0;margin:8px 0;display:grid;gap:8px";
+    listeEmails.insertAdjacentElement("afterend", listeSansEmail);
+
+    const choix = document.createElement("div");
+    choix.style.cssText = "display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0";
+    const boutonSansEmail = document.createElement("button");
+    boutonSansEmail.type = "button";
+    boutonSansEmail.className = "lcdp-button lcdp-button-secondary";
+    boutonAjouterEmail.textContent = "Invité avec e-mail";
+    boutonSansEmail.textContent = "Invité sans e-mail";
+    choix.append(boutonAjouterEmail, boutonSansEmail);
+    zoneAjout.insertBefore(choix, listeEmails);
+
+    const aide = document.createElement("p");
+    aide.textContent = "Sans e-mail : indiquez le nom ou le prénom. Aucun e-mail d’invitation ne sera saisi.";
+    aide.style.cssText = "font-size:12px;color:#526048;margin:4px 0 10px";
+    zoneAjout.appendChild(aide);
+
+    actions.replaceChildren(boutonAnnuler, boutonMettreAJour);
+    boutonAnnuler.textContent = "Annuler";
+    boutonMettreAJour.textContent = "Enregistrer";
 
     function afficherMessage(texte, estErreur = false) {
       message.hidden = !texte;
@@ -2860,157 +2879,145 @@
       message.classList.toggle("lcdp-box-card-listinvites-oui-non__message--erreur", estErreur === true);
     }
 
-    if (!invitesListe.length) {
-      afficherMessage("Aucun invité actif enregistré pour cette réservation.");
-    } else {
+    function lignesExistantes() {
+      return Array.from(liste.querySelectorAll("[data-lcdp-listinvites-item]"));
+    }
+    function nombreActifs() {
+      return lignesExistantes().filter(ligne => ligne.querySelector("[data-lcdp-listinvites-toggle]")?.checked).length;
+    }
+    function nombreAjouts() {
+      return listeEmails.querySelectorAll("input").length + listeSansEmail.querySelectorAll("input").length;
+    }
+    function actualiserPlaces() {
+      const restant = Math.max(0, limiteTotale - nombreActifs() - nombreAjouts());
+      sousTitre.textContent = nombreActifs() + " invité(s) conservé(s), " +
+        nombreAjouts() + " à ajouter — " + restant + " place(s) disponible(s) sur " + limiteTotale + ".";
+      boutonAjouterEmail.disabled = restant === 0;
+      boutonSansEmail.disabled = restant === 0;
+    }
+    liste.addEventListener("change", actualiserPlaces);
+    function placeDisponible() {
+      if (nombreActifs() + nombreAjouts() < limiteTotale) return true;
+      afficherMessage("Nombre maximal d’invités atteint. Retirez un invité pour libérer une place.", true);
+      return false;
+    }
+    boutonAjouterEmail.addEventListener("click", () => {
+      if (!placeDisponible()) return;
+      listeEmails.appendChild(creerChampEmailInviteSupplementaire(actualiserPlaces));
       afficherMessage("");
-      invitesListe.forEach((invite) => {
-        liste.appendChild(creerLigneInviteOuiNon(invite));
-      });
-    }
-
-    if (placesDisponibles <= 0) {
-      zoneAjout.hidden = true;
-      boutonAjouterEmail.hidden = true;
-      boutonAjouterEmail.disabled = true;
-      boutonSansEmail.disabled = true;
-    } else {
-      zoneAjout.hidden = false;
-      boutonAjouterEmail.hidden = false;
-      boutonAjouterEmail.disabled = false;
-      boutonSansEmail.disabled = false;
-      boutonAjouterEmail.textContent = "Ajouter un e-mail";
-    }
-
-    function ajouterChampEmailInvite() {
-      if (listeEmails.querySelectorAll("input[type='email']").length+listeSansEmail.querySelectorAll("input").length >= placesDisponibles) {
-        afficherMessage("Votre droit d'invitation est limité à " + String(limiteTotale) + " invité" + (limiteTotale > 1 ? "s" : "") + ".", true);
-        return;
-      }
-
-      listeEmails.appendChild(creerChampEmailInviteSupplementaire());
-    }
-
-    boutonAjouterEmail.addEventListener("click", ajouterChampEmailInvite);
-    boutonSansEmail.addEventListener("click",()=>{
-      if (listeEmails.querySelectorAll("input[type='email']").length+listeSansEmail.querySelectorAll('input').length >= placesDisponibles) {
-        afficherMessage("Nombre maximal d’invités atteint.", true);return;
-      }
-      const li=document.createElement('li');
-      const input=document.createElement('input');input.type='text';input.placeholder='Nom ou prénom';
-      input.maxLength=120;input.style.cssText='padding:8px;border:1px solid #cbd5c2;border-radius:10px';
-      const retirer=document.createElement('button');retirer.type='button';retirer.textContent='Supprimer';
-      retirer.className='lcdp-button lcdp-button-secondary';
-      retirer.addEventListener('click',()=>li.remove());
-      li.append(input,retirer);listeSansEmail.append(li);input.focus();
+      actualiserPlaces();
     });
+    boutonSansEmail.addEventListener("click", () => {
+      if (!placeDisponible()) return;
+      const li = document.createElement("li");
+      li.style.cssText = "display:flex;gap:8px;align-items:center";
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = "Nom ou prénom de l’invité";
+      input.setAttribute("aria-label", "Nom ou prénom de l’invité sans e-mail");
+      input.maxLength = 120;
+      input.style.cssText = "flex:1;min-width:0;padding:9px;border:1px solid #cbd5c2;border-radius:10px";
+      const retirer = document.createElement("button");
+      retirer.type = "button";
+      retirer.className = "lcdp-button lcdp-button-secondary";
+      retirer.textContent = "Retirer";
+      retirer.addEventListener("click", () => { li.remove(); actualiserPlaces(); });
+      li.append(input, retirer);
+      listeSansEmail.appendChild(li);
+      afficherMessage("");
+      actualiserPlaces();
+      input.focus();
+    });
+    actualiserPlaces();
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       let resolu = false;
       let enregistrementEnCours = false;
 
       function fermer(valeur) {
-        if (resolu) return;
+        if (resolu || enregistrementEnCours) return;
         resolu = true;
         document.removeEventListener("keydown", gererEchap);
-        surface.fermer();
+        conteneur.remove();
         resolve(valeur);
       }
-
       function gererEchap(event) {
-        if (event.key === "Escape" && vueSecondaireAuPremierPlan(conteneur) && !enregistrementEnCours) {
+        // La fermeture involontaire ferait perdre toute la saisie.
+        if (event.key === "Escape" && !resolu) {
           event.preventDefault();
-          fermer(null);
+          afficherMessage("Utilisez « Annuler » pour quitter sans enregistrer.");
         }
       }
 
       async function mettreAJour() {
         if (enregistrementEnCours || !idReservation) return;
-
-        const lignes = Array.from(liste.querySelectorAll("[data-lcdp-listinvites-item]"));
-        const majInvites = lignes
-          .map((ligne) => {
-            const idmembre = String(ligne.dataset.idmembre || "").trim();
-            const toggle = ligne.querySelector("[data-lcdp-listinvites-toggle]");
-
-            if (!idmembre || !toggle) return null;
-
-            return {
-              idmembre,
-              invit: toggle.checked ? "true" : "cancd"
-            };
-          })
-          .filter(Boolean);
-
+        const lignes = lignesExistantes();
+        const majInvites = lignes.map(ligne => {
+          const idmembre = String(ligne.dataset.idmembre || "").trim();
+          const toggle = ligne.querySelector("[data-lcdp-listinvites-toggle]");
+          return idmembre && toggle ? { idmembre, invit: toggle.checked ? "true" : "cancd" } : null;
+        }).filter(Boolean);
+        const changementExistant = lignes.some(ligne =>
+          String(Boolean(ligne.querySelector("[data-lcdp-listinvites-toggle]")?.checked)) !== ligne.dataset.initialActive
+        );
         const emails = collecterEmailsSupplementairesInvitation(listeEmails);
-
-        if (emails.erreur) {
-          afficherMessage(emails.erreur, true);
+        if (emails.erreur) { afficherMessage(emails.erreur, true); return; }
+        const personnesSansEmail = Array.from(listeSansEmail.querySelectorAll("input"))
+          .map(input => ({ nom: input.value.trim() }));
+        if (personnesSansEmail.some(personne => !personne.nom)) {
+          afficherMessage("Renseignez le nom ou le prénom de chaque invité sans e-mail.", true);
           return;
         }
-
-        const personnesSansEmail=Array.from(listeSansEmail.querySelectorAll('input')).map(input=>({nom:input.value.trim()}));
-        if (personnesSansEmail.some(p=>!p.nom)) {
-          afficherMessage("Indiquez le nom ou le prénom de chaque invité sans e-mail.",true);return;
+        if (nombreActifs() + emails.valeurs.length + personnesSansEmail.length > limiteTotale) {
+          afficherMessage("Le nombre maximal d’invités est dépassé.", true);
+          return;
         }
-        if (!majInvites.length && !emails.valeurs.length && !personnesSansEmail.length) {
-          afficherMessage("Aucun invité à mettre à jour.", true);
+        if (!changementExistant && !emails.valeurs.length && !personnesSansEmail.length) {
+          afficherMessage("Aucune modification à enregistrer.");
           return;
         }
 
         enregistrementEnCours = true;
-        boutonAjouterEmail.disabled = true;
-        boutonAnnuler.disabled = true;
-        boutonMettreAJour.disabled = true;
-        boutonMettreAJour.textContent = "Mise à jour...";
-        afficherMessage("Patientez, la liste des invités est en cours de mise à jour.");
-
-        const resultat = await enregistrerListeInvitesReservation(idReservation, {
-          invites: majInvites,
-          emails: emails.valeurs,
-          personnesSansEmail
-        }, declencheur);
-
-        enregistrementEnCours = false;
-        boutonAjouterEmail.disabled = placesDisponibles <= 0;
-        boutonAnnuler.disabled = false;
-        boutonMettreAJour.disabled = false;
-        boutonMettreAJour.textContent = "Mettre à jour";
-
-        if (!resultat) return;
-
+        [boutonAjouterEmail, boutonSansEmail, boutonAnnuler, boutonMettreAJour].forEach(b => b.disabled = true);
+        boutonMettreAJour.textContent = "Enregistrement…";
+        afficherMessage("Enregistrement des invités en cours.");
+        let resultat = null;
+        try {
+          resultat = await enregistrerListeInvitesReservation(idReservation, {
+            invites: majInvites, emails: emails.valeurs, personnesSansEmail
+          }, declencheur);
+        } finally {
+          enregistrementEnCours = false;
+          boutonAnnuler.disabled = false;
+          boutonMettreAJour.disabled = false;
+          boutonMettreAJour.textContent = "Enregistrer";
+          actualiserPlaces();
+        }
+        if (!resultat) {
+          afficherMessage("Enregistrement non confirmé. Votre saisie est conservée.", true);
+          return;
+        }
         const reservation = trouverReservationPlanningParId(idReservation);
-        const nbActifs = Number(resultat.nbInvitesActifs || 0);
-        const nbAnnules = Number(resultat.nbInvitesAnnules || 0);
-
-        if (reservation) {
+        const nbActifs = Number(resultat.nbInvitesActifs);
+        const nbAnnules = Number(resultat.nbInvitesAnnules);
+        if (reservation && Number.isFinite(nbActifs) && Number.isFinite(nbAnnules)) {
           reservation.invitationStats = {
-            ...(reservation.invitationStats || {}),
-            in: Number.isFinite(nbActifs) ? nbActifs : 0,
-            out: Number.isFinite(nbAnnules) ? nbAnnules : 0
+            ...(reservation.invitationStats || {}), in: nbActifs, out: nbAnnules
           };
         }
-
-        if (Number.isFinite(nbActifs) && nbActifs > 0) {
-          etat.reservationsAvecInvites.add(idReservation);
-        } else {
-          etat.reservationsAvecInvites.delete(idReservation);
+        if (Number.isFinite(nbActifs)) {
+          if (nbActifs > 0) etat.reservationsAvecInvites.add(idReservation);
+          else etat.reservationsAvecInvites.delete(idReservation);
         }
-
         actualiserBoutonsInvitationPlanning(idReservation, declencheur);
-        await afficherAlerteInvitationReservation(resultat.message || "Liste des invités mise à jour.", declencheur, { profil: "information" });
         fermer(resultat);
+        await afficherAlerteInvitationReservation(resultat.message || "Liste des invités enregistrée.", declencheur, { profil: "information" });
       }
 
       boutonMettreAJour.addEventListener("click", mettreAJour);
       boutonAnnuler.addEventListener("click", () => fermer(null));
-
-      if (boutonFermer) {
-        boutonFermer.addEventListener("click", () => fermer(null));
-      }
-
+      // Aucun clic sur le fond ou la touche Échap ne ferme ce formulaire.
       document.addEventListener("keydown", gererEchap);
-      boutonAnnuler.focus({preventScroll:true});
     });
   }
 
@@ -3030,70 +3037,80 @@
     const item = document.createElement("li");
     item.className = "lcdp-box-card-listinvites-oui-non__item";
     item.dataset.lcdpListinvitesItem = "true";
-    item.dataset.idmembre = String(invite?.idmembre || "").trim();
-
+    const idmembre = String(invite?.idmembre || "").trim();
+    item.dataset.idmembre = idmembre;
     const identite = document.createElement("span");
     identite.className = "lcdp-box-card-listinvites-oui-non__identite";
     identite.textContent = formaterLigneInviteReservation(invite);
-
-    const label = document.createElement("label");
-    label.className = "lcdp-box-card-listinvites-oui-non__switch";
-
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.className = "lcdp-box-card-listinvites-oui-non__switch-input";
-    input.dataset.lcdpListinvitesToggle = "true";
-    input.checked = normaliserStatutInvitationInvite(invite?.invit) !== "cancd";
-    input.setAttribute("aria-label", "Invitation active pour " + identite.textContent);
-
-    const curseur = document.createElement("span");
-    curseur.className = "lcdp-box-card-listinvites-oui-non__switch-slider";
-    curseur.setAttribute("aria-hidden", "true");
-
+    const actif = normaliserStatutInvitationInvite(invite?.invit) !== "cancd";
+    item.dataset.initialActive = String(actif);
+    const toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    toggle.hidden = true;
+    toggle.dataset.lcdpListinvitesToggle = "true";
+    toggle.checked = actif;
     const etatTexte = document.createElement("span");
-    etatTexte.className = "lcdp-box-card-listinvites-oui-non__switch-text";
-    etatTexte.textContent = input.checked ? "Oui" : "Non";
-
-    item.classList.toggle("lcdp-box-card-listinvites-oui-non__item--cancd", !input.checked);
-
-    input.addEventListener("change", () => {
-      etatTexte.textContent = input.checked ? "Oui" : "Non";
-      item.classList.toggle("lcdp-box-card-listinvites-oui-non__item--cancd", !input.checked);
+    etatTexte.style.cssText = "font-size:12px;color:#526048";
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "lcdp-button lcdp-button-secondary";
+    bouton.style.cssText = "padding:7px 10px;min-height:36px";
+    function afficherEtat() {
+      etatTexte.textContent = toggle.checked ? "Conservé" : "À retirer après enregistrement";
+      bouton.textContent = toggle.checked ? "Retirer" : "Rétablir";
+      bouton.setAttribute("aria-label", bouton.textContent + " : " + identite.textContent);
+      item.classList.toggle("lcdp-box-card-listinvites-oui-non__item--cancd", !toggle.checked);
+    }
+    bouton.disabled = !idmembre;
+    if (!idmembre) bouton.title = "Retrait indisponible : identifiant de l’invité manquant";
+    bouton.addEventListener("click", () => {
+      toggle.checked = !toggle.checked;
+      afficherEtat();
+      item.dispatchEvent(new Event("change", { bubbles: true }));
     });
-
-    label.appendChild(input);
-    label.appendChild(curseur);
-    label.appendChild(etatTexte);
-
-    item.appendChild(identite);
-    item.appendChild(label);
-
+    const commandes = document.createElement("div");
+    commandes.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:7px";
+    commandes.append(etatTexte, bouton, toggle);
+    item.append(identite, commandes);
+    afficherEtat();
     return item;
   }
 
-  function creerChampEmailInviteSupplementaire() {
+  function creerChampEmailInviteSupplementaire(surRetrait) {
     const item = document.createElement("li");
     item.className = "lcdp-box-card-listinvites-oui-non__email-item";
-
+    item.style.cssText = "display:flex;gap:8px;align-items:center";
     const input = document.createElement("input");
-    input.type = "text";
+    input.type = "email";
     input.placeholder = "Adresse e-mail de l’invité";
+    input.setAttribute("aria-label", "Adresse e-mail du nouvel invité");
     input.autocomplete = "email";
     input.inputMode = "email";
     input.className = "lcdp-box-card-listinvites-oui-non__email-input";
-
-    item.appendChild(input);
+    input.style.cssText = "flex:1;min-width:0";
+    const retirer = document.createElement("button");
+    retirer.type = "button";
+    retirer.className = "lcdp-button lcdp-button-secondary";
+    retirer.textContent = "Retirer";
+    retirer.addEventListener("click", () => {
+      item.remove();
+      if (typeof surRetrait === "function") surRetrait();
+    });
+    item.append(input, retirer);
     input.focus();
     return item;
   }
 
   function collecterEmailsSupplementairesInvitation(listeEmails) {
     const saisies = Array.from(listeEmails.querySelectorAll("input[type='email']"))
-      .map((input) => nettoyerEmail(input.value))
-      .filter(Boolean);
-
+      .map(input => nettoyerEmail(input.value));
+    if (saisies.some(email => !email || !emailValide(email))) {
+      return { valeurs: [], erreur: "Renseignez une adresse e-mail valide pour chaque nouvel invité." };
+    }
     const valeurs = saisies.filter((email, index, array) => array.indexOf(email) === index);
-    // Aucune vérification de l'existence d'un compte membre à cette étape.
+    if (valeurs.length !== saisies.length) {
+      return { valeurs: [], erreur: "Une adresse e-mail figure plusieurs fois dans la liste." };
+    }
     return { valeurs, erreur: "" };
   }
 
