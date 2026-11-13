@@ -3057,7 +3057,7 @@
     // Afficher le formulaire DUO/FAMILLE indépendamment du déploiement Worker.
     // Une route absente ne doit plus ramener à l'ancien formulaire.
     await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css");
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=choix-fermeture");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=quotas-invitations");
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites");
     if (!window.LCDP_InvitationsAbonnement?.monter) {
       throw new Error("Formulaire DUO/FAMILLE indisponible.");
