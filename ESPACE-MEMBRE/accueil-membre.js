@@ -162,7 +162,7 @@
     // Ne pas recouvrir une autre fenêtre que le membre aurait ouverte entre-temps.
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot || slot.childElementCount) return;
-    await afficherAlerte(message);
+    await afficherAlerte(message, { profil: statut === "incident" || statut === "annule" ? "erreur" : "information" });
   }
 
   async function chargerEtatMembre() {
@@ -758,7 +758,7 @@
         const resultat = await reponse.json().catch(() => null);
         slot.innerHTML = "";
         if (reponse.status === 401) { redirigerConnexionMembre("inactive"); return; }
-        await afficherAlerte(resultat?.message || "La réponse n’a pas pu être confirmée. Réessayez plus tard.");
+        await afficherAlerte(resultat?.message || "La réponse n’a pas pu être confirmée. Réessayez plus tard.", { profil: reponse.ok && resultat?.success === true ? "information" : "erreur" });
         if (reponse.ok && resultat?.success === true) await gererBoutonAccueilMembre("ma_cle");
       } catch {
         slot.innerHTML = "";
@@ -879,10 +879,6 @@
     return texte + ".";
   }
 
-  function appliquerVarianteAlerteAccueilMembre(alerte, variante) {
-    if (variante === "ouvrir") alerte.classList.add("lcdp-alerte-accueil-ouvrir");
-  }
-
   async function afficherAlerte(message, options = {}) {
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) return false;
@@ -952,53 +948,44 @@
       }
     }
 
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
-    slot.appendChild(fragment);
-    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-    const texte = slot.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      throw new Error("Structure de l’alerte incomplète.");
+    // Les confirmations binaires utilisent CHOIX plus haut ; cette branche est ERREUR.
+    slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-erreur.html"));
+    const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="erreur"]');
+    const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+    const bouton = slot.querySelector('[data-lcdp-dialogue-action="fermer"]');
+    if (!dialogue || !titre || !texte || !bouton) {
+      slot.replaceChildren();
+      throw new Error("Structure du dialogue ERREUR incomplète.");
     }
-
-    const confirmation = options.mode === "confirmation";
+    const focusInitial = document.activeElement;
+    titre.textContent = options.titre || "Erreur";
     texte.textContent = normaliserPonctuationAlerte(message);
-    alerte.dataset.lcdpDialogueType = confirmation ? "confirmation" : "information";
-    boutonOk.textContent = confirmation ? "Confirmer" : "Fermer";
-    // Information = une seule action « Fermer », sans croix.
-    boutonFermer.hidden = !confirmation || options.sansCroix === true;
-    const actions = document.createElement("div");
-    actions.className = "lcdp-dialogue-actions";
-    boutonOk.before(actions);
-    actions.appendChild(boutonOk);
-
-    if (confirmation) {
-      const annuler = document.createElement("button");
-      annuler.type = "button";
-      annuler.className = "lcdp-button lcdp-button-secondary";
-      annuler.textContent = "Annuler";
-      actions.prepend(annuler);
-      annuler.dataset.lcdpActionAnnuler = "true";
-    }
-
-    return new Promise((resolve) => {
+    bouton.textContent = "Fermer";
+    return new Promise(resolve => {
       let resolu = false;
-      function fermer(valeur) {
+      const fermer = valeur => {
         if (resolu) return;
         resolu = true;
-        slot.innerHTML = "";
+        document.removeEventListener("keydown", gererClavier);
+        slot.replaceChildren();
+        if (focusInitial?.isConnected && typeof focusInitial.focus === "function") {
+          focusInitial.focus();
+        }
         resolve(valeur);
-      }
-      actions.querySelector('[data-lcdp-action-annuler="true"]')?.addEventListener("click", () => fermer(false));
-      boutonFermer.addEventListener("click", () => fermer(false));
-      boutonOk.addEventListener("click", () => fermer(true));
-      alerte.addEventListener("click", (event) => {
-        if (event.target === alerte && confirmation && !boutonFermer.hidden) fermer(false);
+      };
+      const gererClavier = event => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          fermer(false);
+        }
+      };
+      bouton.addEventListener("click", () => fermer(true), { once: true });
+      dialogue.addEventListener("click", event => {
+        if (event.target === dialogue) fermer(false);
       });
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && confirmation && !boutonFermer.hidden) fermer(false);
-      }, { once: true });
+      document.addEventListener("keydown", gererClavier);
+      bouton.focus();
     });
   }
 
