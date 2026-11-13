@@ -667,9 +667,21 @@
   async function demanderAnnulation(r) {
     if (etat.annulationEnCours || etat.periode !== 'avenir') return;
     if (!r.idflux) return window.alert('Identifiant de réservation manquant.');
-    const question = estRecue(r)
-      ? 'Annuler cette invitation reçue ? L’invitant sera informé selon les règles du service.'
-      : 'Annuler cet accès ? Les invitations associées seront traitées par le service de réservation.';
+    const jour = dateIsoParis(r);
+    if (!jour) return afficherInformationMesAcces('Date de réservation indisponible.', 'Information');
+    const [annee, mois, date] = jour.split('-').map(Number);
+    const veille = new Date(Date.UTC(annee, mois - 1, date - 1));
+    const cible = new Intl.DateTimeFormat('fr-CA', {timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'});
+    const veilleIso = veille.toISOString().slice(0,10);
+    const limite = [12,13].map(heure => Date.UTC(annee, mois - 1, date - 1, heure))
+      .find(timestamp => {
+        const parties = Object.fromEntries(cible.formatToParts(new Date(timestamp)).map(part => [part.type,part.value]));
+        return [parties.year,parties.month,parties.day].join('-') === veilleIso && parties.hour === '14';
+      });
+    if (limite === undefined) return afficherInformationMesAcces('Date limite d’annulation indisponible.', 'Information');
+    if (Date.now() >= limite) return afficherInformationMesAcces('Annulation impossible après 14h', 'Information');
+    const nombre = estRecue(r) ? 0 : statsActifs(r);
+    const question = nombre > 0 ? '(' + nombre + ' invité' + (nombre > 1 ? 's' : '') + ')' : '';
     if (!await confirmerAnnulationAcces(question, estRecue(r))) return;
     etat.annulationEnCours = true;
     try {
