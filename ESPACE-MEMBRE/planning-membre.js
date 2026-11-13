@@ -1425,6 +1425,7 @@
       const data = await reponse.json().catch(() => null);
 
       if (!reponse.ok || !data || !reponseApiOk(data) || !Array.isArray(data.reservations)) {
+        await chargerCompteursInvitationsParAcces();
         return;
       }
 
@@ -1456,6 +1457,56 @@
     } catch (error) {
       console.warn("Statuts invitation indisponibles :", error);
     }
+  }
+
+  // Repli pour un abonnement payé couvrant un accès futur : la route
+  // historique /reservations-invitables peut refuser la lecture avant son début.
+  async function chargerCompteursInvitationsParAcces() {
+    const reservations = etat.reservations.filter(reservation =>
+      reservation?.idflux && reservation.invitation !== true && reservation.statut !== "cancd"
+    );
+    for (let debut = 0; debut < reservations.length; debut += 6) {
+      await Promise.all(reservations.slice(debut, debut + 6).map(async reservation => {
+        try {
+          const idflux = String(reservation.idflux).trim();
+          const reponse = await fetch(
+            ENDPOINT_INVITER_MEMBRE + "/invites?idflux=" + encodeURIComponent(idflux), {
+              method: "GET", credentials: "include", cache: "no-store",
+              headers: { Accept: "application/json" }
+            }
+          );
+          const data = await reponse.json().catch(() => null);
+          if (!reponse.ok || data?.ok !== true || !Array.isArray(data.invites)) return;
+          const nombre = data.invites.length;
+          reservation.invitationStats = {
+            ...(reservation.invitationStats || {}), in: nombre
+          };
+          if (nombre > 0) etat.reservationsAvecInvites.add(idflux);
+          else etat.reservationsAvecInvites.delete(idflux);
+        } catch (erreur) {
+          console.warn("Compteur d'invités indisponible pour un accès :", erreur);
+        }
+      }));
+    }
+  }
+
+  function afficherAttenteOuvertureInvites() {
+    const calque = document.createElement("div");
+    calque.className = "lcdp-invitation-attente";
+    calque.setAttribute("role", "status");
+    calque.setAttribute("aria-label", "Chargement des invités");
+    calque.style.cssText = "position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(22,35,21,.22);";
+    const encart = document.createElement("div");
+    encart.style.cssText = "display:inline-flex;align-items:center;gap:12px;padding:17px 22px;border-radius:16px;background:#fff;box-shadow:0 8px 25px rgba(0,0,0,.14);font:600 15px/1.4 Arial,system-ui,sans-serif;color:#1f2a24;";
+    const spinner = document.createElement("span");
+    spinner.setAttribute("aria-hidden", "true");
+    spinner.style.cssText = "display:inline-block;width:24px;height:24px;flex:0 0 24px;border:3px solid #dae2d2;border-top-color:#4b6333;border-radius:50%;animation:lcdp-button-logo-loading .75s linear infinite;";
+    const texte = document.createElement("span");
+    texte.textContent = "Chargement des invités";
+    encart.append(spinner, texte);
+    calque.appendChild(encart);
+    document.body.appendChild(calque);
+    return () => calque.remove();
   }
 
   function ajusterMoisCourantSelonPeriode() {
@@ -2866,16 +2917,21 @@
   async function ouvrirListeInvitesReservation(idflux, declencheur, options = {}) {
     const idReservation = String(idflux || "").trim();
     const reservation = trouverReservationPlanningParId(idReservation);
-    const invites = await chargerInvitesReservation(idReservation, declencheur);
-
-    if (!invites) return;
-
     if (options.lectureSeule === true || (reservation && reservationDelaiActionDepasse(reservation))) {
+      const arreterAttente = afficherAttenteOuvertureInvites();
+      let invites;
+      try {
+        invites = await chargerInvitesReservation(idReservation, declencheur);
+      } finally {
+        arreterAttente();
+      }
+      if (!invites) return;
       await ouvrirBoxListeInvitesLectureSeule(idReservation, invites, declencheur);
       return;
     }
 
-    await ouvrirBoxListeInvitesModifiable(idReservation, invites, declencheur);
+    // Pas de double lecture : le formulaire DUO/FAMILLE lit son contexte.
+    await ouvrirBoxListeInvitesModifiable(idReservation, null, declencheur);
   }
 
   async function chargerInvitesReservation(idflux, declencheur) {
