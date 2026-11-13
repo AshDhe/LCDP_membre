@@ -99,6 +99,9 @@
     const nbSelectionnes = categorie =>
       selection[categorie].size + nouveaux[categorie].filter(c => normaliserEmail(c.input.value)).length;
     const totalCandidats = categorie =>
+      contexte.contacts[categorie].length +
+      nouveaux[categorie].filter(contact => normaliserEmail(contact.input.value)).length;
+    const lignesOuvertes = categorie =>
       contexte.contacts[categorie].length + nouveaux[categorie].length;
 
     function verifierSelectionDuo(nombre) {
@@ -166,11 +169,11 @@
       return item;
     }
 
-    function ajouterChamp(categorie) {
+    function ajouterChamp(categorie, initial = false) {
       if (enregistrementEnCours || ferme) return;
       const liste = vue.querySelector('[data-lcdp-invitation-nouveaux="' + categorie + '"]');
       const item = creerElement("li","lcdp-box-champ-formulaire");
-      item.setAttribute("data-lcdp-invite-email-row","");
+      if (!initial) item.setAttribute("data-lcdp-invite-email-row","");
       const champ = creerElement("input");
       champ.type = "email";
       champ.inputMode = "email";
@@ -188,7 +191,9 @@
         item.remove();
         actualiserQuotas();
       });
-      item.append(champ,supprimer);
+      if (initial) item.appendChild(champ);
+      else item.append(champ,supprimer);
+      champ.addEventListener("input", actualiserQuotas);
       nouveaux[categorie].push(entree);
       liste.appendChild(item);
       actualiserQuotas();
@@ -211,8 +216,16 @@
             : "Le MAXFAMILL de votre abonnement est atteint.");
           return;
         }
+        if (lignesOuvertes(categorie) >= quotaCarnet(categorie)) {
+          await info("Saisissez d'abord l'adresse e-mail dans le champ ouvert.");
+          return;
+        }
         ajouterChamp(categorie);
       });
+      // Un premier champ nu, sans croix, si le carnet de la catégorie est vide.
+      if (!contexte.contacts[categorie].length && quotaCarnet(categorie) > 0) {
+        ajouterChamp(categorie, true);
+      }
     }
 
     const quitter = () => {
