@@ -617,7 +617,7 @@
         : String(config.objetBaseUrl || "https://lacleduparc.fr/OBJET").replace(/\/+$/, "") + chemin;
       // Les styles de la vue Inviter doivent être prêts AVANT son montage,
       // y compris si cette page n'a pas préchargé les CSS de MES ACCÈS.
-      const cssInviter = urlObjet("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-inviter-formulaire-v11");
+      const cssInviter = urlObjet("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-inviter-actions-v16");
       if (![...document.querySelectorAll('link[rel="stylesheet"]')].some(lien => lien.href === cssInviter)) {
         await new Promise((resolve, reject) => {
           const lien = document.createElement("link");
@@ -631,7 +631,7 @@
           document.head.appendChild(lien);
         });
       }
-      const reponse = await fetch(urlObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-champ-c040-v12"), {cache:"no-store"});
+      const reponse = await fetch(urlObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-actions-v16"), {cache:"no-store"});
       if (!reponse.ok) throw new Error("Formulaire des invitations indisponible.");
       const template = document.createElement("template");
       template.innerHTML = (await reponse.text()).trim();
@@ -654,9 +654,10 @@
       const inviter = overlay.querySelector("[data-lcdp-listinvites-update]");
       const sansEmail = overlay.querySelector("[data-lcdp-listinvites-sans-email]");
       const annuler = overlay.querySelector("[data-lcdp-listinvites-cancel]");
+      const fermerCroix = overlay.querySelector("[data-lcdp-listinvites-close]");
       const message = overlay.querySelector("[data-lcdp-listinvites-message]");
       const formulaire = overlay.querySelector("[data-lcdp-invitation-form]");
-      if (![titre,liste,champ,effacer,ajouter,inviter,sansEmail,annuler,message,formulaire].every(Boolean)) {
+      if (![titre,liste,champ,effacer,ajouter,inviter,sansEmail,annuler,fermerCroix,message,formulaire].every(Boolean)) {
         throw new Error("Structure du formulaire des invitations incomplète.");
       }
       titre.textContent = "Inviter";
@@ -687,7 +688,7 @@
       function gererEchap(event) {
         if (event.key !== "Escape" || document.querySelector('[data-lcdp-dialogue-reference]')) return;
         event.preventDefault();
-        afficherMessage("Utilisez la croix en haut à droite pour fermer ce formulaire.");
+        afficherMessage("Utilisez « Annuler » ou la croix pour fermer ce formulaire.");
       }
 
       async function demanderRetrait(personne) {
@@ -757,6 +758,7 @@
         await afficherInformationMesAcces("Cette fonctionnalité n’est pas disponible actuellement.", "Information");
       });
       annuler.addEventListener("click",fermer);
+      fermerCroix.addEventListener("click",fermer);
 
       document.addEventListener("keydown",gererEchap);
       afficherLignes();
@@ -779,7 +781,7 @@
           return;
         }
         enregistrementEnCours = true;
-        [inviter,ajouter,sansEmail,annuler,effacer].forEach(x => x.disabled = true);
+        [inviter,ajouter,sansEmail,annuler,fermerCroix,effacer].forEach(x => x.disabled = true);
         inviter.textContent = "Enregistrement…";
         afficherMessage("Mise à jour des invitations en cours.");
         try {
@@ -805,7 +807,7 @@
         } finally {
           enregistrementEnCours = false;
           if (!fermeture) {
-            [inviter,ajouter,sansEmail,annuler,effacer].forEach(x => x.disabled = false);
+            [inviter,ajouter,sansEmail,annuler,fermerCroix,effacer].forEach(x => x.disabled = false);
             inviter.textContent = "Inviter et mettre à jour";
           }
         }
