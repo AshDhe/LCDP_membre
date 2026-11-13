@@ -1,0 +1,539 @@
+/* MA CLÉ : styles propres au tunnel. Les composants communs sont fournis par CSSBASE. */
+
+.lcdp-cle-wait {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lcdp-cle-box {
+  width: min(100%, 520px);
+  margin: 0 auto;
+}
+
+.lcdp-cle-ecran--saisie .lcdp-box-formulaire-page__inner {
+  background: transparent;
+}
+
+.lcdp-cle-ecran--saisie .lcdp-box-formulaire {
+  background: var(--lcdp-color-blue);
+}
+
+.lcdp-cle-ecran--saisie .lcdp-box-formulaire__title,
+.lcdp-cle-ecran--saisie .lcdp-mention-connexion {
+  color: #ffffff;
+}
+
+.lcdp-page-cle-du-parc .lcdp-box-formulaire__title {
+  text-transform: uppercase;
+}
+
+.lcdp-cle-ecran--saisie [data-lcdp-cle-submit] {
+  background: #ffffff;
+}
+
+.lcdp-cle-ecran--saisie .lcdp-box-formulaire__actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--lcdp-space-2, 12px);
+}
+
+.lcdp-cle-cancel {
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  align-self: center;
+  padding: 8px 16px;
+  background: transparent;
+  border-color: #ffffff;
+  color: #ffffff;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.lcdp-cle-cancel:hover,
+.lcdp-cle-cancel:focus-visible {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: var(--lcdp-color-blue);
+}
+
+.lcdp-cle-codes {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lcdp-space-3, 16px);
+}
+
+.lcdp-cle-code-field {
+  width: 100%;
+  min-height: 72px;
+  padding: 14px 16px;
+  border: 1px solid var(--lcdp-color-border-strong);
+  border-radius: var(--lcdp-radius-medium);
+  background: var(--lcdp-color-surface);
+  color: var(--lcdp-color-text);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.lcdp-cle-code-field:hover,
+.lcdp-cle-code-field:focus-visible {
+  border-color: var(--lcdp-color-logo-green);
+  background: var(--lcdp-color-surface-soft);
+}
+
+.lcdp-cle-code-field__label {
+  font-size: 0.92rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--lcdp-color-text-muted);
+}
+
+.lcdp-cle-code-field__value {
+  font-size: 1.18rem;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.lcdp-cle-code-field__value.is-filled {
+  color: var(--lcdp-color-blue);
+}
+
+.lcdp-cle-ecran--active .lcdp-box-formulaire-page__inner {
+  background: var(--lcdp-color-logo-green);
+}
+
+.lcdp-page-cle-du-parc.is-cle-active,
+.lcdp-page-cle-du-parc.is-cle-active .lcdp-site-page,
+.lcdp-page-cle-du-parc.is-cle-active .lcdp-site-main {
+  background: var(--lcdp-color-logo-green);
+}
+
+.lcdp-page-cle-du-parc.is-cle-active .lcdp-cle-ecran--active .lcdp-box-formulaire__title,
+.lcdp-page-cle-du-parc.is-cle-active .lcdp-cle-ecran--active .lcdp-mention-connexion {
+  color: #ffffff;
+}
+
+.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay,
+.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-site-page,
+.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-site-main,
+.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-cle-ecran--active .lcdp-box-formulaire-page__inner {
+  background: var(--lcdp-color-orange);
+}
+
+.lcdp-page-cle-du-parc.is-cle-active #lcdp-bandeau-slot,
+.lcdp-page-cle-du-parc.is-cle-active #lcdp-footer-slot,
+.lcdp-page-cle-du-parc.is-cle-checkout #lcdp-bandeau-slot,
+.lcdp-page-cle-du-parc.is-cle-checkout #lcdp-footer-slot {
+  display: none;
+}
+
+.lcdp-cle-ecran--active .lcdp-box-formulaire {
+  background: transparent;
+  border-color: #ffffff;
+  box-shadow: none;
+}
+
+.lcdp-cle-active-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lcdp-space-3, 16px);
+}
+
+.lcdp-cle-action {
+  width: 100%;
+  min-height: 72px;
+  border-width: 2px;
+  border-radius: var(--lcdp-radius-medium);
+  font-size: 1.25rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.lcdp-cle-action--brighta {
+  background: #ffffff;
+  border-color: var(--lcdp-color-blue);
+  color: var(--lcdp-color-blue);
+}
+
+.lcdp-cle-action--brighta:hover {
+  background: var(--lcdp-color-surface-soft);
+  border-color: var(--lcdp-color-blue-hover);
+  color: var(--lcdp-color-blue-hover);
+}
+
+.lcdp-cle-action--brighta:disabled {
+  background: #ffffff;
+  border-color: #b8c9d8;
+  color: #9db4c8;
+  opacity: 1;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.lcdp-cle-action--checkout {
+  background: var(--lcdp-color-blue);
+  border-color: var(--lcdp-color-blue);
+  color: #ffffff;
+}
+
+.lcdp-cle-action--checkout:hover {
+  background: var(--lcdp-color-blue-hover);
+  border-color: var(--lcdp-color-blue-hover);
+  color: #ffffff;
+}
+
+.lcdp-cle-cooldown {
+  margin: 0;
+  color: var(--lcdp-color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.3;
+  font-weight: 650;
+  text-align: center;
+}
+
+.lcdp-cle-confirm-code {
+  margin: 0 auto var(--lcdp-space-2);
+  padding: 10px 16px;
+  border-radius: var(--lcdp-radius-small);
+  background: var(--lcdp-color-surface-soft);
+  color: var(--lcdp-color-primary);
+  font-size: 2rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-align: center;
+}
+
+.lcdp-cle-dialogue-note {
+  margin: 0 0 var(--lcdp-space-2);
+  color: var(--lcdp-color-text-muted);
+  line-height: 1.35;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .lcdp-cle-code-field {
+    min-height: 76px;
+  }
+
+  .lcdp-cle-action {
+    min-height: 78px;
+  }
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-cancel] {
+  border-color: var(--lcdp-color-blue);
+  color: var(--lcdp-color-blue);
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-cancel]:hover,
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-cancel]:focus-visible {
+  border-color: var(--lcdp-color-blue-hover);
+  color: var(--lcdp-color-blue-hover);
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-submit] {
+  background: var(--lcdp-color-blue);
+  border-color: var(--lcdp-color-blue);
+  color: #ffffff;
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-submit]:hover,
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-submit]:focus-visible {
+  background: var(--lcdp-color-blue-hover);
+  border-color: var(--lcdp-color-blue-hover);
+  color: #ffffff;
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-alerte-ok] {
+  background: var(--lcdp-color-blue);
+  border-color: var(--lcdp-color-blue);
+  color: #ffffff;
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-alerte-ok]:hover,
+.lcdp-page-cle-du-parc [data-lcdp-alerte-ok]:focus-visible {
+  background: var(--lcdp-color-blue-hover);
+  border-color: var(--lcdp-color-blue-hover);
+  color: #ffffff;
+}
+
+/* Authentification Ma clé : quatre cases, sans libellé visible du code. */
+.lcdp-cle-dialogue-description { margin: 0 0 16px; text-align: center; }
+.lcdp-cle-code-quatre-cases { display: flex; justify-content: center; gap: 12px; margin: 20px 0; }
+.lcdp-cle-code-quatre-cases input { width: 52px; min-width: 0; height: 56px; padding: 8px; border: 1px solid var(--lcdp-color-border-strong); border-radius: var(--lcdp-radius-small); background: var(--lcdp-color-surface); color: var(--lcdp-color-text); font: 24px var(--lcdp-font-main); text-align: center; }
+@media (max-width: 359px) { .lcdp-cle-code-quatre-cases { gap: 8px; } .lcdp-cle-code-quatre-cases input { width: 44px; } }
+
+/* Contrôle d’accès : composant autonome, également utilisé pour les aperçus. */
+.lcdp-acces { position: relative; width: min(100%,520px); min-height: 650px; margin: 0 auto; padding: 28px 24px 24px; display: flex; flex-direction: column; align-items: center; background: var(--lcdp-color-surface);  }
+.lcdp-acces-titre { margin: 0 0 32px; font-size: 23px; font-weight: 600; line-height: 1.25; text-align: center; }
+.lcdp-acces-form { width: 100%; display: flex; flex-direction: column; align-items: center; margin-top: 60px; gap: 20px; }
+.lcdp-acces-form .lcdp-cle-code-quatre-cases { margin: 0; }
+.lcdp-acces-erreur:empty { display: none; }
+.lcdp-acces-erreur, .lcdp-acces-dernier-essai { color: var(--lcdp-color-text); text-align: center; margin: 0; }
+.lcdp-acces-reservation { width: 100%; text-align: center; }
+.lcdp-acces-parc { font-size: 22px; line-height: 1.3; margin: 0 0 8px; }
+.lcdp-acces-heure { font-size: 24px; margin: 0 0 8px; }
+.lcdp-acces-invites { margin: 0; }
+.lcdp-acces-instructions { align-self: stretch; margin: 40px 0 28px; padding-left: 26px; }
+.lcdp-acces-instructions li { padding-left: 4px; margin: 0 0 18px; }
+.lcdp-acces-bas { margin-top: auto; width: 100%; display: flex; justify-content: center; padding-bottom: env(safe-area-inset-bottom); }
+.lcdp-acces-camera { width: min(240px,100%); height: auto; flex: 0 0 auto; border: 0; border-radius: 0; background: transparent; display: block; padding: 0; opacity: 1; }
+.lcdp-acces-camera-image { width: 100%; }
+.lcdp-acces-message { margin: 70px 0 0; text-align: center; font-size: 20px; }
+.lcdp-acces-presence { width: 100%; min-height: 250px; margin-top: 40px; border-radius: var(--lcdp-radius-medium); display: flex; align-items: center; justify-content: center; color: #fff; text-align: center; }
+.lcdp-acces-presence p { color: #fff; font-size: 24px; padding: 20px; margin: 0; }
+.lcdp-acces-presence img { width: 100%; }
+.lcdp-acces-lightbox { position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; padding: 22px; background: rgba(0,0,0,.45); }
+.lcdp-acces-lightbox-contenu { width: 100%; padding: 28px 20px; border-radius: var(--lcdp-radius-medium); background: var(--lcdp-color-surface); display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.lcdp-acces-refus { margin: 0 0 6px; color: var(--lcdp-color-text); text-align: center; }
+.lcdp-acces-lightbox button:disabled { opacity: .5; cursor: default; }
+@media (max-width: 359px) { .lcdp-acces { padding-left: 18px; padding-right: 18px; } .lcdp-acces-titre { font-size: 21px; } }
+
+/* Capture guidée et attente de l'analyse. */
+.lcdp-acces-video{width:100%;max-width:420px;max-height:55vh;object-fit:contain;background:#000;margin:0 auto}
+.lcdp-acces-spinner{width:32px;height:32px;border:4px solid #ddd;border-top-color:currentColor;border-radius:50%;margin:1rem auto;animation:lcdp-acces-tourne 1s linear infinite}
+@keyframes lcdp-acces-tourne{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.lcdp-acces-spinner{animation:none}}
+
+.lcdp-presence-image{width:100%;max-width:480px;max-height:80vh;object-fit:contain;margin:auto}
+.lcdp-acces-invites-form label{display:flex;align-items:center;gap:.75rem;padding:.5rem 0}
+.lcdp-acces-invites-form input[type=checkbox]{width:24px;height:24px;flex-shrink:0}
+
+.lcdp-acces[data-screen="access_confirmed"] .lcdp-presence-image{max-height:35vh}
+
+/* Fin du créneau : le verrou reste actif jusqu'à sortie validée ou fin + 10 h. */
+.lcdp-acces[data-screen="expired"]{position:fixed;inset:0;z-index:11000;overflow:auto;background:#E90505;color:#fff;padding:calc(env(safe-area-inset-top,0px) + 2rem) 1.25rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;}
+.lcdp-acces[data-screen="expired"] .lcdp-acces-titre,.lcdp-acces[data-screen="expired"] .lcdp-acces-message{color:#fff;}
+
+/* Pointage invités : liste défilable, actions hors de la zone défilante. */
+.lcdp-acces-invites-form {width:100%;display:flex;flex-direction:column;align-items:stretch;gap:16px;}
+.lcdp-acces-invites-liste {max-height:360px;max-height:min(45svh,360px);overflow-y:auto;overscroll-behavior-y:contain;min-width:0;}
+.lcdp-acces-invites-liste .lcdp-acces-instructions {margin:0;padding-left:26px;}
+.lcdp-acces-invites-form label {min-width:0;overflow-wrap:anywhere;}
+.lcdp-acces-invites-form > button[type="submit"] {align-self:center;}
+
+
+
+/* Pilote étapes 1 et 2. Le contrôle existant reste chargé derrière l'écran. */
+.lcdp-page-cle-du-parc [hidden] { display: none !important; }
+.lcdp-page-cle-du-parc .lcdp-ma-cle-timeline {
+  width: min(100%, 660px);
+  margin: 0 auto var(--lcdp-space-3);
+  padding: 12px 4px;
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  border-bottom: 1px solid var(--lcdp-color-border);
+  background: var(--lcdp-color-surface);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__liste {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 2px;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__etape {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  text-align: center;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__etape:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: calc(50% + 20px);
+  width: calc(100% - 40px);
+  border-top: 2px solid var(--lcdp-color-border);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__etape[data-etat="termine"]::after {
+  border-color: var(--lcdp-color-logo-green);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__numero {
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--lcdp-color-border);
+  border-radius: 50%;
+  background: var(--lcdp-color-surface);
+  color: var(--lcdp-color-text-muted);
+  font-size: 15px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__etape[data-etat="termine"] .lcdp-ma-cle-timeline__numero {
+  color: #fff;
+  background: var(--lcdp-color-logo-green);
+  border-color: var(--lcdp-color-logo-green);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__etape[data-etat="actif"] .lcdp-ma-cle-timeline__numero {
+  color: #fff;
+  background: var(--lcdp-color-primary);
+  border-color: var(--lcdp-color-primary);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__libelle {
+  font-size: 10px;
+  line-height: 1.25;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__etape[data-etat="actif"] .lcdp-ma-cle-timeline__libelle {
+  color: var(--lcdp-color-primary);
+  font-weight: 700;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-pilote {
+  width: min(100%, 620px);
+  min-height: 320px;
+  margin-inline: auto;
+  padding: var(--lcdp-space-4) var(--lcdp-space-3) var(--lcdp-space-5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lcdp-space-3);
+  background: var(--lcdp-color-surface);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-pilote__titre {
+  margin: 0;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  text-align: center;
+  line-height: 1.2;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-pilote__validation {
+  margin: 30px auto 20px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-pilote__validation::before {
+  content: "✓";
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 22px;
+  border-radius: 50%;
+  background: var(--lcdp-color-logo-green);
+  color: #fff;
+  font-size: 32px;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-pilote__nom-parc {
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: center;
+  margin: 0;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-pilote__detail {
+  margin: 18px auto;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-pilote__continuer {
+  margin-top: auto;
+}
+/* Consultation dans le wrapper EXISTANT : défilement vertical, comme une fiche parc. */
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail {
+  width: min(100%, 660px);
+  margin: 0 auto;
+  padding: 0 var(--lcdp-space-3) var(--lcdp-space-5);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lcdp-space-2);
+  margin-bottom: var(--lcdp-space-4);
+  padding-block: var(--lcdp-space-2);
+  border-bottom: 1px solid var(--lcdp-color-border);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__titre {
+  font-size: clamp(1.4rem, 4vw, 1.8rem);
+  margin: 0;
+  line-height: 1.25;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__fermer {
+  flex: 0 0 44px;
+  width: 44px;
+  max-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--lcdp-color-border);
+  background: var(--lcdp-color-surface);
+  border-radius: var(--lcdp-radius-small);
+  color: var(--lcdp-color-text);
+  font-size: 27px;
+  line-height: 1;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__fermer:hover {
+  background: var(--lcdp-color-surface-soft);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__contenu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lcdp-space-4);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__rubrique {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lcdp-space-2);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__rubrique-titre {
+  font-size: 1.15rem;
+  line-height: 1.4;
+  color: var(--lcdp-color-primary);
+  margin: 0;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__texte {
+  padding: var(--lcdp-space-3);
+  background: var(--lcdp-color-surface-soft);
+  border: 1px solid var(--lcdp-color-border);
+  border-radius: var(--lcdp-radius-medium);
+  color: var(--lcdp-color-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+  margin: 0;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__photo-bloc {
+  padding: var(--lcdp-space-2);
+  border: 1px solid var(--lcdp-color-border);
+  border-radius: var(--lcdp-radius-medium);
+  margin: 0;
+  background: var(--lcdp-color-surface);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__photo {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--lcdp-radius-small);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-detail__vide {
+  padding: var(--lcdp-space-4);
+  text-align: center;
+  color: var(--lcdp-color-text-muted);
+}
+@media(max-width: 375px) {
+  .lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__numero {width: 29px; height: 29px; font-size: 13px;}
+  .lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__libelle {font-size: 9px;}
+  .lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__etape:not(:last-child)::after {top: 14px; left: calc(50% + 17px); width: calc(100% - 34px);}
+  .lcdp-page-cle-du-parc .lcdp-ma-cle-pilote {padding-inline: var(--lcdp-space-2);}
+}
