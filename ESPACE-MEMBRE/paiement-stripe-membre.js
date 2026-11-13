@@ -233,9 +233,25 @@
         if (etiquette) { etiquette.hidden = true; etiquette.style.display = 'none'; }
       }
     }
-    const synchroniser = () => { bouton.disabled = !email.validity.valid || !actions.getSession()?.canConfirm; };
+    const synchroniser = () => {
+      bouton.disabled = !email.validity.valid || !actions.getSession()?.canConfirm;
+    };
     email.addEventListener('input', synchroniser);
     checkout.on('change', synchroniser);
+    // Le compte membre possède déjà un email validé. Stripe doit le recevoir
+    // AVANT que canConfirm puisse devenir true, et non au clic sur le bouton.
+    if (emailCompte && email.validity.valid) {
+      const synchronisationEmail = await actions.updateEmail(email.value.trim());
+      if (synchronisationEmail.type === 'error') {
+        // Ne pas bloquer silencieusement : rendre le champ visible si Stripe
+        // demande une correction, sans tenter de confirmer le paiement.
+        email.hidden = false;
+        email.style.display = '';
+        const etiquette = document.querySelector('label[for="email-paiement"]');
+        if (etiquette) { etiquette.hidden = false; etiquette.style.display = ''; }
+        afficherErreur(synchronisationEmail.error?.message || 'Adresse e-mail à vérifier.');
+      }
+    }
     synchroniser();
     el('paiement-formulaire').addEventListener('submit', async event => {
       event.preventDefault();
