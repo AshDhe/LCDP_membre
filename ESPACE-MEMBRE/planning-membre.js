@@ -4234,10 +4234,11 @@
       const conserver = conteneur.querySelector('[data-lcdp-dialogue-action="conserver"]');
       const supprimer = conteneur.querySelector('[data-lcdp-dialogue-action="supprimer"]');
       if (!dialogue || !titre || !texte || !conserver || !supprimer) throw new Error("Dialogue SUPPRESSION incomplet.");
-      titre.textContent = "Annuler cet accès ?";
-      texte.textContent = message;
-      conserver.textContent = "Non";
-      supprimer.textContent = "Oui";
+      const mentionInvites = String(message || "").trim();
+      titre.textContent = "Annuler cet accès ?" + (mentionInvites ? " " + mentionInvites : "");
+      texte.textContent = "Ce créneau sera annulé. Les invités concernés seront informés.";
+      conserver.textContent = "Conserver";
+      supprimer.textContent = "Oui, annuler";
       if (superposition) dialogue.style.zIndex = "12000";
       document.body.appendChild(conteneur);
       conserver.focus();
