@@ -4149,41 +4149,46 @@
     appliquerRoutesSite(slot);
   }
 
-  async function afficherAlertePlanningDansWrapper(message, avecFermeture = true) {
+  async function afficherAlertePlanningDansWrapper(message) {
     const surface = ouvrirVueSecondairePlanning();
     if (!surface) return null;
     const conteneur = surface.conteneur;
     try {
-      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-alerte.html"));
-      const alerte = conteneur.querySelector("[data-lcdp-box-alerte]");
-      const texte = conteneur.querySelector("[data-lcdp-alerte-message]");
-      const boutonFermer = conteneur.querySelector("[data-lcdp-alerte-close]");
-      const boutonOk = conteneur.querySelector("[data-lcdp-alerte-ok]");
-      if (!alerte || !texte || !boutonOk || (avecFermeture && !boutonFermer)) {
-        throw new Error("Structure de l’alerte incomplète.");
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-erreur.html"));
+      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="erreur"]');
+      const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
+      const bouton = conteneur.querySelector('[data-lcdp-dialogue-action="fermer"]');
+      if (!dialogue || !titre || !texte || !bouton) {
+        throw new Error("Structure ERREUR dans wrapper incomplète.");
       }
-      preparerDialogueDansWrapper(alerte);
+      preparerDialogueDansWrapper(dialogue);
+      titre.textContent = "Erreur";
       texte.textContent = message || "";
-      if (boutonFermer) boutonFermer.hidden = !avecFermeture;
+      bouton.textContent = "Fermer";
       return await new Promise(resolve => {
         let resolu = false;
-        function fermer(valeur) {
+        const fermer = valeur => {
           if (resolu) return;
           resolu = true;
           document.removeEventListener("keydown", gererEchap);
           surface.fermer();
           resolve(valeur);
-        }
-        function gererEchap(event) {
+        };
+        const gererEchap = event => {
           if (event.key === "Escape" && vueSecondaireAuPremierPlan(conteneur)) {
             event.preventDefault();
             fermer(false);
           }
-        }
-        if (boutonFermer) boutonFermer.addEventListener("click", () => fermer(false));
-        boutonOk.addEventListener("click", () => fermer(true));
+        };
+        bouton.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => {
+          if (event.target === dialogue && vueSecondaireAuPremierPlan(conteneur)) {
+            fermer(false);
+          }
+        });
         document.addEventListener("keydown", gererEchap);
-        boutonOk.focus({preventScroll:true});
+        bouton.focus({preventScroll:true});
       });
     } catch (error) {
       surface.fermer();
@@ -4192,15 +4197,15 @@
   }
 
   async function afficherAlerte(message) {
-    return afficherAlertePlanningDansWrapper(message, true);
+    return afficherAlertePlanningDansWrapper(message);
   }
 
   async function afficherAlerteOk(message) {
-    return afficherAlertePlanningDansWrapper(message, false);
+    return afficherAlertePlanningDansWrapper(message);
   }
 
   async function afficherAlerteOkParDessusLightbox(message) {
-    return afficherAlertePlanningDansWrapper(message, false);
+    return afficherAlertePlanningDansWrapper(message);
   }
 
   function chargerCssObjetUneFois(chemin) {
