@@ -712,7 +712,7 @@
     bloc.className = "lcdp-compte-relations";
     bloc.innerHTML = `
       <div class="lcdp-compte-relations__ligne">
-        <span class="lcdp-compte-relations__libelle">Invité</span>
+        <span class="lcdp-compte-relations__libelle">Mes invités</span>
         <button type="button" class="lcdp-compte-relations__nombre"
           data-lcdp-relations-ouvrir="invite" aria-expanded="false"
           aria-controls="lcdp-compte-relations-invite"
@@ -723,7 +723,7 @@
       <div id="lcdp-compte-relations-invite" class="lcdp-compte-relations__liste"
         aria-live="polite" hidden>Chargement des invités…</div>
       <div class="lcdp-compte-relations__ligne">
-        <span class="lcdp-compte-relations__libelle">Invitant <span class="lcdp-compte-relations__precision">(« parrain »)</span></span>
+        <span class="lcdp-compte-relations__libelle">Mes invitants</span>
         <button type="button" class="lcdp-compte-relations__nombre"
           data-lcdp-relations-ouvrir="invitant" aria-expanded="false"
           aria-controls="lcdp-compte-relations-invitant"
@@ -777,6 +777,12 @@
         adresse.className = "lcdp-compte-relations__detail";
         adresse.textContent = email;
         ligne.appendChild(adresse);
+      }
+      if (personne.categorie === "duo" || personne.categorie === "famille") {
+        const categorie = document.createElement("span");
+        categorie.className = "lcdp-compte-relations__detail";
+        categorie.textContent = personne.categorie === "duo" ? "Invité DUO" : "Invité FAMILLE";
+        ligne.appendChild(categorie);
       }
       const date = personne.date ? new Date(personne.date) : null;
       if (date && !Number.isNaN(date.getTime())) {
