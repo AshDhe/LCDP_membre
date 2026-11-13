@@ -25,6 +25,7 @@
   const boutonAnnuler = document.querySelector("[data-lcdp-cle-cancel]");
   const boutonBrighta = document.querySelector("[data-lcdp-cle-brighta]");
   const boutonCheckout = document.querySelector("[data-lcdp-cle-checkout]");
+  const boutonInvites = document.querySelector("[data-lcdp-cle-invites]");
   const texteCooldown = document.querySelector("[data-lcdp-cle-cooldown]");
 
   let code1 = "";
@@ -42,6 +43,8 @@
   let controleAccesEtat = null;
   let controleAccesTimer = null;
   let controleAccesRequete = null;
+  let contexteAvantAppel = null;
+  let appelInvitesCharge = false;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -117,6 +120,7 @@
     boutonAnnuler?.addEventListener("click", gererAnnulationSaisie);
     boutonBrighta?.addEventListener("click", gererBrighta);
     boutonCheckout?.addEventListener("click", gererCheckout);
+    boutonInvites?.addEventListener("click", () => { void ouvrirAppelInvites(); });
 
     window.addEventListener("popstate", gererRetourNavigateur);
     window.addEventListener("beforeunload", gererFermeturePage);
@@ -1337,6 +1341,60 @@
       controleAccesRequete = null;
     }
   }
+  async function ouvrirAppelInvites() {
+    if (appelInvitesCharge || (!cleActive &&
+        !["presence","access_confirmed"].includes(controleAccesEtat?.screen))) return;
+    if (controleAccesEtat?.role === "invite") return;
+    appelInvitesCharge = true;
+    if (boutonInvites) boutonInvites.disabled = true;
+    try {
+      // Le Worker valide le détenteur, le parc, la réservation et son check-in.
+      const liste = await appelerApi("/guests/call", {method:"GET"});
+      if (liste?.success !== true || !Array.isArray(liste.guests)) {
+        throw new Error(liste?.message || "Liste des invités indisponible.");
+      }
+      const root = document.querySelector("[data-lcdp-control-access]");
+      contexteAvantAppel = {
+        etat: controleAccesEtat,
+        controleCache: root?.hidden === true,
+        workflowCache: workflowCle?.hidden === true
+      };
+      afficherControleAcces({success:true,screen:"guest_list",role:"abonne",
+        action:"checkin",guests:liste.guests,validated:liste.validated});
+    } catch (error) {
+      await afficherAlerte(error?.message || "Impossible de consulter les invités.");
+    } finally {
+      appelInvitesCharge = false;
+      if (boutonInvites) boutonInvites.disabled = false;
+    }
+  }
+
+  function retourAppelInvites() {
+    const precedent = contexteAvantAppel;
+    contexteAvantAppel = null;
+    if (!precedent) return;
+    window.clearInterval(suiviVideoTimer);
+    suiviVideoTimer = null;
+    controleAccesEtat = precedent.etat;
+    if (precedent.controleCache && !precedent.workflowCache) {
+      document.querySelector("[data-lcdp-control-access]").hidden = true;
+      workflowCle.hidden = false;
+      window.LCDP_ParcoursMaCle?.indiquerEtape(4);
+    } else if (precedent.etat) {
+      afficherControleAcces(precedent.etat);
+    }
+  }
+
+  async function validerAppelInvites(invites) {
+    if (!contexteAvantAppel) throw new Error("Ouvrez d’abord la liste des invités.");
+    const r = await appelerApi("/guests/call", {method:"POST",body:{guests:invites}});
+    if (r?.success !== true || r?.validated !== true) {
+      throw new Error(r?.message || "La liste n’a pas pu être validée.");
+    }
+    afficherControleAcces({success:true,screen:"guest_call_saved",action:"checkin",
+      role:"abonne",checkedIn:r.checkedIn,authorizedForOwnCheckin:r.authorizedForOwnCheckin});
+  }
+
   function afficherControleAcces(etat) {
     controleAccesEtat=etat;
     const root=document.querySelector("[data-lcdp-control-access]");
@@ -1351,10 +1409,25 @@
       onCheckout:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:"checkout"}}));}catch(e){afficherControleAcces({screen:"capture_error",action:"checkout",message:e.message});}},
       onClosed:()=>{if(!controleAccesEtat?.unlocked)return;exclusiviteCle=false;window.clearInterval(suiviVideoTimer);window.clearInterval(controleAccesTimer);window.location.href=PAGE_ACCUEIL_MEMBRE;},
       onRetry:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:controleAccesEtat?.action || "checkin"}}));}catch(error){afficherControleAcces({screen:"capture_error",message:error.message});}},
-      onGuests:()=>afficherControleAcces({...controleAccesEtat,screen:"guest_list"}),
-      onBack:()=>afficherControleAcces({...controleAccesEtat,screen:"access_confirmed"}),
+      onGuests:()=>{
+        if(controleAccesEtat?.action==="checkout") {
+          afficherControleAcces({...controleAccesEtat,screen:"guest_list"});
+        } else {
+          void ouvrirAppelInvites();
+        }
+      },
+      onBack:()=>{
+        if(controleAccesEtat?.action==="checkout") afficherControleAcces({...controleAccesEtat,screen:"exit_confirmed"});
+        else retourAppelInvites();
+      },
       onConfirmed:async()=>{if(controleAccesEtat.simulation){afficherControleAcces({...controleAccesEtat,screen:"confirmation_done"});return;}try{afficherControleAcces(await appelerApi("/presence",{method:"GET"}));}catch(e){afficherControleAcces({screen:"capture_error",message:e.message});}},
-      onGuestConfirm:async guests=>afficherControleAcces(await appelerApi("/guests/confirm",{method:"POST",body:{guests}})),
+      onGuestConfirm:async guests=>{
+        if(controleAccesEtat?.action==="checkout") {
+          afficherControleAcces(await appelerApi("/guests/confirm",{method:"POST",body:{guests}}));
+        } else {
+          await validerAppelInvites(guests);
+        }
+      },
       onHome:()=>{
         if(controleAccesEtat?.screen!=="denied") return;
         window.clearInterval(controleAccesTimer);
