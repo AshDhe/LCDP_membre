@@ -541,7 +541,22 @@ body.lcdp-page-accueil-membre #lcdp-lightbox-slot > .lcdp-alerte-calendrier-hote
 
 
 
-/* SERVICE / MON COMPTE : lignes d'alertes dans la carte existante. */
+/* SERVICE / MON COMPTE : rubriques ALERTES et DEMANDE DUO ACTIF. */
+body.lcdp-page-mon-compte .lcdp-compte-service__sous-titre {
+  margin:16px 0 8px;
+  color:#334155;
+  font-size:13px;
+  font-weight:700;
+  line-height:1.35;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+}
+body.lcdp-page-mon-compte .lcdp-compte-alertes-liste .lcdp-compte-alerte--vide {
+  box-sizing:border-box;
+  min-height:53px;
+  cursor:default;
+}
+
 body.lcdp-page-mon-compte .lcdp-compte-alertes-liste {
   display:flex;
   flex-direction:column;
