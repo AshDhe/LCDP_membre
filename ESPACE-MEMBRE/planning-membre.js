@@ -2988,12 +2988,12 @@
     const idReservation = String(idflux || "").trim();
     // Cette page utilise planning-membre.js, et non mes-acces-membre.js :
     // attendre le CSS du formulaire AVANT d'ouvrir la vue pleine page.
-    await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-inviter-formulaire-v11");
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-inviter-actions-v16");
     const surface = ouvrirSurfaceInvitationPleinePage();
     if (!surface) return null;
     const conteneur = surface.conteneur;
     try {
-      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-champ-c040-v12"));
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-actions-v16"));
     } catch (erreur) {
       surface.fermer();
       throw erreur;
@@ -3011,9 +3011,10 @@
     const inviter = conteneur.querySelector("[data-lcdp-listinvites-update]");
     const sansEmail = conteneur.querySelector("[data-lcdp-listinvites-sans-email]");
     const annuler = conteneur.querySelector("[data-lcdp-listinvites-cancel]");
+    const fermerCroix = conteneur.querySelector("[data-lcdp-listinvites-close]");
     const message = conteneur.querySelector("[data-lcdp-listinvites-message]");
     const formulaire = conteneur.querySelector("[data-lcdp-invitation-form]");
-    if (![titre,liste,champ,effacer,ajouter,inviter,sansEmail,annuler,message,formulaire].every(Boolean)) {
+    if (![titre,liste,champ,effacer,ajouter,inviter,sansEmail,annuler,fermerCroix,message,formulaire].every(Boolean)) {
       surface.fermer();
       throw new Error("Structure du formulaire des invitations incomplète.");
     }
@@ -3052,7 +3053,7 @@
       function gererEchap(event) {
         if (event.key !== "Escape" || resolu || document.querySelector('[data-lcdp-dialogue-reference]')) return;
         event.preventDefault();
-        afficherMessage("Utilisez la croix en haut à droite pour fermer ce formulaire.");
+        afficherMessage("Utilisez « Annuler » ou la croix pour fermer ce formulaire.");
       }
       async function demanderRetrait(personne) {
         const id = identifiant(personne);
@@ -3115,6 +3116,7 @@
         afficherInformationInvitation("Cette fonctionnalité n’est pas disponible actuellement.")
       );
       annuler.addEventListener("click", () => fermer(null));
+      fermerCroix.addEventListener("click", () => fermer(null));
 
       document.addEventListener("keydown", gererEchap);
       afficherLignes();
@@ -3138,7 +3140,7 @@
         }
 
         enregistrementEnCours = true;
-        [inviter,ajouter,sansEmail,annuler,effacer].forEach(x => x.disabled = true);
+        [inviter,ajouter,sansEmail,annuler,fermerCroix,effacer].forEach(x => x.disabled = true);
         inviter.textContent = "Enregistrement…";
         afficherMessage("Mise à jour des invitations en cours.");
         let resultat = null;
@@ -3153,7 +3155,7 @@
         } finally {
           enregistrementEnCours = false;
           if (!resolu) {
-            [inviter,ajouter,sansEmail,annuler,effacer].forEach(x => x.disabled = false);
+            [inviter,ajouter,sansEmail,annuler,fermerCroix,effacer].forEach(x => x.disabled = false);
             inviter.textContent = "Inviter et mettre à jour";
           }
         }
