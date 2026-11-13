@@ -549,7 +549,7 @@
         min-height:34px !important;width:auto !important;padding:7px 12px !important;
         border:1px solid rgba(75,99,51,.35) !important;border-radius:16px !important;
         background:#fff !important;color:#4b6333 !important;
-        font-size:12px !important;font-weight:800 !important;line-height:1.2 !important;
+        font-size:12px !important;font-weight:400 !important;line-height:1.2 !important;
         box-shadow:0 1px 2px rgba(0,0,0,.06) !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action:hover {
@@ -563,7 +563,7 @@
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-compteur {
         border-radius:999px;background:rgba(75,99,51,.1);padding:2px 6px;
-        font-size:10px;font-weight:900;line-height:1.2;
+        font-size:10px;font-weight:400 !important;line-height:1.2;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__content {
         gap:3px !important;
@@ -572,7 +572,7 @@
         display:inline-flex !important;align-items:center !important;justify-content:center !important;
         flex:0 0 auto;min-height:24px !important;max-width:100%;
         margin:0 0 0 4px !important;padding:3px 9px !important;
-        border-radius:12px !important;font-size:10px !important;font-weight:800 !important;
+        border-radius:12px !important;font-size:10px !important;font-weight:400 !important;
         line-height:1.1 !important;white-space:nowrap !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-liens {
@@ -582,7 +582,10 @@
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-lien {
         display:inline-flex;justify-content:center;align-items:center;gap:6px;
         border-radius:14px;padding:6px 10px;min-height:32px;
-        font-size:12px;font-weight:750;text-decoration:none;
+        font-size:12px;font-weight:400 !important;text-decoration:none;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-lien .lcdp-box-card-parc__action-libelle {
+        font-weight:400 !important;
       }
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-lien img {
         width:18px;height:18px;object-fit:contain;
@@ -1573,7 +1576,7 @@
       const nombre = nombreInvitesEnvoyesPlanning(reservation);
       const compteur = document.createElement("span");
       compteur.className = "lcdp-planning-verso-compteur";
-      compteur.textContent = String(nombre);
+      compteur.textContent = nombre > 0 ? String(nombre) : "−";
       bouton.replaceChildren(icone, document.createTextNode("Inviter"), compteur);
       bouton.setAttribute("aria-label", "Gérer ou ajouter des invités (" + nombre + " actifs)");
       bouton.title = "Gérer les invités";
