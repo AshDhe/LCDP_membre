@@ -36,7 +36,8 @@
       ].forEach(path => {
         // Comme sur mes-informations.html : conserver l'ordre de cascade CSS
         // avant le style de page, sans chargement asynchrone concurrent.
-        document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(path) + '">');
+        const versionVue = path.endsWith("/lcdp-mes-acces-membre.css") ? "?v=20261113-vues-wrapper" : "";
+        document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(path) + versionVue + '">');
       });
       document.write('<script src="' + window.LCDP_urlObjet('/JSBASE/03-galerie.js') + '"><\/script>');
     })();
