@@ -3021,6 +3021,7 @@
           item.append(texte, bouton);
           liste.appendChild(item);
         });
+        liste.classList.toggle("lcdp-box-card-listinvites-oui-non__list", actifs.length > 1);
         liste.hidden = actifs.length <= 1;
       }
       champ.addEventListener("input", () => { if (!champ.readOnly) adresseSaisie = champ.value; });
