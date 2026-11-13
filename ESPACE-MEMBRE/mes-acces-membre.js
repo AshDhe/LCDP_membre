@@ -534,7 +534,7 @@
     } else masqueMsg();
   }
 
-  async function afficherInformationMesAcces(message, titre = "Information") {
+  async function afficherInformationMesAcces(message, titre = "Information", profil = "information") {
     const urlObjet = chemin => typeof window.LCDP_urlObjet === "function"
       ? window.LCDP_urlObjet(chemin)
       : String(config.objetBaseUrl || config.OBJET_BASE || "https://lacleduparc.fr/OBJET").replace(/\/+$/, "") + chemin;
@@ -545,19 +545,20 @@
       lien.href = css;
       document.head.appendChild(lien);
     }
-    const reponse = await fetch(urlObjet("/HTMLBASE/02-dialogue-reference-information.html"), { cache: "no-cache" });
-    if (!reponse.ok) throw new Error("Dialogue INFORMATION indisponible.");
+    const erreur = profil === "erreur";
+    const reponse = await fetch(urlObjet(erreur ? "/HTMLBASE/02-dialogue-reference-erreur.html" : "/HTMLBASE/02-dialogue-reference-information.html"), { cache: "no-cache" });
+    if (!reponse.ok) throw new Error("Dialogue de référence indisponible.");
     const modele = document.createElement("template");
     modele.innerHTML = (await reponse.text()).trim();
     const conteneur = document.createElement("div");
     conteneur.appendChild(modele.content.cloneNode(true));
     document.body.appendChild(conteneur);
     try {
-      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="information"]');
+      const dialogue = conteneur.querySelector(erreur ? '[data-lcdp-dialogue-reference="erreur"]' : '[data-lcdp-dialogue-reference="information"]');
       const elementTitre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
       const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
-      const bouton = conteneur.querySelector('[data-lcdp-dialogue-action="compris"]');
-      if (!dialogue || !elementTitre || !texte || !bouton) throw new Error("Dialogue INFORMATION incomplet.");
+      const bouton = conteneur.querySelector(erreur ? '[data-lcdp-dialogue-action="fermer"]' : '[data-lcdp-dialogue-action="compris"]');
+      if (!dialogue || !elementTitre || !texte || !bouton) throw new Error("Dialogue de référence incomplet.");
       elementTitre.textContent = titre;
       texte.textContent = String(message || "");
       bouton.textContent = "Fermer";
@@ -574,6 +575,14 @@
     }
   }
 
+  async function afficherErreurMesAcces(message) {
+    try {
+      await afficherInformationMesAcces(message, "Erreur", "erreur");
+    } catch (erreur) {
+      console.error("Dialogue ERREUR Mes accès indisponible :", erreur);
+      window.alert(message);
+    }
+  }
   async function montrerParrain(r) {
     const parrain = r.parrainInvitation || r.parrain || {};
     const alias = String(parrain.affichage || parrain.alias || parrain.aliasmembre || '').trim();
@@ -804,7 +813,7 @@
 
   async function demanderAnnulation(r) {
     if (etat.annulationEnCours || etat.periode !== 'avenir') return;
-    if (!r.idflux) return window.alert('Identifiant de réservation manquant.');
+    if (!r.idflux) return afficherErreurMesAcces('Identifiant de réservation manquant.');
     const jour = dateIsoParis(r);
     if (!jour) return afficherInformationMesAcces('Date de réservation indisponible.', 'Information');
     const [annee, mois, date] = jour.split('-').map(Number);
@@ -827,7 +836,7 @@
       await recharger();
       await afficherInformationMesAcces('Annulation enregistrée.', 'Confirmation');
     } catch (e) {
-      window.alert(e.message || 'Annulation impossible.');
+      await afficherErreurMesAcces(e.message || 'Annulation impossible.');
     } finally { etat.annulationEnCours = false; }
   }
 
