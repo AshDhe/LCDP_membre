@@ -825,58 +825,52 @@
         bouton.focus();
       });
     }
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-erreur.html");
     slot.appendChild(fragment);
 
-    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-    const texte = slot.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
+    const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="erreur"]');
+    const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+    const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+    const boutonOk = slot.querySelector('[data-lcdp-dialogue-action="fermer"]');
 
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      slot.innerHTML = "";
-      throw new Error("Structure de l'alerte incomplète.");
+    if (!dialogue || !titre || !texte || !boutonOk) {
+      slot.replaceChildren();
+      throw new Error("Structure ERREUR incomplète.");
     }
 
+    const focusInitial = document.activeElement;
+    titre.textContent = options.titre || "Erreur";
     texte.textContent = normaliserPonctuation(message);
     boutonOk.textContent = options.boutonOkLabel || "OK";
 
-    const fermetureParOkUniquement =
-      options.fermetureParOkUniquement === true;
+    // Pour les appels sans profil explicite, la fermeture conserve son booléen.
+    // Si un futur appel impose l'acquittement, Échap et le fond ne valident pas.
+    const fermetureParOkUniquement = options.fermetureParOkUniquement === true;
 
-    if (fermetureParOkUniquement) {
-      boutonFermer.hidden = true;
-    }
-
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       let resolu = false;
-
-      function fermer(valeur) {
+      const fermer = valeur => {
         if (resolu) return;
         resolu = true;
-        slot.innerHTML = "";
+        document.removeEventListener("keydown", clavier);
+        slot.replaceChildren();
+        if (focusInitial?.isConnected && typeof focusInitial.focus === "function") {
+          focusInitial.focus();
+        }
         resolve(valeur);
-      }
-
-      boutonFermer.addEventListener("click", () => {
-        if (!fermetureParOkUniquement) fermer(false);
-      });
-      boutonOk.addEventListener("click", () => fermer(true));
-      alerte.addEventListener("click", (event) => {
-        if (!fermetureParOkUniquement && event.target === alerte) {
+      };
+      const clavier = event => {
+        if (!fermetureParOkUniquement && event.key === "Escape") {
+          event.preventDefault();
           fermer(false);
         }
+      };
+      boutonOk.addEventListener("click", () => fermer(true), { once: true });
+      dialogue.addEventListener("click", event => {
+        if (!fermetureParOkUniquement && event.target === dialogue) fermer(false);
       });
-
-      document.addEventListener(
-        "keydown",
-        (event) => {
-          if (!fermetureParOkUniquement && event.key === "Escape") {
-            fermer(false);
-          }
-        },
-        { once: true }
-      );
+      document.addEventListener("keydown", clavier);
+      boutonOk.focus();
     });
   }
 
