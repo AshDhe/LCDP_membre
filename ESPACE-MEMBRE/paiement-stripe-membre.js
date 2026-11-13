@@ -55,27 +55,48 @@
       throw new Error('Le détail de cette commande ne peut pas être vérifié.');
     const panier = dp.panier, devis = dd.devis;
     listeDetails.replaceChildren();
-    ajouterLigneDetail('Formule', String(panier.formule || 'Non renseignée'));
-    if (panier.dateDebut) ajouterLigneDetail('Début', String(panier.dateDebut));
-    if (panier.dateFin) ajouterLigneDetail('Fin', String(panier.dateFin));
-    if (Number.isFinite(Number(devis.prixAbonnementTtc)))
-      ajouterLigneDetail('Abonnement TTC', euros(devis.prixAbonnementTtc));
+    const montantValide = valeur => valeur !== null && valeur !== undefined &&
+      valeur !== '' && Number.isFinite(Number(valeur));
+    const dateFr = iso => /^\\d{4}-\\d{2}-\\d{2}$/.test(String(iso || ''))
+      ? new Intl.DateTimeFormat('fr-FR', {timeZone:'UTC',day:'numeric',month:'long',year:'numeric'})
+          .format(new Date(String(iso) + 'T12:00:00Z'))
+      : String(iso || 'Date non communiquée');
+    const remise = montantValide(devis.remiseComptantTtc)
+      ? Number(devis.remiseComptantTtc) : 0;
+    const echeances = Array.isArray(devis.echeances) ? devis.echeances : [];
+    const validEcheances = echeances.length > 0 && echeances.every(montantValide);
+    const sommeEcheances = validEcheances
+      ? echeances.reduce((total, n) => total + Math.round(Number(n)*100), 0) / 100 : null;
+    const montantComptant = montantValide(devis.totalTtc) ? Number(devis.totalTtc) : null;
+    const prixAvantRemise = montantComptant !== null && remise > 0
+      ? Math.round((montantComptant + remise)*100)/100
+      : montantComptant;
+    ajouterLigneDetail('Abonnement', String(panier.formule || 'Non renseigné'));
+    if (panier.dateDebut) ajouterLigneDetail('Début', dateFr(panier.dateDebut));
+    if (panier.dateFin) ajouterLigneDetail('Fin', dateFr(panier.dateFin));
+    if (montantValide(devis.prixAbonnementTtc))
+      ajouterLigneDetail('Prix de l’abonnement TTC', euros(devis.prixAbonnementTtc));
     for (const option of Array.isArray(devis.options) ? devis.options : [])
       ajouterLigneDetail('Privilège ' + String(option.code || ''), euros(option.totalTtc));
-    if (Number(devis.creditAbonnementsInclus) > 0)
+    if (montantValide(devis.creditAbonnementsInclus) && Number(devis.creditAbonnementsInclus)>0)
       ajouterLigneDetail('Crédit abonnements inclus', '− ' + euros(devis.creditAbonnementsInclus));
-    ajouterLigneDetail('Total de la commande TTC', euros(devis.totalTtc), true);
-    if (Number(devis.remiseComptantTtc) > 0)
-      ajouterLigneDetail('Remise si règlement en une fois', '− ' + euros(devis.remiseComptantTtc));
-    if (Array.isArray(devis.echeances) && devis.echeances.length) {
-      devis.echeances.forEach((montant, index) => {
+    if (prixAvantRemise !== null)
+      ajouterLigneDetail('Prix avant remise comptant', euros(prixAvantRemise), true);
+    if (montantComptant !== null) {
+      if (remise > 0) ajouterLigneDetail('Remise uniquement si paiement en une fois', '− ' + euros(remise));
+      ajouterLigneDetail('À payer en une fois', euros(montantComptant), true);
+    }
+    if (validEcheances && echeances.length > 1) {
+      ajouterLigneDetail('À payer en ' + echeances.length + ' fois (sans remise comptant)',
+        euros(sommeEcheances), true);
+      echeances.forEach((montant, index) => {
         const date = index === 0 ? 'à la commande' :
           (Array.isArray(devis.datesEcheances) && devis.datesEcheances[index]
-            ? String(devis.datesEcheances[index]) : 'date non communiquée');
+            ? dateFr(devis.datesEcheances[index]) : 'date non communiquée');
         ajouterLigneDetail('Échéance ' + (index + 1) + ' (' + date + ')', euros(montant));
       });
     }
-    statutDetails.textContent = 'Montants et échéances issus du devis de la commande. Le prélèvement Stripe porte sur l’échéance actuellement payable.';
+    statutDetails.textContent = 'Deux possibilités de règlement. La remise comptant ne s’applique pas au paiement échelonné. Seule l’échéance choisie est payable sur cet écran.';
     el('description-commande').textContent = 'Abonnement ' + String(panier.formule || '') +
       ' · Conditions de paiement consultables ci-dessous.';
     return {panier,devis};
