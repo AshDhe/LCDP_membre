@@ -3165,6 +3165,20 @@
           }
           return;
         }
+        if (/aucune modification/i.test(String(resultat.message || ""))) {
+          afficherMessage("Aucune invitation n’a été enregistrée. Votre saisie est conservée.", true);
+          return;
+        }
+        // Une réponse HTTP positive ne suffit pas : confirmer la présence
+        // de la nouvelle invitation dans la liste retournée par le Worker.
+        if (valeur && !annulations.size) {
+          const confirmee = await verifierInvitationActiveReservation(idReservation, valeur);
+          if (!confirmee) {
+            afficherMessage("L’envoi de l’invitation n’a pas pu être confirmé. Votre saisie est conservée.", true);
+            return;
+          }
+          await chargerStatutsInvitationsPlanning();
+        }
         const reservation = trouverReservationPlanningParId(idReservation);
         const nbActifs = Number(resultat.nbInvitesActifs);
         const nbAnnules = Number(resultat.nbInvitesAnnules);
@@ -3225,7 +3239,15 @@
       return null;
     }
 
-    const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/invites", {
+    // Le Worker possède deux routes distinctes :
+    // /inviter-reservation crée une invitation par e-mail ;
+    // /invites met à jour les invitations déjà enregistrées.
+    const nouvelInviteParEmail = emails.length > 0 && invites.length === 0 && personnesSansEmail.length === 0;
+    const chemin = nouvelInviteParEmail ? "/inviter-reservation" : "/invites";
+    const corps = nouvelInviteParEmail
+      ? { idflux: idReservation, emails }
+      : { idflux: idReservation, invites, emails, personnesSansEmail };
+    const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + chemin, {
       method: "POST",
       credentials: "include",
       cache: "no-store",
@@ -3233,12 +3255,7 @@
         "Accept": "application/json",
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        idflux: idReservation,
-        invites,
-        emails,
-        personnesSansEmail
-      })
+      body: JSON.stringify(corps)
     });
 
     const data = await reponse.json().catch(() => null);
@@ -3254,6 +3271,32 @@
     }
 
     return data;
+  }
+
+  async function verifierInvitationActiveReservation(idflux, adresseEmail) {
+    if (!ENDPOINT_INVITER_MEMBRE) return false;
+    try {
+      const reponse = await fetch(
+        ENDPOINT_INVITER_MEMBRE + "/invites?idflux=" + encodeURIComponent(idflux),
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: { "Accept": "application/json" }
+        }
+      );
+      const donnees = await reponse.json().catch(() => null);
+      if (!reponse.ok || !donnees || !reponseApiOk(donnees) || !Array.isArray(donnees.invites)) {
+        return false;
+      }
+      return donnees.invites.some(personne =>
+        nettoyerEmail(personne?.emailmembre || personne?.email || "") === adresseEmail &&
+        normaliserStatutInvitationInvite(personne?.invit) !== "cancd"
+      );
+    } catch (erreur) {
+      console.warn("Confirmation de l’invitation indisponible :", erreur);
+      return false;
+    }
   }
 
   function formaterLigneInviteReservation(invite) {
