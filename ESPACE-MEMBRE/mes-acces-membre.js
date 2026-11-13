@@ -674,12 +674,13 @@
         const invitesMaj=Array.from(etats.entries()).map(([idmembre,invit])=>({idmembre,invit}));
         const emails=Array.from(listeEmails.querySelectorAll('input')).map(x=>x.value.trim().toLowerCase()).filter(Boolean);
         if(!invitesMaj.length&&!emails.length){close();return;}
-        if(emails.some(v=>!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(v))){
+        if(emails.some(v=>!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))){
           message.hidden=false;message.textContent='Une adresse e-mail est invalide.';return;
         }
         travail=true;enregistrer.disabled=true;
         try {
           const resultat=await getJson(invitationsApi+'/invites',{method:'POST',body:{idflux:r.idflux,invites:invitesMaj,emails}});
+          travail=false;
           close();
           await recharger();
           await afficherInformationMesAcces(resultat.message||'Liste des invités mise à jour.','Invités');
