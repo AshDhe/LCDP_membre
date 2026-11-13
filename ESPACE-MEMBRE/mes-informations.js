@@ -248,9 +248,11 @@
       type: "text",
       key: "cgvAffichage",
       lien: {
-        texteLien: "Lire les conditions générales de vente",
+        texteAvant: "Lire les ",
+        texteLien: "conditions générales de vente",
         href: "/ESPACE-MEMBRE/cgv-lcdp.html",
-        espace: "membre"
+        espace: "membre",
+        sansValeur: true
       }
     },
     {
@@ -1571,6 +1573,12 @@
 
     if (!champ) return;
 
+    // Les CGV sont un lien de lecture et non un champ renseigné :
+    // retirer leur contrôle supprime aussi le tiret de valeur.
+    if (lienConfig.sansValeur === true) {
+      champ.querySelector("[data-lcdp-champ-control]")?.remove();
+    }
+
     const note = document.createElement("p");
     note.className = "lcdp-box-champ-formulaire__aide";
     note.append(lienConfig.texteAvant || "");
@@ -2366,8 +2374,8 @@ function afficherStatutDaCompte(compte) {
       codeAAffichage: "••••",
       codeRAffichage: "•••• - •••• - •••• - ••••",
       braceletPresenceAffichage: "–",
-      telephoneAffichage: String(compteMembreActuel.tel || compteMembreActuel.telephone || "").trim(),
-      cgvAffichage: "–",
+      telephoneAffichage: String(compteMembreActuel.tel || compteMembreActuel.telephone || "").trim() || "–",
+      cgvAffichage: "",
       geolocalisationAffichage: compteMembreActuel.optinGeolocalisation
         ? "Opt-in le " + formaterDate(compteMembreActuel.optinGeolocalisation)
         : "Non enregistré",
