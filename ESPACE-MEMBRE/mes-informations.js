@@ -651,19 +651,32 @@
     const titreServices=document.createElement("h2");
     titreServices.id="lcdp-mon-compte-titre-service";
     titreServices.className="lcdp-title-section";
-    titreServices.textContent="Service";
+    titreServices.textContent="Services";
     const listeAlertes=document.createElement("div");
     listeAlertes.id="lcdp-compte-alertes-liste";
     listeAlertes.className="lcdp-compte-alertes-liste";
     listeAlertes.setAttribute("aria-live","polite");
     listeAlertes.textContent="Chargement des alertes…";
-    services.append(titreServices,listeAlertes);
+    const titreDuoActif=document.createElement("h3");
+    titreDuoActif.className="lcdp-compte-service__sous-titre";
+    titreDuoActif.textContent="Duo actif";
+    titreDuoActif.style.margin="16px 0 8px";
+    const listeDuoActif=document.createElement("div");
+    listeDuoActif.id="lcdp-compte-duoactif-liste";
+    listeDuoActif.className="lcdp-compte-alertes-liste";
+    listeDuoActif.setAttribute("aria-live","polite");
+    listeDuoActif.textContent="Chargement des demandes Duo Actif…";
+    services.append(titreServices,listeAlertes,titreDuoActif,listeDuoActif);
     const statutMembre=fields.querySelector('[data-lcdp-compte-section="participation"]');
     if(statutMembre)statutMembre.insertAdjacentElement("afterend",services);
     else fields.insertBefore(services,securite||null);
     chargerAlertesCompte().catch(err=>{
       console.error("SERVICE : alertes indisponibles",err);
       listeAlertes.textContent="Impossible de charger les alertes.";
+    });
+    chargerDuoActifCompte().catch(err=>{
+      console.error("SERVICE : demandes Duo Actif indisponibles",err);
+      listeDuoActif.textContent="Impossible de charger les demandes Duo Actif.";
     });
     fields.classList.add("lcdp-mon-compte-sections");
   }
@@ -682,16 +695,17 @@
     return data;
   }
 
-  async function demanderSuppressionAlerte(titre) {
+  async function demanderSuppressionAlerte(titre, options = {}) {
     const slot=document.getElementById("lcdp-lightbox-slot");
     if(!slot)throw new Error("Emplacement du dialogue introuvable.");
     const fragment=await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html");
     slot.replaceChildren(fragment);
     const dialogue=slot.querySelector('[data-lcdp-dialogue-reference="suppression"]');
     if(!dialogue)throw new Error("Dialogue de suppression indisponible.");
-    dialogue.querySelector("[data-lcdp-dialogue-titre]").textContent="Supprimer cette alerte ?";
+    dialogue.querySelector("[data-lcdp-dialogue-titre]").textContent=
+      options.titre || "Supprimer cette alerte ?";
     dialogue.querySelector("[data-lcdp-dialogue-message]").textContent=
-      "Supprimer définitivement l’alerte « "+titre+" » ?";
+      options.message || ("Supprimer définitivement l’alerte « "+titre+" » ?");
     const conserver=dialogue.querySelector('[data-lcdp-dialogue-action="conserver"]');
     const supprimer=dialogue.querySelector('[data-lcdp-dialogue-action="supprimer"]');
     supprimer.textContent="Supprimer";
@@ -777,6 +791,80 @@
       actions.className="lcdp-compte-alerte__actions";
       actions.append(supprimer,modifier);
       ligne.append(ouvrir,actions);
+      liste.append(ligne);
+    }
+  }
+
+  // Duo Actif : les demandes proviennent de Mon compte, sans accès direct du navigateur à Supabase.
+  async function apiDuoActifCompte(path="/duoactif", methode="GET") {
+    if(!ENDPOINT_MON_COMPTE_MEMBRE)throw new Error("Service Duo Actif non configuré.");
+    const response=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+path,{
+      method:methode,credentials:"include",cache:"no-store",
+      headers:{"Accept":"application/json"}
+    });
+    const data=await response.json().catch(()=>null);
+    if(response.status===401) {
+      redirigerConnexionMembre("inactive");
+      throw new Error("Votre session membre doit être renouvelée.");
+    }
+    if(!response.ok||data?.ok!==true)throw new Error(data?.message||"Service Duo Actif indisponible.");
+    return data;
+  }
+
+  function dateDuoActifFrancais(valeur) {
+    const date=new Date(String(valeur||""));
+    if(!Number.isFinite(date.getTime()))return "date indisponible";
+    return new Intl.DateTimeFormat("fr-FR",{
+      timeZone:"Europe/Paris",day:"2-digit",month:"2-digit",year:"numeric"
+    }).format(date);
+  }
+
+  async function chargerDuoActifCompte() {
+    const liste=document.getElementById("lcdp-compte-duoactif-liste");
+    if(!liste)return;
+    const data=await apiDuoActifCompte();
+    liste.replaceChildren();
+    if(!Array.isArray(data.demandes)||!data.demandes.length) {
+      const vide=document.createElement("p");
+      vide.className="lcdp-compte-alertes-vide";
+      vide.textContent="Aucune demande Duo Actif enregistrée.";
+      liste.append(vide);
+      return;
+    }
+    for(const demande of data.demandes) {
+      const nomParc=String(demande.nomparc||"Parc indisponible");
+      const ligne=document.createElement("div");
+      ligne.className="lcdp-compte-alerte";
+      const description=document.createElement("span");
+      description.className="lcdp-compte-alerte__nom";
+      description.style.cursor="default";
+      description.textContent=nomParc+" — du "+dateDuoActifFrancais(demande.datecreation)+
+        " au "+dateDuoActifFrancais(demande.dateexpiration);
+      const supprimer=document.createElement("button");
+      supprimer.type="button";
+      supprimer.className="lcdp-compte-alerte__action lcdp-compte-alerte__supprimer";
+      supprimer.title="Supprimer la demande Duo Actif";
+      supprimer.setAttribute("aria-label","Supprimer la demande Duo Actif pour "+nomParc);
+      supprimer.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7"/></svg>';
+      supprimer.addEventListener("click",async()=>{
+        try {
+          const confirmation=await demanderSuppressionAlerte(nomParc,{
+            titre:"Supprimer cette demande Duo Actif ?",
+            message:"Supprimer la demande Duo Actif pour le parc « "+nomParc+" » ?"
+          });
+          if(!confirmation)return;
+          supprimer.disabled=true;
+          await apiDuoActifCompte("/duoactif/"+encodeURIComponent(demande.idduoactif),"DELETE");
+          await chargerDuoActifCompte();
+        } catch(err) {
+          supprimer.disabled=false;
+          await afficherAlerte(err.message||"Suppression Duo Actif impossible.");
+        }
+      });
+      const actions=document.createElement("div");
+      actions.className="lcdp-compte-alerte__actions";
+      actions.append(supprimer);
+      ligne.append(description,actions);
       liste.append(ligne);
     }
   }

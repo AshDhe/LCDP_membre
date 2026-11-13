@@ -52,6 +52,12 @@
     "index-membre-api"
   );
 
+  const ENDPOINT_DUO_ACTIF = construireEndpointApi(
+    "workerMonCompteMembreUrl",
+    "WORKER_MON_COMPTE_MEMBRE_URL",
+    "mon-compte-membre-api"
+  );
+
   const ENDPOINT_PLANNING_PARC = construireEndpointApi(
     "workerPlanningParcUrl",
     "WORKER_PLANNING_PARC_URL",
@@ -106,8 +112,7 @@
   // Le bouton « Abonnement » ouvre la préparation des dates dans PLANIFIER.
   // Le choix d'une date est ensuite permis pour constituer le panier provisoire.
   let preparationAbonnementPlanifier = false;
-  // Maquette uniquement : aucune table Duo Actif ni persistance réseau.
-  const tagsDuoActifMaquette = new Set();
+  // Duo Actif : lecture et écriture exclusivement via le Worker Mon compte.
 
 
   // Reprise courte du contexte de lecture après expiration automatique de session.
@@ -756,8 +761,8 @@
     if (choix === "demande") {
       await ouvrirDemandeAbonnementDepuisPlanning();
     } else if (choix === "invitation") {
-      // Le tag Duo Actif porte sur le parc actuellement sélectionné.
-      await proposerTagDuoActifMaquette();
+      // La demande Duo Actif porte sur le parc actuellement sélectionné.
+      await proposerDuoActif();
     } else if (daValidee && choix === "abonnement") {
       await ouvrirAbonnementDepuisPlanning({
         origine: depassement ? "horizon" : jourHorsCouverture ? "jour_hors_couverture" : "sans_abonnement",
@@ -771,7 +776,31 @@
     return true;
   }
 
-  async function proposerTagDuoActifMaquette() {
+  async function requeteDuoActif(methode = "GET", corps = null) {
+    if (!ENDPOINT_DUO_ACTIF) throw new Error("Le service Duo Actif est indisponible.");
+    const reponse = await fetch(ENDPOINT_DUO_ACTIF + "/duoactif", {
+      method: methode,
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Accept": "application/json",
+        ...(corps === null ? {} : {"Content-Type": "application/json"})
+      },
+      ...(corps === null ? {} : {body: JSON.stringify(corps)})
+    });
+    const donnees = await reponse.json().catch(() => null);
+    if (reponse.status === 401) {
+      const erreur = new Error("Votre session membre doit être renouvelée.");
+      erreur.sessionExpiree = true;
+      throw erreur;
+    }
+    if (!reponse.ok || donnees?.ok !== true) {
+      throw new Error(donnees?.message || "Le service Duo Actif est momentanément indisponible.");
+    }
+    return donnees;
+  }
+
+  async function proposerDuoActif() {
     const parc = etatPage.calendrierMoisActif?.parc;
     if (!parc) {
       await afficherDialogueInformationPlanifier({
@@ -780,20 +809,48 @@
       });
       return;
     }
-    const idparc = String(parc.idparc || parc.id || "");
+    const idparc = String(parc.idparc || parc.id || "").trim();
     if (!idparc) return;
-    const reponse = await afficherChoixPlanifier(
-      "Souhaitez-vous faire une déclaration Duo Actif pour ce parc ?",
-      { titre: "Duo Actif", libelleAnnuler: "Non", libelleConfirmer: "Oui" }
-    );
-    // Non, fermeture ou clic extérieur = aucune action.
-    // ATTENTION : le stockage reste une maquette tant que le Worker n'est pas raccordé.
-    if (reponse !== true) return;
-    tagsDuoActifMaquette.add(idparc);
-    await afficherDialogueInformationPlanifier({
-      titre: "Duo Actif",
-      message: "Mode maquette : votre intérêt pour ce parc est mémorisé temporairement. Il n'est pas encore enregistré dans Mes accès."
-    });
+    if (etatMembre.abonne === true) {
+      await afficherDialogueInformationPlanifier({
+        titre: "Duo Actif",
+        message: "Duo Actif est réservé aux membres sans abonnement en cours."
+      });
+      return;
+    }
+    try {
+      // Contrôle du quota dès le clic sur « Être invité(e) ».
+      const etat = await requeteDuoActif();
+      if (Number(etat.quota?.encours) >= 2) {
+        await afficherDialogueInformationPlanifier({
+          titre: "Duo Actif",
+          message: "Vous avez déjà deux demandes d'actif en cours."
+        });
+        return;
+      }
+      const confirmation = await afficherChoixPlanifier(
+        "Souhaitez-vous faire une déclaration Duo Actif pour ce parc ?",
+        {titre: "Duo Actif", libelleAnnuler: "Non", libelleConfirmer: "Oui"}
+      );
+      // Non, fermeture et clic extérieur : aucun enregistrement.
+      if (confirmation !== true) return;
+      // Le quota est revérifié de manière atomique en base à l'enregistrement.
+      const resultat = await requeteDuoActif("POST", {idparc});
+      await afficherDialogueInformationPlanifier({
+        titre: "Duo Actif",
+        message: resultat.message ||
+          "Votre demande Duo Actif est enregistrée. Retrouvez-la dans Mon compte, rubrique Services."
+      });
+    } catch (erreur) {
+      if (erreur.sessionExpiree) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+      await afficherDialogueInformationPlanifier({
+        titre: "Duo Actif",
+        message: erreur.message || "L'enregistrement de votre demande est impossible."
+      });
+    }
   }
 
   let modeCoachPlanifierActif = false;
