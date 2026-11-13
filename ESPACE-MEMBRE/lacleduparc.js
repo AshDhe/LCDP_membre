@@ -1338,7 +1338,9 @@
     if(!root || !window.LCDP_ControleAccesUI) throw new Error("Écran du contrôle d’accès indisponible.");
     workflowCle.hidden=true;root.hidden=false;
     actualiserSuiviVideo(etat);
-    if(etat.unlocked===true){exclusiviteCle=false;deverrouillerNavigation();window.clearInterval(controleAccesTimer);if(etat.screen==="key_closed"){window.location.href=PAGE_ACCUEIL_MEMBRE;return;}}
+    if(etat.unlocked===true){exclusiviteCle=false;deverrouillerNavigation();window.clearInterval(controleAccesTimer);}
+    // Après libération confirmée par le Worker, afficher la fin du parcours
+    // dans le wrapper. Le retour à l’accueil reste volontaire (onClosed).
     window.LCDP_ControleAccesUI.render(root,etat,{
       onCamera:()=>lancerCaptureControleAcces(),
       onCheckout:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:"checkout"}}));}catch(e){afficherControleAcces({screen:"capture_error",action:"checkout",message:e.message});}},
