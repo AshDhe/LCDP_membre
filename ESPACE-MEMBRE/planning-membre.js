@@ -775,23 +775,21 @@
         annulerVerso.title = bloque ? "Annulation impossible après 14h" : "";
       }
     }
-    // Deux raccourcis publics, séparés des actions liées à la réservation.
+    // MES ACCÈS : Fiche et Carte sont deux vues du même wrapper membre.
+    // Aucune URL publique, aucun nouvel onglet ni rechargement de réservation.
     const idParc = String(parc.idparc || reservation.idparc || "").trim();
     if (idParc) {
       const liensParc = document.createElement("div");
       liensParc.className = "lcdp-box-card-parc__actions lcdp-box-card-parc__actions--reserver lcdp-planning-verso-liens";
       liensParc.setAttribute("aria-label", "Consulter le parc");
-      const baseFiche = "https://lacleduparc.fr/ESPACE-PUBLIC/fiche-parc.html?idparc=" + encodeURIComponent(idParc);
-      for (const [libelle, url, icone, variante] of [
-        ["Fiche parc", baseFiche, "presentation", "vert-plein"],
-        ["Carte", baseFiche + "&vue=carte", "localiser", "vert-plein"]
+      for (const [libelle, vue, icone, variante] of [
+        ["Fiche parc", "fiche", "presentation", "vert-plein"],
+        ["Carte", "carte", "localiser", "vert-plein"]
       ]) {
-        const lien = document.createElement("a");
-        lien.href = url;
-        lien.target = "_blank";
-        lien.rel = "noopener noreferrer";
-        lien.className = "lcdp-button lcdp-box-card-parc__action lcdp-box-card-parc__action--" + variante;
-        lien.setAttribute("aria-label", libelle + " : " + nomAvecDepartement);
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "lcdp-button lcdp-box-card-parc__action lcdp-box-card-parc__action--" + variante;
+        bouton.setAttribute("aria-label", libelle + " : " + nomAvecDepartement);
         const img = document.createElement("img");
         img.className = "lcdp-box-card-parc__action-icone lcdp-box-card-parc__action-icone--" + icone;
         img.src = construireUrlObjet("/IMAG/PICTO/picto-" + icone + ".svg");
@@ -800,8 +798,16 @@
         const texte = document.createElement("span");
         texte.className = "lcdp-box-card-parc__action-libelle";
         texte.textContent = libelle;
-        lien.append(img, texte);
-        liensParc.appendChild(lien);
+        bouton.append(img, texte);
+        bouton.addEventListener("click", () => {
+          void ouvrirVueFicheDansMesAcces({ ...parc, idparc: idParc, dptmt: departement }, vue, bouton)
+            .catch(error => {
+              console.error("MES ACCÈS : Fiche/Carte du parc indisponible", error);
+              fermerVueFicheDansMesAcces();
+              void afficherAlerte(error.message || "Impossible d'ouvrir la fiche du parc.");
+            });
+        });
+        liensParc.appendChild(bouton);
       }
       cardReservation.querySelector(".lcdp-box-card-reservation-membre__body")?.appendChild(liensParc);
     }
@@ -825,6 +831,104 @@
       if (carte.isConnected) carte.classList.add("is-ready");
     }));
     return carte;
+  }
+
+  // Deux surfaces du même tunnel MES ACCÈS : la liste est conservée
+  // montée en mémoire lorsque la Fiche ou la Carte est consultée.
+  let controleurFicheMesAcces = null;
+  let ouvertureFicheMesAcces = 0;
+  let declencheurFicheMesAcces = null;
+
+  function fermerVueFicheDansMesAcces() {
+    ouvertureFicheMesAcces += 1;
+    controleurFicheMesAcces?.detruire?.();
+    controleurFicheMesAcces = null;
+    const fiche = document.getElementById("lcdp-mes-acces-fiche-slot");
+    const planning = document.getElementById("lcdp-planning-calendrier-slot");
+    fiche?.replaceChildren();
+    if (fiche) fiche.hidden = true;
+    if (planning) planning.hidden = false;
+    declencheurFicheMesAcces?.focus?.({ preventScroll: true });
+    declencheurFicheMesAcces = null;
+  }
+
+  let chargementMoteurFicheMesAcces = null;
+  function obtenirMoteurFicheMesAcces() {
+    if (typeof window.LCDP_FicheParc?.monterDansConteneur === "function") {
+      return Promise.resolve(window.LCDP_FicheParc);
+    }
+    if (!chargementMoteurFicheMesAcces) {
+      chargementMoteurFicheMesAcces = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = construireUrlPublic("/ESPACE-PUBLIC/fiche-parc.js?v=20261113-mesacces-interne-v3");
+        script.onload = () => {
+          if (typeof window.LCDP_FicheParc?.monterDansConteneur === "function") {
+            resolve(window.LCDP_FicheParc);
+          } else {
+            reject(new Error("Moteur de Fiche Parc introuvable."));
+          }
+        };
+        script.onerror = () => reject(new Error("Chargement de la Fiche Parc impossible."));
+        document.body.appendChild(script);
+      }).catch(error => {
+        chargementMoteurFicheMesAcces = null;
+        throw error;
+      });
+    }
+    return chargementMoteurFicheMesAcces;
+  }
+
+  async function ouvrirVueFicheDansMesAcces(parc, vue = "fiche", declencheur = null) {
+    const hote = document.getElementById("lcdp-mes-acces-fiche-slot");
+    const planning = document.getElementById("lcdp-planning-calendrier-slot");
+    if (!hote || !planning) throw new Error("Wrapper MES ACCÈS introuvable.");
+    const idparc = String(parc?.idparc || parc?.id || "").trim();
+    if (!idparc) throw new Error("Identifiant du parc manquant.");
+
+    const generation = ++ouvertureFicheMesAcces;
+    const moteur = await obtenirMoteurFicheMesAcces();
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-shift-detail-parc.html");
+    if (generation !== ouvertureFicheMesAcces) return;
+    const shift = fragment.querySelector("[data-lcdp-box-shift-detail-parc]");
+    const contenu = shift?.querySelector("[data-lcdp-shift-detail-parc-content]");
+    const fermer = shift?.querySelector("[data-lcdp-shift-detail-parc-close]");
+    if (!shift || !contenu || !fermer) throw new Error("Structure de la Fiche Parc incomplète.");
+
+    shift.classList.add("lcdp-box-shift-detail-parc--page");
+    shift.dataset.lcdpShiftVue = vue;
+    shift.removeAttribute("role");
+    shift.removeAttribute("aria-modal");
+    fermer.addEventListener("click", fermerVueFicheDansMesAcces);
+    controleurFicheMesAcces?.detruire?.();
+    controleurFicheMesAcces = null;
+    declencheurFicheMesAcces = declencheur;
+    hote.replaceChildren(shift);
+    planning.hidden = true;
+    hote.hidden = false;
+
+    try {
+      const controleur = await moteur.monterDansConteneur(contenu, parc, {
+        vueInitiale: vue,
+        modeUsage: "reservation-membre",
+        chargerFragmentObjet,
+        construireUrlObjet,
+        appliquerRoutes: appliquerRoutesSite,
+        onVueChange: (vueActuelle) => {
+          shift.dataset.lcdpShiftVue = vueActuelle;
+        }
+      });
+      if (generation !== ouvertureFicheMesAcces) {
+        controleur?.detruire?.();
+        return;
+      }
+      controleurFicheMesAcces = controleur;
+      shift.dataset.lcdpShiftVue = controleur.getVue();
+      window.requestAnimationFrame(() => shift.classList.add("lcdp-box-shift-detail-parc--visible"));
+      hote.scrollIntoView?.({ block: "start", behavior: "auto" });
+    } catch(error) {
+      if (generation === ouvertureFicheMesAcces) fermerVueFicheDansMesAcces();
+      throw error;
+    }
   }
 
   function habillerBoutonInvitesVerso(bouton, reservation) {
