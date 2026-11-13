@@ -785,15 +785,38 @@
         inviter.textContent = "Enregistrement…";
         afficherMessage("Mise à jour des invitations en cours.");
         try {
-          const resultat = await getJson(invitationsApi + "/invites", {
-            method:"POST",
-            body:{
-              idflux:r.idflux,
-              invites:Array.from(annulations.values()),
-              emails:valeur ? [valeur] : [],
-              personnesSansEmail:[]
+          // L'envoi d'un nouvel e-mail utilise la route dédiée existante.
+          // La route /invites reste réservée à la mise à jour des invités.
+          const nouvelInviteParEmail = Boolean(valeur) && !annulations.size;
+          const resultat = await getJson(
+            invitationsApi + (nouvelInviteParEmail ? "/inviter-reservation" : "/invites"),
+            {
+              method:"POST",
+              body:nouvelInviteParEmail
+                ? { idflux:r.idflux, emails:[valeur] }
+                : {
+                    idflux:r.idflux,
+                    invites:Array.from(annulations.values()),
+                    emails:valeur ? [valeur] : [],
+                    personnesSansEmail:[]
+                  }
             }
-          });
+          );
+          if (/aucune modification/i.test(String(resultat.message || ""))) {
+            afficherMessage("Aucune invitation n’a été enregistrée. Votre saisie est conservée.",true);
+            return;
+          }
+          if (nouvelInviteParEmail) {
+            const verification = await getJson(invitationsApi + "/invites?idflux=" + encodeURIComponent(String(r.idflux)));
+            const active = Array.isArray(verification.invites) && verification.invites.some(personne =>
+              String(personne?.emailmembre || personne?.email || "").trim().toLowerCase() === valeur &&
+              String(personne?.invit || "true").trim().toLowerCase() !== "cancd"
+            );
+            if (!active) {
+              afficherMessage("L’envoi de l’invitation n’a pas pu être confirmé. Votre saisie est conservée.",true);
+              return;
+            }
+          }
           enregistrementEnCours = false;
           fermer();
           await recharger();
