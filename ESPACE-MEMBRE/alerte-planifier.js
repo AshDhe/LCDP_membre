@@ -140,6 +140,61 @@
     const periodes=(c?.periodes||[]).map(p=>p.debut+" au "+p.fin);
     return [invites,...(periodes.length?["Périodes : "+periodes.join(", ")]:[]),...champs.filter(([,k])=>c?.[k]?.length).map(([t,k])=>t+" : "+c[k].join(", "))].join(" | ");
   }
+  async function confirmerSuppressionAlerte(titreAlerte) {
+    const focusInitial = document.activeElement;
+    const hote = document.createElement("div");
+    try {
+      const chemin = objet("/HTMLBASE/02-dialogue-reference-suppression.html");
+      const reponse = await fetch(chemin, {credentials:"omit",cache:"no-cache"});
+      if(!reponse.ok)throw new Error("Dialogue SUPPRESSION indisponible.");
+      const modele = document.createElement("template");
+      modele.innerHTML = (await reponse.text()).trim();
+      hote.appendChild(modele.content.cloneNode(true));
+      const dialogue = hote.querySelector('[data-lcdp-dialogue-reference="suppression"]');
+      const titre = hote.querySelector("[data-lcdp-dialogue-titre]");
+      const message = hote.querySelector("[data-lcdp-dialogue-message]");
+      const conserver = hote.querySelector('[data-lcdp-dialogue-action="conserver"]');
+      const supprimer = hote.querySelector('[data-lcdp-dialogue-action="supprimer"]');
+      if(!dialogue||!titre||!message||!conserver||!supprimer)
+        throw new Error("Structure SUPPRESSION incomplète.");
+      titre.textContent = "Supprimer cette alerte ?";
+      message.textContent = "Supprimer définitivement l’alerte « "+String(titreAlerte||"")+" » ?";
+      conserver.textContent = "Conserver";
+      supprimer.textContent = "Supprimer";
+      document.body.appendChild(hote);
+      return await new Promise(resolve=>{
+        let termine = false;
+        const fermer = valeur=>{
+          if(termine)return;
+          termine=true;
+          document.removeEventListener("keydown",clavier);
+          hote.remove();
+          if(focusInitial?.isConnected&&typeof focusInitial.focus==="function")focusInitial.focus();
+          resolve(valeur);
+        };
+        const clavier = event=>{
+          if(event.key==="Escape"){event.preventDefault();fermer(false);}
+          if(event.key==="Tab"){
+            if(event.shiftKey&&document.activeElement===conserver){event.preventDefault();supprimer.focus();}
+            else if(!event.shiftKey&&document.activeElement===supprimer){event.preventDefault();conserver.focus();}
+          }
+        };
+        conserver.addEventListener("click",()=>fermer(false),{once:true});
+        supprimer.addEventListener("click",()=>fermer(true),{once:true});
+        dialogue.addEventListener("click",event=>{
+          if(event.target===dialogue)fermer(false);
+        });
+        document.addEventListener("keydown",clavier);
+        conserver.focus();
+      });
+    }catch(erreur){
+      console.error("Suppression d’alerte : confirmation indisponible",erreur);
+      message("La confirmation de suppression est indisponible. L’alerte est conservée.");
+      return false;
+    }finally{
+      hote.remove();
+    }
+  }
   function afficherListe(){
     const zone=root.querySelector("[data-alerte-liste]");zone.replaceChildren();
     if(!etat.alertes.length){zone.append(node("p","lcdp-alerte-etat","Aucune alerte enregistrée."));return;}
@@ -153,7 +208,7 @@
         bouton("Relancer","lcdp-button-primary",()=>relancer(a.idalerte)),
         bouton("Modifier","lcdp-button-secondary",async()=>{try{etat.edition=a.idalerte;root.querySelector("#lcdp-alerte-titre").value=a.titre;await remplir(a.criteres);root.querySelector("form").scrollIntoView({behavior:"smooth"});message("Modification de "+a.titre);}catch(e){message(e.message);}}),
         bouton(a.actif?"Désactiver":"Activer","lcdp-button-secondary",async()=>{try{await api("/alertes/"+a.idalerte,"PATCH",{actif:!a.actif});await chargerListe();}catch(e){message(e.message);}}),
-        bouton("Supprimer","lcdp-button-secondary",async()=>{if(!window.confirm("Supprimer cette alerte ?"))return;try{await api("/alertes/"+a.idalerte,"DELETE");await chargerListe();}catch(e){message(e.message);}})
+        bouton("Supprimer","lcdp-button-secondary",async()=>{if(!await confirmerSuppressionAlerte(a.titre))return;try{await api("/alertes/"+a.idalerte,"DELETE");await chargerListe();}catch(e){message(e.message);}})
       );
       li.append(nom,details,statut,actions);ul.append(li);
     }
