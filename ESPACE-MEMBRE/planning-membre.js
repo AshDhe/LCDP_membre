@@ -919,35 +919,51 @@
     const idparc = String(parc?.idparc || parc?.id || "").trim();
     if (!idparc) throw new Error("Identifiant du parc manquant.");
 
-    // Toute réouverture referme d'abord le calque courant, sans perdre
-    // l'état de MES ACCÈS en dessous.
+    // Le wrapper reste visible : un seul calque, un seul défilement.
+    // On affiche le spinner AVANT les chargements asynchrones, puis la vue
+    // entièrement montée d'un seul coup. Le DOM caché reste mesurable.
     if (surfaceFicheMesAcces) fermerVueFicheDansMesAcces();
     const generation = ++ouvertureFicheMesAcces;
-    const moteur = await obtenirMoteurFicheMesAcces();
-    const fragment = await chargerFragmentObjet("/HTMLBASE/04-shift-detail-parc.html");
-    if (generation !== ouvertureFicheMesAcces) return;
-    const shift = fragment.querySelector("[data-lcdp-box-shift-detail-parc]");
-    const contenu = shift?.querySelector("[data-lcdp-shift-detail-parc-content]");
-    const fermer = shift?.querySelector("[data-lcdp-shift-detail-parc-close]");
-    if (!shift || !contenu || !fermer) throw new Error("Structure de la Fiche Parc incomplète.");
-
-    // Le calque Fiche/Carte couvre la surface utile du wrapper.
-    // Le contenu MES ACCÈS reste sous le calque, intact et inerte.
     const surface = ouvrirCalqueFicheMesAcces(hote);
     surfaceFicheMesAcces = surface;
-
-    shift.classList.add("lcdp-box-shift-detail-parc--page");
-    shift.dataset.lcdpShiftVue = vue;
-    shift.removeAttribute("role");
-    shift.removeAttribute("aria-modal");
-    fermer.addEventListener("click", fermerVueFicheDansMesAcces);
-    controleurFicheMesAcces?.detruire?.();
-    controleurFicheMesAcces = null;
     declencheurFicheMesAcces = declencheur;
-    hote.replaceChildren(shift);
+
+    const attente = document.createElement("div");
+    attente.className = "lcdp-mes-acces-calque-attente";
+    attente.setAttribute("role", "status");
+    attente.setAttribute("aria-label", "Chargement du parc");
+    const spinnerOriginal = document.querySelector("#lcdp-planning-attente .lcdp-loading-spinner");
+    if (spinnerOriginal) {
+      attente.appendChild(spinnerOriginal.cloneNode(true));
+    } else {
+      attente.textContent = "Chargement du parc…";
+    }
+    hote.replaceChildren(attente);
     hote.hidden = false;
 
     try {
+      const [moteur, fragment] = await Promise.all([
+        obtenirMoteurFicheMesAcces(),
+        chargerFragmentObjet("/HTMLBASE/04-shift-detail-parc.html")
+      ]);
+      if (generation !== ouvertureFicheMesAcces) return;
+
+      const shift = fragment.querySelector("[data-lcdp-box-shift-detail-parc]");
+      const contenu = shift?.querySelector("[data-lcdp-shift-detail-parc-content]");
+      const fermer = shift?.querySelector("[data-lcdp-shift-detail-parc-close]");
+      if (!shift || !contenu || !fermer) {
+        throw new Error("Structure de la Fiche Parc incomplète.");
+      }
+      shift.classList.add("lcdp-box-shift-detail-parc--page");
+      shift.dataset.lcdpShiftVue = vue;
+      shift.removeAttribute("role");
+      shift.removeAttribute("aria-modal");
+      fermer.addEventListener("click", fermerVueFicheDansMesAcces);
+      shift.style.visibility = "hidden";
+      shift.setAttribute("aria-hidden", "true");
+      shift.inert = true;
+      hote.appendChild(shift);
+
       const controleur = await moteur.monterDansConteneur(contenu, parc, {
         vueInitiale: vue,
         modeUsage: "reservation-membre",
@@ -962,11 +978,19 @@
         controleur?.detruire?.();
         return;
       }
+
       controleurFicheMesAcces = controleur;
       shift.dataset.lcdpShiftVue = controleur.getVue();
-      window.requestAnimationFrame(() => shift.classList.add("lcdp-box-shift-detail-parc--visible"));
-      hote.scrollTop = 0;
-    } catch(error) {
+      // Le changement de visibilité est atomique pour éviter l'effet
+      // « wrapper qui se construit » observé sur Fiche et Carte.
+      shift.classList.add("lcdp-box-shift-detail-parc--visible");
+      shift.style.removeProperty("visibility");
+      shift.removeAttribute("aria-hidden");
+      shift.inert = false;
+      attente.remove();
+      const main = hote.closest(".lcdp-site-main");
+      if (main) main.scrollTop = 0;
+    } catch (error) {
       if (generation === ouvertureFicheMesAcces) fermerVueFicheDansMesAcces();
       throw error;
     }
