@@ -1,0 +1,199 @@
+/* Ma clé : navigation visuelle progressive, sans modification des contrôles existants. */
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline,
+.lcdp-page-cle-du-parc .lcdp-parcours-ecran {
+  box-sizing: border-box;
+  width: min(100%, 620px);
+  margin-inline: auto;
+  font-family: var(--lcdp-font-main, Arial, sans-serif);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline[hidden],
+.lcdp-page-cle-du-parc .lcdp-parcours-ecran[hidden] {
+  display: none !important;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline {
+  margin-top: 12px;
+  margin-bottom: 24px;
+  padding: 10px 4px 12px;
+  background: #fff;
+  color: var(--lcdp-color-text, #273445);
+  position: relative;
+  z-index: 2;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__liste {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  list-style: none;
+  gap: 2px;
+  padding: 0;
+  margin: 0;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  position: relative;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon:not(:last-child)::after {
+  position: absolute;
+  top: 17px;
+  left: calc(50% + 19px);
+  width: calc(100% - 36px);
+  border-top: 2px solid #c6cdd4;
+  content: "";
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon[data-etat="termine"]::after {
+  border-color: #238653;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__numero {
+  width: 34px;
+  height: 34px;
+  border: 2px solid #c6cdd4;
+  border-radius: 50%;
+  background: #fff;
+  color: #697582;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 700;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon[data-etat="actif"] .lcdp-parcours-timeline__numero {
+  background: #145dba;
+  border-color: #145dba;
+  color: #fff;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon[data-etat="termine"] .lcdp-parcours-timeline__numero {
+  background: #238653;
+  border-color: #238653;
+  color: #fff;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__libelle {
+  font-size: 11px;
+  line-height: 1.3;
+  font-weight: 500;
+  overflow-wrap: break-word;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon[data-etat="actif"] .lcdp-parcours-timeline__libelle {
+  font-weight: 700;
+  color: #145dba;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-ecran {
+  min-height: 380px;
+  padding: 36px 18px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  background: var(--lcdp-color-surface, #fff);
+  color: var(--lcdp-color-text, #273445);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-titre {
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  margin: 0;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-reussite {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 48px 0 20px;
+  text-align: center;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-reussite::before {
+  display: block;
+  content: "✓";
+  margin: 0 auto 18px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #238653;
+  color: #fff;
+  font-size: 38px;
+  line-height: 58px;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-continuer {
+  width: min(100%, 320px);
+  min-height: 48px;
+  margin-top: auto;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-parc {
+  margin: 0;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-carrousel {
+  width: 100%;
+  flex: 1;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide {
+  min-height: 230px;
+  border: 1px solid #dce1e5;
+  border-radius: 12px;
+  padding: 22px 18px;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide__titre {
+  margin: 0 0 18px;
+  font-size: 20px;
+  line-height: 1.25;
+  text-align: center;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide__texte {
+  margin: 0 0 18px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide__photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: 8px;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide__image {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 7px;
+  object-fit: cover;
+  background: #f0f2f4;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide__image[hidden] { display: none; }
+.lcdp-page-cle-du-parc .lcdp-parcours-indisponible {
+  text-align: center;
+  padding: 36px 14px;
+  color: #5f6b76;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__navigation {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__navigation[hidden] { display: none; }
+.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__bouton {
+  min-width: 105px;
+  min-height: 44px;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__compteur { font-variant-numeric: tabular-nums; }
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline + .lcdp-acces { margin-top: 0; }
+/* Le bandeau doit rester visible lors de la présence expirée.
+   La couleur rouge continue de signaler la fin de la durée autorisée. */
+.lcdp-page-cle-du-parc .lcdp-page-container[data-lcdp-parcours-etape="4"] .lcdp-acces[data-screen="expired"] {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  min-height: 75svh;
+}
+@media (max-width: 380px) {
+  .lcdp-page-cle-du-parc .lcdp-parcours-timeline__numero { width: 29px; height: 29px; font-size: 13px; }
+  .lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon:not(:last-child)::after {
+    top: 15px;
+    left: calc(50% + 16px);
+    width: calc(100% - 31px);
+  }
+  .lcdp-page-cle-du-parc .lcdp-parcours-timeline__libelle { font-size: 10px; }
+  .lcdp-page-cle-du-parc .lcdp-parcours-ecran { padding-inline: 9px; }
+  .lcdp-page-cle-du-parc .lcdp-parcours-carrousel__bouton { min-width: 92px; }
+}
