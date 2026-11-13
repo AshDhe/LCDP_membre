@@ -102,6 +102,7 @@
       const etiquette = creerElement("label", "lcdp-box-champ-formulaire__checkbox-line");
       const caseACocher = creerElement("input");
       caseACocher.type = "checkbox";
+      // Seuls les invités encore actifs sur cet accès sont précochés.
       caseACocher.checked = selection[categorie].has(String(contact.idinviteabo));
       caseACocher.setAttribute("aria-label", "Sélectionner " + contact.email);
       etiquette.appendChild(caseACocher);
@@ -227,7 +228,7 @@
         if (!ferme) {
           envoyer.disabled = false;
           fermerCroix.disabled = false;
-          envoyer.textContent = "Inviter";
+          envoyer.textContent = "Mettre à jour";
         }
       }
     });
