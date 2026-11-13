@@ -1529,7 +1529,33 @@
     });
     pied.append(resultat,effacer);
     formulaire.appendChild(pied);
-    tools.replaceChildren(formulaire);
+    // Commande de divulgation compacte : le filtrage reste actif même replié.
+    const commandeFiltres = document.createElement("button");
+    commandeFiltres.type = "button";
+    commandeFiltres.className = "lcdp-planning-filtres__bascule";
+    commandeFiltres.setAttribute("aria-controls", "lcdp-planning-filtres-contenu");
+    commandeFiltres.setAttribute("aria-expanded", "false");
+    commandeFiltres.setAttribute("aria-label", "Afficher les filtres");
+    commandeFiltres.style.cssText = "display:flex;align-items:center;justify-content:space-between;width:100%;padding:8px 12px;border:1px solid #d7ddd5;border-radius:10px;background:transparent;color:inherit;font:inherit;cursor:pointer;";
+    const libelleFiltres = document.createElement("span");
+    libelleFiltres.textContent = "Filtres";
+    const signeFiltres = document.createElement("span");
+    signeFiltres.textContent = "+";
+    signeFiltres.setAttribute("aria-hidden", "true");
+    signeFiltres.style.cssText = "font-size:22px;line-height:1;font-weight:500;";
+    commandeFiltres.append(libelleFiltres, signeFiltres);
+    formulaire.id = "lcdp-planning-filtres-contenu";
+    formulaire.hidden = true;
+    formulaire.style.display = "none";
+    commandeFiltres.addEventListener("click", () => {
+      const ouvert = commandeFiltres.getAttribute("aria-expanded") !== "true";
+      commandeFiltres.setAttribute("aria-expanded", String(ouvert));
+      commandeFiltres.setAttribute("aria-label", ouvert ? "Masquer les filtres" : "Afficher les filtres");
+      signeFiltres.textContent = ouvert ? "−" : "+";
+      formulaire.hidden = !ouvert;
+      formulaire.style.display = ouvert ? "" : "none";
+    });
+    tools.replaceChildren(commandeFiltres, formulaire);
     tools.hidden = false;
     etat.formulaireFiltres = formulaire;
     actualiserOptionsFiltresPlanningMembre();
