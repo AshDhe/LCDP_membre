@@ -555,6 +555,9 @@
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action:hover {
         border-color:#4b6333 !important;background:#4b6333 !important;color:#fff !important;
       }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action[hidden] {
+        display:none !important;
+      }
       #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action[aria-disabled="true"] {
         opacity:.5;cursor:not-allowed;
       }
