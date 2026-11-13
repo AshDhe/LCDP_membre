@@ -4004,6 +4004,69 @@
     }
   }
 
+  async function confirmerSuppressionPlanning(message, superposition) {
+    const focusInitial = document.activeElement;
+    let conteneur = null;
+    try {
+      const css = construireUrlObjet("/CSSBASE/lcdp-lightbox-convergence.css");
+      if (!Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some(lien => lien.href === new URL(css, document.baseURI).href)) {
+        await new Promise((resolve, reject) => {
+          const lien = document.createElement("link");
+          lien.rel = "stylesheet";
+          lien.href = css;
+          lien.onload = resolve;
+          lien.onerror = () => { lien.remove(); reject(new Error("CSS SUPPRESSION indisponible.")); };
+          document.head.appendChild(lien);
+        });
+      }
+      conteneur = document.createElement("div");
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html"));
+      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="suppression"]');
+      const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
+      const conserver = conteneur.querySelector('[data-lcdp-dialogue-action="conserver"]');
+      const supprimer = conteneur.querySelector('[data-lcdp-dialogue-action="supprimer"]');
+      if (!dialogue || !titre || !texte || !conserver || !supprimer) throw new Error("Dialogue SUPPRESSION incomplet.");
+      titre.textContent = "Confirmer l’annulation";
+      texte.textContent = message;
+      conserver.textContent = "Non";
+      supprimer.textContent = "Oui";
+      if (superposition) dialogue.style.zIndex = "12000";
+      document.body.appendChild(conteneur);
+      conserver.focus();
+      return await new Promise(resolve => {
+        let termine = false;
+        const fermer = valeur => {
+          if (termine) return;
+          termine = true;
+          document.removeEventListener("keydown", gererClavier);
+          conteneur.remove();
+          if (focusInitial?.isConnected && typeof focusInitial.focus === "function") focusInitial.focus();
+          resolve(valeur);
+        };
+        const gererClavier = event => {
+          if (event.key === "Escape") { event.preventDefault(); fermer(false); }
+          if (event.key === "Tab") {
+            const cible = event.shiftKey ? conserver : supprimer;
+            if (document.activeElement === cible) {
+              event.preventDefault();
+              (event.shiftKey ? supprimer : conserver).focus();
+            }
+          }
+        };
+        document.addEventListener("keydown", gererClavier);
+        conserver.addEventListener("click", () => fermer(false), { once: true });
+        supprimer.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => { if (event.target === dialogue) fermer(false); });
+      });
+    } catch (error) {
+      console.error("Confirmation d’annulation indisponible :", error);
+      return false;
+    } finally {
+      conteneur?.remove();
+    }
+  }
+
   async function traiterAnnulationReservation(boutonAnnuler) {
     const idflux = boutonAnnuler ? String(boutonAnnuler.dataset.id || "").trim() : "";
 
@@ -4039,30 +4102,12 @@
       reservationHorsAbonnementMembre(
         reservation
       );
-    const optionsDialogue = {
-      titre: "Confirmer l’annulation",
-      texte: estInvite
-        ? "Voulez-vous vraiment annuler cette invite ?"
-        : "Voulez-vous vraiment annuler cette réservation ?",
-      boutons: [
-        {
-          label: "Non",
-          valeur: "non",
-          style: "lcdp-button-secondary"
-        },
-        {
-          label: "Oui",
-          valeur: "oui",
-          style: "lcdp-button-primary"
-        }
-      ]
-    };
+    const confirmation = await confirmerSuppressionPlanning(
+      estInvite ? "Voulez-vous vraiment annuler cette invite ?" : "Voulez-vous vraiment annuler cette réservation ?",
+      Boolean(workflowReservation)
+    );
 
-    const confirmation = workflowReservation
-      ? await ouvrirDialogueBoutonsParDessusLightbox(optionsDialogue)
-      : await ouvrirDialogueBoutons(optionsDialogue);
-
-    if (confirmation !== "oui") return;
+    if (!confirmation) return;
 
     const texteInitial = boutonAnnuler.textContent;
     boutonAnnuler.disabled = true;
