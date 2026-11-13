@@ -135,6 +135,10 @@
         const quota = quotaCarnet(categorie);
         const atteint = totalCandidats(categorie) >= quota;
         bouton.setAttribute("aria-disabled", atteint ? "true" : "false");
+        // Réutiliser le bouton commun : grisage visuel sans attribut disabled,
+        // pour garder le clic qui ouvre la boîte INFORMATION du quota.
+        bouton.style.opacity = atteint ? "0.55" : "";
+        bouton.style.cursor = atteint ? "help" : "";
         bouton.title = atteint
           ? (categorie === "duo" ? "Le MAXDUO de votre abonnement est atteint." : "Le MAXFAMILL de votre abonnement est atteint.")
           : "Ajouter un nouvel invité " + categorie.toUpperCase();
