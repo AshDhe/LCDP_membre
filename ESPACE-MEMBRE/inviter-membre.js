@@ -1012,8 +1012,33 @@
     if (!reponse.ok || contexte?.ok !== true) {
       throw new Error(contexte?.message || "Les droits DUO/FAMILLE sont indisponibles.");
     }
+    // Les classes Tailwind c040/c054/c065 existent déjà dans le CSS commun.
+    // Les charger uniquement quand le formulaire DUO/FAMILLE devient disponible.
+    const classes = new Set(String(document.documentElement.dataset.lcdpCss || "").split(/\s+/).filter(Boolean));
+    ["c040","c054","c065"].forEach(code => classes.add(code));
+    document.documentElement.dataset.lcdpCss = [...classes].join(" ");
+    const feuilleCommune = construireUrlObjet("/CSSBASE/lcdp-central-module-06.css");
+    if (!Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some(l => l.href === feuilleCommune)) {
+      await new Promise((resolve, reject) => {
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = feuilleCommune;
+        link.onload = resolve;
+        link.onerror = () => reject(new Error("Styles communs du formulaire indisponibles."));
+        document.head.appendChild(link);
+      });
+    }
     await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js");
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html");
+    const dialogue = document.createElement("div");
+    dialogue.className = "lcdp-box-dialogue-champ-inviter";
+    dialogue.setAttribute("role", "dialog");
+    dialogue.setAttribute("aria-modal", "true");
+    dialogue.setAttribute("aria-label", "Inviter des membres DUO ou FAMILLE");
+    const panneau = document.createElement("div");
+    panneau.className = "lcdp-box-dialogue-champ-inviter__card";
+    panneau.appendChild(fragment);
+    dialogue.appendChild(panneau);
     const controleur = window.LCDP_InvitationsAbonnement;
     if (!controleur?.monter) throw new Error("Formulaire d'invitation indisponible.");
 
@@ -1023,7 +1048,7 @@
     await controleur.monter({
       conteneur:slot,
       idflux,
-      fragment,
+      fragment:dialogue,
       chargerContexte:async () => contexte,
       enregistrer:async (idflux, selection) => {
         const resultatHttp = await fetch(ENDPOINT_INVITER_MEMBRE + "/invites-abonnement", {
