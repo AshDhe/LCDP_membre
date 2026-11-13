@@ -46,6 +46,7 @@
   const PAGE_FACTURES_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-factures-membre.html");
 
   let compteMembreActuel = null;
+  let promesseChargementDiginumCompte = null;
 
   // Même texte et même présentation pour les champs bancaires et d'adresse
   // restant à renseigner avec la DA.
@@ -2514,29 +2515,46 @@ function afficherResumePointsPassion(compte) {
     }
   }
 
+  async function chargerDiginumCompte() {
+    if (typeof window.LCDP_diginum?.ouvrir === "function") return window.LCDP_diginum;
+    if (!promesseChargementDiginumCompte) {
+      promesseChargementDiginumCompte = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = construireUrlObjet("/JSBASE/07-diginum.js");
+        script.onload = () => {
+          if (typeof window.LCDP_diginum?.ouvrir === "function") resolve(window.LCDP_diginum);
+          else reject(new Error("Le pavé Diginum n'est pas disponible."));
+        };
+        script.onerror = () => reject(new Error("Impossible de charger le pavé Diginum."));
+        document.body.appendChild(script);
+      }).catch(error => {
+        promesseChargementDiginumCompte = null;
+        throw error;
+      });
+    }
+    return promesseChargementDiginumCompte;
+  }
+
   async function ouvrirDialogueDepartementMembre() {
-    const resultat = await ouvrirDialogueChamp({
-      titre: "Modifier mon département",
-      champs: [
-        {
-          id: "nouveau-departement-membre",
-          name: "dptmtmembre",
-          label: "Nouveau département",
-          type: "text",
-          required: true,          
-        }
-      ]
-    });
-
-    if (!resultat) return;
-
-    const dptmtmembre = nettoyerDepartement(resultat.dptmtmembre);
-
-    if (!dptmtmembre) {
-      await afficherAlerte("Le département est obligatoire.");
+    let dptmtmembre;
+    try {
+      const diginum = await chargerDiginumCompte();
+      dptmtmembre = await diginum.ouvrir({
+        titre: "Changer de département",
+        placeholder: "exemple 08",
+        longueurMax: 3,
+        codesSpeciaux: ["2A", "2B"],
+        autoValider: code => (code.length === 2 && code !== "97") || code.length === 3,
+        verifier: code => NOMS_DEPARTEMENTS_COMPTE[code]
+          ? null
+          : "Ce code ne correspond à aucun département."
+      });
+    } catch (error) {
+      await afficherAlerte(error.message || "Le pavé Diginum est indisponible.");
       return;
     }
 
+    if (!dptmtmembre) return;
     await envoyerModificationDepartement(dptmtmembre);
   }
 
