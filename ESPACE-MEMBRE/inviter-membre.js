@@ -1103,8 +1103,6 @@
   }
 
   async function ouvrirDialogueInvitation(idflux) {
-    const arreterAttente = afficherAttenteInvitations();
-    try {
     if (etatMembre.abonnementSuspendu === true) {
       await gererPaiementSuspensionMembre(etatMembre);
       return;
@@ -1115,7 +1113,14 @@
       return;
     }
 
-    if (await ouvrirInvitationsAbonnementSiDisponible(idflux)) return;
+    const arreterAttente = afficherAttenteInvitations();
+    let ouvert = false;
+    try {
+      ouvert = await ouvrirInvitationsAbonnementSiDisponible(idflux);
+    } finally {
+      arreterAttente();
+    }
+    if (ouvert) return;
 
     const maxinvit = lireMaxinvit();
 
@@ -1214,9 +1219,6 @@
     });
 
     await ajouterChamp();
-    } finally {
-      arreterAttente();
-    }
   }
 
   async function envoyerInvitations(idflux, emails) {
