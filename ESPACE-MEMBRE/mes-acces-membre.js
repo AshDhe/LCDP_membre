@@ -597,17 +597,17 @@
       return afficherInformationMesAcces("Le service des invitations est indisponible.", "Information");
     }
     let overlay = null;
-    let sectionInitiale = null;
-    let etatInitial = null;
+    let main = null;
+    let contenuInitial = null;
     let defilements = [];
     const restaurerVue = () => {
-      overlay?.remove();
-      overlay = null;
-      if (sectionInitiale && etatInitial) {
-        sectionInitiale.hidden = etatInitial.hidden;
-        sectionInitiale.inert = etatInitial.inert;
-        defilements.forEach(({element,position}) => { element.scrollTop = position; });
+      if (main && contenuInitial && overlay?.parentNode === main) {
+        main.replaceChildren(...contenuInitial);
+      } else {
+        overlay?.remove();
       }
+      overlay = null;
+      defilements.forEach(({element,position}) => { element.scrollTop = position; });
     };
     try {
       const data = await getJson(invitationsApi + "/invites?idflux=" + encodeURIComponent(String(r.idflux)));
@@ -615,22 +615,19 @@
       const urlObjet = chemin => typeof window.LCDP_urlObjet === "function"
         ? window.LCDP_urlObjet(chemin)
         : String(config.objetBaseUrl || "https://lacleduparc.fr/OBJET").replace(/\/+$/, "") + chemin;
-      const reponse = await fetch(urlObjet("/HTMLBASE/04-card-listinvites-oui-non.html"), {cache:"no-store"});
+      const reponse = await fetch(urlObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-wrapper-v6"), {cache:"no-store"});
       if (!reponse.ok) throw new Error("Formulaire des invitations indisponible.");
       const template = document.createElement("template");
       template.innerHTML = (await reponse.text()).trim();
-      const main = document.querySelector("body.lcdp-mes-acces-page > .lcdp-app-wrapper > .lcdp-site-main");
-      sectionInitiale = main?.querySelector(":scope > .lcdp-page-section");
-      if (!main || !sectionInitiale) throw new Error("Surface MES ACCÈS introuvable.");
-      etatInitial = { hidden:sectionInitiale.hidden, inert:sectionInitiale.inert };
+      main = document.querySelector("body.lcdp-mes-acces-page > .lcdp-app-wrapper > .lcdp-site-main");
+      if (!main) throw new Error("Surface MES ACCÈS introuvable.");
+      contenuInitial = Array.from(main.childNodes);
       defilements = [main.closest(".lcdp-app-wrapper"), document.scrollingElement]
         .filter(Boolean).map(element => ({element, position:element.scrollTop}));
       overlay = template.content.firstElementChild;
       if (!overlay) throw new Error("Gabarit invitation indisponible.");
       overlay.dataset.lcdpInvitationVuePage = "true";
-      sectionInitiale.hidden = true;
-      sectionInitiale.inert = true;
-      main.appendChild(overlay);
+      main.replaceChildren(overlay);
       defilements.forEach(({element}) => { element.scrollTop = 0; });
 
       const titre = overlay.querySelector("[data-lcdp-listinvites-title]");
@@ -746,7 +743,6 @@
       annuler.addEventListener("click",fermer);
       formulaire.addEventListener("submit", event => {
         event.preventDefault();
-        inviter.click();
       });
       document.addEventListener("keydown",gererEchap);
       afficherLignes();
