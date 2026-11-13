@@ -2988,12 +2988,12 @@
     const idReservation = String(idflux || "").trim();
     // Cette page utilise planning-membre.js, et non mes-acces-membre.js :
     // attendre le CSS du formulaire AVANT d'ouvrir la vue pleine page.
-    await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-inviter-actions-v16");
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-ajouter-retabli-v17");
     const surface = ouvrirSurfaceInvitationPleinePage();
     if (!surface) return null;
     const conteneur = surface.conteneur;
     try {
-      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-actions-v16"));
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-ajouter-retabli-v17"));
     } catch (erreur) {
       surface.fermer();
       throw erreur;
