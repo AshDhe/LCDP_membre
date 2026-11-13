@@ -2984,8 +2984,79 @@
     });
   }
 
+  async function essayerOuvrirInvitesAbonnement(idReservation, declencheur) {
+    if (!ENDPOINT_INVITER_MEMBRE) return null;
+    const url = ENDPOINT_INVITER_MEMBRE + "/invites-abonnement/contexte?idflux=" +
+      encodeURIComponent(idReservation);
+    const reponse = await fetch(url, {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: { Accept: "application/json" }
+    });
+    // Tant que le nouveau Worker n'est pas déployé, conserver l'ancien parcours.
+    if (reponse.status === 404) return null;
+    const contexte = await reponse.json().catch(() => null);
+    if (!reponse.ok || !contexte?.ok) {
+      throw new Error(contexte?.message || "Droits d'invitation indisponibles.");
+    }
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js");
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html");
+    if (!window.LCDP_InvitationsAbonnement?.monter) {
+      throw new Error("Contrôleur du formulaire DUO/FAMILLE indisponible.");
+    }
+    const surface = ouvrirSurfaceInvitationPleinePage();
+    if (!surface) return null;
+    let terminer;
+    let terminee = false;
+    const fin = new Promise(resolve => { terminer = resolve; });
+    const fermer = () => {
+      if (terminee) return;
+      terminee = true;
+      surface.fermer();
+      terminer(true);
+    };
+    try {
+      await window.LCDP_InvitationsAbonnement.monter({
+        conteneur: surface.conteneur,
+        idflux: idReservation,
+        fragment,
+        chargerContexte: async () => contexte,
+        enregistrer: async (idflux, selection) => {
+          const resultatHttp = await fetch(ENDPOINT_INVITER_MEMBRE + "/invites-abonnement", {
+            method: "POST",
+            credentials: "include",
+            cache: "no-store",
+            headers: { Accept:"application/json", "Content-Type":"application/json" },
+            body: JSON.stringify({ idflux, selection })
+          });
+          const resultat = await resultatHttp.json().catch(() => null);
+          if (!resultatHttp.ok || resultat?.ok !== true) {
+            throw new Error(resultat?.message || "Enregistrement DUO/FAMILLE non confirmé.");
+          }
+          try {
+            await chargerStatutsInvitationsPlanning();
+            actualiserBoutonsInvitationPlanning(idReservation, declencheur);
+          } catch (erreur) {
+            console.warn("Actualisation de l'affichage des invitations indisponible :", erreur);
+          }
+          return resultat;
+        },
+        informer: afficherInformationInvitation,
+        fermer
+      });
+    } catch (erreur) {
+      fermer();
+      throw erreur;
+    }
+    return fin;
+  }
+
   async function ouvrirBoxListeInvitesModifiable(idflux, invites, declencheur) {
     const idReservation = String(idflux || "").trim();
+    const vueAbonnement = await essayerOuvrirInvitesAbonnement(idReservation, declencheur);
+    if (vueAbonnement) return vueAbonnement;
     // Cette page utilise planning-membre.js, et non mes-acces-membre.js :
     // attendre le CSS du formulaire AVANT d'ouvrir la vue pleine page.
     await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-ajouter-retabli-v17");
