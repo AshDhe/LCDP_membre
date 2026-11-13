@@ -40,10 +40,12 @@
     return element;
   }
 
-  async function monter({ conteneur, idflux, fragment, chargerContexte, enregistrer, informer, fermer }) {
+  async function monter({ conteneur, idflux, fragment, chargerContexte, enregistrer, informer, confirmerQuitter, fermer }) {
     if (!conteneur || !fragment || !idflux || typeof chargerContexte !== "function" ||
         typeof enregistrer !== "function" || typeof informer !== "function" ||
-        typeof fermer !== "function") throw new Error("Contrôleur DUO/FAMILLE incomplet.");
+        typeof confirmerQuitter !== "function" || typeof fermer !== "function") {
+      throw new Error("Contrôleur DUO/FAMILLE incomplet.");
+    }
 
     // Le conteneur fonctionne avec un carnet vide quand la nouvelle route est absente.
     const contexte = analyserContexte(await chargerContexte(idflux));
@@ -64,6 +66,7 @@
     const nouveaux = { duo: [], famille: [] };
     let prochain = 0;
     let enregistrementEnCours = false;
+    let fermetureEnCours = false;
     let ferme = false;
 
     const info = async texte => {
@@ -163,12 +166,23 @@
       if (!contexte.contacts[categorie].length) ajouterChamp(categorie, true);
     }
 
-    const quitter = () => {
-      if (enregistrementEnCours || ferme) return;
-      ferme = true;
-      fermer();
+    const quitter = async () => {
+      if (enregistrementEnCours || fermetureEnCours || ferme) return;
+      fermetureEnCours = true;
+      try {
+        // CHOIX obligatoire : ne jamais fermer sans validation explicite.
+        const confirmation = await confirmerQuitter();
+        if (confirmation !== true || ferme) return;
+        ferme = true;
+        fermer();
+      } catch (erreur) {
+        console.error("Confirmation de fermeture des invités indisponible :", erreur);
+        messageLocal("Impossible de confirmer la fermeture. Vos modifications sont conservées.");
+      } finally {
+        fermetureEnCours = false;
+      }
     };
-    fermerCroix.addEventListener("click",quitter);
+    fermerCroix.addEventListener("click", quitter);
     groupe.addEventListener("click",() =>
       info("La fonction Groupe n'est pas disponible actuellement.")
     );
@@ -176,7 +190,7 @@
 
     formulaire.addEventListener("submit",async event => {
       event.preventDefault();
-      if (enregistrementEnCours || ferme) return;
+      if (enregistrementEnCours || fermetureEnCours || ferme) return;
       const emailsTous = new Set();
       for (const categorie of CATEGORIES) {
         for (const contact of contexte.contacts[categorie]) emailsTous.add(normaliserEmail(contact.email));
