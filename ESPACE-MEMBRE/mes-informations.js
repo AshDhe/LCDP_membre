@@ -2014,21 +2014,38 @@ function afficherResumePointsPassion(compte) {
 
   async function afficherResultatSecurite(message) {
     const conteneur=document.createElement("div");
+    const avant=document.activeElement;
     document.body.appendChild(conteneur);
     try {
-      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html"));
-      conteneur.querySelector("[data-lcdp-dialogue-title]").textContent="Sécurité du compte";
-      conteneur.querySelector("[data-lcdp-dialogue-text]").textContent=message;
-      const actions=conteneur.querySelector("[data-lcdp-dialogue-actions]");
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html"));
+      const dialogue=conteneur.querySelector('[data-lcdp-dialogue-reference="information"]');
+      const titre=conteneur.querySelector("[data-lcdp-dialogue-titre]");
+      const texte=conteneur.querySelector("[data-lcdp-dialogue-message]");
+      const bouton=conteneur.querySelector('[data-lcdp-dialogue-action="compris"]');
+      if(!dialogue||!titre||!texte||!bouton)throw new Error("Dialogue INFORMATION sécurité incomplet.");
+      titre.textContent="Sécurité du compte";
+      texte.textContent=message;
+      bouton.textContent="OK";
       await new Promise(resolve=>{
-        const fermer=()=>{conteneur.remove();resolve();};
-        for (const texte of ["OK","Annuler"]) {
-          const bouton=document.createElement("button");bouton.type="button";bouton.className="lcdp-button "+(texte==="OK"?"lcdp-button-primary":"lcdp-button-secondary");
-          bouton.textContent=texte;bouton.addEventListener("click",fermer,{once:true});actions.appendChild(bouton);
+        let termine=false;
+        function fermer(){
+          if(termine)return;
+          termine=true;
+          document.removeEventListener("keydown",clavier);
+          conteneur.remove();
+          if(avant?.isConnected&&typeof avant.focus==="function")avant.focus();
+          resolve();
         }
-        conteneur.querySelector("[data-lcdp-dialogue-close]").addEventListener("click",fermer,{once:true});
+        function clavier(event){if(event.key==="Escape"){event.preventDefault();fermer();}}
+        bouton.addEventListener("click",fermer,{once:true});
+        dialogue.addEventListener("click",event=>{if(event.target===dialogue)fermer();});
+        document.addEventListener("keydown",clavier);
+        bouton.focus();
       });
-    } catch { conteneur.remove();await afficherAlerteSuperposee(message); }
+    } catch(erreur) {
+      conteneur.remove();
+      await afficherAlerteSuperposee(message);
+    }
   }
 
   let verificationCodaEnCours = false;
