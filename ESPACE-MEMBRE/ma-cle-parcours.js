@@ -13,6 +13,7 @@
 
   const NOM_ETAPES = ["Session", "Accès au parc", "Check-in", "Présence", "Check-out", "Terminé"];
   const PARC_DEMO = "TEST 1 - 41";
+  const PARC_DEMO_ID = "dceeefb1-1fe4-54bb-a3f2-5bc6607e2531";
   const RUBRIQUES_DEMO = [
     {
       titre: "Entrée",
@@ -66,7 +67,10 @@
   const nomParc = element("p", "lcdp-ma-cle-pilote__nom-parc");
   const ouvrirDetail = bouton("Accès détail", "lcdp-ma-cle-pilote__detail");
   const suiteAcces = bouton("Continuer", "lcdp-ma-cle-pilote__continuer");
-  ecranAcces.append(titreAcces, nomParc, ouvrirDetail, suiteAcces);
+  const messageErreurControle = element("p", "lcdp-ma-cle-pilote__erreur");
+  messageErreurControle.setAttribute("role", "alert");
+  messageErreurControle.hidden = true;
+  ecranAcces.append(titreAcces, nomParc, ouvrirDetail, messageErreurControle, suiteAcces);
 
   const ecranDetail = element("section", "lcdp-ma-cle-detail");
   ecranDetail.setAttribute("aria-label", "Accès détail du parc");
@@ -92,6 +96,8 @@
   let rafraichirControle = null;
   let controleAvantIntro = false;
   let workflowAvantIntro = false;
+  let repriseEnCours = false;
+  let controleAccesDisponible = false;
 
   function mettreTimeline(numero) {
     timeline.hidden = false;
@@ -120,7 +126,12 @@
     etape = numero;
     detailVisible = false;
     if (numero === 2) {
-      nomParc.textContent = String(dernierEtat?.reservation?.parkName || "Parc");
+      const droit = dernierEtat?.accessState?.droit || dernierEtat?.droit;
+      nomParc.textContent = String(dernierEtat?.reservation?.parkName ||
+        (droit?.parkId === PARC_DEMO_ID ? PARC_DEMO : "Parc"));
+      messageErreurControle.hidden = true;
+      messageErreurControle.textContent = "";
+      suiteAcces.disabled = false;
       dessinerDetail();
     }
     rendre();
@@ -161,21 +172,37 @@
     });
   }
 
-  function terminerIntroduction() {
-    if (!actif) return;
-    actif = false;
-    detailVisible = false;
-    timeline.hidden = true;
-    ecranSession.hidden = true;
-    ecranAcces.hidden = true;
-    ecranDetail.hidden = true;
-    // Reprise immédiate des écrans de contrôle préexistants.
-    controle.hidden = controleAvantIntro;
-    workflow.hidden = workflowAvantIntro;
-    if (typeof rafraichirControle === "function") {
-      Promise.resolve().then(rafraichirControle).catch(error => {
-        console.error("Impossible de rafraîchir le contrôle MA CLÉ :", error);
-      });
+  async function terminerIntroduction() {
+    if (!actif || repriseEnCours || etape !== 2) return;
+    repriseEnCours = true;
+    suiteAcces.disabled = true;
+    messageErreurControle.hidden = true;
+    try {
+      if (typeof rafraichirControle !== "function") {
+        throw new Error("Le contrôle MA CLÉ n'est pas disponible.");
+      }
+      // L'écran 2 reste visible pendant la vérification. En cas d'erreur,
+      // aucun écran ancien ni spinner permanent ne vient remplacer le wrapper.
+      await rafraichirControle();
+      if (!controleAccesDisponible) {
+        throw new Error("Le contrôle MA CLÉ n'a pas pu être vérifié.");
+      }
+      actif = false;
+      detailVisible = false;
+      timeline.hidden = true;
+      ecranSession.hidden = true;
+      ecranAcces.hidden = true;
+      ecranDetail.hidden = true;
+      controle.hidden = controleAvantIntro;
+      workflow.hidden = workflowAvantIntro;
+    } catch (error) {
+      messageErreurControle.textContent = error?.message || "Le contrôle d'accès est momentanément indisponible.";
+      messageErreurControle.hidden = false;
+      console.error("MA CLÉ : reprise du contrôle impossible :", error);
+      rendre();
+    } finally {
+      repriseEnCours = false;
+      suiteAcces.disabled = false;
     }
   }
 
@@ -197,6 +224,7 @@
 
   function demarrer(etat, options) {
     dernierEtat = etat || null;
+    controleAccesDisponible = Boolean(options?.controlePret);
     rafraichirControle = options?.rafraichirControle || null;
     // Ne jamais réinitialiser une présence déjà commencée ou un checkout.
     if (etat?.screen === "active" || etat?.screen === "presence" ||
@@ -213,8 +241,22 @@
   }
 
   function synchroniser(etat) {
-    dernierEtat = etat || dernierEtat;
-    if (actif) rendre();
+    if (etat?.screen) controleAccesDisponible = true;
+    // Conserver le droit vérifié par /ouvrir si /control-access renvoie un
+    // écran sans identifiants de parc.
+    dernierEtat = etat ? {
+      ...dernierEtat, ...etat,
+      accessState: dernierEtat?.accessState
+    } : dernierEtat;
+    if (actif) {
+      if (etape === 2) {
+        const droit = dernierEtat?.accessState?.droit || dernierEtat?.droit;
+        nomParc.textContent = String(dernierEtat?.reservation?.parkName ||
+          (droit?.parkId === PARC_DEMO_ID ? PARC_DEMO : "Parc"));
+        dessinerDetail();
+      }
+      rendre();
+    }
   }
 
   global.LCDP_ParcoursMaCle = {demarrer, synchroniser};
