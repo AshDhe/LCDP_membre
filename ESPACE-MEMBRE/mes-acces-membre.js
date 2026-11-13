@@ -615,7 +615,23 @@
       const urlObjet = chemin => typeof window.LCDP_urlObjet === "function"
         ? window.LCDP_urlObjet(chemin)
         : String(config.objetBaseUrl || "https://lacleduparc.fr/OBJET").replace(/\/+$/, "") + chemin;
-      const reponse = await fetch(urlObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-wrapper-v6"), {cache:"no-store"});
+      // Les styles de la vue Inviter doivent être prêts AVANT son montage,
+      // y compris si cette page n'a pas préchargé les CSS de MES ACCÈS.
+      const cssInviter = urlObjet("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-inviter-cadre-v10");
+      if (![...document.querySelectorAll('link[rel="stylesheet"]')].some(lien => lien.href === cssInviter)) {
+        await new Promise((resolve, reject) => {
+          const lien = document.createElement("link");
+          lien.rel = "stylesheet";
+          lien.href = cssInviter;
+          lien.onload = resolve;
+          lien.onerror = () => {
+            lien.remove();
+            reject(new Error("Styles du formulaire Inviter indisponibles."));
+          };
+          document.head.appendChild(lien);
+        });
+      }
+      const reponse = await fetch(urlObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-cadre-v10"), {cache:"no-store"});
       if (!reponse.ok) throw new Error("Formulaire des invitations indisponible.");
       const template = document.createElement("template");
       template.innerHTML = (await reponse.text()).trim();
