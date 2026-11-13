@@ -154,7 +154,15 @@
       action: {id:"modifier-wifi-bracelet",texte:"Modifier le Wi-Fi du bracelet présence",mode:"picto",pictoRouge:true}
     },
     {
-      section: "Statut membre",
+      section: "Sécurité du compte",
+      id: "champ-telephone-membre",
+      name: "telephoneAffichage",
+      label: "Numéro de téléphone",
+      type: "tel",
+      key: "telephoneAffichage"
+    },
+    {
+      section: "Club",
       id: "champ-membre-depuis",
       name: "membreDepuisAffichage",
       label: "Inscription",
@@ -162,7 +170,7 @@
       key: "membreDepuisAffichage"
     },
     {
-      section: "Statut membre",
+      section: "Club",
       id: "champ-statut-membre",
       name: "statutAffichage",
       label: "Membre",
@@ -170,7 +178,7 @@
       key: "statutAffichage"
     },
     {
-      section: "Statut membre",
+      section: "Club",
       id: "champ-da-membre",
       name: "daAffichage",
       label: "DA",
@@ -178,7 +186,7 @@
       key: "daAffichage"
     },
     {
-      section: "Statut membre",
+      section: "Club",
       id: "champ-departement-membre",
       name: "departementAffichage",
       label: "Département",
@@ -191,7 +199,7 @@
       }
     },
     {
-      section: "Statut membre",
+      section: "Club",
       id: "champ-points-club-membre",
       name: "pointsClubAffichage",
       label: "Points club",
@@ -230,6 +238,19 @@
         texteAvant: "Lire le ",
         texteLien: "règlement de l'application",
         href: "/ESPACE-PUBLIC/reglement-app.html"
+      }
+    },
+    {
+      section: "Règlement",
+      id: "champ-cgv-membre",
+      name: "cgvAffichage",
+      label: "Conditions générales de vente",
+      type: "text",
+      key: "cgvAffichage",
+      lien: {
+        texteLien: "Lire les conditions générales de vente",
+        href: "/ESPACE-MEMBRE/cgv-lcdp.html",
+        espace: "membre"
       }
     },
     {
@@ -912,7 +933,18 @@
         </button>
       </div>
       <div id="lcdp-compte-relations-invitant" class="lcdp-compte-relations__liste"
-        aria-live="polite" hidden>Chargement des invitants…</div>`;
+        aria-live="polite" hidden>Chargement des invitants…</div>
+      <div class="lcdp-compte-relations__ligne">
+        <span class="lcdp-compte-relations__libelle">Mes coachs</span>
+        <button type="button" class="lcdp-compte-relations__nombre"
+          data-lcdp-relations-ouvrir="coach" aria-expanded="false"
+          aria-controls="lcdp-compte-relations-coach"
+          aria-label="Afficher la liste de mes coachs">
+          <span data-lcdp-relations-nombre="coach">–</span>
+        </button>
+      </div>
+      <div id="lcdp-compte-relations-coach" class="lcdp-compte-relations__liste"
+        aria-live="polite" hidden>Chargement des coachs…</div>`;
     statut.appendChild(bloc);
 
     bloc.querySelectorAll("[data-lcdp-relations-ouvrir]").forEach(bouton => {
@@ -1230,6 +1262,66 @@
       "Aucun invitant dans votre historique.");
   }
 
+  // Une inscription doit être reliée au membre connecté ; le catalogue des
+  // coachs n'est jamais utilisé pour calculer le nombre d'inscriptions.
+  function coachesUniquesCompte(coachs) {
+    const ids = new Set(), emails = new Set(), uniques = [];
+    for (const coach of coachs) {
+      if (!coach || typeof coach !== "object") continue;
+      const id = String(coach.idcoach || coach.id || "").trim().toLowerCase();
+      const email = String(coach.emailcoach || coach.email || "").trim().toLowerCase();
+      if (!id && !email) throw new Error("Coach sans identifiant ni e-mail.");
+      if ((id && ids.has(id)) || (email && emails.has(email))) continue;
+      if (id) ids.add(id);
+      if (email) emails.add(email);
+      uniques.push({
+        prenom: String(coach.prenomcoach || coach.prenom || "").trim(),
+        nom: String(coach.nomcoach || coach.nom || "").trim(),
+        email: String(coach.emailcoach || coach.email || "").trim()
+      });
+    }
+    return uniques.sort((a,b) =>
+      [a.nom,a.prenom,a.email].join(" ").localeCompare([b.nom,b.prenom,b.email].join(" "), "fr")
+    );
+  }
+
+  async function chargerCoachsCompte(bloc, compte) {
+    const liste = bloc?.querySelector("#lcdp-compte-relations-coach");
+    const compteur = bloc?.querySelector('[data-lcdp-relations-nombre="coach"]');
+    if (!liste || !compteur) return;
+    compteur.textContent = "–";
+    try {
+      // Le Worker peut inclure les coachs dans /compte, sinon exposer
+      // GET /mes-coachs (retour : {ok:true, coachs:[...]}).
+      let coachs = compte?.coachs || compte?.mesCoachs;
+      if (!Array.isArray(coachs)) {
+        if (!ENDPOINT_MON_COMPTE_MEMBRE) throw new Error("Service du compte non configuré.");
+        const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/mes-coachs", {
+          credentials: "include", cache: "no-store",
+          headers: { "Accept": "application/json" }
+        });
+        if (reponse.status === 401) {
+          redirigerConnexionMembre("inactive");
+          return;
+        }
+        const donnees = await reponse.json().catch(() => null);
+        if (!reponse.ok || donnees?.ok !== true || !Array.isArray(donnees.coachs)) {
+          throw new Error(donnees?.message || "Service des inscriptions aux coachs indisponible.");
+        }
+        coachs = donnees.coachs;
+      }
+      const uniques = coachesUniquesCompte(coachs);
+      compteur.textContent = String(uniques.length);
+      afficherListeRelationsCompte(liste, uniques, "Aucun coach dans vos inscriptions.");
+    } catch (erreur) {
+      console.error("Inscriptions aux coachs indisponibles :", erreur);
+      if (!redirectionCompteEnCours) {
+        liste.textContent = "Impossible de charger vos coachs.";
+        compteur.textContent = "–";
+      }
+    }
+  }
+
   async function chargerRelationsInvitationsCompte(bloc) {
     const invites = bloc.querySelector("#lcdp-compte-relations-invite");
     const invitants = bloc.querySelector("#lcdp-compte-relations-invitant");
@@ -1485,7 +1577,9 @@
 
     const lien = document.createElement("a");
     lien.className = "lcdp-link-secondary";
-    lien.href = construireUrlPublic(lienConfig.href || "#");
+    lien.href = lienConfig.espace === "membre"
+      ? construireUrlMembre(lienConfig.href || "#")
+      : construireUrlPublic(lienConfig.href || "#");
     lien.textContent = lienConfig.texteLien || "";
     lien.target = "_blank";
     lien.rel = "noopener noreferrer";
@@ -1678,6 +1772,7 @@
 
     afficherCompteMembre(compte);
     afficherEtatMembreCompte(compte);
+    void chargerCoachsCompte(document.getElementById("lcdp-compte-relations"), compte);
     // Le compte est prêt : les appels optionnels ne retardent plus l'affichage.
     terminerAttenteCompte();
     void Promise.allSettled([
@@ -2271,6 +2366,8 @@ function afficherStatutDaCompte(compte) {
       codeAAffichage: "••••",
       codeRAffichage: "•••• - •••• - •••• - ••••",
       braceletPresenceAffichage: "–",
+      telephoneAffichage: String(compteMembreActuel.tel || compteMembreActuel.telephone || "").trim(),
+      cgvAffichage: "–",
       geolocalisationAffichage: compteMembreActuel.optinGeolocalisation
         ? "Opt-in le " + formaterDate(compteMembreActuel.optinGeolocalisation)
         : "Non enregistré",
