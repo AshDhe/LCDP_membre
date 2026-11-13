@@ -38,7 +38,7 @@
     .lcdp-stripe__reprendre:disabled{opacity:.55;cursor:wait}
     .lcdp-stripe__reprendre[hidden]{display:none!important}
   </style>
-  <script defer src="./paiement-stripe-membre.js?v=20261113-emailcompte-v4"></script>
+  <script defer src="./paiement-stripe-membre.js?v=20261113-numero-email-v5"></script>
 </head>
 <body class="lcdp-page-reserver lcdp-stripe-page">
   <main class="lcdp-stripe" aria-labelledby="paiement-titre">
@@ -55,6 +55,7 @@
       <h1 id="paiement-titre">Règlement de votre commande</h1>
       <p class="lcdp-stripe__commande" id="description-commande">Chargement du montant sécurisé…</p>
       <div class="lcdp-stripe__resume" aria-label="Récapitulatif du règlement">
+        <div><span>Numéro de commande</span><strong id="numero-commande">—</strong></div>
         <div><span>Montant à payer</span><strong id="montant-commande">—</strong></div>
       </div>
       <button type="button" id="voir-detail-commande" class="lcdp-stripe__detail-lien" aria-expanded="false" aria-controls="detail-commande">Voir le détail</button>
