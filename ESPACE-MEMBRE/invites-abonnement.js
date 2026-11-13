@@ -24,10 +24,6 @@
   const erreurDonnees = () => new Error("Privilèges DUO/FAMILLE indisponibles : envoi non autorisé.");
 
   function analyserContexte(contexte) {
-    const p = contexte?.privileges;
-    if (!p || !["maxduo","duoplus","freqduoplus","famille"].every(cle => entier(p[cle]))) {
-      throw erreurDonnees();
-    }
     if (!contexte.contacts || !contexte.selection || !CATEGORIES.every(categorie =>
       Array.isArray(contexte.contacts[categorie]) && Array.isArray(contexte.selection[categorie])
     )) throw erreurDonnees();
@@ -45,8 +41,6 @@
       if (contexte.selection[categorie].some(id => !ids.has(String(id)))) throw erreurDonnees();
     }
     return {
-      privileges: p,
-      duoplusUtilisesMois: entier(contexte.duoplusUtilisesMois) ? contexte.duoplusUtilisesMois : null,
       contacts: contexte.contacts,
       selection: contexte.selection
     };
@@ -92,59 +86,20 @@
       message.textContent = texte;
       message.hidden = !texte;
     };
-    const quotaCarnet = categorie =>
-      categorie === "duo" ? contexte.privileges.maxduo : contexte.privileges.famille;
     const emailsNouveaux = categorie =>
       nouveaux[categorie].map(c => normaliserEmail(c.input.value)).filter(Boolean);
-    const nbSelectionnes = categorie =>
-      selection[categorie].size + nouveaux[categorie].filter(c => normaliserEmail(c.input.value)).length;
-    const totalCandidats = categorie =>
-      contexte.contacts[categorie].length +
-      nouveaux[categorie].filter(contact => normaliserEmail(contact.input.value)).length;
-    const lignesOuvertes = categorie =>
-      contexte.contacts[categorie].length + nouveaux[categorie].length;
 
-    function verifierSelectionDuo(nombre) {
-      if (nombre <= 1) return "";
-      if (contexte.privileges.duoplus < 2 || nombre > contexte.privileges.duoplus) {
-        return "Le quota DUO+ simultané de votre abonnement est dépassé.";
-      }
-      if (contexte.duoplusUtilisesMois === null) {
-        return "La fréquence DUO+ du mois n'a pas pu être vérifiée.";
-      }
-      if (contexte.duoplusUtilisesMois >= contexte.privileges.freqduoplus) {
-        return "La fréquence DUO+ de votre abonnement est atteinte pour ce mois.";
-      }
-      return "";
-    }
-
-    function verifierSelection() {
-      if (nbSelectionnes("famille") > contexte.privileges.famille) {
-        return "Le nombre d'invités FAMILLE autorisés est dépassé.";
-      }
-      if (nbSelectionnes("duo") > contexte.privileges.maxduo) {
-        return "Le MAXDUO de votre abonnement est atteint.";
-      }
-      return verifierSelectionDuo(nbSelectionnes("duo"));
-    }
-
+    // Première étape : ajouter et sélectionner librement, quotas appliqués ultérieurement.
+    function verifierSelection() { return ""; }
     function actualiserQuotas() {
       for (const categorie of CATEGORIES) {
         const bouton = vue.querySelector('[data-lcdp-invitation-ajouter="' + categorie + '"]');
         const note = vue.querySelector('[data-lcdp-invitation-quota="' + categorie + '"]');
-        const quota = quotaCarnet(categorie);
-        const atteint = totalCandidats(categorie) >= quota;
-        bouton.setAttribute("aria-disabled", atteint ? "true" : "false");
-        // Réutiliser le bouton commun : grisage visuel sans attribut disabled,
-        // pour garder le clic qui ouvre la boîte INFORMATION du quota.
-        bouton.style.opacity = atteint ? "0.55" : "";
-        bouton.style.cursor = atteint ? "help" : "";
-        bouton.title = atteint
-          ? (categorie === "duo" ? "Le MAXDUO de votre abonnement est atteint." : "Le MAXFAMILL de votre abonnement est atteint.")
-          : "Ajouter un nouvel invité " + categorie.toUpperCase();
-        note.textContent = categorie === "duo"
-          ? "MAXDUO : " + totalCandidats(categorie) + " / " + quota + " invités différents."
-          : "MAXFAMILL : " + totalCandidats(categorie) + " / " + quota + " invités.";
+        bouton.removeAttribute("aria-disabled");
+        bouton.style.opacity = "";
+        bouton.style.cursor = "";
+        bouton.title = "Ajouter un invité " + categorie.toUpperCase();
+        note.textContent = "";
       }
     }
 
@@ -213,23 +168,9 @@
       for (const contact of contexte.contacts[categorie]) {
         liste.appendChild(creerLigneExistante(categorie,contact));
       }
-      ajouter.addEventListener("click",async () => {
-        if (totalCandidats(categorie) >= quotaCarnet(categorie)) {
-          await info(categorie === "duo"
-            ? "Le MAXDUO de votre abonnement est atteint."
-            : "Le MAXFAMILL de votre abonnement est atteint.");
-          return;
-        }
-        if (lignesOuvertes(categorie) >= quotaCarnet(categorie)) {
-          await info("Saisissez d'abord l'adresse e-mail dans le champ ouvert.");
-          return;
-        }
-        ajouterChamp(categorie);
-      });
-      // Un premier champ nu, sans croix, si le carnet de la catégorie est vide.
-      if (!contexte.contacts[categorie].length && quotaCarnet(categorie) > 0) {
-        ajouterChamp(categorie, true);
-      }
+      ajouter.addEventListener("click", () => ajouterChamp(categorie));
+      // Toujours permettre la saisie du premier invité, quelle que soit la formule.
+      if (!contexte.contacts[categorie].length) ajouterChamp(categorie, true);
     }
 
     const quitter = () => {
