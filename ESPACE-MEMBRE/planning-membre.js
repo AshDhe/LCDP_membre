@@ -3048,13 +3048,12 @@
         afficherInformationInvitation("Cette fonctionnalité n’est pas disponible actuellement.")
       );
       annuler.addEventListener("click", () => fermer(null));
-      formulaire.addEventListener("submit", event => {
-        event.preventDefault();
-      });
+
       document.addEventListener("keydown", gererEchap);
       afficherLignes();
 
-      inviter.addEventListener("click", async () => {
+      formulaire.addEventListener("submit", async event => {
+        event.preventDefault();
         if (enregistrementEnCours) return;
         const actifs = restants();
         const valeur = !actifs.length ? nettoyerEmail(champ.value) : "";
