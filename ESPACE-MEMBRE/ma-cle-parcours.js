@@ -176,7 +176,11 @@
   function dessinerDetail() {
     contenuDetail.replaceChildren();
     if (!guideAcces) return;
-    const rubriques = Array.isArray(guideAcces.rubriques) ? guideAcces.rubriques : [];
+    // Étape 2 validée : Entrée puis Check-in uniquement.
+    // Les autres rubriques Park Admin serviront aux étapes suivantes.
+    const rubriques = Array.isArray(guideAcces.rubriques)
+      ? guideAcces.rubriques.filter(r => r?.cle === "entree" || r?.cle === "checkin")
+      : [];
     if (!rubriques.length) {
       contenuDetail.appendChild(element("p", "lcdp-ma-cle-detail__vide",
         "Aucune consigne d’accès n’est actuellement renseignée pour ce parc."));
