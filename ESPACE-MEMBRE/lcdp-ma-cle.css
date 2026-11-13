@@ -337,15 +337,29 @@
 
 /* Pilote étapes 1 et 2. Le contrôle existant reste chargé derrière l'écran. */
 .lcdp-page-cle-du-parc [hidden] { display: none !important; }
+/* Navigation MA CLÉ : sous-header du wrapper, au-dessus du corps défilant. */
+body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper > .lcdp-ma-cle-navigation-slot {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
 .lcdp-page-cle-du-parc .lcdp-ma-cle-timeline {
-  width: min(100%, 660px);
-  margin: 0 auto var(--lcdp-space-3);
-  padding: 12px 4px;
-  position: sticky;
-  top: 0;
-  z-index: 80;
-  border-bottom: 1px solid var(--lcdp-color-border);
-  background: var(--lcdp-color-surface);
+  box-sizing: border-box;
+  display: block;
+  position: static;
+  top: auto;
+  z-index: auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 8px 7px;
+  border: 0;
+  background: #fff;
 }
 .lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__liste {
   display: grid;
@@ -361,28 +375,28 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
   text-align: center;
 }
 .lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__etape:not(:last-child)::after {
   content: "";
   position: absolute;
-  top: 16px;
-  left: calc(50% + 20px);
-  width: calc(100% - 40px);
+  top: 13px;
+  left: calc(50% + 16px);
+  width: calc(100% - 32px);
   border-top: 2px solid var(--lcdp-color-border);
 }
 .lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__etape[data-etat="termine"]::after {
   border-color: var(--lcdp-color-logo-green);
 }
 .lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__numero {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border: 2px solid var(--lcdp-color-border);
   border-radius: 50%;
   background: var(--lcdp-color-surface);
   color: var(--lcdp-color-text-muted);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   display: grid;
   place-items: center;
@@ -398,8 +412,8 @@
   border-color: var(--lcdp-color-primary);
 }
 .lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__libelle {
-  font-size: 10px;
-  line-height: 1.25;
+  font-size: 9px;
+  line-height: 1.2;
   font-weight: 500;
   overflow-wrap: anywhere;
 }
