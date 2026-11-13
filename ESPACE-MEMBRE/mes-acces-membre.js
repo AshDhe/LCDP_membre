@@ -720,6 +720,7 @@
           item.appendChild(bouton);
           liste.appendChild(item);
         });
+        liste.classList.toggle("lcdp-box-card-listinvites-oui-non__list", actifs.length > 1);
         liste.hidden = actifs.length <= 1;
       }
 
