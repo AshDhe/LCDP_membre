@@ -34,6 +34,7 @@
 
   let pageInitialisee = false;
   let actionAccueilEnCours = false;
+  let delaiAttenteNavigation = null;
   let etatMembre = {
     prenommembre: "",
     abonne: false,
@@ -61,8 +62,9 @@
   }
 
   // En cas de retour par l'historique, ne pas conserver un accueil en attente.
-  window.addEventListener("pageshow", (event) => {
-    if (event.persisted) masquerAttenteNavigationAccueil();
+  window.addEventListener("pageshow", () => {
+    // Retour navigateur, même sans restauration bfcache : jamais de spinner orphelin.
+    masquerAttenteNavigationAccueil();
   });
 
   async function initialiserPage() {
@@ -170,14 +172,25 @@
       throw new Error("Le service d’accueil membre n’est pas configuré.");
     }
 
-    const reponse = await fetch(ENDPOINT_INDEX_MEMBRE + "/index", {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-      headers: {
-        "Accept": "application/json"
+    const controleur = new AbortController();
+    const delai = window.setTimeout(() => controleur.abort(), 12000);
+    let reponse;
+    try {
+      reponse = await fetch(ENDPOINT_INDEX_MEMBRE + "/index", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        signal: controleur.signal,
+        headers: { "Accept": "application/json" }
+      });
+    } catch (erreur) {
+      if (erreur?.name === "AbortError") {
+        throw new Error("Le chargement du compte a expiré. Réessayez.");
       }
-    });
+      throw erreur;
+    } finally {
+      window.clearTimeout(delai);
+    }
 
     const resultat = await reponse.json().catch(() => null);
 
@@ -556,6 +569,12 @@
       if (attente.parentElement !== document.body) document.body.appendChild(attente);
       attente.hidden = false;
     }
+    // Un service sans réponse ne doit jamais immobiliser l'accueil.
+    if (delaiAttenteNavigation !== null) window.clearTimeout(delaiAttenteNavigation);
+    delaiAttenteNavigation = window.setTimeout(() => {
+      delaiAttenteNavigation = null;
+      masquerAttenteNavigationAccueil();
+    }, 15000);
     if (!slot) return;
     slot.setAttribute("aria-busy", "true");
     slot.querySelectorAll(":scope > button[data-lcdp-member-action]").forEach((bouton) => {
@@ -564,6 +583,10 @@
   }
 
   function masquerAttenteNavigationAccueil() {
+    if (delaiAttenteNavigation !== null) {
+      window.clearTimeout(delaiAttenteNavigation);
+      delaiAttenteNavigation = null;
+    }
     actionAccueilEnCours = false;
     const attente = document.getElementById("lcdp-navigation-attente");
     const slot = document.getElementById("lcdp-menu-central-slot");
