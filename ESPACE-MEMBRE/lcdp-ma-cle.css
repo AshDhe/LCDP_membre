@@ -446,57 +446,111 @@
   font-size: 17px;
   font-weight: 600;
 }
-.lcdp-page-cle-du-parc .lcdp-parcours-carrousel {
-  width: 100%;
-  flex: 1;
+
+/* Boutons de consultation dans les étapes 2 et 4. */
+.lcdp-page-cle-du-parc .lcdp-parcours-bouton-detail {
+  width: min(100%, 320px);
 }
-.lcdp-page-cle-du-parc .lcdp-parcours-slide {
-  min-height: 230px;
-  border: 1px solid var(--lcdp-color-border);
-  border-radius: 12px;
-  padding: 22px 18px;
+.lcdp-page-cle-du-parc .lcdp-parcours-detail-action {
+  display: flex;
+  justify-content: center;
+  width: min(100%,620px);
+  margin: var(--lcdp-space-3) auto 0;
+  padding-inline: var(--lcdp-space-2);
 }
-.lcdp-page-cle-du-parc .lcdp-parcours-slide__titre {
-  margin: 0 0 18px;
-  font-size: 20px;
-  line-height: 1.25;
-  text-align: center;
+
+/* Accès détail : lecture verticale comme une fiche parc.
+   Toutes les rubriques sont dans le wrapper déjà ouvert. */
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation {
+  width: min(100%,620px);
+  margin: 0 auto;
+  padding: 0 var(--lcdp-space-2) var(--lcdp-space-5);
+  background: var(--lcdp-color-surface);
 }
-.lcdp-page-cle-du-parc .lcdp-parcours-slide__texte {
-  margin: 0 0 18px;
-  line-height: 1.55;
-  white-space: pre-wrap;
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lcdp-space-2);
+  padding-block: var(--lcdp-space-2);
+  border-bottom: 1px solid var(--lcdp-color-border);
 }
-.lcdp-page-cle-du-parc .lcdp-parcours-slide__photos {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
-  gap: 8px;
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation__titre {
+  margin: 0;
+  font-size: 1.4rem;
+  line-height: 1.3;
+  color: var(--lcdp-color-text);
 }
-.lcdp-page-cle-du-parc .lcdp-parcours-slide__image {
-  width: 100%;
-  aspect-ratio: 4/3;
-  border-radius: 7px;
-  object-fit: cover;
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation__fermer {
+  flex: 0 0 44px;
+  width: 44px;
+  max-width: 44px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--lcdp-color-border-strong);
+  border-radius: var(--lcdp-radius-small);
+  background: var(--lcdp-color-surface);
+  color: var(--lcdp-color-text);
+  font-size: 1.8rem;
+  line-height: 1;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation__fermer:hover {
   background: var(--lcdp-color-surface-soft);
+  border-color: var(--lcdp-color-primary);
 }
-.lcdp-page-cle-du-parc .lcdp-parcours-indisponible {
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation__contenu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lcdp-space-4);
+  padding-top: var(--lcdp-space-3);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation__rubrique {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lcdp-space-2);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation__sous-titre {
+  margin: 0;
+  color: var(--lcdp-color-primary);
+  font-size: 1.15rem;
+  line-height: 1.4;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation__texte {
+  padding: var(--lcdp-space-3);
+  border: 1px solid var(--lcdp-color-border);
+  border-radius: var(--lcdp-radius-medium);
+  background: var(--lcdp-color-surface-soft);
+  color: var(--lcdp-color-text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation__images {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lcdp-space-2);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation__image-bloc {
+  margin: 0;
+  padding: var(--lcdp-space-1);
+  border: 1px solid var(--lcdp-color-border);
+  border-radius: var(--lcdp-radius-medium);
+  background: var(--lcdp-color-surface);
+  overflow: hidden;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation__image {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--lcdp-radius-small);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-consultation__vide {
   text-align: center;
-  padding: 36px 14px;
+  padding: var(--lcdp-space-4) var(--lcdp-space-2);
   color: var(--lcdp-color-text-muted);
 }
-.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__navigation {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__bouton {
-  min-width: 105px;
-  min-height: 44px;
-}
-.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__compteur { font-variant-numeric: tabular-nums; }
-.lcdp-page-cle-du-parc .lcdp-parcours-timeline + .lcdp-acces { margin-top: 0; }
+
 /* Le bandeau doit rester visible lors de la présence expirée.
    La couleur rouge continue de signaler la fin de la durée autorisée. */
 .lcdp-page-cle-du-parc .lcdp-page-container[data-lcdp-parcours-etape="4"] .lcdp-acces[data-screen="expired"] {
@@ -514,7 +568,6 @@
   }
   .lcdp-page-cle-du-parc .lcdp-parcours-timeline__libelle { font-size: 10px; }
   .lcdp-page-cle-du-parc .lcdp-parcours-ecran { padding-inline: 9px; }
-  .lcdp-page-cle-du-parc .lcdp-parcours-carrousel__bouton { min-width: 92px; }
 }
 
 /* La timeline reste visible au défilement, aussi pendant les captures vidéo.
@@ -535,39 +588,8 @@
 .lcdp-page-cle-du-parc .lcdp-acces-presence--overstay { background: var(--lcdp-color-orange); }
 .lcdp-page-cle-du-parc .lcdp-acces-video--miroir { transform: scaleX(-1); }
 
-/* Accès détail à l'étape 4 : volet consultable, indépendant de l'écran de présence. */
-.lcdp-page-cle-du-parc .lcdp-parcours-details-presence {
-  width: min(100%, 620px);
-  margin: 0 auto var(--lcdp-space-3);
-  padding: var(--lcdp-space-2);
-  border: 1px solid var(--lcdp-color-border);
-  border-radius: var(--lcdp-radius-medium);
-  background: var(--lcdp-color-surface);
-}
-.lcdp-page-cle-du-parc .lcdp-parcours-details-presence__entete {
-  display: block;
-  cursor: pointer;
-  font: 600 1rem/1.4 var(--lcdp-font-main);
-  color: var(--lcdp-color-primary);
-  padding: var(--lcdp-space-1) var(--lcdp-space-2);
-}
-.lcdp-page-cle-du-parc .lcdp-parcours-details-presence__entete:focus-visible {
-  outline: 3px solid var(--lcdp-color-focus);
-  border-radius: var(--lcdp-radius-small);
-}
-.lcdp-page-cle-du-parc .lcdp-parcours-details-presence__contenu {
-  display: flex;
-  flex-direction: column;
-  gap: var(--lcdp-space-3);
-  padding: var(--lcdp-space-2) 0 0;
-}
-.lcdp-page-cle-du-parc .lcdp-parcours-details-presence .lcdp-parcours-slide {
-  border-color: var(--lcdp-color-border);
-  background: var(--lcdp-color-surface);
-}
-.lcdp-page-cle-du-parc .lcdp-parcours-slide__photos:empty { display: none; }
-.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__bouton:disabled { opacity: .45; cursor: not-allowed; }
-/* L'écran rouge de fin de présence demeure dans le flux, sous la timeline. */
+/* L'étape 4 conserve son contrôle de présence sous la timeline. */
+
 .lcdp-page-cle-du-parc .lcdp-page-container[data-lcdp-parcours-etape="4"] .lcdp-acces[data-screen="expired"] {
   width: min(100%, 620px);
   position: relative;
