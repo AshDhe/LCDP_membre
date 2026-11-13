@@ -10,6 +10,10 @@
     "mon-compte-membre-api"
   );
 
+  const ENDPOINT_ABONNEMENTS_COMPTE = construireEndpointApi(
+    "workerAboMembreUrl", "WORKER_ABO_MEMBRE_URL", "abo-membre-api"
+  );
+
   const ENDPOINT_INVITER_MEMBRE = construireEndpointApi(
     "workerInviterMembreUrl",
     "WORKER_INVITER_MEMBRE_URL",
@@ -46,6 +50,7 @@
   const PAGE_FACTURES_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-factures-membre.html");
 
   let compteMembreActuel = null;
+  let versionChargementAbonnementsCompte = 0;
   let promesseChargementDiginumCompte = null;
 
   // Même texte et même présentation pour les champs bancaires et d'adresse
@@ -656,6 +661,7 @@
     });
 
     fields.replaceChildren(fragment);
+    ajouterBlocAbonnementCompte(fields);
     // Sécurité du compte : dernière rubrique, après l'adresse de facturation.
     // Déplacement du noeud existant : tous les champs, actions et écouteurs sont conservés.
     const securite = fields.querySelector('[data-lcdp-compte-section="securite"]');
@@ -703,6 +709,176 @@
     fields.classList.add("lcdp-mon-compte-sections");
   }
 
+
+
+  // Rubrique autonome, immédiatement après « Mon compte ».
+  function ajouterBlocAbonnementCompte(fields) {
+    if (fields.querySelector("#lcdp-compte-abonnement")) return;
+    const compte = fields.querySelector('[data-lcdp-compte-section="etat-civil"]');
+    if (!compte) return;
+    const section = document.createElement("section");
+    section.id = "lcdp-compte-abonnement";
+    section.className = "lcdp-mon-compte-section";
+    section.dataset.lcdpCompteSection = "abonnement";
+    section.setAttribute("aria-labelledby", "lcdp-mon-compte-titre-abonnement");
+    section.innerHTML =
+      '<h2 id="lcdp-mon-compte-titre-abonnement" class="lcdp-title-section">Abonnement</h2>' +
+      '<div class="lcdp-compte-relations">' +
+        '<div class="lcdp-compte-relations__ligne">' +
+          '<span id="lcdp-compte-abonnement-resume" class="lcdp-compte-relations__libelle"></span>' +
+          '<button type="button" id="lcdp-compte-abonnement-compteur" ' +
+            'class="lcdp-compte-relations__nombre" aria-expanded="false" ' +
+            'aria-controls="lcdp-compte-abonnement-liste" ' +
+            'aria-label="Afficher la liste des abonnements souscrits" disabled>' +
+            '<span id="lcdp-compte-abonnement-nombre">0</span>' +
+          '</button>' +
+        '</div>' +
+        '<div id="lcdp-compte-abonnement-liste" class="lcdp-compte-relations__liste" ' +
+          'aria-live="polite" hidden></div>' +
+      '</div>';
+    compte.insertAdjacentElement("afterend", section);
+    const bouton = section.querySelector("#lcdp-compte-abonnement-compteur");
+    const liste = section.querySelector("#lcdp-compte-abonnement-liste");
+    bouton.addEventListener("click", () => {
+      if (bouton.disabled) return;
+      liste.hidden = !liste.hidden;
+      bouton.setAttribute("aria-expanded", String(!liste.hidden));
+    });
+  }
+
+  function lireDateAbonnementCompte(valeur) {
+    const morceaux = String(valeur || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!morceaux) return null;
+    const a = Number(morceaux[1]), m = Number(morceaux[2]), j = Number(morceaux[3]);
+    const date = new Date(a, m - 1, j);
+    return date.getFullYear() === a && date.getMonth() === m - 1 && date.getDate() === j ? date : null;
+  }
+
+  function formaterDateAbonnementCompte(valeur) {
+    const date = lireDateAbonnementCompte(valeur);
+    return date ? date.toLocaleDateString("fr-FR") : "";
+  }
+
+  function libelleAbonnementCompte(abo) {
+    const brut = String(abo?.typabo || abo?.abonnement || "").trim();
+    const match = brut.toUpperCase().match(/^(1J|1M|3M|6M|1A)(?:F(?:4|7|10))?$/);
+    return match ? match[1] : brut;
+  }
+
+  function abonnementAnnuleCompte(abo) {
+    const statut = String(abo?.commande?.statutPaiement ||
+      abo?.commande?.statutabo || abo?.statutabo ||
+      abo?.statutpaiement || abo?.statutPaiement || "")
+      .trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return statut === "cancd" || statut.includes("annul");
+  }
+
+  function rangAbonnementCompte(abo, aujourdHui) {
+    if (abonnementAnnuleCompte(abo)) return 2;
+    const debut = lireDateAbonnementCompte(abo?.debut);
+    const fin = lireDateAbonnementCompte(abo?.fin);
+    if (debut && fin && debut <= aujourdHui && fin >= aujourdHui) return 0;
+    if (debut && debut > aujourdHui) return 1;
+    return 2;
+  }
+
+  function trierAbonnementsCompte(abonnements, aujourdHui) {
+    return abonnements.slice().sort((a, b) => {
+      const rangA = rangAbonnementCompte(a, aujourdHui);
+      const rangB = rangAbonnementCompte(b, aujourdHui);
+      if (rangA !== rangB) return rangA - rangB;
+      const dateA = lireDateAbonnementCompte(a?.debut)?.getTime() ?? -Infinity;
+      const dateB = lireDateAbonnementCompte(b?.debut)?.getTime() ?? -Infinity;
+      // À venir : date de début croissante ; en cours et passé : décroissante.
+      return rangA === 1 ? dateA - dateB : dateB - dateA;
+    });
+  }
+
+  function remplirHistoriqueAbonnementsCompte(conteneur, abonnements) {
+    const liste = document.createElement("ul");
+    liste.className = "lcdp-compte-relations__personnes";
+    abonnements.forEach(abo => {
+      const item = document.createElement("li");
+      const ligne = document.createElement("span");
+      ligne.className = "lcdp-compte-relations__nom";
+      const debut = formaterDateAbonnementCompte(abo.debut);
+      const fin = formaterDateAbonnementCompte(abo.fin);
+      ligne.textContent = [libelleAbonnementCompte(abo),
+        debut && fin ? "du " + debut + " au " + fin : ""].filter(Boolean).join(" ");
+      item.appendChild(ligne);
+      if (abonnementAnnuleCompte(abo)) {
+        const statut = document.createElement("span");
+        statut.className = "lcdp-compte-relations__detail";
+        statut.textContent = "Annulé";
+        item.appendChild(statut);
+      }
+      liste.appendChild(item);
+    });
+    conteneur.replaceChildren(liste);
+  }
+
+  async function actualiserBlocAbonnementCompte(compte) {
+    const section = document.getElementById("lcdp-compte-abonnement");
+    if (!section) return;
+    const version = ++versionChargementAbonnementsCompte;
+    const da = normaliserStatudaCompte(compte?.statuda || compte?.statutDa || compte?.da || "");
+    section.hidden = da === "non";
+    const resume = section.querySelector("#lcdp-compte-abonnement-resume");
+    const nombre = section.querySelector("#lcdp-compte-abonnement-nombre");
+    const bouton = section.querySelector("#lcdp-compte-abonnement-compteur");
+    const liste = section.querySelector("#lcdp-compte-abonnement-liste");
+    resume.textContent = "";
+    nombre.textContent = "0";
+    bouton.disabled = true;
+    bouton.setAttribute("aria-expanded", "false");
+    liste.hidden = true;
+    liste.replaceChildren();
+    // Absence de DA ou DA en cours : cadre visible, vierge.
+    if (da !== "oui") return;
+
+    try {
+      if (!ENDPOINT_ABONNEMENTS_COMPTE) throw new Error("Service non configuré.");
+      const reponse = await fetch(ENDPOINT_ABONNEMENTS_COMPTE + "/mes-abonnements", {
+        credentials: "include", cache: "no-store",
+        headers: { "Accept": "application/json" }
+      });
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+      const donnees = await reponse.json().catch(() => null);
+      if (!reponse.ok || !donnees || donnees.ok !== true || !Array.isArray(donnees.abonnements)) {
+        throw new Error(donnees?.message || "Service indisponible.");
+      }
+      if (version !== versionChargementAbonnementsCompte) return;
+
+      const abonnements = donnees.abonnements;
+      nombre.textContent = String(abonnements.length);
+      bouton.disabled = abonnements.length === 0;
+      if (!abonnements.length) return;
+
+      const maintenant = new Date();
+      const aujourdHui = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate());
+      const tries = trierAbonnementsCompte(abonnements, aujourdHui);
+      const principal = tries.find(abo => rangAbonnementCompte(abo, aujourdHui) === 0) ||
+        tries.find(abo => rangAbonnementCompte(abo, aujourdHui) === 1);
+      if (principal) {
+        const type = libelleAbonnementCompte(principal);
+        const debut = formaterDateAbonnementCompte(principal.debut);
+        const fin = formaterDateAbonnementCompte(principal.fin);
+        resume.textContent = rangAbonnementCompte(principal, aujourdHui) === 0 && fin
+          ? type + " jusqu'au " + fin
+          : debut && fin ? type + " du " + debut + " au " + fin : "";
+      }
+      remplirHistoriqueAbonnementsCompte(liste, tries);
+    } catch (erreur) {
+      if (version !== versionChargementAbonnementsCompte) return;
+      console.error("Historique des abonnements indisponible :", erreur);
+      resume.textContent = "Impossible de charger les abonnements.";
+      nombre.textContent = "–";
+      bouton.disabled = true;
+    }
+  }
 
   // Deux raccourcis dans Statut membre, sous le bloc Points club / badges.
   // Les listes proviennent exclusivement du Worker de compte authentifié.
@@ -1849,6 +2025,7 @@ function afficherStatutDaCompte(compte) {
     afficherStatutDaCompte(compteMembreActuel);
     afficherResumePointsPassion(compteMembreActuel);
     actualiserActionsProtegeesDa(compteMembreActuel);
+    void actualiserBlocAbonnementCompte(compteMembreActuel);
   }
 
 
