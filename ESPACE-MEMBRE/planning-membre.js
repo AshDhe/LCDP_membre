@@ -982,7 +982,7 @@
             throw new Error("Identifiant du parc incohérent avec la réservation.");
           }
           const fiche = await moteur.chargerFicheParc(identifiant);
-          const idRetour = String(fiche?.parc?.idparc || fiche?.parc?.id || "").trim();
+          const idRetour = String(fiche?.parc?.idparc || "").trim();
           if (!fiche?.parc || (idRetour && idRetour !== idparc)) {
             throw new Error("La fiche retournée ne correspond pas au parc réservé.");
           }
