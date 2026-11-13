@@ -58,6 +58,7 @@ async function afficherRelationsInvitationsMembre(request, env, corsHeaders) {
       }),
       lireToutesRelationsInvitant(env, "invitant", {
         emailinvite: "eq." + email,
+        idmembre_invite: "is.null",
         select: "idinvitant,idmembre_invitant,dateinvitation",
         order: "dateinvitation.desc"
       })
