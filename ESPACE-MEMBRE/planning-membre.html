@@ -98,7 +98,26 @@
     .lcdp-dactif-ligne input {width:21px;height:21px;accent-color:#4b6333;}
     .lcdp-dactif-valider {margin-top:15px;min-height:43px;}
     #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-dactif {border-color:#e5b843!important;background:#fff8e8!important;color:#5d4520!important;}
-    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-annuler {min-width:34px!important;width:34px!important;min-height:34px!important;padding:6px!important;}
+    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-actions {
+      display:flex!important;flex-wrap:nowrap!important;align-items:center!important;
+      width:100%!important;min-width:0!important;gap:6px!important;
+    }
+    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action {
+      flex-shrink:0!important;font-weight:600!important;gap:5px!important;
+      padding:7px 10px!important;white-space:nowrap!important;
+    }
+    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-dactif {
+      border-color:#e5b843!important;background:#fff8e8!important;color:#5d4520!important;
+    }
+    #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-annuler {
+      flex:0 0 34px!important;min-width:34px!important;width:34px!important;
+      min-height:34px!important;padding:6px!important;margin-left:auto!important;
+    }
+    @media(max-width:370px) {
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action {
+        gap:4px!important;padding:6px 7px!important;font-size:11px!important;
+      }
+    }
   </style>
 </head>
 <body class="lcdp-app-page lcdp-mes-acces-page">
@@ -129,6 +148,6 @@
     <div id="lcdp-lightbox-slot"></div>
   </div>
 
-  <script src="./planning-membre.js?interface=spinner-officiel&amp;v=20261113-dactif-v4"></script>
+  <script src="./planning-membre.js?interface=spinner-officiel&amp;v=20261113-invites-ux-v5"></script>
 </body>
 </html>
