@@ -724,7 +724,7 @@
       <div id="lcdp-compte-relations-invite" class="lcdp-compte-relations__liste"
         aria-live="polite" hidden>Chargement des invités…</div>
       <div class="lcdp-compte-relations__ligne">
-        <span class="lcdp-compte-relations__libelle">Mes invitants</span>
+        <span class="lcdp-compte-relations__libelle">Mes invitants (« parrain »)</span>
         <button type="button" class="lcdp-compte-relations__nombre"
           data-lcdp-relations-ouvrir="invitant" aria-expanded="false"
           aria-controls="lcdp-compte-relations-invitant"
