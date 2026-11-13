@@ -86,6 +86,7 @@
         bouton.style.cursor = "";
         bouton.title = "Ajouter un invité " + categorie.toUpperCase();
         note.textContent = "";
+        note.hidden = true;
       }
     }
 
@@ -154,6 +155,8 @@
       for (const contact of contexte.contacts[categorie]) {
         liste.appendChild(creerLigneExistante(categorie,contact));
       }
+      // Une liste vide ne doit pas réserver d'espace au-dessus du champ e-mail.
+      liste.style.display = contexte.contacts[categorie].length ? "" : "none";
       ajouter.addEventListener("click", () => ajouterChamp(categorie));
       // Toujours permettre la saisie du premier invité, quelle que soit la formule.
       if (!contexte.contacts[categorie].length) ajouterChamp(categorie, true);
