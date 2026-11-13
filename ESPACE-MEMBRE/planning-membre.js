@@ -2988,12 +2988,12 @@
     const idReservation = String(idflux || "").trim();
     // Cette page utilise planning-membre.js, et non mes-acces-membre.js :
     // attendre le CSS du formulaire AVANT d'ouvrir la vue pleine page.
-    await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-inviter-cadre-v10");
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-inviter-formulaire-v11");
     const surface = ouvrirSurfaceInvitationPleinePage();
     if (!surface) return null;
     const conteneur = surface.conteneur;
     try {
-      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-cadre-v10"));
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-formulaire-v11"));
     } catch (erreur) {
       surface.fermer();
       throw erreur;
@@ -3052,7 +3052,7 @@
       function gererEchap(event) {
         if (event.key !== "Escape" || resolu || document.querySelector('[data-lcdp-dialogue-reference]')) return;
         event.preventDefault();
-        afficherMessage("Utilisez « Annuler » pour fermer ce formulaire.");
+        afficherMessage("Utilisez la croix en haut à droite pour fermer ce formulaire.");
       }
       async function demanderRetrait(personne) {
         const id = identifiant(personne);
