@@ -16,6 +16,15 @@
       if(etat.unlocked)root.appendChild(bouton("Retour à l’accueil",()=>actions.onClosed?.()));return;
     }
     if(etat.simulation)root.appendChild(element("p","lcdp-acces-message","Mode test — validation simulée"));
+    if(etat.screen==="guest_call_saved"){
+      root.appendChild(element("h2","lcdp-acces-parc","Appel des invités enregistré"));
+      root.appendChild(element("p","lcdp-acces-message",
+        String(etat.checkedIn ?? 0)+" invité(s) pointé(s) par le parrain. "+
+        String(etat.authorizedForOwnCheckin ?? 0)+
+        " invité(s) autorisé(s) à effectuer leur propre check-in."));
+      root.appendChild(bouton("Retour à la présence",()=>actions.onBack?.()));
+      return;
+    }
     if(etat.screen==="processing" || etat.screen==="uploading"){
       const attente=element("div","lcdp-acces-spinner");attente.setAttribute("aria-hidden","true");root.appendChild(attente);
       const message=element("p","lcdp-acces-message",etat.screen==="uploading"?"Envoi de la vidéo…":"Analyse en cours…");message.setAttribute("role","status");root.appendChild(message);return;
@@ -25,19 +34,26 @@
       root.appendChild(element("p","lcdp-acces-message",sortie?"Contrôle de sortie validé.":"Contrôle d’accès validé."));
       if(!sortie && etat.screen!=="guest_list" && etat.presence?.image)ajouterImagePresence(root,etat.presence);
       if(etat.screen==="guest_list"){
+        const titreListe=element("h2","lcdp-acces-parc",sortie?"Sortie des invités":"Appel des invités");
+        root.appendChild(titreListe);
+        if(!sortie)root.appendChild(element("p","lcdp-acces-message",
+          "Cochez uniquement les invités présents. Les invités non cochés pourront effectuer leur propre check-in après validation de la liste."));
         const form=element("form","lcdp-acces-invites-form");
         const liste=element("ul","lcdp-acces-instructions");
         (etat.guests || []).forEach(g=>{
-          const item=element("li"),label=element("label"),casePresence=element("input");casePresence.type="checkbox";casePresence.value=g.id;casePresence.name="guest";const deja=sortie?g.exited===true:g.present===true;casePresence.checked=deja;casePresence.disabled=deja;
+          const item=element("li"),label=element("label"),casePresence=element("input");casePresence.type="checkbox";casePresence.value=g.id;casePresence.name="guest";const deja=sortie?g.exited===true:g.present===true;casePresence.checked=sortie?deja:g.checkedBySponsor===true;casePresence.disabled=deja;
           label.append(casePresence,document.createTextNode(" "+g.name+(deja?(sortie?" — sortie déjà confirmée":" — présence déjà confirmée"):"")));item.appendChild(label);liste.appendChild(item);
         });
-        const valider=bouton("Valider");valider.type="submit";
+        if(!(etat.guests || []).length)liste.appendChild(element("li","lcdp-acces-message","Aucun invité enregistré sur cet accès."));
+        const valider=bouton(sortie?"Valider":"Valider la liste");valider.type="submit";
         const defilement=element("div","lcdp-acces-invites-liste");defilement.setAttribute("role","region");defilement.setAttribute("aria-label","Liste des invités");defilement.tabIndex=0;defilement.appendChild(liste);
         form.append(defilement,valider);form.addEventListener("submit",async event=>{event.preventDefault();if(valider.disabled)return;valider.disabled=true;try{await actions.onGuestConfirm?.(Array.from(form.querySelectorAll('input[name="guest"]:checked:not(:disabled)')).map(i=>i.value));}catch(e){valider.disabled=false;const erreur=element("p","lcdp-acces-erreur",e.message);erreur.setAttribute("role","alert");form.appendChild(erreur);}});
         root.append(form,bouton("Retour",()=>actions.onBack?.()));return;
       }
       if(etat.screen==="confirmation_done")return;
-      if(etat.guests?.length){root.appendChild(element("p","lcdp-acces-message",sortie?"Cochez les invités qui sortent avec vous.":"Confirmez des invités."));const ouvrirInvites=element("button","lcdp-acces-camera");ouvrirInvites.type="button";ouvrirInvites.setAttribute("aria-label","Valider mes invités");ouvrirInvites.addEventListener("click",()=>actions.onGuests?.());
+      if(!sortie && etat.role==="abonne"){
+        root.appendChild(bouton("Invités",()=>actions.onGuests?.()));
+      }else if(etat.guests?.length){root.appendChild(element("p","lcdp-acces-message","Cochez les invités qui sortent avec vous."));const ouvrirInvites=element("button","lcdp-acces-camera");ouvrirInvites.type="button";ouvrirInvites.setAttribute("aria-label","Valider mes invités");ouvrirInvites.addEventListener("click",()=>actions.onGuests?.());
       const imageInvites=element("img","lcdp-acces-camera-image");imageInvites.alt="";imageInvites.setAttribute("aria-hidden","true");imageInvites.src=typeof global.LCDP_urlObjet==="function"?global.LCDP_urlObjet("/IMAG/BOUTON/controle-invites.webp"):String(global.SITE_CONFIG?.objetBaseUrl || "/OBJET").replace(/\/+$/,"")+"/IMAG/BOUTON/controle-invites.webp";ouvrirInvites.appendChild(imageInvites);root.appendChild(ouvrirInvites);}
       else root.appendChild(bouton("OK",()=>sortie?actions.onGuestConfirm?.([]):actions.onConfirmed?.()));
       if(etat.checkoutEnabled)root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));
@@ -79,10 +95,12 @@
       const bas=element("div","lcdp-acces-bas");bas.appendChild(camera);root.appendChild(bas);return;
     }
     if(etat.screen==="guest_pending" || etat.screen==="guest_waiting_control"){
-      const texte=etat.screen==="guest_pending"?"Vous êtes invité(e). Validation en cours.":"Vous êtes invité(e). Votre parrain attend votre contrôle d’accès.";
+      const texte=etat.screen==="guest_pending"?"Vous êtes invité(e). Le check-in de votre parrain est attendu.":"Vous êtes invité(e). Votre parrain doit valider sa liste d’invités avant votre check-in.";
       const message=element("p","lcdp-acces-message",texte);message.setAttribute("role","status");root.appendChild(message);return;
     }
-    if(etat.screen==="presence" && etat.presence?.image){ajouterImagePresence(root,etat.presence);root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));return;}
+    if(etat.screen==="presence" && etat.presence?.image){ajouterImagePresence(root,etat.presence);
+      if(etat.role==="abonne")root.appendChild(bouton("Invités",()=>actions.onGuests?.()));
+      root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));return;}
     if(etat.screen==="presence"){
       const indicateur=etat.indicator;
       if(!indicateur || !["active","overstay"].includes(indicateur.state))throw new Error("Indicateur de présence non autorisé.");
@@ -95,7 +113,10 @@
         if(!/^#[0-9a-f]{6}$/i.test(indicateur.color||""))throw new Error("Couleur de présence invalide.");
         zone.style.backgroundColor=indicateur.color;zone.appendChild(element("p","",indicateur.label));
       }
-      zone.setAttribute("role","status");root.appendChild(zone);return;
+      zone.setAttribute("role","status");root.appendChild(zone);
+      if(etat.role==="abonne")root.appendChild(bouton("Invités",()=>actions.onGuests?.()));
+      root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));
+      return;
     }
     if(etat.screen==="denied"){
       const lightbox=element("section","lcdp-acces-lightbox");lightbox.setAttribute("role","alertdialog");lightbox.setAttribute("aria-modal","true");lightbox.setAttribute("aria-label","Accès refusé");
