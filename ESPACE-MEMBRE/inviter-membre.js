@@ -1000,6 +1000,50 @@
     return identite ? "Invitation (" + identite + ")" : "Invitation";
   }
 
+  async function ouvrirInvitationsAbonnementSiDisponible(idflux) {
+    if (!ENDPOINT_INVITER_MEMBRE) return false;
+    const reponse = await fetch(
+      ENDPOINT_INVITER_MEMBRE + "/invites-abonnement/contexte?idflux=" + encodeURIComponent(idflux),
+      { method:"GET", credentials:"include", cache:"no-store", headers:{"Accept":"application/json"} }
+    );
+    // Compatibilité tant que la route nouvelle n'est pas installée sur Cloudflare.
+    if (reponse.status === 404) return false;
+    const contexte = await reponse.json().catch(() => null);
+    if (!reponse.ok || contexte?.ok !== true) {
+      throw new Error(contexte?.message || "Les droits DUO/FAMILLE sont indisponibles.");
+    }
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html");
+    const controleur = window.LCDP_InvitationsAbonnement;
+    if (!controleur?.monter) throw new Error("Formulaire d'invitation indisponible.");
+
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    if (!slot) throw new Error("Emplacement du formulaire d'invitation introuvable.");
+    const fermer = () => slot.replaceChildren();
+    await controleur.monter({
+      conteneur:slot,
+      idflux,
+      fragment,
+      chargerContexte:async () => contexte,
+      enregistrer:async (idflux, selection) => {
+        const resultatHttp = await fetch(ENDPOINT_INVITER_MEMBRE + "/invites-abonnement", {
+          method:"POST",credentials:"include",cache:"no-store",
+          headers:{"Accept":"application/json","Content-Type":"application/json"},
+          body:JSON.stringify({idflux,selection})
+        });
+        const resultat = await resultatHttp.json().catch(() => null);
+        if (!resultatHttp.ok || resultat?.ok !== true) {
+          throw new Error(resultat?.message || "Invitations non enregistrées.");
+        }
+        await chargerReservations();
+        return resultat;
+      },
+      informer:message => afficherAlerte(message,{profil:"information",superposition:true}),
+      fermer
+    });
+    return true;
+  }
+
   async function ouvrirDialogueInvitation(idflux) {
     if (etatMembre.abonnementSuspendu === true) {
       await gererPaiementSuspensionMembre(etatMembre);
@@ -1010,6 +1054,8 @@
       await afficherAlerte("Cette fonction est réservée aux membres abonnés.", { profil: "information" });
       return;
     }
+
+    if (await ouvrirInvitationsAbonnementSiDisponible(idflux)) return;
 
     const maxinvit = lireMaxinvit();
 
