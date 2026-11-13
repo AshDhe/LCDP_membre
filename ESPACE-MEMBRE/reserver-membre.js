@@ -6858,9 +6858,9 @@
   async function chargerConstructeurFicheParc() {
     if (constructeurFicheComplet()) return window.LCDP_FicheParc;
     // Ne pas accepter un ancien module simplement parce que l'objet existe.
-    await chargerScriptPublicUneFois("/ESPACE-PUBLIC/fiche-parc.js?v=20261113-fiche-actions-v4");
+    await chargerScriptPublicUneFois("/ESPACE-PUBLIC/fiche-parc.js?v=20261113-wrapper-unique-v9");
     if (!constructeurFicheComplet()) {
-      await chargerScriptPublicUneFois("/ESPACE-PUBLIC/fiche-parc.js?v=20261113-fiche-actions-v4", true);
+      await chargerScriptPublicUneFois("/ESPACE-PUBLIC/fiche-parc.js?v=20261113-wrapper-unique-v9", true);
     }
     if (!constructeurFicheComplet()) {
       throw new Error("La carte n’a pas pu être chargée. Vous pouvez revenir à la liste des parcs.");
