@@ -3395,20 +3395,34 @@
 
   function reservationPasseePlanning(reservation) {
     const date = new Date(reservation?.datebookd || "");
-
     if (Number.isNaN(date.getTime())) return false;
 
-    const reservationParis = dateHeureParis(date);
+    const plage = normaliserPlageReservation(reservation);
+    const finsEnMinutes = {
+      plage1: 10 * 60,
+      plage2: 13 * 60,
+      plage3: 17 * 60,
+      plage4: 21 * 60,
+      plage5: 2 * 60
+    };
+
+    if (!Object.prototype.hasOwnProperty.call(finsEnMinutes, plage)) {
+      return Date.now() >= date.getTime();
+    }
+
+    const debutParis = dateHeureParis(date);
     const maintenantParis = dateHeureParis(new Date());
+    if (!debutParis.dateIso || !maintenantParis.dateIso) return false;
 
-    if (!reservationParis.dateIso || !maintenantParis.dateIso) return false;
-    if (reservationParis.dateIso < maintenantParis.dateIso) return true;
-    if (reservationParis.dateIso > maintenantParis.dateIso) return false;
+    // Le classement en « Passé » a lieu à la FIN de la plage réservée,
+    // jamais à son heure de début (plage 5 : fin le lendemain à 2 h).
+    const dateFin = plage === "plage5" && debutParis.heure >= 6
+      ? ajouterJoursDateIso(debutParis.dateIso, 1)
+      : debutParis.dateIso;
 
-    const minutesReservation = (reservationParis.heure * 60) + reservationParis.minute;
-    const minutesMaintenant = (maintenantParis.heure * 60) + maintenantParis.minute;
-
-    return minutesMaintenant >= minutesReservation;
+    if (maintenantParis.dateIso < dateFin) return false;
+    if (maintenantParis.dateIso > dateFin) return true;
+    return (maintenantParis.heure * 60 + maintenantParis.minute) >= finsEnMinutes[plage];
   }
 
   // Annulation interdite dès 14h à Paris la veille du jour de visite.
