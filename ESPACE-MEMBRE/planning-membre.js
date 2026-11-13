@@ -838,8 +838,35 @@
   let controleurFicheMesAcces = null;
   let ouvertureFicheMesAcces = 0;
   let declencheurFicheMesAcces = null;
+  // Un calque propre à Fiche/Carte, distinct des vues secondaires
+  // de MES ACCÈS (réservations, invitations, etc.).
   let surfaceFicheMesAcces = null;
   let emplacementFicheMesAcces = null;
+
+  function ouvrirCalqueFicheMesAcces(hote) {
+    const main = document.querySelector("body.lcdp-mes-acces-page > .lcdp-app-wrapper > .lcdp-site-main");
+    if (!main || !hote) throw new Error("Surface du wrapper membre indisponible.");
+    const parent = hote.parentNode;
+    const suivant = hote.nextSibling;
+    if (!parent) throw new Error("Emplacement initial de la fiche manquant.");
+
+    main.appendChild(hote);
+    document.body.classList.add("lcdp-mes-acces-calque-fiche-actif");
+    const contenuInitial = main.querySelector(":scope > .lcdp-page-section");
+    if (contenuInitial) contenuInitial.inert = true;
+    let ferme = false;
+    return {
+      fermer() {
+        if (ferme) return;
+        ferme = true;
+        document.body.classList.remove("lcdp-mes-acces-calque-fiche-actif");
+        if (contenuInitial) contenuInitial.inert = false;
+        if (parent.isConnected) {
+          parent.insertBefore(hote, suivant?.parentNode === parent ? suivant : null);
+        }
+      }
+    };
+  }
 
   function fermerVueFicheDansMesAcces() {
     ouvertureFicheMesAcces += 1;
@@ -847,14 +874,7 @@
     controleurFicheMesAcces = null;
     const fiche = document.getElementById("lcdp-mes-acces-fiche-slot");
     fiche?.replaceChildren();
-    if (fiche) {
-      fiche.hidden = true;
-      const parent = emplacementFicheMesAcces?.parent;
-      const suivant = emplacementFicheMesAcces?.suivant;
-      if (parent?.isConnected) {
-        parent.insertBefore(fiche, suivant?.parentNode === parent ? suivant : null);
-      }
-    }
+    if (fiche) fiche.hidden = true;
     surfaceFicheMesAcces?.fermer();
     surfaceFicheMesAcces = null;
     emplacementFicheMesAcces = null;
@@ -903,13 +923,11 @@
     const fermer = shift?.querySelector("[data-lcdp-shift-detail-parc-close]");
     if (!shift || !contenu || !fermer) throw new Error("Structure de la Fiche Parc incomplète.");
 
-    // Fiche et Carte remplacent temporairement les cartes dans le même wrapper.
+    // Le calque Fiche/Carte couvre la surface utile du wrapper.
+    // Le contenu MES ACCÈS reste sous le calque, intact et inerte.
     if (surfaceFicheMesAcces) fermerVueFicheDansMesAcces();
-    const surface = ouvrirVueSecondairePlanning();
-    if (!surface) throw new Error("Vue interne MES ACCÈS indisponible.");
+    const surface = ouvrirCalqueFicheMesAcces(hote);
     surfaceFicheMesAcces = surface;
-    emplacementFicheMesAcces = {parent: hote.parentNode, suivant: hote.nextSibling};
-    surface.conteneur.appendChild(hote);
 
     shift.classList.add("lcdp-box-shift-detail-parc--page");
     shift.dataset.lcdpShiftVue = vue;
@@ -926,6 +944,7 @@
       const controleur = await moteur.monterDansConteneur(contenu, parc, {
         vueInitiale: vue,
         modeUsage: "reservation-membre",
+        masquerActionsVueCarte: true,
         chargerFragmentObjet,
         construireUrlObjet,
         appliquerRoutes: appliquerRoutesSite,
@@ -940,7 +959,7 @@
       controleurFicheMesAcces = controleur;
       shift.dataset.lcdpShiftVue = controleur.getVue();
       window.requestAnimationFrame(() => shift.classList.add("lcdp-box-shift-detail-parc--visible"));
-      hote.scrollIntoView?.({ block: "start", behavior: "auto" });
+      hote.scrollTop = 0;
     } catch(error) {
       if (generation === ouvertureFicheMesAcces) fermerVueFicheDansMesAcces();
       throw error;
