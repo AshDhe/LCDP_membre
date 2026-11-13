@@ -2750,7 +2750,14 @@
 
     // Inviter et Invité(s) ouvrent la même surface ; les droits restent
     // contrôlés à l'enregistrement côté service.
-    await ouvrirListeInvitesReservation(idReservation, declencheur);
+    try {
+      await ouvrirListeInvitesReservation(idReservation, declencheur);
+    } catch (erreur) {
+      console.error("[MES ACCÈS] Formulaire Inviter indisponible :", erreur);
+      await afficherAlerteInvitationReservation(
+        erreur?.message || "Impossible d’ouvrir le formulaire Inviter.", declencheur
+      );
+    }
   }
 
   function trouverReservationPlanningParId(idflux) {
@@ -3243,12 +3250,30 @@
   }
 
   async function essayerOuvrirInvitesAbonnement(idReservation, declencheur) {
-    const arreterAttente = afficherAttenteOuvertureInvites();
+    // Ouvrir la surface immédiatement : le chargement ne doit pas bloquer
+    // l'écran derrière le spinner pleine page.
+    const surface = ouvrirSurfaceInvitationPleinePage();
+    if (!surface) return null;
+    const chargement = document.createElement("p");
+    chargement.className = "lcdp-text-muted";
+    chargement.setAttribute("role", "status");
+    chargement.textContent = "Ouverture du formulaire Inviter…";
+    surface.conteneur.appendChild(chargement);
+    let terminer;
+    let terminee = false;
+    const fin = new Promise(resolve => { terminer = resolve; });
+    const fermer = () => {
+      if (terminee) return;
+      terminee = true;
+      surface.fermer();
+      actualiserBoutonsInvitationPlanning(idReservation, declencheur);
+      terminer(true);
+    };
     try {
     // Afficher le formulaire DUO/FAMILLE indépendamment du déploiement Worker.
     // Une route absente ne doit plus ramener à l'ancien formulaire.
     await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css");
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261113-ouverture-inviter-v1");
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites");
     if (!window.LCDP_InvitationsAbonnement?.monter) {
       throw new Error("Formulaire DUO/FAMILLE indisponible.");
@@ -3260,6 +3285,8 @@
     };
     let enregistrementDisponible = false;
     if (ENDPOINT_INVITER_MEMBRE) {
+      const controleurLecture = new AbortController();
+      const delaiLecture = setTimeout(() => controleurLecture.abort(), 7000);
       try {
         const reponse = await fetch(
           ENDPOINT_INVITER_MEMBRE + "/invites-abonnement/contexte?idflux=" +
@@ -3268,7 +3295,8 @@
             method: "GET",
             credentials: "include",
             cache: "no-store",
-            headers: { Accept: "application/json" }
+            headers: { Accept: "application/json" },
+            signal: controleurLecture.signal
           }
         );
         const resultat = await reponse.json().catch(() => null);
@@ -3280,28 +3308,12 @@
         }
       } catch (erreur) {
         console.warn("Service DUO/FAMILLE non joignable :", erreur);
+      } finally {
+        clearTimeout(delaiLecture);
       }
     }
 
-    const surface = ouvrirSurfaceInvitationPleinePage();
-    if (!surface) {
-      arreterAttente();
-      return null;
-    }
-    let terminer;
-    let terminee = false;
-    const fin = new Promise(resolve => { terminer = resolve; });
-    const fermer = () => {
-      if (terminee) return;
-      terminee = true;
-      surface.fermer();
-      // Le planning était temporairement détaché du DOM : ses boutons
-      // redeviennent accessibles seulement après la fermeture.
-      actualiserBoutonsInvitationPlanning(idReservation, declencheur);
-      terminer(true);
-    };
-    try {
-      await window.LCDP_InvitationsAbonnement.monter({
+    await window.LCDP_InvitationsAbonnement.monter({
         conteneur: surface.conteneur,
         idflux: idReservation,
         fragment,
@@ -3339,14 +3351,9 @@
         confirmerQuitter: confirmerQuitterInvitationSansEnregistrer,
         fermer
       });
-    } catch (erreur) {
-      fermer();
-      throw erreur;
-    }
-    arreterAttente();
     return fin;
     } catch (erreur) {
-      arreterAttente();
+      fermer();
       throw erreur;
     }
   }
