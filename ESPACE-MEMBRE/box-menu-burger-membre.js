@@ -947,6 +947,21 @@
   }
 
   async function confirmerDeconnexionBurger() {
+    const cheminCss = "/CSSBASE/lcdp-lightbox-convergence.css";
+    const hrefCss = construireUrlObjet(cheminCss);
+    if (!Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some(link => link.href === hrefCss)) {
+      await new Promise((resolve, reject) => {
+        const lien = document.createElement("link");
+        lien.rel = "stylesheet";
+        lien.href = hrefCss;
+        lien.onload = resolve;
+        lien.onerror = () => {
+          lien.remove();
+          reject(new Error("CSS CHOIX indisponible."));
+        };
+        document.head.appendChild(lien);
+      });
+    }
     const slot = obtenirLightboxSlotBurger();
     slot.replaceChildren();
     try {
