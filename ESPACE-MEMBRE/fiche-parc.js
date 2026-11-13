@@ -1844,21 +1844,24 @@
   }
 
   async function ouvrirConfirmationShift(titre, texte) {
-    const detail = document.querySelector("[data-lcdp-box-shift-detail-parc]");
-    const slot = detail?.querySelector("[data-lcdp-shift-detail-parc-alerte-slot]");
-    if (!slot) return window.confirm(texte);
-
-    const urlCss = construireUrlSite("/OBJET/CSSBASE/lcdp-lightbox-convergence.css");
-    if (![...document.querySelectorAll('link[rel="stylesheet"]')]
-      .some(lien => lien.href === new URL(urlCss, window.location.href).href)) {
-      const lien = document.createElement("link");
-      lien.rel = "stylesheet";
-      lien.href = urlCss;
-      document.head.appendChild(lien);
-    }
+    const focusInitial = document.activeElement;
     const hote = document.createElement("div");
-    document.body.appendChild(hote);
     try {
+      const urlCss = construireUrlSite("/OBJET/CSSBASE/lcdp-lightbox-convergence.css");
+      if (![...document.querySelectorAll('link[rel="stylesheet"]')]
+        .some(lien => lien.href === new URL(urlCss, window.location.href).href)) {
+        await new Promise((resolve, reject) => {
+          const lien = document.createElement("link");
+          lien.rel = "stylesheet";
+          lien.href = urlCss;
+          lien.onload = resolve;
+          lien.onerror = () => {
+            lien.remove();
+            reject(new Error("CSS CHOIX indisponible."));
+          };
+          document.head.appendChild(lien);
+        });
+      }
       hote.appendChild(await chargerFragment("/OBJET/HTMLBASE/02-dialogue-reference-choix.html"));
       const dialogue = hote.querySelector('[data-lcdp-dialogue-reference="choix"]');
       const titreDialogue = hote.querySelector("[data-lcdp-dialogue-titre]");
@@ -1872,24 +1875,40 @@
       message.textContent = texte;
       annuler.textContent = "Annuler";
       confirmer.textContent = "Confirmer";
+      document.body.appendChild(hote);
       return await new Promise(resolve => {
         let termine = false;
         const fermer = valeur => {
           if (termine) return;
           termine = true;
+          document.removeEventListener("keydown", clavier);
           hote.remove();
+          if(focusInitial?.isConnected && typeof focusInitial.focus === "function") focusInitial.focus();
           resolve(valeur);
+        };
+        const clavier = event => {
+          if (event.key === "Escape") { event.preventDefault(); fermer(false); }
+          if (event.key === "Tab") {
+            if(event.shiftKey && document.activeElement === annuler) {
+              event.preventDefault(); confirmer.focus();
+            } else if(!event.shiftKey && document.activeElement === confirmer) {
+              event.preventDefault(); annuler.focus();
+            }
+          }
         };
         annuler.addEventListener("click", () => fermer(false), { once: true });
         confirmer.addEventListener("click", () => fermer(true), { once: true });
         dialogue.addEventListener("click", event => {
           if (event.target === dialogue) fermer(false);
         });
-        confirmer.focus();
+        document.addEventListener("keydown", clavier);
+        annuler.focus();
       });
     } catch (erreur) {
+      console.error("Confirmation CHOIX réservation indisponible :", erreur);
+      return false;
+    } finally {
       hote.remove();
-      throw erreur;
     }
   }
 
