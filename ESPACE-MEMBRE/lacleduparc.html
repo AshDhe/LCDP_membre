@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" data-lcdp-css="c085">
+<html lang="fr" data-lcdp-css="c085 c034 c037 c033 c036">
 <head>
   <meta charset="utf-8">
 
@@ -75,14 +75,18 @@
       [
         "/CSSBASE/cssbase.css",
         "/CSSBASE/lcdp-central-mobile-first.css",
+        "/CSSBASE/lcdp-ui-badges.css",
         "/CSSBASE/lcdp-lightbox-convergence.css",
       ].forEach((chemin) => {
         document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(chemin) + '">');
       });
+      // Même composant footer autonome que PLANIFIER, dans son slot interne.
+      document.write('<script data-lcdp-footer-autonome src="' +
+        window.LCDP_urlObjet('/JSBASE/02-footer.js') + '"><\/script>');
     })();
   </script>
 
-  <link rel="stylesheet" href="./lcdp-ma-cle.css?v=20261113-wrapper-v6">
+  <link rel="stylesheet" href="./lcdp-ma-cle.css?v=20261113-wrapper-v7">
 </head>
 
 <body class="lcdp-app-page lcdp-page-cle-du-parc">
@@ -99,7 +103,8 @@
 
     <main class="lcdp-site-main">
       <section class="lcdp-page-section">
-        <div class="lcdp-page-container lcdp-page-content lcdp-page-content--avec-entete lcdp-stack-large">
+        <div class="lcdp-page-container">
+          <div class="lcdp-page-content lcdp-page-content--avec-entete lcdp-stack-large">
 
 
 
@@ -213,6 +218,7 @@
             </section>
           </section>
           </div>
+          </div>
 
         </div>
       </section>
@@ -224,7 +230,7 @@
   </div>
 
   <script src="./controle-acces-ui.js"></script>
-  <script src="./ma-cle-parcours.js?v=20261113-wrapper-v3"></script>
+  <script src="./ma-cle-parcours.js?v=20261113-wrapper-v7"></script>
   <script src="./lacleduparc.js?v=20261113-wrapper-v4"></script>
 </body>
 </html>
