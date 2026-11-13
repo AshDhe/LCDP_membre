@@ -79,7 +79,12 @@
       verrouillerNavigation();
       if(boutonAnnuler) boutonAnnuler.hidden=true;
       // Les deux premières étapes n'attendent pas le contrôle vidéo.
-      window.LCDP_ParcoursMaCle?.demarrer(ouverture, {rafraichirControle: chargerControleAcces});
+      window.LCDP_ParcoursMaCle?.demarrer(ouverture, {
+        rafraichirControle: chargerControleAcces,
+        // Le Worker déduit le parc de la réservation de cette session.
+        // Aucun identifiant de parc n'est accepté depuis l'interface.
+        obtenirGuideAcces: () => appelerApi("/access-guide", {method:"GET"})
+      });
       masquerAttenteInitiale();
       // Étapes 1 et 2 : uniquement ouverture/CODA et préparation de l'accès.
       // Le contrôle de check-in ne démarre qu'au passage volontaire à l'étape 3.
