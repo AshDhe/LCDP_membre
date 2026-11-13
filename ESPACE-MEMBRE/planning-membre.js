@@ -803,7 +803,7 @@
         duoActif.setAttribute("aria-label","Consulter les demandes Duo Actif de ce parc");
         const compteur = document.createElement("span");
         compteur.className = "lcdp-planning-verso-compteur";
-        compteur.textContent = "…";
+        compteur.textContent = "−";
         compteur.setAttribute("aria-label","Chargement du nombre de demandes");
         duoActif.append(document.createTextNode("D-ACTIF"), compteur);
         ligneInvites.appendChild(duoActif);
@@ -1056,7 +1056,7 @@
   function afficherValeurCompteurDuoActif(compteur, nombre) {
     if (!compteur) return;
     if (!Number.isInteger(nombre) || nombre < 0) {
-      compteur.textContent = "…";
+      compteur.textContent = "−";
       compteur.setAttribute("aria-label","Nombre de demandes indisponible");
       return;
     }
@@ -1120,7 +1120,7 @@
       if (String(reservation?.idparc || reservation?.parc?.idparc || "") !== parcRecherche) return;
       const compteur = bouton.querySelector(".lcdp-planning-verso-compteur");
       if (!compteur) return;
-      compteur.textContent = "…";
+      compteur.textContent = "−";
       void chargerCompteurDuoActif(id, compteur);
     });
   }
