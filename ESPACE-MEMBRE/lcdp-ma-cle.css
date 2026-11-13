@@ -537,3 +537,29 @@
   .lcdp-page-cle-du-parc .lcdp-ma-cle-timeline__etape:not(:last-child)::after {top: 14px; left: calc(50% + 17px); width: calc(100% - 34px);}
   .lcdp-page-cle-du-parc .lcdp-ma-cle-pilote {padding-inline: var(--lcdp-space-2);}
 }
+
+/* Wrapper applicatif de MA CLÉ : même structure que PLANIFIER. */
+.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--lcdp-color-bg, #ffffff);
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper .lcdp-page-container.lcdp-page-content {
+  width: 100%;
+  max-width: var(--lcdp-text-width, 760px);
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-pilote__erreur {
+  width: 100%;
+  margin: 0;
+  padding: var(--lcdp-space-3, 12px);
+  border: 1px solid var(--lcdp-color-danger, #a02020);
+  border-radius: var(--lcdp-radius-medium, 12px);
+  color: var(--lcdp-color-danger, #a02020);
+  line-height: 1.45;
+}
+.lcdp-page-cle-du-parc .lcdp-ma-cle-pilote__continuer:disabled {
+  cursor: progress;
+  opacity: 0.55;
+}
