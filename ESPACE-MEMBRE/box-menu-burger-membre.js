@@ -946,20 +946,49 @@
     await redirigerCompteBurger(confirmation);
   }
 
-  async function gererDeconnexionBurger() {
-    const confirmation = await ouvrirDialogueBoutonsBurger({
-      titre: "Confirmer la déconnexion",
-      texte: "Voulez-vous vous déconnecter de votre espace membre ?",
-      boutons: [
-        {
-          label: "Confirmer",
-          valeur: "confirmer",
-          style: "lcdp-button-primary"
-        }
-      ]
-    });
+  async function confirmerDeconnexionBurger() {
+    const slot = obtenirLightboxSlotBurger();
+    slot.replaceChildren();
+    try {
+      slot.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html"));
+      const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="choix"]');
+      const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+      const annuler = slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
+      const confirmer = slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+      if (!dialogue || !titre || !texte || !annuler || !confirmer) throw new Error("Structure CHOIX incomplète.");
+      titre.textContent = "Confirmer la déconnexion";
+      texte.textContent = "Voulez-vous vous déconnecter de votre espace membre ?";
+      annuler.textContent = "Annuler";
+      confirmer.textContent = "Confirmer";
+      return await new Promise(resolve => {
+        let resolu = false;
+        const fermer = valeur => {
+          if (resolu) return;
+          resolu = true;
+          slot.replaceChildren();
+          resolve(valeur);
+        };
+        annuler.addEventListener("click", () => fermer(false), { once: true });
+        confirmer.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => {
+          if (event.target === dialogue) fermer(false);
+        });
+        const gererEchap = event => {
+          if (event.key === "Escape") fermer(false);
+        };
+        document.addEventListener("keydown", gererEchap, { once: true });
+        confirmer.focus();
+      });
+    } catch (erreur) {
+      slot.replaceChildren();
+      throw erreur;
+    }
+  }
 
-    if (confirmation !== "confirmer") return;
+  async function gererDeconnexionBurger() {
+    const confirmation = await confirmerDeconnexionBurger();
+    if (confirmation !== true) return;
 
     if (!ENDPOINT_DECONNEXION_MEMBRE) {
       throw new Error("Le service de déconnexion membre n’est pas configuré.");
