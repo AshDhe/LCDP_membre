@@ -7,6 +7,8 @@
 
   const EMAIL_VALIDE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const CATEGORIES = ["duo","famille"];
+  const CLES_DROITS = ["maxduo","duoplus","freqduoplus","famille"];
+  const CLES_UTILISATION = ["duoCarnet","familleCarnet","duoplusUtilisesMois","duoSelectionnesAcces","familleSelectionnesAcces"];
   const normaliserEmail = valeur => String(valeur || "").trim().toLowerCase();
   const erreurDonnees = () => new Error("Liste des invités DUO/FAMILLE invalide.");
 
@@ -27,9 +29,19 @@
       const ids = new Set(contexte.contacts[categorie].map(c => String(c.idinviteabo)));
       if (contexte.selection[categorie].some(id => !ids.has(String(id)))) throw erreurDonnees();
     }
+    // Le carnet reste consultable sans Worker actif, mais les droits ne
+    // peuvent être inventés : ils sont fournis par la commande payée.
+    const avecQuotas = contexte.privileges != null || contexte.utilisation != null;
+    if (avecQuotas && (!contexte.privileges || !contexte.utilisation ||
+        !CLES_DROITS.every(cle => Number.isInteger(contexte.privileges[cle]) && contexte.privileges[cle] >= 0) ||
+        !CLES_UTILISATION.every(cle => Number.isInteger(contexte.utilisation[cle]) && contexte.utilisation[cle] >= 0))) {
+      throw erreurDonnees();
+    }
     return {
       contacts: contexte.contacts,
-      selection: contexte.selection
+      selection: contexte.selection,
+      privileges: avecQuotas ? contexte.privileges : null,
+      utilisation: avecQuotas ? contexte.utilisation : null
     };
   }
 
@@ -40,10 +52,11 @@
     return element;
   }
 
-  async function monter({ conteneur, idflux, fragment, chargerContexte, enregistrer, informer, confirmerQuitter, fermer }) {
+  async function monter({ conteneur, idflux, fragment, chargerContexte, enregistrer, informer, erreur, confirmerQuitter, fermer }) {
     if (!conteneur || !fragment || !idflux || typeof chargerContexte !== "function" ||
         typeof enregistrer !== "function" || typeof informer !== "function" ||
-        typeof confirmerQuitter !== "function" || typeof fermer !== "function") {
+        typeof erreur !== "function" || typeof confirmerQuitter !== "function" ||
+        typeof fermer !== "function") {
       throw new Error("Contrôleur DUO/FAMILLE incomplet.");
     }
 
@@ -79,15 +92,79 @@
     const emailsNouveaux = categorie =>
       nouveaux[categorie].map(c => normaliserEmail(c.input.value)).filter(Boolean);
 
-    // Première étape : l'ajout des contacts ne dépend pas du quota.
+    // Les quotas sont lus depuis Supabase. Sans contexte de droits, le
+    // formulaire reste visible, mais l'enregistrement est bloqué par l'hôte.
+    const droits = contexte.privileges;
+    const usage = contexte.utilisation;
+    const nombreNouveaux = categorie =>
+      nouveaux[categorie].filter(c => normaliserEmail(c.input.value)).length;
+    const nombreSelectionnes = categorie => selection[categorie].size + nombreNouveaux(categorie);
+    const nombreCarnet = categorie => contexte.contacts[categorie].length + nombreNouveaux(categorie);
+    const duoPlusPossible = () => !droits || usage.duoplusUtilisesMois < droits.freqduoplus;
+    const maxDuoAcces = () => !droits ? Infinity :
+      (duoPlusPossible() ? Math.max(1,droits.duoplus) : 1);
+
+    function verifierSelection() {
+      if (!droits) return "";
+      if (nombreCarnet("duo") > droits.maxduo) {
+        return "Le maximum d’invités DUO est atteint sur cet abonnement.";
+      }
+      if (nombreCarnet("famille") > droits.famille) {
+        return "Le maximum d’invités FAMILLE est atteint sur cet abonnement.";
+      }
+      if (nombreSelectionnes("duo") > maxDuoAcces()) {
+        return duoPlusPossible()
+          ? "Le nombre maximum d’invités DUO+ est atteint pour cet accès."
+          : "L’option DUO+ n’est plus valable pour ce mois.";
+      }
+      if (nombreSelectionnes("famille") > droits.famille) {
+        return "Le nombre maximum d’invités FAMILLE est atteint pour cet accès.";
+      }
+      return "";
+    }
+
+    function motifBlocageAjout(categorie) {
+      if (!droits) return "";
+      if (categorie === "duo") {
+        if (nombreCarnet("duo") >= droits.maxduo) {
+          return "Le maximum d’invités DUO est atteint sur cet abonnement.";
+        }
+        if (!duoPlusPossible()) {
+          return "L’option DUO+ n’est plus valable pour ce mois.";
+        }
+        if (nombreSelectionnes("duo") >= maxDuoAcces()) {
+          return "Le nombre maximum d’invités DUO+ est atteint pour cet accès.";
+        }
+      } else {
+        if (nombreCarnet("famille") >= droits.famille) {
+          return "Le maximum d’invités FAMILLE est atteint sur cet abonnement.";
+        }
+        if (nombreSelectionnes("famille") >= droits.famille) {
+          return "Le nombre maximum d’invités FAMILLE est atteint pour cet accès.";
+        }
+      }
+      return "";
+    }
+
     function actualiserQuotas() {
       for (const categorie of CATEGORIES) {
         const bouton = vue.querySelector('[data-lcdp-invitation-ajouter="' + categorie + '"]');
         const note = vue.querySelector('[data-lcdp-invitation-quota="' + categorie + '"]');
-        bouton.removeAttribute("aria-disabled");
-        bouton.style.opacity = "";
-        bouton.style.cursor = "";
-        bouton.title = "Ajouter un invité " + categorie.toUpperCase();
+        const blocage = motifBlocageAjout(categorie);
+        if (blocage) {
+          bouton.setAttribute("aria-disabled","true");
+          bouton.style.opacity = "0.55";
+          bouton.style.cursor = "help";
+          // Un bouton grisé reste cliquable pour afficher l'explication.
+          bouton.style.pointerEvents = "auto";
+          bouton.title = blocage;
+        } else {
+          bouton.removeAttribute("aria-disabled");
+          bouton.style.opacity = "";
+          bouton.style.cursor = "";
+          bouton.style.pointerEvents = "";
+          bouton.title = categorie === "duo" ? "Ajouter un invité DUO / DUO+" : "Ajouter un invité FAMILLE";
+        }
         note.textContent = "";
         note.hidden = true;
       }
@@ -100,6 +177,7 @@
       adresse.type = "email";
       adresse.readOnly = true;
       adresse.value = contact.email;
+      adresse.style.background = "var(--lcdp-color-surface-soft,#edf0ed)";
       adresse.setAttribute("aria-label", "Adresse e-mail de l'invité " + categorie.toUpperCase());
       adresse.setAttribute("data-lcdp-invite-email", "");
       const etiquette = creerElement("label", "lcdp-box-champ-formulaire__checkbox-line");
@@ -112,8 +190,18 @@
       item.append(adresse, etiquette);
       caseACocher.addEventListener("change", () => {
         const id = String(contact.idinviteabo);
-        if (caseACocher.checked) selection[categorie].add(id);
-        else selection[categorie].delete(id);
+        if (caseACocher.checked) {
+          selection[categorie].add(id);
+          const violation = verifierSelection();
+          if (violation) {
+            selection[categorie].delete(id);
+            caseACocher.checked = false;
+            void erreur(violation);
+          }
+        } else {
+          selection[categorie].delete(id);
+        }
+        actualiserQuotas();
       });
       return item;
     }
@@ -143,7 +231,10 @@
       });
       if (initial) item.appendChild(champ);
       else item.append(champ,supprimer);
-      champ.addEventListener("input", actualiserQuotas);
+      champ.addEventListener("input", () => {
+        actualiserQuotas();
+        messageLocal(verifierSelection());
+      });
       nouveaux[categorie].push(entree);
       liste.appendChild(item);
       actualiserQuotas();
@@ -161,9 +252,18 @@
       }
       // Une liste vide ne doit pas réserver d'espace au-dessus du champ e-mail.
       liste.style.display = contexte.contacts[categorie].length ? "" : "none";
-      ajouter.addEventListener("click", () => ajouterChamp(categorie));
-      // Toujours permettre la saisie du premier invité, quelle que soit la formule.
-      if (!contexte.contacts[categorie].length) ajouterChamp(categorie, true);
+      ajouter.addEventListener("click", () => {
+        const blocage = motifBlocageAjout(categorie);
+        if (blocage) {
+          void info(blocage);
+          return;
+        }
+        ajouterChamp(categorie);
+      });
+      // Le premier champ vide ne consomme aucun quota.
+      if (!contexte.contacts[categorie].length && !motifBlocageAjout(categorie)) {
+        ajouterChamp(categorie, true);
+      }
     }
 
     const quitter = async () => {
@@ -211,6 +311,11 @@
           }
           emailsTous.add(email);
         }
+      }
+      const violation = verifierSelection();
+      if (violation) {
+        await erreur(violation);
+        return;
       }
       const donnees = {
         duo: {
