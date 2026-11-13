@@ -224,7 +224,7 @@
         if (!ferme) {
           envoyer.disabled = false;
           fermerCroix.disabled = false;
-          envoyer.textContent = "Enregistrer les invités";
+          envoyer.textContent = "Inviter";
         }
       }
     });
