@@ -617,7 +617,7 @@
         : String(config.objetBaseUrl || "https://lacleduparc.fr/OBJET").replace(/\/+$/, "") + chemin;
       // Les styles de la vue Inviter doivent être prêts AVANT son montage,
       // y compris si cette page n'a pas préchargé les CSS de MES ACCÈS.
-      const cssInviter = urlObjet("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-inviter-cadre-v10");
+      const cssInviter = urlObjet("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-inviter-formulaire-v11");
       if (![...document.querySelectorAll('link[rel="stylesheet"]')].some(lien => lien.href === cssInviter)) {
         await new Promise((resolve, reject) => {
           const lien = document.createElement("link");
@@ -631,7 +631,7 @@
           document.head.appendChild(lien);
         });
       }
-      const reponse = await fetch(urlObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-cadre-v10"), {cache:"no-store"});
+      const reponse = await fetch(urlObjet("/HTMLBASE/04-card-listinvites-oui-non.html?v=20261113-inviter-formulaire-v11"), {cache:"no-store"});
       if (!reponse.ok) throw new Error("Formulaire des invitations indisponible.");
       const template = document.createElement("template");
       template.innerHTML = (await reponse.text()).trim();
@@ -687,7 +687,7 @@
       function gererEchap(event) {
         if (event.key !== "Escape" || document.querySelector('[data-lcdp-dialogue-reference]')) return;
         event.preventDefault();
-        afficherMessage("Utilisez « Annuler » pour fermer ce formulaire.");
+        afficherMessage("Utilisez la croix en haut à droite pour fermer ce formulaire.");
       }
 
       async function demanderRetrait(personne) {
