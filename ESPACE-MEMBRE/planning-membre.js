@@ -539,6 +539,32 @@
         top:10px !important;
         right:10px !important;
       }
+
+      /* Actions du verso : mêmes dimensions, bordures et typographie. */
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-actions {
+        display:flex !important;align-items:center;flex-wrap:wrap;gap:8px !important;margin-top:8px !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action {
+        box-sizing:border-box !important;display:inline-flex !important;align-items:center;justify-content:center;gap:8px;
+        min-height:34px !important;width:auto !important;padding:7px 12px !important;
+        border:1px solid rgba(75,99,51,.35) !important;border-radius:16px !important;
+        background:#fff !important;color:#4b6333 !important;
+        font-size:12px !important;font-weight:800 !important;line-height:1.2 !important;
+        box-shadow:0 1px 2px rgba(0,0,0,.06) !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action:hover {
+        border-color:#4b6333 !important;background:#4b6333 !important;color:#fff !important;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-action[aria-disabled="true"] {
+        opacity:.5;cursor:not-allowed;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-planning-verso-compteur {
+        border-radius:999px;background:rgba(75,99,51,.1);padding:2px 6px;
+        font-size:10px;font-weight:900;line-height:1.2;
+      }
+      #lcdp-planning-calendrier-slot .lcdp-planning-carte-visite .lcdp-box-card-reservation-membre__content {
+        gap:3px !important;
+      }
       /* Même emplacement pour les trois onglets, y compris quand le calendrier est affiché. */
       #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente,
       #lcdp-planning-calendrier-slot .lcdp-planning-navigation-permanente.lcdp-box-liste-card--mode-agenda {
@@ -1409,6 +1435,40 @@
     ouvrir.setAttribute("aria-label",
       "Voir les détails de la visite au " + nomAvecDepartement + " le " + date +
       (heure ? ", de " + heure : ""));
+    // Conserver intégralement le gabarit et sa hauteur : seuls les enfants sont réordonnés.
+    const detailVerso = cardReservation.querySelector(".lcdp-box-card-reservation-membre__content");
+    const parcVerso = cardReservation.querySelector(".lcdp-box-card-reservation-membre__place");
+    const dateVerso = cardReservation.querySelector(".lcdp-box-card-reservation-membre__date");
+    const actionsVerso = cardReservation.querySelector(".lcdp-box-card-reservation-membre__actions");
+    const annulerVerso = cardReservation.querySelector("[data-action='annuler']");
+    const inviterVerso = cardReservation.querySelector("[data-action='invitation']");
+    if (detailVerso && parcVerso && dateVerso) {
+      detailVerso.prepend(parcVerso);
+      parcVerso.style.marginBottom = "0";
+      dateVerso.style.marginTop = "0";
+      if (reservationHorsAbonnementMembre(reservation)) {
+        const rond = document.createElement("span");
+        rond.title = "Invitation reçue";
+        rond.setAttribute("aria-label", "Invitation reçue");
+        rond.style.cssText = "display:inline-block;width:1em;height:1em;flex:0 0 1em;border-radius:50%;background:#e78db3;";
+        dateVerso.prepend(rond);
+      }
+    }
+    if (actionsVerso) {
+      actionsVerso.classList.add("lcdp-planning-verso-actions");
+      if (inviterVerso && !reservationHorsAbonnementMembre(reservation)) {
+        actionsVerso.prepend(inviterVerso);
+        habillerBoutonInvitesVerso(inviterVerso, reservation);
+      }
+      if (annulerVerso) {
+        actionsVerso.prepend(annulerVerso);
+        annulerVerso.textContent = "Annuler";
+        annulerVerso.classList.add("lcdp-planning-verso-action");
+        const bloque = annulationAccesImpossibleParis(reservation);
+        annulerVerso.setAttribute("aria-disabled", String(bloque));
+        annulerVerso.title = bloque ? "Annulation impossible après 14h" : "";
+      }
+    }
     contenu.appendChild(cardReservation);
     const basculer = ouvert => {
       // Éviter de conserver un décalage vertical du recto dans le verso.
@@ -1429,6 +1489,21 @@
       if (carte.isConnected) carte.classList.add("is-ready");
     }));
     return carte;
+  }
+
+  function habillerBoutonInvitesVerso(bouton, reservation) {
+    if (!bouton || reservationHorsAbonnementMembre(reservation)) return;
+    bouton.classList.add("lcdp-planning-verso-action");
+    const icone = document.createElement("span");
+    icone.setAttribute("aria-hidden", "true");
+    icone.style.cssText = "display:inline-flex;width:16px;height:16px;";
+    icone.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>';
+    const nombre = nombreInvitesEnvoyesPlanning(reservation);
+    const compteur = document.createElement("span");
+    compteur.className = "lcdp-planning-verso-compteur";
+    compteur.textContent = nombre > 0 ? String(nombre) : "-";
+    bouton.replaceChildren(icone, document.createTextNode("Invités"), compteur);
+    bouton.setAttribute("aria-label", "Gérer les invités (" + nombre + ")");
   }
 
   function rafraichirListeFiltreePlanningMembre() {
@@ -3107,7 +3182,11 @@
         return;
       }
 
-      bouton.textContent = reservationAvecInvitesPlanning(reservation) ? "Invité(s)" : "Inviter";
+      if (bouton.closest(".lcdp-planning-carte-visite")) {
+        habillerBoutonInvitesVerso(bouton, reservation);
+      } else {
+        bouton.textContent = reservationAvecInvitesPlanning(reservation) ? "Invité(s)" : "Inviter";
+      }
       bouton.setAttribute("aria-disabled", "false");
       bouton.removeAttribute("title");
     });
@@ -3610,6 +3689,18 @@
     return minutesMaintenant >= minutesReservation;
   }
 
+  // Annulation interdite dès 14h à Paris la veille du jour de visite.
+  function annulationAccesImpossibleParis(reservation) {
+    const dateVisite = extraireDateFranceReservation(reservation?.datebookd);
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateVisite)) return true;
+    const maintenant = dateHeureParis(new Date());
+    if (!maintenant.dateIso) return true;
+    const [annee, mois, jour] = dateVisite.split("-").map(Number);
+    const veille = new Date(Date.UTC(annee, mois - 1, jour - 1)).toISOString().slice(0,10);
+    if (maintenant.dateIso > veille) return true;
+    return maintenant.dateIso === veille && (maintenant.heure * 60 + maintenant.minute) >= 840;
+  }
+
   function reservationDelaiActionDepasse(reservation) {
     const date = new Date(reservation?.datebookd || "");
 
@@ -3988,7 +4079,7 @@
       const conserver = conteneur.querySelector('[data-lcdp-dialogue-action="conserver"]');
       const supprimer = conteneur.querySelector('[data-lcdp-dialogue-action="supprimer"]');
       if (!dialogue || !titre || !texte || !conserver || !supprimer) throw new Error("Dialogue SUPPRESSION incomplet.");
-      titre.textContent = "Confirmer l’annulation";
+      titre.textContent = "Annuler cet accès ?";
       texte.textContent = message;
       conserver.textContent = "Non";
       supprimer.textContent = "Oui";
@@ -4051,10 +4142,10 @@
       return;
     }
 
-    if (reservationDelaiActionDepasse(reservation)) {
+    if (annulationAccesImpossibleParis(reservation)) {
       await afficherInformationPlanning(
-        "Vous ne pouvez plus utiliser la fonction annuler (délai dépassé).",
-        { titre: "Délai d’annulation dépassé", superposition: Boolean(workflowReservation) }
+        "Annulation impossible après 14h",
+        { titre: "Information", superposition: Boolean(workflowReservation) }
       );
       return;
     }
@@ -4063,8 +4154,12 @@
       reservationHorsAbonnementMembre(
         reservation
       );
+    const nombreInvites = estInvite ? 0 : nombreInvitesEnvoyesPlanning(reservation);
+    const mentionInvites = nombreInvites > 0
+      ? "(" + nombreInvites + " invité" + (nombreInvites > 1 ? "s" : "") + ")"
+      : "";
     const confirmation = await confirmerSuppressionPlanning(
-      estInvite ? "Voulez-vous vraiment annuler cette invite ?" : "Voulez-vous vraiment annuler cette réservation ?",
+      mentionInvites,
       Boolean(workflowReservation)
     );
 
