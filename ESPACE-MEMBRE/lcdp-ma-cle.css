@@ -1,0 +1,648 @@
+/* MA CLÉ — styles dédiés à lacleduparc.html.
+   Styles historiques conservés; étapes 1 à 6 ajoutées dans ce même fichier.
+   CSSBASE conserve les composants communs de l'application. */
+
+.lcdp-page-cle-du-parc {
+  min-height: 100vh;
+  background: var(--lcdp-color-surface, #ffffff);
+}
+
+.lcdp-page-cle-du-parc .lcdp-site-main {
+  width: 100%;
+}
+
+.lcdp-cle-ecran {
+  width: 100%;
+}
+
+.lcdp-cle-ecran[hidden] {
+  display: none;
+}
+
+.lcdp-cle-wait {
+  width: 100%;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lcdp-cle-wait[hidden] {
+  display: none !important;
+}
+
+.lcdp-cle-workflow {
+  width: 100%;
+}
+
+.lcdp-cle-workflow[hidden] {
+  display: none !important;
+}
+
+.lcdp-cle-box {
+  width: min(100%, 520px);
+  margin: 0 auto;
+}
+
+.lcdp-cle-ecran--saisie .lcdp-box-formulaire-page__inner {
+  background: transparent;
+}
+
+.lcdp-cle-ecran--saisie .lcdp-box-formulaire {
+  background: var(--lcdp-color-blue);
+}
+
+.lcdp-cle-ecran--saisie .lcdp-box-formulaire__title,
+.lcdp-cle-ecran--saisie .lcdp-mention-connexion {
+  color: #ffffff;
+}
+
+.lcdp-page-cle-du-parc .lcdp-box-formulaire__title {
+  text-transform: uppercase;
+}
+
+.lcdp-cle-ecran--saisie [data-lcdp-cle-submit] {
+  background: #ffffff;
+}
+
+.lcdp-cle-ecran--saisie .lcdp-box-formulaire__actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--lcdp-space-2, 12px);
+}
+
+.lcdp-cle-cancel {
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  align-self: center;
+  padding: 8px 16px;
+  background: transparent;
+  border-color: #ffffff;
+  color: #ffffff;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.lcdp-cle-cancel:hover,
+.lcdp-cle-cancel:focus-visible {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: var(--lcdp-color-blue);
+}
+
+.lcdp-cle-codes {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lcdp-space-3, 16px);
+}
+
+.lcdp-cle-code-field {
+  width: 100%;
+  min-height: 72px;
+  padding: 14px 16px;
+  border: 1px solid var(--lcdp-color-border-strong);
+  border-radius: var(--lcdp-radius-medium);
+  background: var(--lcdp-color-surface);
+  color: var(--lcdp-color-text);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.lcdp-cle-code-field:hover,
+.lcdp-cle-code-field:focus-visible {
+  border-color: var(--lcdp-color-logo-green);
+  background: var(--lcdp-color-surface-soft);
+}
+
+.lcdp-cle-code-field__label {
+  font-size: 0.92rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--lcdp-color-text-muted);
+}
+
+.lcdp-cle-code-field__value {
+  font-size: 1.18rem;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.lcdp-cle-code-field__value.is-filled {
+  color: var(--lcdp-color-blue);
+}
+
+.lcdp-cle-ecran--active .lcdp-box-formulaire-page__inner {
+  background: var(--lcdp-color-logo-green);
+}
+
+.lcdp-page-cle-du-parc.is-cle-active,
+.lcdp-page-cle-du-parc.is-cle-active .lcdp-site-page,
+.lcdp-page-cle-du-parc.is-cle-active .lcdp-site-main {
+  background: var(--lcdp-color-logo-green);
+}
+
+.lcdp-page-cle-du-parc.is-cle-active .lcdp-cle-ecran--active .lcdp-box-formulaire__title,
+.lcdp-page-cle-du-parc.is-cle-active .lcdp-cle-ecran--active .lcdp-mention-connexion {
+  color: #ffffff;
+}
+
+.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay,
+.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-site-page,
+.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-site-main,
+.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-cle-ecran--active .lcdp-box-formulaire-page__inner {
+  background: var(--lcdp-color-orange);
+}
+
+.lcdp-page-cle-du-parc.is-cle-active #lcdp-bandeau-slot,
+.lcdp-page-cle-du-parc.is-cle-active #lcdp-footer-slot,
+.lcdp-page-cle-du-parc.is-cle-checkout #lcdp-bandeau-slot,
+.lcdp-page-cle-du-parc.is-cle-checkout #lcdp-footer-slot {
+  display: none;
+}
+
+.lcdp-cle-ecran--active .lcdp-box-formulaire {
+  background: transparent;
+  border-color: #ffffff;
+  box-shadow: none;
+}
+
+.lcdp-cle-active-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lcdp-space-3, 16px);
+}
+
+.lcdp-cle-action {
+  width: 100%;
+  min-height: 72px;
+  border-width: 2px;
+  border-radius: var(--lcdp-radius-medium);
+  font-size: 1.25rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.lcdp-cle-action--brighta {
+  background: #ffffff;
+  border-color: var(--lcdp-color-blue);
+  color: var(--lcdp-color-blue);
+}
+
+.lcdp-cle-action--brighta:hover {
+  background: var(--lcdp-color-surface-soft);
+  border-color: var(--lcdp-color-blue-hover);
+  color: var(--lcdp-color-blue-hover);
+}
+
+.lcdp-cle-action--brighta:disabled {
+  background: #ffffff;
+  border-color: #b8c9d8;
+  color: #9db4c8;
+  opacity: 1;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.lcdp-cle-action--checkout {
+  background: var(--lcdp-color-blue);
+  border-color: var(--lcdp-color-blue);
+  color: #ffffff;
+}
+
+.lcdp-cle-action--checkout:hover {
+  background: var(--lcdp-color-blue-hover);
+  border-color: var(--lcdp-color-blue-hover);
+  color: #ffffff;
+}
+
+.lcdp-cle-cooldown {
+  margin: 0;
+  color: var(--lcdp-color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.3;
+  font-weight: 650;
+  text-align: center;
+}
+
+.lcdp-cle-confirm-code {
+  margin: 0 auto var(--lcdp-space-2);
+  padding: 10px 16px;
+  border-radius: var(--lcdp-radius-small);
+  background: var(--lcdp-color-surface-soft);
+  color: var(--lcdp-color-primary);
+  font-size: 2rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-align: center;
+}
+
+.lcdp-cle-dialogue-note {
+  margin: 0 0 var(--lcdp-space-2);
+  color: var(--lcdp-color-text-muted);
+  line-height: 1.35;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .lcdp-cle-code-field {
+    min-height: 76px;
+  }
+
+  .lcdp-cle-action {
+    min-height: 78px;
+  }
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-cancel] {
+  border-color: var(--lcdp-color-blue);
+  color: var(--lcdp-color-blue);
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-cancel]:hover,
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-cancel]:focus-visible {
+  border-color: var(--lcdp-color-blue-hover);
+  color: var(--lcdp-color-blue-hover);
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-submit] {
+  background: var(--lcdp-color-blue);
+  border-color: var(--lcdp-color-blue);
+  color: #ffffff;
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-submit]:hover,
+.lcdp-page-cle-du-parc [data-lcdp-dialogue-champ-submit]:focus-visible {
+  background: var(--lcdp-color-blue-hover);
+  border-color: var(--lcdp-color-blue-hover);
+  color: #ffffff;
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-alerte-ok] {
+  background: var(--lcdp-color-blue);
+  border-color: var(--lcdp-color-blue);
+  color: #ffffff;
+}
+
+.lcdp-page-cle-du-parc [data-lcdp-alerte-ok]:hover,
+.lcdp-page-cle-du-parc [data-lcdp-alerte-ok]:focus-visible {
+  background: var(--lcdp-color-blue-hover);
+  border-color: var(--lcdp-color-blue-hover);
+  color: #ffffff;
+}
+
+/* Authentification Ma clé : quatre cases, sans libellé visible du code. */
+.lcdp-cle-dialogue-description { margin: 0 0 16px; text-align: center; }
+.lcdp-cle-code-quatre-cases { display: flex; justify-content: center; gap: 12px; margin: 20px 0; }
+.lcdp-cle-code-quatre-cases input { width: 52px; min-width: 0; height: 56px; padding: 8px; border: 1px solid var(--lcdp-color-border-strong); border-radius: var(--lcdp-radius-small); background: var(--lcdp-color-surface); color: var(--lcdp-color-text); font: 24px var(--lcdp-font-main); text-align: center; }
+@media (max-width: 359px) { .lcdp-cle-code-quatre-cases { gap: 8px; } .lcdp-cle-code-quatre-cases input { width: 44px; } }
+
+/* Contrôle d’accès : composant autonome, également utilisé pour les aperçus. */
+.lcdp-acces { position: relative; width: min(100%,520px); min-height: 650px; margin: 0 auto; padding: 28px 24px 24px; display: flex; flex-direction: column; align-items: center; background: var(--lcdp-color-surface); color: var(--lcdp-color-text); font: 17px/1.45 var(--lcdp-font-main); box-sizing: border-box; }
+.lcdp-acces[hidden] { display: none !important; }
+.lcdp-acces * { box-sizing: border-box; }
+.lcdp-acces-titre { margin: 0 0 32px; font-size: 23px; font-weight: 600; line-height: 1.25; text-align: center; }
+.lcdp-acces-form { width: 100%; display: flex; flex-direction: column; align-items: center; margin-top: 60px; gap: 20px; }
+.lcdp-acces-form .lcdp-cle-code-quatre-cases { margin: 0; }
+.lcdp-acces-form .lcdp-button { width: 100%; }
+.lcdp-acces-erreur:empty { display: none; }
+.lcdp-acces-erreur, .lcdp-acces-dernier-essai { color: var(--lcdp-color-text); text-align: center; margin: 0; }
+.lcdp-acces-reservation { width: 100%; text-align: center; }
+.lcdp-acces-parc { font-size: 22px; line-height: 1.3; margin: 0 0 8px; }
+.lcdp-acces-heure { font-size: 24px; margin: 0 0 8px; }
+.lcdp-acces-invites { margin: 0; }
+.lcdp-acces-instructions { align-self: stretch; margin: 40px 0 28px; padding-left: 26px; }
+.lcdp-acces-instructions li { padding-left: 4px; margin: 0 0 18px; }
+.lcdp-acces-bas { margin-top: auto; width: 100%; display: flex; justify-content: center; padding-bottom: env(safe-area-inset-bottom); }
+.lcdp-acces-camera { width: min(240px,100%); height: auto; flex: 0 0 auto; border: 0; border-radius: 0; background: transparent; display: block; padding: 0; opacity: 1; }
+.lcdp-acces-camera-image { display: block; width: 100%; height: auto; }
+.lcdp-acces-message { margin: 70px 0 0; text-align: center; font-size: 20px; }
+.lcdp-acces-presence { width: 100%; min-height: 250px; margin-top: 40px; border-radius: var(--lcdp-radius-medium); display: flex; align-items: center; justify-content: center; color: #fff; text-align: center; }
+.lcdp-acces-presence p { color: #fff; font-size: 24px; padding: 20px; margin: 0; }
+.lcdp-acces-presence img { display: block; width: 100%; height: auto; }
+.lcdp-acces-lightbox { position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; padding: 22px; background: rgba(0,0,0,.45); }
+.lcdp-acces-lightbox-contenu { width: 100%; padding: 28px 20px; border-radius: var(--lcdp-radius-medium); background: var(--lcdp-color-surface); display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.lcdp-acces-refus { margin: 0 0 6px; color: var(--lcdp-color-text); text-align: center; }
+.lcdp-acces-lightbox .lcdp-button { width: 100%; }
+.lcdp-acces-lightbox button:disabled { opacity: .5; cursor: default; }
+@media (max-width: 359px) { .lcdp-acces { padding-left: 18px; padding-right: 18px; } .lcdp-acces-titre { font-size: 21px; } }
+
+/* Capture guidée et attente de l'analyse. */
+.lcdp-acces-video{display:block;width:100%;max-width:420px;max-height:55vh;object-fit:contain;background:#000;margin:0 auto}
+.lcdp-acces-spinner{width:32px;height:32px;border:4px solid #ddd;border-top-color:currentColor;border-radius:50%;margin:1rem auto;animation:lcdp-acces-tourne 1s linear infinite}
+@keyframes lcdp-acces-tourne{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.lcdp-acces-spinner{animation:none}}
+
+.lcdp-presence-image{display:block;width:100%;max-width:480px;max-height:80vh;object-fit:contain;margin:auto}
+.lcdp-acces-invites-form label{display:flex;align-items:center;gap:.75rem;padding:.5rem 0}
+.lcdp-acces-invites-form input[type=checkbox]{width:24px;height:24px;flex-shrink:0}
+
+.lcdp-acces[data-screen="access_confirmed"] .lcdp-presence-image{max-height:35vh}
+
+/* Fin du créneau : le verrou reste actif jusqu'à sortie validée ou fin + 10 h. */
+.lcdp-acces[data-screen="expired"]{position:fixed;inset:0;z-index:11000;overflow:auto;background:#E90505;color:#fff;padding:calc(env(safe-area-inset-top,0px) + 2rem) 1.25rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;}
+.lcdp-acces[data-screen="expired"] .lcdp-acces-titre,.lcdp-acces[data-screen="expired"] .lcdp-acces-message{color:#fff;}
+
+/* Pointage invités : liste défilable, actions hors de la zone défilante. */
+.lcdp-acces-invites-form {width:100%;display:flex;flex-direction:column;align-items:stretch;gap:16px;}
+.lcdp-acces-invites-liste {max-height:360px;max-height:min(45svh,360px);overflow-y:auto;overscroll-behavior-y:contain;min-width:0;}
+.lcdp-acces-invites-liste .lcdp-acces-instructions {margin:0;padding-left:26px;}
+.lcdp-acces-invites-form label {min-width:0;overflow-wrap:anywhere;}
+.lcdp-acces-invites-form input[type="checkbox"] {flex-shrink:0;}
+.lcdp-acces-invites-form > button[type="submit"] {align-self:center;}
+
+/* Nouvelles étapes : timeline et accès détail */
+/* Ma clé : navigation visuelle progressive, sans modification des contrôles existants. */
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline,
+.lcdp-page-cle-du-parc .lcdp-parcours-ecran {
+  box-sizing: border-box;
+  width: min(100%, 620px);
+  margin-inline: auto;
+  font-family: var(--lcdp-font-main, Arial, sans-serif);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline[hidden],
+.lcdp-page-cle-du-parc .lcdp-parcours-ecran[hidden] {
+  display: none !important;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline {
+  margin-top: 12px;
+  margin-bottom: 24px;
+  padding: 10px 4px 12px;
+  background: var(--lcdp-color-surface);
+  color: var(--lcdp-color-text, var(--lcdp-color-text));
+  position: relative;
+  z-index: 2;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__liste {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  list-style: none;
+  gap: 2px;
+  padding: 0;
+  margin: 0;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  position: relative;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon:not(:last-child)::after {
+  position: absolute;
+  top: 17px;
+  left: calc(50% + 19px);
+  width: calc(100% - 36px);
+  border-top: 2px solid var(--lcdp-color-border-strong);
+  content: "";
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon[data-etat="termine"]::after {
+  border-color: var(--lcdp-color-logo-green);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__numero {
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--lcdp-color-border-strong);
+  border-radius: 50%;
+  background: var(--lcdp-color-surface);
+  color: var(--lcdp-color-text-muted);
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 700;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon[data-etat="actif"] .lcdp-parcours-timeline__numero {
+  background: var(--lcdp-color-blue);
+  border-color: var(--lcdp-color-blue);
+  color: var(--lcdp-color-surface);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon[data-etat="termine"] .lcdp-parcours-timeline__numero {
+  background: var(--lcdp-color-logo-green);
+  border-color: var(--lcdp-color-logo-green);
+  color: var(--lcdp-color-surface);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__libelle {
+  font-size: 11px;
+  line-height: 1.3;
+  font-weight: 500;
+  overflow-wrap: break-word;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon[data-etat="actif"] .lcdp-parcours-timeline__libelle {
+  font-weight: 700;
+  color: var(--lcdp-color-blue);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-ecran {
+  min-height: 380px;
+  padding: 36px 18px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  background: var(--lcdp-color-surface, var(--lcdp-color-surface));
+  color: var(--lcdp-color-text, var(--lcdp-color-text));
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-titre {
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  margin: 0;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-reussite {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 48px 0 20px;
+  text-align: center;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-reussite::before {
+  display: block;
+  content: "✓";
+  margin: 0 auto 18px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--lcdp-color-logo-green);
+  color: var(--lcdp-color-surface);
+  font-size: 38px;
+  line-height: 58px;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-continuer {
+  width: min(100%, 320px);
+  min-height: 48px;
+  margin-top: auto;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-parc {
+  margin: 0;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-carrousel {
+  width: 100%;
+  flex: 1;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide {
+  min-height: 230px;
+  border: 1px solid var(--lcdp-color-border);
+  border-radius: 12px;
+  padding: 22px 18px;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide__titre {
+  margin: 0 0 18px;
+  font-size: 20px;
+  line-height: 1.25;
+  text-align: center;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide__texte {
+  margin: 0 0 18px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide__photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: 8px;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide__image {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 7px;
+  object-fit: cover;
+  background: var(--lcdp-color-surface-soft);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide__image[hidden] { display: none; }
+.lcdp-page-cle-du-parc .lcdp-parcours-indisponible {
+  text-align: center;
+  padding: 36px 14px;
+  color: var(--lcdp-color-text-muted);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__navigation {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__navigation[hidden] { display: none; }
+.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__bouton {
+  min-width: 105px;
+  min-height: 44px;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__compteur { font-variant-numeric: tabular-nums; }
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline + .lcdp-acces { margin-top: 0; }
+/* Le bandeau doit rester visible lors de la présence expirée.
+   La couleur rouge continue de signaler la fin de la durée autorisée. */
+.lcdp-page-cle-du-parc .lcdp-page-container[data-lcdp-parcours-etape="4"] .lcdp-acces[data-screen="expired"] {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  min-height: 75svh;
+}
+@media (max-width: 380px) {
+  .lcdp-page-cle-du-parc .lcdp-parcours-timeline__numero { width: 29px; height: 29px; font-size: 13px; }
+  .lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon:not(:last-child)::after {
+    top: 15px;
+    left: calc(50% + 16px);
+    width: calc(100% - 31px);
+  }
+  .lcdp-page-cle-du-parc .lcdp-parcours-timeline__libelle { font-size: 10px; }
+  .lcdp-page-cle-du-parc .lcdp-parcours-ecran { padding-inline: 9px; }
+  .lcdp-page-cle-du-parc .lcdp-parcours-carrousel__bouton { min-width: 92px; }
+}
+
+
+/* La timeline reste visible au défilement, aussi pendant les captures vidéo.
+   Aucun positionnement n'est injecté depuis le JS ou le HTML. */
+.lcdp-page-cle-du-parc [hidden] { display: none !important; }
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--lcdp-color-border);
+  background: var(--lcdp-color-surface);
+  max-width: 100%;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon[data-etat="termine"] .lcdp-parcours-timeline__numero,
+.lcdp-page-cle-du-parc .lcdp-parcours-reussite::before {
+  color: #ffffff;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-timeline__jalon[data-etat="actif"] .lcdp-parcours-timeline__numero {
+  color: #ffffff;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-reussite::before { line-height: 58px; }
+
+/* État du contrôle de présence : couleurs fournies par le Worker courant.
+   L'attribution à l'état se fait avec une classe, jamais avec element.style. */
+.lcdp-page-cle-du-parc .lcdp-acces-presence--active { background: var(--lcdp-color-logo-green); }
+.lcdp-page-cle-du-parc .lcdp-acces-presence--overstay { background: var(--lcdp-color-orange); }
+.lcdp-page-cle-du-parc .lcdp-acces-video--miroir { transform: scaleX(-1); }
+
+/* Accès détail à l'étape 4 : volet consultable, indépendant de l'écran de présence. */
+.lcdp-page-cle-du-parc .lcdp-parcours-details-presence {
+  width: min(100%, 620px);
+  margin: 0 auto var(--lcdp-space-3);
+  padding: var(--lcdp-space-2);
+  box-sizing: border-box;
+  border: 1px solid var(--lcdp-color-border);
+  border-radius: var(--lcdp-radius-medium);
+  background: var(--lcdp-color-surface);
+  color: var(--lcdp-color-text);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-details-presence__entete {
+  display: block;
+  cursor: pointer;
+  font: 600 1rem/1.4 var(--lcdp-font-main);
+  color: var(--lcdp-color-primary);
+  padding: var(--lcdp-space-1) var(--lcdp-space-2);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-details-presence__entete:focus-visible {
+  outline: 3px solid var(--lcdp-color-focus);
+  border-radius: var(--lcdp-radius-small);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-details-presence__contenu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lcdp-space-3);
+  padding: var(--lcdp-space-2) 0 0;
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-details-presence .lcdp-parcours-slide {
+  border-color: var(--lcdp-color-border);
+  background: var(--lcdp-color-surface);
+}
+.lcdp-page-cle-du-parc .lcdp-parcours-slide__photos:empty { display: none; }
+.lcdp-page-cle-du-parc .lcdp-parcours-slide__image[hidden] { display: none !important; }
+.lcdp-page-cle-du-parc .lcdp-parcours-carrousel__bouton:disabled { opacity: .45; cursor: not-allowed; }
+.lcdp-page-cle-du-parc .lcdp-parcours-ecran .lcdp-button:focus-visible,
+.lcdp-page-cle-du-parc .lcdp-parcours-details-presence button:focus-visible {
+  outline: 3px solid var(--lcdp-color-focus);
+  outline-offset: 2px;
+}
+/* L'écran rouge de fin de présence demeure dans le flux, sous la timeline. */
+.lcdp-page-cle-du-parc .lcdp-page-container[data-lcdp-parcours-etape="4"] .lcdp-acces[data-screen="expired"] {
+  width: min(100%, 620px);
+  position: relative;
+  z-index: auto;
+  inset: auto;
+  min-height: 65svh;
+  background: #E90505;
+  color: #ffffff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lcdp-page-cle-du-parc .lcdp-parcours-timeline { scroll-behavior: auto; }
+}
