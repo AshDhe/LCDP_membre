@@ -1848,33 +1848,49 @@
     const slot = detail?.querySelector("[data-lcdp-shift-detail-parc-alerte-slot]");
     if (!slot) return window.confirm(texte);
 
-    slot.innerHTML = "";
-    const box = document.createElement("div");
-    box.className = "lcdp-box-shift-detail-parc__alerte-box";
-
-    const heading = document.createElement("h3");
-    heading.textContent = titre;
-    const message = document.createElement("p");
-    message.className = "lcdp-box-shift-detail-parc__alerte-message";
-    message.textContent = texte;
-    const actions = document.createElement("div");
-    actions.className = "lcdp-fiche-parc__dialogue-actions";
-
-    const annuler = creerBoutonCommande("Annuler", "lcdp-button-secondary", () => fermer(false));
-    const confirmer = creerBoutonCommande("Confirmer", "lcdp-button-primary", () => fermer(true));
-    actions.append(annuler, confirmer);
-    box.append(heading, message, actions);
-    slot.appendChild(box);
-
-    let resoudre;
-    const promesse = new Promise((resolve) => { resoudre = resolve; });
-
-    function fermer(valeur) {
-      slot.innerHTML = "";
-      resoudre(valeur);
+    const urlCss = construireUrlSite("/OBJET/CSSBASE/lcdp-lightbox-convergence.css");
+    if (![...document.querySelectorAll('link[rel="stylesheet"]')]
+      .some(lien => lien.href === new URL(urlCss, window.location.href).href)) {
+      const lien = document.createElement("link");
+      lien.rel = "stylesheet";
+      lien.href = urlCss;
+      document.head.appendChild(lien);
     }
-
-    return promesse;
+    const hote = document.createElement("div");
+    document.body.appendChild(hote);
+    try {
+      hote.appendChild(await chargerFragment("/OBJET/HTMLBASE/02-dialogue-reference-choix.html"));
+      const dialogue = hote.querySelector('[data-lcdp-dialogue-reference="choix"]');
+      const titreDialogue = hote.querySelector("[data-lcdp-dialogue-titre]");
+      const message = hote.querySelector("[data-lcdp-dialogue-message]");
+      const annuler = hote.querySelector('[data-lcdp-dialogue-action="annuler"]');
+      const confirmer = hote.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+      if (!dialogue || !titreDialogue || !message || !annuler || !confirmer) {
+        throw new Error("Structure CHOIX incomplète.");
+      }
+      titreDialogue.textContent = titre;
+      message.textContent = texte;
+      annuler.textContent = "Annuler";
+      confirmer.textContent = "Confirmer";
+      return await new Promise(resolve => {
+        let termine = false;
+        const fermer = valeur => {
+          if (termine) return;
+          termine = true;
+          hote.remove();
+          resolve(valeur);
+        };
+        annuler.addEventListener("click", () => fermer(false), { once: true });
+        confirmer.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => {
+          if (event.target === dialogue) fermer(false);
+        });
+        confirmer.focus();
+      });
+    } catch (erreur) {
+      hote.remove();
+      throw erreur;
+    }
   }
 
   async function afficherMessageShift(message, profil = null) {
