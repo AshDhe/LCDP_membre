@@ -31,8 +31,11 @@
     .lcdp-stripe__detail dt{color:#78716c}
     .lcdp-stripe__detail dd{margin:0;text-align:right;font-weight:700;overflow-wrap:anywhere}
     .lcdp-stripe__detail .lcdp-stripe__detail-total{padding-top:9px;border-top:1px solid #d6d3d1}
+    .lcdp-stripe__reprendre{display:block;width:100%;margin:12px 0 0;padding:13px 15px;border:0;border-radius:12px;background:#4b6333;color:white;font:inherit;font-weight:750;cursor:pointer}
+    .lcdp-stripe__reprendre:disabled{opacity:.55;cursor:wait}
+    .lcdp-stripe__reprendre[hidden]{display:none!important}
   </style>
-  <script defer src="./paiement-stripe-membre.js?v=20261113-detail-commande"></script>
+  <script defer src="./paiement-stripe-membre.js?v=20261113-reprise-session"></script>
 </head>
 <body class="lcdp-page-reserver lcdp-stripe-page">
   <main class="lcdp-stripe" aria-labelledby="paiement-titre">
@@ -63,6 +66,7 @@
         <input class="lcdp-stripe__email" id="email-paiement" name="email" type="email" autocomplete="email" inputmode="email" placeholder="email@exemple.com" required>
         <div id="stripe-payment-element" aria-label="Formulaire bancaire sécurisé Stripe"></div>
         <p class="lcdp-stripe__erreur" id="paiement-erreur" role="alert" hidden></p>
+        <button type="button" class="lcdp-stripe__reprendre" id="reprendre-paiement" hidden>Reprendre le paiement</button>
         <button class="lcdp-stripe__payer" id="bouton-payer" type="submit" disabled>Payer</button>
       </form>
       <p class="lcdp-stripe__aide">Vos informations bancaires sont saisies directement dans le composant sécurisé Stripe.</p>
