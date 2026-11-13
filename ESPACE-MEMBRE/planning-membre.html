@@ -37,7 +37,7 @@
       ].forEach(path => {
         // Comme sur mes-informations.html : conserver l'ordre de cascade CSS
         // avant le style de page, sans chargement asynchrone concurrent.
-        const versionVue = path.endsWith("/lcdp-mes-acces-membre.css") ? "?v=20261113-inviter-formulaire-v11" : "";
+        const versionVue = path.endsWith("/lcdp-mes-acces-membre.css") ? "?v=20261113-inviter-actions-v16" : "";
         document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(path) + versionVue + '">');
       });
       document.write('<script src="' + window.LCDP_urlObjet('/JSBASE/03-galerie.js') + '"><\/script>');
@@ -104,6 +104,6 @@
     <div id="lcdp-lightbox-slot"></div>
   </div>
 
-  <script src="./planning-membre.js?v=20261113-inviter-champ-c040-v15"></script>
+  <script src="./planning-membre.js?v=20261113-inviter-actions-v16"></script>
 </body>
 </html>
