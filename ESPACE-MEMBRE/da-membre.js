@@ -273,81 +273,39 @@
         return true;
       }
     }
+    // Aucun appel métier restant ici n'est une confirmation ou une réussite :
+    // les réussites sont explicitement dirigées vers INFORMATION.
+    const conteneur = document.createElement("div");
+    document.body.appendChild(conteneur);
     try {
-      await chargerDependancesAlerteDa();
-    } catch (error) {
-      console.error("CSS alerte DA :", error);
-    }
-
-    const container = document.createElement("div");
-    container.className = "lcdp-da-membre-alerte";
-    document.body.appendChild(container);
-
-    let fragment;
-    try {
-      fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
-    } catch (error) {
-      console.error("Fragment alerte DA :", error);
-      container.remove();
+      await chargerCssObjetUneFois("/CSSBASE/lcdp-lightbox-convergence.css");
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-erreur.html"));
+      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="erreur"]');
+      const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
+      const bouton = conteneur.querySelector('[data-lcdp-dialogue-action="fermer"]');
+      if (!dialogue || !titre || !texte || !bouton) {
+        throw new Error("Structure ERREUR DA incomplète.");
+      }
+      titre.textContent = options.titre || "Erreur";
+      texte.textContent = String(message || "");
+      bouton.textContent = options.boutonOk || "Fermer";
+      // Comme dans la branche précédente, l'acquittement par le bouton
+      // est obligatoire : Échap et clic sur le fond ne ferment pas ce dialogue.
+      return await new Promise(resolve => {
+        bouton.addEventListener("click", () => {
+          conteneur.remove();
+          resolve(true);
+        }, { once: true });
+        bouton.focus();
+      });
+    } catch (erreur) {
+      console.error("Dialogue ERREUR DA :", erreur);
+      conteneur.remove();
       window.alert(message || "");
       return true;
     }
 
-    container.appendChild(fragment);
-    const alerte = container.querySelector("[data-lcdp-box-alerte]");
-    const texte = container.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = container.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = container.querySelector("[data-lcdp-alerte-ok]");
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      container.remove();
-      window.alert(message || "");
-      return true;
-    }
-
-    const confirmation = options.mode === "confirmation";
-    texte.textContent = message || "";
-    boutonOk.textContent = options.boutonOk || (confirmation ? "Confirmer" : "Fermer");
-    boutonFermer.hidden = !confirmation || options.sansCroix === true;
-    alerte.dataset.lcdpDialogueType = confirmation ? "confirmation" : "information";
-
-    // Le bouton original garde son identité et son écouteur. Seule la zone
-    // d'actions est commune aux deux présentations.
-    const actions = document.createElement("div");
-    actions.className = "lcdp-dialogue-actions";
-    boutonOk.before(actions);
-    actions.appendChild(boutonOk);
-    let boutonAnnuler = null;
-    if (confirmation) {
-      boutonAnnuler = document.createElement("button");
-      boutonAnnuler.type = "button";
-      boutonAnnuler.className = "lcdp-button lcdp-button-secondary";
-      boutonAnnuler.textContent = "Annuler";
-      actions.prepend(boutonAnnuler);
-    }
-
-    return new Promise((resolve) => {
-      let resolu = false;
-      const fermer = (valeur) => {
-        if (resolu) return;
-        resolu = true;
-        container.remove();
-        resolve(valeur);
-      };
-      boutonFermer.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        fermer(false);
-      });
-      boutonAnnuler?.addEventListener("click", () => fermer(false));
-      boutonOk.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        fermer(true);
-      });
-      alerte.addEventListener("click", (event) => {
-        if (event.target === alerte && confirmation && !boutonFermer.hidden) fermer(false);
-      });
-    });
   }
 
   // Aucun CSS /BOX n’est chargé pour la DA : présentation des objets dans le central,
@@ -1161,7 +1119,7 @@ form.dataset.lcdpTransmissionDaEnCours =
       const confirmationLue =
         await afficherAlerteDa(
           "Votre DA est envoyée. Un e-mail vous a été envoyé pour nous transmettre votre pièce d'identité.",
-          { boutonOk: "Fermer", sansCroix: true }
+          { profil: "information", boutonOk: "Fermer", sansCroix: true }
         );
 
       fermerWorkflowDa();
