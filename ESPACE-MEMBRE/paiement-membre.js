@@ -312,7 +312,7 @@
     carte.append(contenu, pied);
   }
 
-  function monterBon(workflowModele, recapModele, panier, devis, paiement) {
+  function monterBon(workflowModele, recapModele, panier, devis, paiement, numeroCommande) {
     const workflow = workflowModele.cloneNode(true);
     const recap = recapModele.cloneNode(true);
     workflow.classList.add('lcdp-box-workflow-abonnement--recapitulatif');
@@ -339,6 +339,7 @@
     const premiereLignePrix = recap.querySelector('[data-lcdp-recaporder-prix-initial]')?.closest('.lcdp-box-card-recaporder__row');
     if (!liste || !premiereLignePrix) throw new Error('Structure de prix du récapitulatif manquante.');
     const lignes = [];
+    lignes.push(ajouterLigne(liste, 'Numéro de commande', numeroCommande));
     lignes.push(ajouterLigne(liste, 'Accès obligatoires',
       `${panier.nbSelectionnes} / ${panier.nbAccesRequis}`));
 
@@ -559,8 +560,13 @@
             d.code === o.code && Math.round(Number(d.totalTtc)*100) === Math.round(Number(o.totalTtc)*100)))) {
         throw new Error('Le devis ne reprend pas exactement les privilèges du panier. Paiement bloqué.');
       }
+      const attribution = await apiPaiement('/numero-commande', {
+        method:'POST', body:JSON.stringify({idpanier})
+      });
+      if (!/^LCDP-\d{4}-\d{6,}$/.test(attribution.numeroCommande || ''))
+        throw new Error('Le numéro de commande ne peut pas être attribué.');
       const paiement = { termine:false };
-      const bonPrepare = monterBon(modeleWorkflow, modeleRecap, panier, devis, paiement);
+      const bonPrepare = monterBon(modeleWorkflow, modeleRecap, panier, devis, paiement, attribution.numeroCommande);
       // Récapitulatif intégré à la même zone ABO-RÉZA que les autres écrans :
       // aucun dialogue flottant hors du wrapper PLANIFIER.
       const slot = document.getElementById('lcdp-aboreza-workflow-slot');
