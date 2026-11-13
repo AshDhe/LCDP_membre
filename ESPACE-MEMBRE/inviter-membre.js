@@ -1064,6 +1064,16 @@
         return resultat;
       },
       informer:message => afficherAlerte(message,{profil:"information",superposition:true}),
+      confirmerQuitter:() => afficherAlerte(
+        "Les modifications de la liste des invités ne seront pas enregistrées.",
+        {
+          profil:"choix",
+          superposition:true,
+          titre:"Quitter sans enregistrer ?",
+          libelleAnnuler:"Rester",
+          libelleConfirmer:"Quitter sans enregistrer"
+        }
+      ),
       fermer
     });
     return true;
