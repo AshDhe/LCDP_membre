@@ -559,6 +559,7 @@
       const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
       const bouton = conteneur.querySelector(erreur ? '[data-lcdp-dialogue-action="fermer"]' : '[data-lcdp-dialogue-action="compris"]');
       if (!dialogue || !elementTitre || !texte || !bouton) throw new Error("Dialogue de référence incomplet.");
+      if (document.querySelector('[data-lcdp-invitation-invites-overlay]')) dialogue.style.zIndex = "12000";
       elementTitre.textContent = titre;
       texte.textContent = String(message || "");
       bouton.textContent = "Fermer";
@@ -810,6 +811,7 @@
       const conserver = conteneur.querySelector('[data-lcdp-dialogue-action="conserver"]');
       const supprimer = conteneur.querySelector('[data-lcdp-dialogue-action="supprimer"]');
       if (!dialogue || !titre || !texte || !conserver || !supprimer) return false;
+      if (document.querySelector('[data-lcdp-invitation-invites-overlay]')) dialogue.style.zIndex = "12000";
       titre.textContent = options.titre || "Annuler cet accès ?";
       texte.textContent = question;
       conserver.textContent = options.conserver || "Conserver";
