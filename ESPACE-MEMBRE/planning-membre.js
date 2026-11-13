@@ -1227,6 +1227,58 @@
     }
     formulaire.appendChild(groupe);
 
+    // Même référence visuelle que la vue COACH de PLANIFIER.
+    // Le service Mes accès ne fournit pas de catégories de présence Coach :
+    // laisser les quatre filtres visibles mais inactifs, sans filtrage fictif.
+    const coach = document.createElement("fieldset");
+    coach.className = "lcdp-box-legende lcdp-planifier-legende-autorisations lcdp-mes-acces-filtres-coach";
+    coach.dataset.lcdpMesAccesFiltresCoach = "true";
+    coach.disabled = true;
+    coach.setAttribute("aria-describedby","lcdp-mes-acces-filtres-coach-info");
+    const titreCoach = document.createElement("legend");
+    titreCoach.className = "lcdp-box-legende__titre";
+    titreCoach.textContent = "FILTRE COACH (PRÉSENCE PARC)";
+    const ligneCoach = document.createElement("div");
+    ligneCoach.className = "lcdp-box-legende__ligne";
+    for (const [categorie, picto, libelle] of [
+      ["sport","🏃","SPORT"],
+      ["art","🎨","ART"],
+      ["culture","🎭","CULTURE"],
+      ["recre","🎲","RÉCRÉ"]
+    ]) {
+      const etiquette = document.createElement("label");
+      etiquette.className = "lcdp-box-legende__item lcdp-planifier-filtre-categorie";
+      const controle = document.createElement("input");
+      controle.type = "checkbox";
+      controle.className = "lcdp-planifier-filtre-categorie__input";
+      controle.value = categorie;
+      controle.checked = true;
+      controle.disabled = true;
+      controle.setAttribute("aria-label", "Afficher les présences Coach : " + libelle);
+      const pastille = document.createElement("span");
+      pastille.className = "lcdp-box-legende__carre";
+      pastille.setAttribute("aria-hidden","true");
+      const coche = document.createElement("span");
+      coche.className = "lcdp-planifier-filtre-categorie__coche";
+      coche.textContent = "✓";
+      pastille.appendChild(coche);
+      const icone = document.createElement("span");
+      icone.className = "lcdp-planifier-filtre-categorie__picto";
+      icone.textContent = picto;
+      icone.setAttribute("aria-hidden","true");
+      const texte = document.createElement("span");
+      texte.className = "lcdp-box-legende__libelle";
+      texte.textContent = libelle;
+      etiquette.append(icone, texte, controle, pastille);
+      ligneCoach.appendChild(etiquette);
+    }
+    const noteCoach = document.createElement("p");
+    noteCoach.id = "lcdp-mes-acces-filtres-coach-info";
+    noteCoach.className = "lcdp-mes-acces-filtres-coach__note";
+    noteCoach.textContent = "Filtres indisponibles tant que les présences Coach ne sont pas renseignées dans vos accès.";
+    coach.append(titreCoach, ligneCoach, noteCoach);
+    formulaire.appendChild(coach);
+
     const pied = document.createElement("div");
     pied.className = "lcdp-planning-filtres__actions";
     const resultat = document.createElement("span");
