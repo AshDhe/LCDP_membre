@@ -6552,65 +6552,77 @@
     couleurBouton = "orange",
     options = {}
   ) {
-    const conteneur = document.createElement("div");
-    hoteDialoguesPlanifier().appendChild(conteneur);
+    return afficherErreurPlanifier(message, { ...options, couleurBouton, superposition: true });
+  }
 
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
-    conteneur.appendChild(fragment);
+  async function afficherErreurPlanifier(message, options = {}) {
+    const superposition = options.superposition === true;
+    const conteneur = superposition
+      ? document.createElement("div")
+      : document.getElementById("lcdp-lightbox-slot");
+    if (!conteneur) return null;
+    const focusInitial = document.activeElement;
+    try {
+      if (!superposition) conteneur.replaceChildren();
+      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-erreur.html"));
+      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="erreur"]');
+      const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
+      const bouton = conteneur.querySelector('[data-lcdp-dialogue-action="fermer"]');
+      if (!dialogue || !titre || !texte || !bouton) throw new Error("Structure ERREUR PLANIFIER incomplète.");
 
-    const alerte = conteneur.querySelector("[data-lcdp-box-alerte]");
-    const texte = conteneur.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = conteneur.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = conteneur.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      conteneur.remove();
-      throw new Error("Structure de l’alerte incomplète.");
-    }
-
-    texte.textContent = message || "";
-    if (options.libelleBouton) boutonOk.textContent = options.libelleBouton;
-    if (options.classe) alerte.classList.add(options.classe);
-    // Une alerte informative avec « Fermer » utilise une seule commande.
-    const fermetureUnique = options.sansCroix === true ||
-      String(boutonOk.textContent || "").trim().toLocaleLowerCase("fr-FR") === "fermer";
-    if (fermetureUnique) boutonFermer.remove();
-    if (couleurBouton === "vert-plein-partage") {
-      alerte.classList.add("lcdp-planifier-partage-confirmation");
-    }
-    boutonOk.classList.remove(
-      "lcdp-button-primary",
-      "lcdp-button-secondary",
-      "lcdp-button-orange"
-    );
-    boutonOk.classList.add(
-      (couleurBouton === "vert-plein-partage" || couleurBouton === "vert")
-        ? "lcdp-button-primary"
-        : couleurBouton === "vert-contour"
-          ? "lcdp-button-secondary"
-          : "lcdp-button-orange"
-    );
-
-    if (typeof options.onAffiche === "function") {
-      window.requestAnimationFrame(() => { Promise.resolve(options.onAffiche()).catch(console.error); });
-    }
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer(valeur) {
-        if (resolu) return;
-        resolu = true;
-        conteneur.remove();
-        resolve(valeur);
+      titre.textContent = options.titre || "Erreur";
+      texte.textContent = String(message || "");
+      bouton.textContent = options.libelleBouton || "OK";
+      if (options.classe) dialogue.classList.add(options.classe);
+      if (options.couleurBouton === "vert-plein-partage") {
+        dialogue.classList.add("lcdp-planifier-partage-confirmation");
+      }
+      if (options.couleurBouton === "vert-contour") {
+        bouton.classList.remove("lcdp-dialogue-ref__bouton--principal");
+        bouton.classList.add("lcdp-dialogue-ref__bouton--secondaire");
+      } else if (options.couleurBouton === "orange") {
+        bouton.classList.add("lcdp-button-orange");
       }
 
-      if (!fermetureUnique) boutonFermer.addEventListener("click", () => fermer(false));
-      boutonOk.addEventListener("click", () => fermer(true));
-      alerte.addEventListener("click", (event) => {
-        if (event.target === alerte && options.fermetureLibre !== false) fermer(false);
+      if (superposition) hoteDialoguesPlanifier().appendChild(conteneur);
+      if (typeof options.onAffiche === "function") {
+        window.requestAnimationFrame(() => {
+          Promise.resolve(options.onAffiche()).catch(console.error);
+        });
+      }
+
+      return await new Promise(resolve => {
+        let resolu = false;
+        const fermer = valeur => {
+          if (resolu) return;
+          resolu = true;
+          document.removeEventListener("keydown", gererClavier);
+          if (superposition) conteneur.remove();
+          else conteneur.replaceChildren();
+          if (focusInitial?.isConnected && typeof focusInitial.focus === "function") {
+            focusInitial.focus({ preventScroll: true });
+          }
+          resolve(valeur);
+        };
+        const gererClavier = event => {
+          if (event.key === "Escape" && options.fermetureLibre !== false) {
+            event.preventDefault();
+            fermer(false);
+          }
+        };
+        bouton.addEventListener("click", () => fermer(true), { once: true });
+        dialogue.addEventListener("click", event => {
+          if (event.target === dialogue && options.fermetureLibre !== false) fermer(false);
+        });
+        document.addEventListener("keydown", gererClavier);
+        bouton.focus({ preventScroll: true });
       });
-    });
+    } catch (erreur) {
+      if (superposition) conteneur.remove();
+      else conteneur.replaceChildren();
+      throw erreur;
+    }
   }
 
   function changerMois(etatCalendrier, delta) {
@@ -6630,47 +6642,12 @@
 
   async function afficherAlerte(message) {
     const slot = document.getElementById("lcdp-lightbox-slot");
-
     if (!slot) return null;
-    // Le calendrier PLANIFIER est persistant : une erreur ne doit jamais le détruire.
+    // Le calendrier PLANIFIER est persistant : l'alerte reste superposée.
     if (slot.querySelector("[data-lcdp-box-calendrier-mois]")) {
       return afficherAlerteSuperposee(message);
     }
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-alerte.html");
-    slot.appendChild(fragment);
-
-    const alerte = slot.querySelector("[data-lcdp-box-alerte]");
-    const texte = slot.querySelector("[data-lcdp-alerte-message]");
-    const boutonFermer = slot.querySelector("[data-lcdp-alerte-close]");
-    const boutonOk = slot.querySelector("[data-lcdp-alerte-ok]");
-
-    if (!alerte || !texte || !boutonFermer || !boutonOk) {
-      throw new Error("Structure de l’alerte incomplète.");
-    }
-
-    texte.textContent = message || "";
-    boutonOk.classList.remove("lcdp-button-primary");
-    boutonOk.classList.add("lcdp-button-orange");
-
-    return new Promise((resolve) => {
-      let resolu = false;
-
-      function fermer(valeur) {
-        if (resolu) return;
-        resolu = true;
-        slot.innerHTML = "";
-        resolve(valeur);
-      }
-
-      boutonFermer.addEventListener("click", () => fermer(false));
-      boutonOk.addEventListener("click", () => fermer(true));
-      alerte.addEventListener("click", (event) => {
-        if (event.target === alerte) fermer(false);
-      });
-    });
+    return afficherErreurPlanifier(message);
   }
 
   async function ouvrirDialogueChamp(options) {
