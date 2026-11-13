@@ -622,14 +622,24 @@
       liste.style.cssText = 'list-style:none;margin:12px 0;padding:0;display:grid;gap:9px;';
       listeEmails.style.cssText = 'list-style:none;margin:8px 0;padding:0;display:grid;gap:7px;';
       const actions = overlay.querySelector('.lcdp-box-card-listinvites-oui-non__actions');
-      if (actions) actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:15px;';
+      if (actions) actions.style.cssText = 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin-top:15px;width:100%;';
       const cssBouton = 'min-height:36px;padding:7px 14px;border:1px solid #4b6333;border-radius:14px;background:white;color:#4b6333;font-size:13px;font-weight:700;cursor:pointer;';
       [ajouter,enregistrer,fermer].forEach(x=>x.style.cssText=cssBouton);
       const ajouterSansEmail = document.createElement('button');
       ajouterSansEmail.type='button';
       ajouterSansEmail.textContent='Ajouter sans e-mail';
       ajouterSansEmail.style.cssText=cssBouton;
-      ajouter.insertAdjacentElement('afterend',ajouterSansEmail);
+      if (!actions) throw new Error('Wrapper des actions indisponible.');
+      // Les quatre actions partagent un unique wrapper, sans bouton isolé dans la zone de saisie.
+      actions.replaceChildren(ajouter, enregistrer, fermer, ajouterSansEmail);
+      [ajouter,enregistrer,fermer,ajouterSansEmail].forEach(bouton => {
+        bouton.style.minHeight='54px';
+        bouton.style.width='100%';
+        bouton.style.minWidth='0';
+        bouton.style.boxSizing='border-box';
+        bouton.style.margin='0';
+        bouton.style.whiteSpace='normal';
+      });
       const listeSansEmail=document.createElement('ul');
       listeSansEmail.style.cssText='list-style:none;display:grid;gap:7px;padding:0;margin:8px 0';
       listeEmails.insertAdjacentElement('afterend',listeSansEmail);
