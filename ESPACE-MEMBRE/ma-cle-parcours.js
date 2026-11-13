@@ -1,6 +1,7 @@
 /* MA CLÉ — pilote des étapes 1 et 2.
-   S'insère dans le wrapper MA CLÉ déjà ouvert. Aucune action de
-   contrôle d'accès, vidéo, présence, invité ou checkout n'est modifiée.
+   S'insère dans le wrapper MA CLÉ déjà ouvert. La progression couvre
+   les six écrans sans modifier les décisions du contrôle d'accès, la vidéo,
+   la présence, les invitations ni le checkout.
    Les textes/photos TEST 1 - 41 sont des données pilotes vérifiées :
    le raccordement dynamique sécurisé Accès détail sera réalisé séparément. */
 (function (global) {
@@ -13,7 +14,7 @@
   const workflow = document.querySelector("[data-lcdp-cle-workflow]");
   if (!conteneur || !zoneDefilante || !sousHeader || !controle || !workflow) return;
 
-  const NOM_ETAPES = ["Session", "Accès au parc", "Check-in", "Présence", "Check-out", "Terminé"];
+  const NOM_ETAPES = ["Session", "Accès au parc", "Check-in", "Accès", "Check-out", "Terminé"];
   const PARC_DEMO = "TEST 1 - 41";
   const PARC_DEMO_ID = "dceeefb1-1fe4-54bb-a3f2-5bc6607e2531";
   const RUBRIQUES_DEMO = [
@@ -102,6 +103,27 @@
   let repriseEnCours = false;
   let controleAccesDisponible = false;
   let derniereErreurControle = "";
+
+  // La progression reflète l'état confirmé par les écrans existants.
+  // Elle ne décide jamais des droits et ne lance aucun appel au Worker.
+  function etapeDepuisEtat(etat) {
+    if (!etat || typeof etat !== "object") return 0;
+    if (etat.unlocked === true && ["key_closed", "checkout_done"].includes(etat.screen)) return 6;
+    if (etat.action === "checkout" ||
+        ["exit_confirmed", "checkout_done", "expired"].includes(etat.screen)) return 5;
+    if (["active", "presence", "access_confirmed", "guest_list",
+         "confirmation_done"].includes(etat.screen)) return 4;
+    if (["camera_ready", "processing", "uploading", "capture_error",
+         "guest_pending", "guest_waiting_control", "denied"].includes(etat.screen)) return 3;
+    return 0;
+  }
+
+  function indiquerEtape(numero) {
+    if (actif || !Number.isInteger(numero) || numero < 3 || numero > 6) return;
+    etape = numero;
+    mettreTimeline(numero);
+    // Les commandes existantes restent dans le corps défilant du wrapper.
+  }
 
   function mettreTimeline(numero) {
     sousHeader.hidden = false;
@@ -194,8 +216,6 @@
       }
       actif = false;
       detailVisible = false;
-      sousHeader.hidden = true;
-      timeline.hidden = true;
       ecranSession.hidden = true;
       ecranAcces.hidden = true;
       ecranDetail.hidden = true;
@@ -203,6 +223,9 @@
       const presenceActive = dernierEtat?.screen === "active";
       controle.hidden = presenceActive;
       workflow.hidden = !presenceActive;
+      // Passage à l'étape 3 uniquement après la réponse du contrôle d'accès.
+      indiquerEtape(etapeDepuisEtat(dernierEtat) || 3);
+      zoneDefilante.scrollTop = 0;
     } catch (error) {
       messageErreurControle.textContent = error?.message || "Le contrôle d'accès est momentanément indisponible.";
       messageErreurControle.hidden = false;
@@ -262,6 +285,10 @@
       ...dernierEtat, ...etat,
       accessState: dernierEtat?.accessState
     } : dernierEtat;
+    if (!actif) {
+      const etapeControle = etapeDepuisEtat(etat);
+      if (etapeControle) indiquerEtape(etapeControle);
+    }
     if (actif) {
       if (etape === 2) {
         const droit = dernierEtat?.accessState?.droit || dernierEtat?.droit;
@@ -280,5 +307,5 @@
     messageErreurControle.hidden = false;
     rendre();
   }
-  global.LCDP_ParcoursMaCle = {demarrer, synchroniser, signalerErreurControle};
+  global.LCDP_ParcoursMaCle = {demarrer, synchroniser, signalerErreurControle, indiquerEtape};
 })(window);
