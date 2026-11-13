@@ -202,6 +202,45 @@
   }
 
   async function afficherAlerteDa(message, options = {}) {
+    if (options.mode === "confirmation") {
+      const conteneur = document.createElement("div");
+      document.body.appendChild(conteneur);
+      try {
+        await chargerCssObjetUneFois("/CSSBASE/lcdp-lightbox-convergence.css");
+        conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html"));
+        const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="choix"]');
+        const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
+        const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
+        const annuler = conteneur.querySelector('[data-lcdp-dialogue-action="annuler"]');
+        const confirmer = conteneur.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+        if (!dialogue || !titre || !texte || !annuler || !confirmer) throw new Error("Structure CHOIX DA incomplète.");
+        titre.textContent = options.titre || "Confirmation";
+        texte.textContent = String(message || "");
+        annuler.textContent = options.libelleAnnuler || "Annuler";
+        confirmer.textContent = options.boutonOk || "Confirmer";
+        return await new Promise(resolve => {
+          let resolu = false;
+          const fermer = valeur => {
+            if (resolu) return;
+            resolu = true;
+            conteneur.remove();
+            resolve(valeur);
+          };
+          annuler.addEventListener("click", () => fermer(false), { once: true });
+          confirmer.addEventListener("click", () => fermer(true), { once: true });
+          if (options.sansCroix !== true) {
+            dialogue.addEventListener("click", event => {
+              if (event.target === dialogue) fermer(false);
+            });
+          }
+          confirmer.focus();
+        });
+      } catch (erreur) {
+        console.error("Dialogue CHOIX DA :", erreur);
+        conteneur.remove();
+        return window.confirm(message || "");
+      }
+    }
     if (options.profil === "information") {
       try {
         await chargerCssObjetUneFois("/CSSBASE/lcdp-lightbox-convergence.css");
