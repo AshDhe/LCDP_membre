@@ -70,10 +70,14 @@
     if (!vue) throw new Error("Gabarit DUO/FAMILLE : racine introuvable.");
     const formulaire = vue.querySelector("[data-lcdp-invitation-abonnement-form]");
     const envoyer = vue.querySelector("[data-lcdp-invitation-envoyer]");
-    // Garder le libellé fixe et afficher un spinner indépendant de la saisie.
-    const spinnerEnregistrement = creerElement("span", "lcdp-invitation-spinner");
+    // Sur le bouton, réutiliser une copie du spinner officiel de la page,
+    // sans fabriquer un indicateur de chargement différent.
+    const spinnerOfficiel = document.querySelector(
+      "#lcdp-planning-attente .lcdp-loading-spinner, #lcdp-attente-arrivee .lcdp-loading-spinner"
+    );
+    if (!spinnerOfficiel) throw new Error("Spinner de référence indisponible.");
+    const spinnerEnregistrement = spinnerOfficiel.cloneNode(true);
     spinnerEnregistrement.setAttribute("aria-hidden", "true");
-    spinnerEnregistrement.style.cssText = "display:inline-block;width:17px;height:17px;flex:0 0 17px;margin-left:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:lcdp-button-logo-loading .75s linear infinite;";
     envoyer.style.display = "inline-flex";
     envoyer.style.alignItems = "center";
     envoyer.style.justifyContent = "center";
