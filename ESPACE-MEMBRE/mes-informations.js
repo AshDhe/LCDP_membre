@@ -2537,6 +2537,7 @@ function afficherResumePointsPassion(compte) {
 
   async function ouvrirDialogueDepartementMembre() {
     let dptmtmembre;
+    let confirmation = null;
     try {
       const diginum = await chargerDiginumCompte();
       dptmtmembre = await diginum.ouvrir({
@@ -2545,41 +2546,58 @@ function afficherResumePointsPassion(compte) {
         longueurMax: 3,
         codesSpeciaux: ["2A", "2B"],
         autoValider: code => (code.length === 2 && code !== "97") || code.length === 3,
-        verifier: code => NOMS_DEPARTEMENTS_COMPTE[code]
-          ? null
-          : "Ce code ne correspond à aucun département."
+        bloquerFermeturePendantVerification: true,
+        verifier: async code => {
+          if (!NOMS_DEPARTEMENTS_COMPTE[code]) {
+            return "Ce code ne correspond à aucun département.";
+          }
+          try {
+            // Préparer la boîte INFORMATION avant l'envoi : aucun écran intermédiaire
+            // après fermeture du Diginum, et aucune sauvegarde si la boîte est absente.
+            const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
+            if (!fragment.querySelector('[data-lcdp-dialogue-reference="information"]')) {
+              throw new Error("La confirmation du département est indisponible.");
+            }
+            const resultat = await envoyerModificationDepartement(code);
+            confirmation = { resultat, fragment };
+            return null;
+          } catch (error) {
+            if (error.redirection === true) return "Session membre inactive.";
+            return error.message || "Erreur technique. Merci de réessayer.";
+          }
+        }
       });
     } catch (error) {
       await afficherAlerte(error.message || "Le pavé Diginum est indisponible.");
       return;
     }
 
-    if (!dptmtmembre) return;
-    await envoyerModificationDepartement(dptmtmembre);
-  }
+    if (!dptmtmembre || !confirmation) return;
 
-  async function envoyerModificationDepartement(dptmtmembre) {
-    if (!ENDPOINT_MAJ_DEPARTEMENT_MEMBRE) {
-      await afficherAlerte("Le service de modification du département n’est pas configuré.");
-      return;
-    }
-
+    // Le dialogue est déjà en mémoire : il apparaît dès la fermeture du Diginum.
+    // La fiche Mon compte ne s'actualise qu'après acquittement de l'information.
     try {
-      const resultat = await posterJson(ENDPOINT_MAJ_DEPARTEMENT_MEMBRE, {
-        dptmtmembre
-      });
-
+      await afficherInformationMembre(
+        messageErreurApi(confirmation.resultat, "Votre changement de département est enregistré."),
+        "Information",
+        confirmation.fragment
+      );
+    } catch (error) {
+      await afficherAlerte("Le changement de département est enregistré, mais sa confirmation ne peut pas être affichée.");
+    } finally {
       compteMembreActuel = {
         ...compteMembreActuel,
         departement: dptmtmembre
       };
-
       remplirChamp("champ-departement-membre", formaterDepartementAffichage(compteMembreActuel.departement));
-      await afficherInformationMembre(messageErreurApi(resultat, "Votre changement de département est enregistré."));
-    } catch (error) {
-      if (error.redirection === true) return;
-      await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
     }
+  }
+
+  async function envoyerModificationDepartement(dptmtmembre) {
+    if (!ENDPOINT_MAJ_DEPARTEMENT_MEMBRE) {
+      throw new Error("Le service de modification du département n’est pas configuré.");
+    }
+    return posterJson(ENDPOINT_MAJ_DEPARTEMENT_MEMBRE, { dptmtmembre });
   }
 
   async function posterJson(endpoint, payload) {
@@ -2848,10 +2866,10 @@ function afficherResumePointsPassion(compte) {
     return champ;
   }
 
-  async function afficherInformationMembre(message, titre = "Information") {
+  async function afficherInformationMembre(message, titre = "Information", fragmentPrepare = null) {
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) return null;
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
+    const fragment = fragmentPrepare || await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
     slot.replaceChildren(fragment);
     const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="information"]');
     const titreElement = slot.querySelector('[data-lcdp-dialogue-titre]');
