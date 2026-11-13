@@ -2761,7 +2761,13 @@
       if (!reponse.ok || data?.ok !== true || !Array.isArray(data.invites)) {
         throw new Error(data?.message || "Impossible de consulter les invités.");
       }
-      invites = data.invites.map(prefix => ({email:String(prefix)}));
+      // Confidentialité : afficher uniquement le début du mail (nom@),
+      // jamais le nom, le prénom, le domaine ni la catégorie d'invitation.
+      invites = data.invites.map(valeur => {
+        if (typeof valeur !== "string") return null;
+        const identifiant = valeur.trim().split("@")[0].trim().toLowerCase();
+        return identifiant ? {email:identifiant + "@"} : null;
+      }).filter(Boolean);
     } finally {
       attente();
     }
@@ -2903,7 +2909,8 @@
     }
 
     if (reservationHorsAbonnementMembre(reservation)) {
-      await afficherAlerteInvitationReservation(formaterParrainInvitationRecue(reservation), declencheur, { profil: "information" });
+      // Même parcours de lecture pour tous les points d'entrée d'un invité.
+      await ouvrirListeInvitesPourInvite(idReservation, declencheur);
       return;
     }
 
@@ -3214,7 +3221,9 @@
     const titre = document.createElement("h2");
     titre.className = "lcdp-box-card-listinvites-oui-non__title";
     titre.id = "lcdp-listinvites-lecture-title";
-    titre.textContent = "Invité(s)";
+    titre.textContent = "INVITÉS";
+    titre.style.fontSize = "24px";
+    titre.style.fontWeight = "800";
     const liste = document.createElement("ul");
     liste.className = "lcdp-box-card-listinvites-oui-non__list lcdp-box-card-listinvites-oui-non__list--lecture";
     const invitesActifs = Array.isArray(invites) ? invites : [];
@@ -3440,7 +3449,7 @@
     // Une route absente ne doit plus ramener à l'ancien formulaire.
     await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css");
     await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261113-contexte-rpc-v2");
-    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites&v=20261113-invites-ux-v5");
     if (!window.LCDP_InvitationsAbonnement?.monter) {
       throw new Error("Formulaire DUO/FAMILLE indisponible.");
     }
