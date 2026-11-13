@@ -98,6 +98,7 @@
   let workflowAvantIntro = false;
   let repriseEnCours = false;
   let controleAccesDisponible = false;
+  let derniereErreurControle = "";
 
   function mettreTimeline(numero) {
     timeline.hidden = false;
@@ -129,8 +130,8 @@
       const droit = dernierEtat?.accessState?.droit || dernierEtat?.droit;
       nomParc.textContent = String(dernierEtat?.reservation?.parkName ||
         (droit?.parkId === PARC_DEMO_ID ? PARC_DEMO : "Parc"));
-      messageErreurControle.hidden = true;
-      messageErreurControle.textContent = "";
+      messageErreurControle.hidden = !derniereErreurControle;
+      messageErreurControle.textContent = derniereErreurControle;
       suiteAcces.disabled = false;
       dessinerDetail();
     }
@@ -193,8 +194,10 @@
       ecranSession.hidden = true;
       ecranAcces.hidden = true;
       ecranDetail.hidden = true;
-      controle.hidden = controleAvantIntro;
-      workflow.hidden = workflowAvantIntro;
+      // Restituer le contrôle réel dans le même wrapper, après vérification.
+      const presenceActive = dernierEtat?.screen === "active";
+      controle.hidden = presenceActive;
+      workflow.hidden = !presenceActive;
     } catch (error) {
       messageErreurControle.textContent = error?.message || "Le contrôle d'accès est momentanément indisponible.";
       messageErreurControle.hidden = false;
@@ -241,7 +244,11 @@
   }
 
   function synchroniser(etat) {
-    if (etat?.screen) controleAccesDisponible = true;
+    if (etat?.screen) {
+      controleAccesDisponible = true;
+      derniereErreurControle = "";
+      messageErreurControle.hidden = true;
+    }
     // Conserver le droit vérifié par /ouvrir si /control-access renvoie un
     // écran sans identifiants de parc.
     dernierEtat = etat ? {
@@ -259,5 +266,12 @@
     }
   }
 
-  global.LCDP_ParcoursMaCle = {demarrer, synchroniser};
+  function signalerErreurControle(error) {
+    derniereErreurControle = String(error?.message || "Le contrôle d'accès est momentanément indisponible.");
+    if (!actif || etape !== 2) return;
+    messageErreurControle.textContent = derniereErreurControle;
+    messageErreurControle.hidden = false;
+    rendre();
+  }
+  global.LCDP_ParcoursMaCle = {demarrer, synchroniser, signalerErreurControle};
 })(window);
