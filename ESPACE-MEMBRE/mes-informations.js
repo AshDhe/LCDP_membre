@@ -711,28 +711,26 @@
     bloc.id = "lcdp-compte-relations";
     bloc.className = "lcdp-compte-relations";
     bloc.innerHTML = `
-      <button type="button" class="lcdp-compte-relations__ligne"
-        data-lcdp-relations-ouvrir="invite" aria-expanded="false"
-        aria-controls="lcdp-compte-relations-invite">
+      <div class="lcdp-compte-relations__ligne">
         <span class="lcdp-compte-relations__libelle">Invité</span>
-        <span class="lcdp-compte-relations__action">
-          <span data-lcdp-relations-nombre="invite" aria-label="Nombre d'invités">–</span>
-          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-          <span>Voir</span>
-        </span>
-      </button>
+        <button type="button" class="lcdp-compte-relations__nombre"
+          data-lcdp-relations-ouvrir="invite" aria-expanded="false"
+          aria-controls="lcdp-compte-relations-invite"
+          aria-label="Afficher la liste des invités">
+          <span data-lcdp-relations-nombre="invite">–</span>
+        </button>
+      </div>
       <div id="lcdp-compte-relations-invite" class="lcdp-compte-relations__liste"
         aria-live="polite" hidden>Chargement des invités…</div>
-      <button type="button" class="lcdp-compte-relations__ligne"
-        data-lcdp-relations-ouvrir="invitant" aria-expanded="false"
-        aria-controls="lcdp-compte-relations-invitant">
+      <div class="lcdp-compte-relations__ligne">
         <span class="lcdp-compte-relations__libelle">Invitant <span class="lcdp-compte-relations__precision">(« parrain »)</span></span>
-        <span class="lcdp-compte-relations__action">
-          <span data-lcdp-relations-nombre="invitant" aria-label="Nombre d'invitants">–</span>
-          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-          <span>Voir</span>
-        </span>
-      </button>
+        <button type="button" class="lcdp-compte-relations__nombre"
+          data-lcdp-relations-ouvrir="invitant" aria-expanded="false"
+          aria-controls="lcdp-compte-relations-invitant"
+          aria-label="Afficher la liste des invitants">
+          <span data-lcdp-relations-nombre="invitant">–</span>
+        </button>
+      </div>
       <div id="lcdp-compte-relations-invitant" class="lcdp-compte-relations__liste"
         aria-live="polite" hidden>Chargement des invitants…</div>`;
     statut.appendChild(bloc);
