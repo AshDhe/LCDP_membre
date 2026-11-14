@@ -531,22 +531,8 @@
     titre.textContent = "Demande d'abonnement (DA)";
     bloc.appendChild(titre);
 
-    ajouterBlocInfoDa(
-      bloc,
-      "Qu'est-ce qu'une DA ?",
-      "La DA permet au club de mieux faire votre connaissance et de vous identifier comme candidat membre abonné. Le club s'attache à fournir un service nominatif de qualité et à promouvoir des valeurs de respect, de convivialité et de curiosité. Cela implique un réseau de partenaires."
-    );
-
-    ajouterBlocInfoDa(
-      bloc,
-      "À confirmer ou compléter",
-      "Votre état civil (nom, prénom), votre alias dans l'application (si souhaité), une adrese e-mail personnelle valide, votre n° de téléphone mobile personnel, vos qualités, loisirs et motivation à devenir membre abonné, les valeurs du club, votre parrain actuel dans l'application (si vous en avez un), vos coordonnées bancaires personnelles afin de vous rembourser en cas d'annulation d'abonnement."
-    );
-    ajouterBlocInfoDa(
-      bloc,
-      "Après envoi",
-      "Votre DA est prise en compte par le club. Un échange visio ou visu peut être organisé. Vous êtes informé(e) de la suite donnée par le club à votre DA (retenue ou non retenue). Une copie numérique de votre pièce d'identité sera demandée par e-mail pour finaliser votre DA retenue. Vous pouvez faire une nouvelle DA après trois mois si la précédente n'a pas été retenue."
-    );
+    const sections = await chargerSectionsDaPubliees();
+    sections.forEach(({ titre, texte }) => ajouterBlocInfoDa(bloc, titre, texte));
 
 
     const actions = document.createElement("div");
@@ -561,6 +547,51 @@
     actions.appendChild(bouton);
     bloc.appendChild(actions);
     contenu.appendChild(bloc);
+  }
+
+  // Contenu éditorial publié depuis Admin > Formulaire DA.
+  // Les champs, validations et règles d'accès restent dans le parcours métier.
+  async function chargerSectionsDaPubliees() {
+    const bases = [
+      CONFIG_DA_MEMBRE.workerEditingAdminUrl,
+      CONFIG_DA_MEMBRE.WORKER_EDITING_ADMIN_URL,
+      CONFIG_DA_MEMBRE.workerEditingAdminFallbackUrl,
+      CONFIG_DA_MEMBRE.WORKER_EDITING_ADMIN_FALLBACK_URL
+    ].map(value => String(value || "").replace(/\\/+$/, "")).filter(Boolean);
+    for (const base of [...new Set(bases)]) {
+      try {
+        const response = await fetch(base + "/public/formulaire-da", {
+          credentials: "omit", cache: "no-store",
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(6000)
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || data?.success !== true || !Array.isArray(data.blocs)) continue;
+        const sections = data.blocs.map(bloc => {
+          const doc = new DOMParser().parseFromString(String(bloc?.html || ""), "text/html");
+          doc.querySelectorAll("script,style,iframe,object,svg,form").forEach(element => element.remove());
+          return { titre: String(bloc?.titre || "").trim(), texte: String(doc.body.textContent || "").trim() };
+        }).filter(bloc => bloc.titre && bloc.texte);
+        if (sections.length) return sections;
+      } catch (error) {
+        console.warn("Contenu DA publié indisponible :", error?.name || "Erreur");
+      }
+    }
+    // Repli : même information que la version déjà exposée aux membres.
+    return [
+      {
+        titre: "Qu'est-ce qu'une DA ?",
+        texte: "La DA permet au club de mieux faire votre connaissance et de vous identifier comme candidat membre abonné. Le club s'attache à fournir un service nominatif de qualité et à promouvoir des valeurs de respect, de convivialité et de curiosité. Cela implique un réseau de partenaires."
+      },
+      {
+        titre: "À confirmer ou compléter",
+        texte: "Votre état civil (nom, prénom), votre alias dans l'application (si souhaité), une adresse e-mail personnelle valide, votre n° de téléphone mobile personnel, vos qualités, loisirs et motivation à devenir membre abonné, les valeurs du club, votre parrain actuel dans l'application (si vous en avez un), vos coordonnées bancaires personnelles afin de vous rembourser en cas d'annulation d'abonnement."
+      },
+      {
+        titre: "Après envoi",
+        texte: "Votre DA est prise en compte par le club. Un échange visio ou visu peut être organisé. Vous êtes informé(e) de la suite donnée par le club à votre DA (retenue ou non retenue). Une copie numérique de votre pièce d'identité sera demandée par e-mail pour finaliser votre DA retenue. Vous pouvez faire une nouvelle DA après trois mois si la précédente n'a pas été retenue."
+      }
+    ];
   }
 
   function ajouterBlocInfoDa(parent, titre, texte) {
