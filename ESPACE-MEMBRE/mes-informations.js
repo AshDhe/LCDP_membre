@@ -10,6 +10,13 @@
     "mon-compte-membre-api"
   );
 
+  // Source de repli du téléphone enregistré lors de la DA : membres.tel.
+  const ENDPOINT_DA_MEMBRE_COMPTE = construireEndpointApi(
+    "workerDaMembreUrl",
+    "WORKER_DA_MEMBRE_URL",
+    "da-membre-api"
+  );
+
   const ENDPOINT_ABONNEMENTS_COMPTE = construireEndpointApi(
     "workerAboMembreUrl", "WORKER_ABO_MEMBRE_URL", "abo-membre-api"
   );
@@ -1786,6 +1793,8 @@
     const compte = resultat.compte;
 
     afficherCompteMembre(compte);
+    // Si /compte n'expose pas encore membres.tel, le récupérer via la DA.
+    void completerTelephoneCompteDepuisDa(compte);
     afficherEtatMembreCompte(compte);
     void chargerCoachsCompte(document.getElementById("lcdp-compte-relations"), compte);
     // Le compte est prêt : les appels optionnels ne retardent plus l'affichage.
@@ -1795,6 +1804,38 @@
       chargerWifiBracelet(),
       actualiserBurgerMembre(compteIndiqueAbonne(compte))
     ]);
+  }
+
+  // La DA enregistre tel dans membres ; /contexte relit cette même colonne
+  // pour le membre authentifié. Le complément n'empêche jamais l'ouverture du compte.
+  async function completerTelephoneCompteDepuisDa(compte) {
+    if (String(compte?.tel || compte?.telephone || "").trim() || !ENDPOINT_DA_MEMBRE_COMPTE) return;
+
+    try {
+      const reponse = await fetch(ENDPOINT_DA_MEMBRE_COMPTE + "/contexte", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Accept": "application/json" }
+      });
+      if (!reponse.ok) return;
+      const donnees = await reponse.json().catch(() => null);
+      if (!donnees || (donnees.ok !== true && donnees.success !== true)) return;
+
+      const membreDa = donnees.membre;
+      if (!membreDa) return;
+      // Les deux Workers doivent concerner le même membre authentifié.
+      if (compte?.idmembre &&
+          String(membreDa.idmembre || "").trim().toLowerCase() !==
+          String(compte.idmembre).trim().toLowerCase()) return;
+
+      const telephoneDa = String(membreDa.tel || "").trim();
+      if (!telephoneDa || compteMembreActuel !== compte) return;
+      compteMembreActuel.tel = telephoneDa;
+      remplirChamp("champ-telephone-membre", telephoneDa);
+    } catch (erreur) {
+      console.warn("Téléphone de la DA indisponible dans Mon compte :", erreur);
+    }
   }
 
   async function actualiserBurgerMembre(abonne) {
