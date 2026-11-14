@@ -671,14 +671,6 @@
           checkboxLabel: "Vous reconnaissez-vous dans les valeurs de respect, de convivialité et de curiosité ?",
           required: false
         },
-        {
-          type: "checkbox",
-          id: "da-targetfamill",
-          name: "targetfamill",
-          label: "Abonnement Famille",
-          checkboxLabel: "Recherchez-vous un abonnement Famille ?",
-          required: false
-        },
         champEmailParrain(),
         champTexte("da-iban", "iban", "", false, "IBAN remboursement", "text", "text"),
         champTexte("da-swift", "swift", "", false, "BIC / SWIFT", "text", "text"),
@@ -1018,7 +1010,7 @@
       type: "email",
       id: "da-emailparrain",
       name: "emailparrain",
-      label: "Êtes-vous parrainé ?",
+      label: "Qui est votre parrain La Clé du Parc ?",
       required: false,
       placeholder: "E-mail de votre parrain",
       autocomplete: "email",
@@ -1073,11 +1065,6 @@
       checkboxValeurs.defaultChecked = false;
     }
 
-    const targetFamille = form.querySelector('[name="targetfamill"]');
-    if (targetFamille) {
-      targetFamille.checked = false;
-      targetFamille.defaultChecked = false;
-    }
   }
 
   function remplirInput(form, name, value, readOnly) {
@@ -1284,7 +1271,7 @@ form.dataset.lcdpTransmissionDaEnCours =
       autoloisir: valeurChamp(form, "autoloisir"),
       autonouschoisir: valeurChamp(form, "autonouschoisir"),
       checkboxvaleurs: caseCochee(form, "checkboxvaleurs"),
-      targetfamill: caseCochee(form, "targetfamill"),
+      targetfamill: false, // Champ retiré du formulaire ; contrat Worker DA conservé.
       iban: valeurChamp(form, "iban").replace(/\s+/g, "").toUpperCase(),
       swift: valeurChamp(form, "swift").replace(/\s+/g, "").toUpperCase(),
       rib: valeurChamp(form, "rib"),
