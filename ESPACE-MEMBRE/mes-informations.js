@@ -50,6 +50,13 @@
   let emailMembreActuel = "";
 
   const PAGE_POINTS_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-points.html");
+  // Prévisualisation des points : restriction d'affichage uniquement.
+  // Les calculs et journaux de points restent indépendants de cette page.
+  const IDMEMBRE_AUTORISE_POINTS = "169d9253-9c5b-4788-a014-1158d5d9caa9";
+
+  function autoriserAffichagePointsCompte(compte) {
+    return String(compte?.idmembre || "").trim().toLowerCase() === IDMEMBRE_AUTORISE_POINTS;
+  }
   const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
   const PAGE_FACTURES_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-factures-membre.html");
 
@@ -2367,6 +2374,9 @@ function afficherStatutDaCompte(compte) {
   function afficherCompteMembre(compte) {
     compteMembreActuel = compte || {};
     emailMembreActuel = nettoyerEmail(compteMembreActuel.email);
+    const pointsVisibles = autoriserAffichagePointsCompte(compteMembreActuel);
+    document.getElementById("form-mes-informations-membre")
+      ?.classList.toggle("lcdp-compte-points-visibles", pointsVisibles);
 
     const compteAffiche = {
       ...compteMembreActuel,
@@ -2386,12 +2396,13 @@ function afficherStatutDaCompte(compte) {
       optinGeolocalisationAffichage: compteMembreActuel.optinGeolocalisation ? formaterDate(compteMembreActuel.optinGeolocalisation) : "Non enregistré",
       daAffichage: formaterDaCompte(compteMembreActuel),
       statutAffichage: formaterStatutCompte(compteMembreActuel.statut),
-      pointsClubAffichage: formaterPointsClub(compteMembreActuel),
+      pointsClubAffichage: pointsVisibles ? formaterPointsClub(compteMembreActuel) : "",
       reglementClubAffichage: formaterReglementCompte("Club", compteMembreActuel.reglementClub),
       reglementApplicationAffichage: formaterReglementCompte("Application", compteMembreActuel.reglementApplication)
     };
 
     champsCompte.forEach((champ) => {
+      if (!pointsVisibles && champ.id === "champ-points-club-membre") return;
       remplirChamp(
         champ.id,
         compteAffiche[champ.key],
@@ -2401,9 +2412,18 @@ function afficherStatutDaCompte(compte) {
       );
     });
 
-    actualiserBadgePointsClub(compteMembreActuel);
     afficherStatutDaCompte(compteMembreActuel);
-    afficherResumePointsPassion(compteMembreActuel);
+    if (pointsVisibles) {
+      actualiserBadgePointsClub(compteMembreActuel);
+      afficherResumePointsPassion(compteMembreActuel);
+    } else {
+      // Supprimer le pavé et le bouton de navigation du DOM, pas les données du Worker.
+      document.getElementById("lcdp-mon-compte-points-resume")?.remove();
+      document.getElementById("voir-mes-points")
+        ?.closest(".lcdp-compte-actions-adresse")?.remove();
+      document.getElementById("champ-points-club-membre")
+        ?.closest("[data-lcdp-box-champ-formulaire]")?.remove();
+    }
     actualiserActionsProtegeesDa(compteMembreActuel);
     void actualiserBlocAbonnementCompte(compteMembreActuel);
   }
