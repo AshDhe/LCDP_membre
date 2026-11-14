@@ -2908,6 +2908,7 @@ function afficherResumePointsPassion(compte) {
   }async function ouvrirDialogueAliasMembre() {
     const resultat = await ouvrirDialogueChamp({
       titre: "Modifier l'alias",
+      variante: "alias",
       champs: [
         {
           id: "nouvel-alias-membre",
@@ -3207,6 +3208,7 @@ function afficherResumePointsPassion(compte) {
     }
 
     titre.textContent = options.titre || "";
+    if (options.variante === "alias") dialogue.classList.add("lcdp-compte-dialogue-alias");
     const boutonValider = slot.querySelector("[data-lcdp-dialogue-champ-submit]");
     if (options.libelleValider && boutonValider) boutonValider.textContent = options.libelleValider;
     if (options.message) {
