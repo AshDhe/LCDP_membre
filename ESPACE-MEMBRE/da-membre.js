@@ -557,7 +557,7 @@
       CONFIG_DA_MEMBRE.WORKER_EDITING_ADMIN_URL,
       CONFIG_DA_MEMBRE.workerEditingAdminFallbackUrl,
       CONFIG_DA_MEMBRE.WORKER_EDITING_ADMIN_FALLBACK_URL
-    ].map(value => String(value || "").replace(/\\/+$/, "")).filter(Boolean);
+    ].map(value => String(value || "").replace(/\/+$/, "")).filter(Boolean);
     for (const base of [...new Set(bases)]) {
       try {
         const response = await fetch(base + "/public/formulaire-da", {
