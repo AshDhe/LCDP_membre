@@ -282,7 +282,24 @@
           const bouton = conteneur.querySelector('[data-lcdp-dialogue-action="compris"]');
           if (!dialogue || !titre || !texte || !bouton) throw new Error("Structure INFORMATION incomplète.");
           titre.textContent = options.titre || "Information";
-          texte.textContent = String(message || "");
+          if (Array.isArray(options.paragraphes) && options.paragraphes.length) {
+            // Le dialogue INFORMATION de référence est conservé.
+            // Chaque information est un paragraphe autonome (sans HTML injecté).
+            dialogue.classList.add("lcdp-da-information-fin");
+            const details = document.createElement("div");
+            details.id = texte.id;
+            details.className = "lcdp-dialogue-ref__message lcdp-da-information-fin__textes";
+            details.setAttribute("data-lcdp-dialogue-message", "");
+            options.paragraphes.forEach(contenu => {
+              const paragraphe = document.createElement("p");
+              paragraphe.className = "lcdp-da-information-fin__texte";
+              paragraphe.textContent = String(contenu);
+              details.appendChild(paragraphe);
+            });
+            texte.replaceWith(details);
+          } else {
+            texte.textContent = String(message || "");
+          }
           bouton.textContent = "Fermer";
           return await new Promise(resolve => {
             bouton.addEventListener("click", () => {
@@ -1155,10 +1172,21 @@ form.dataset.lcdpTransmissionDaEnCours =
       transmissionReussie = true;
       retirerAttenteDa();
 
+      const informationsDaFin = [
+        "Un e-mail de confirmation récapitulant les informations de votre demande d'abonnement vous a été envoyé.",
+        "Votre demande d'abonnement sera étudiée par le Club dans les prochains jours. Vous serez informé(e) de sa décision.",
+        "Une fois votre DA validée, vous pourrez acheter votre bracelet d'accès aux parcs dans la boutique."
+      ];
       const confirmationLue =
         await afficherAlerteDa(
-          "Votre DA est envoyée. Un e-mail vous a été envoyé pour nous transmettre votre pièce d'identité.",
-          { profil: "information", boutonOk: "Fermer", sansCroix: true }
+          informationsDaFin.join("\n\n"),
+          {
+            profil: "information",
+            titre: "Demande d'abonnement envoyée",
+            boutonOk: "Fermer",
+            sansCroix: true,
+            paragraphes: informationsDaFin
+          }
         );
 
       fermerWorkflowDa();
