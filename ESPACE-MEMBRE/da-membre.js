@@ -290,10 +290,20 @@
             details.id = texte.id;
             details.className = "lcdp-dialogue-ref__message lcdp-da-information-fin__textes";
             details.setAttribute("data-lcdp-dialogue-message", "");
-            options.paragraphes.forEach(contenu => {
+            options.paragraphes.forEach((contenu, index) => {
               const paragraphe = document.createElement("p");
               paragraphe.className = "lcdp-da-information-fin__texte";
               paragraphe.textContent = String(contenu);
+              if (index === 2 && options.lienBoutique) {
+                const lien = document.createElement("a");
+                lien.href = construireUrlMembre(options.lienBoutique);
+                lien.textContent = "Accéder à la boutique La Clé du Parc";
+                lien.className = "lcdp-link-secondary";
+                lien.target = "_blank";
+                lien.rel = "noopener noreferrer";
+                paragraphe.appendChild(document.createTextNode(" "));
+                paragraphe.appendChild(lien);
+              }
               details.appendChild(paragraphe);
             });
             texte.replaceWith(details);
@@ -1185,7 +1195,8 @@ form.dataset.lcdpTransmissionDaEnCours =
             titre: "Demande d'abonnement envoyée",
             boutonOk: "Fermer",
             sansCroix: true,
-            paragraphes: informationsDaFin
+            paragraphes: informationsDaFin,
+            lienBoutique: "/ESPACE-MEMBRE/boutique-LCDP.html"
           }
         );
 
