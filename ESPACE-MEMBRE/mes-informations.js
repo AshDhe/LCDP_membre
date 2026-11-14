@@ -173,7 +173,13 @@
       name: "telephoneAffichage",
       label: "Numéro de téléphone",
       type: "tel",
-      key: "telephoneAffichage"
+      key: "telephoneAffichage",
+      action: {
+        id: "modifier-telephone-membre",
+        texte: "Modifier le numéro de téléphone",
+        mode: "picto",
+        neutre: true
+      }
     },
     {
       section: "Club",
@@ -1684,9 +1690,9 @@
       bouton.disabled = true;
       bouton.setAttribute("aria-disabled", "true");
     }
-    const actionSecurite = action.id === "modifier-selfie" || champsCompte.some(
+    const actionSecurite = action.neutre !== true && (action.id === "modifier-selfie" || champsCompte.some(
       item => item.section === "Sécurité du compte" && item.action?.id === action.id
-    );
+    ));
     if (actionSecurite) {
       bouton.classList.add("lcdp-compte-action-prioritaire");
       // Pictogramme d'origine fourni dans l'exemple Tailwind.
@@ -1740,6 +1746,7 @@
     const boutonPoints = document.getElementById("voir-mes-points");
     const boutonParrain = document.getElementById("modifier-parrain-membre");
     const boutonDepartement = document.getElementById("modifier-departement-membre");
+    const boutonTelephone = document.getElementById("modifier-telephone-membre");
     const actionsAdresseFacturation = [
       { bouton: document.getElementById("modifier-adresse1-membre"), champ: "adresse1", label: "Adresse 1" },
       { bouton: document.getElementById("modifier-adresse2-membre"), champ: "adresse2", label: "Adresse 2" },
@@ -1755,6 +1762,7 @@
     if (boutonPoints) boutonPoints.addEventListener("click", ouvrirPagePointsMembre);
     if (boutonParrain) boutonParrain.addEventListener("click", ouvrirDialogueParrainMembre);
     if (boutonDepartement) boutonDepartement.addEventListener("click", ouvrirDialogueDepartementMembre);
+    if (boutonTelephone) boutonTelephone.addEventListener("click", ouvrirDialogueTelephoneMembre);
     actionsAdresseFacturation.forEach((action) => {
       action.bouton.addEventListener("click", ouvrirDialogueAdresseFacturationMembre);
     });
@@ -3154,6 +3162,50 @@ function afficherResumePointsPassion(compte) {
     return promesseChargementDiginumCompte;
   }
 
+  // Même circuit de modification simple que le département, sans CODA/CODR.
+  async function ouvrirDialogueTelephoneMembre() {
+    const resultat = await ouvrirDialogueChamp({
+      titre: "Modifier le numéro de téléphone",
+      variante: "telephone",
+      champs: [{
+        id: "nouveau-telephone-membre",
+        name: "tel",
+        label: "Nouveau numéro de téléphone",
+        type: "tel",
+        autocomplete: "tel-national",
+        maxlength: 10,
+        required: true,
+        value: compteMembreActuel?.tel || compteMembreActuel?.telephone || "",
+        nettoyer: valeur => String(valeur || "").replace(/\\s+/g, ""),
+        valider: valeur => /^\\d{10}$/.test(valeur)
+          ? ""
+          : "Votre numéro de téléphone doit contenir 10 chiffres."
+      }]
+    });
+    if (!resultat) return;
+    if (resultat.tel === String(compteMembreActuel?.tel || compteMembreActuel?.telephone || "")) return;
+
+    if (!ENDPOINT_MAJ_DEPARTEMENT_MEMBRE) {
+      await afficherAlerte("Le service de modification du téléphone n’est pas configuré.");
+      return;
+    }
+    try {
+      const reponse = await posterJson(
+        ENDPOINT_MAJ_DEPARTEMENT_MEMBRE + "/telephone",
+        { tel: resultat.tel }
+      );
+      const tel = String(reponse.tel || resultat.tel);
+      compteMembreActuel = { ...compteMembreActuel, tel };
+      remplirChamp("champ-telephone-membre", tel);
+      await afficherInformationMembre(
+        messageErreurApi(reponse, "Votre numéro de téléphone est mis à jour.")
+      );
+    } catch (error) {
+      if (error.redirection === true) return;
+      await afficherAlerte(error.message || "La modification du numéro de téléphone a échoué.");
+    }
+  }
+
   async function ouvrirDialogueDepartementMembre() {
     let dptmtmembre;
     let confirmation = null;
@@ -3270,6 +3322,7 @@ function afficherResumePointsPassion(compte) {
 
     titre.textContent = options.titre || "";
     if (options.variante === "alias") dialogue.classList.add("lcdp-compte-dialogue-alias");
+    if (options.variante === "telephone") dialogue.classList.add("lcdp-compte-dialogue-telephone");
     const boutonValider = slot.querySelector("[data-lcdp-dialogue-champ-submit]");
     if (options.libelleValider && boutonValider) boutonValider.textContent = options.libelleValider;
     if (options.message) {
