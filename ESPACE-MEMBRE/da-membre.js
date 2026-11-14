@@ -185,20 +185,51 @@
     return date.getTime() <= Date.now();
   }
 
+  // La DA est une vue du wrapper membre, pas une lightbox plein écran.
+  // L'écran d'origine reste monté et retrouve son état à la fermeture.
+  let vueDaInitiale = null;
   function obtenirLightboxSlotDa() {
     let slot = document.getElementById("lcdp-da-membre-overlay-slot");
+    if (slot) return slot;
 
-    if (!slot) {
-      slot = document.createElement("div");
-      slot.id = "lcdp-da-membre-overlay-slot";
-      document.body.appendChild(slot);
-    }
-    slot.classList.add("lcdp-da-membre-ui");
+    const main = document.querySelector(".lcdp-site-page .lcdp-site-main");
+    if (!main) throw new Error("Wrapper de l'espace membre introuvable.");
+
+    const precedents = Array.from(main.children).map(element => ({
+      element, hidden: element.hidden
+    }));
+    precedents.forEach(({ element }) => { element.hidden = true; });
+
+    const section = document.createElement("section");
+    section.className = "lcdp-page-section lcdp-da-membre-page";
+    section.setAttribute("aria-label", "Demande d'abonnement");
+    const conteneur = document.createElement("div");
+    conteneur.className = "lcdp-page-container";
+    const contenu = document.createElement("div");
+    contenu.className = "lcdp-page-content lcdp-stack-large";
+    slot = document.createElement("div");
+    slot.id = "lcdp-da-membre-overlay-slot";
+    slot.className = "lcdp-da-membre-ui";
+    contenu.appendChild(slot);
+    conteneur.appendChild(contenu);
+    section.appendChild(conteneur);
+    main.appendChild(section);
+    vueDaInitiale = { section, precedents };
+    main.scrollTo?.({ top: 0 });
     return slot;
   }
 
   function fermerWorkflowDa() {
-    document.getElementById("lcdp-da-membre-overlay-slot")?.remove();
+    const vue = vueDaInitiale;
+    vueDaInitiale = null;
+    if (vue) {
+      vue.section.remove();
+      vue.precedents.forEach(({ element, hidden }) => {
+        if (element.isConnected) element.hidden = hidden;
+      });
+    } else {
+      document.getElementById("lcdp-da-membre-overlay-slot")?.remove();
+    }
   }
 
   async function afficherAlerteDa(message, options = {}) {
@@ -466,6 +497,11 @@
     const workflow = slot.querySelector("[data-lcdp-box-workflow-abonnement]");
     const contenu = slot.querySelector("[data-lcdp-workflow-abonnement-content]");
     const card = slot.querySelector("[data-lcdp-workflow-abonnement-card]");
+    if (workflow) {
+      workflow.setAttribute("role", "region");
+      workflow.removeAttribute("aria-modal");
+      workflow.setAttribute("aria-label", "Parcours de demande d'abonnement");
+    }
 
     if (!workflow || !contenu || !card) {
       slot.innerHTML = "";
@@ -479,12 +515,6 @@
     boutonFermer.textContent = "×";
     boutonFermer.addEventListener("click", demanderQuitterDa);
     card.insertBefore(boutonFermer, card.firstChild);
-
-    workflow.addEventListener("click", (event) => {
-      if (event.target === workflow) {
-        demanderQuitterDa().catch(console.error);
-      }
-    });
 
     return { slot, contenu };
   }
@@ -500,11 +530,6 @@
     titre.className = "lcdp-title-page-center";
     titre.textContent = "Demande d'abonnement (DA)";
     bloc.appendChild(titre);
-
-    const intro = document.createElement("p");
-    intro.className = "lcdp-text-muted";
-    intro.textContent = "Vous devez faire une DA avant de prendre votre premier abonnement La Clé du Parc. La DA n'emporte aucune obligation d'abonnement, qu'elle soit retenue ou non.";
-    bloc.appendChild(intro);
 
     ajouterBlocInfoDa(
       bloc,
