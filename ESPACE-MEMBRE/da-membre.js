@@ -259,11 +259,8 @@
           };
           annuler.addEventListener("click", () => fermer(false), { once: true });
           confirmer.addEventListener("click", () => fermer(true), { once: true });
-          if (options.sansCroix !== true) {
-            dialogue.addEventListener("click", event => {
-              if (event.target === dialogue) fermer(false);
-            });
-          }
+          // Le clic sur le fond du dialogue CHOIX ne ferme rien :
+          // seules les actions explicites Annuler et Confirmer répondent.
           confirmer.focus();
         });
       } catch (erreur) {
@@ -965,9 +962,8 @@
         boutonFermer.addEventListener("click", () => fermer(null));
         boutonAnnuler.addEventListener("click", () => fermer(null));
 
-        dialogue.addEventListener("click", (event) => {
-          if (event.target === dialogue) fermer(null);
-        });
+        // Aucun abandon implicite au clic hors du dialogue :
+        // l'utilisateur doit utiliser Annuler, Fermer ou Valider.
 
         formulaire.addEventListener("submit", (event) => {
           event.preventDefault();
