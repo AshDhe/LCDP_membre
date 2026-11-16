@@ -765,6 +765,14 @@
       boutonSuivant: "Suivant",
       boutonRetour: "",
       selectionObligatoire: true,
+      onAfficher: () => {
+        // Comptage à la première ouverture réelle du tunnel de demande,
+        // et non au chargement de la page "Mon abonnement".
+        if (etat.workflow.affichageLegalEnregistre === true) return;
+        etat.workflow.affichageLegalEnregistre = true;
+        (window.LCDP_affichagesLegauxEnAttente ||= []).push("demande-abonnement");
+        window.dispatchEvent(new Event("lcdp:affichage-legal"));
+      },
       onFermer: demanderQuitterWorkflow
     });
 
@@ -2530,6 +2538,7 @@
       zoneNavigation.appendChild(boutonSuivant);
       actions.appendChild(zoneNavigation);
       actualiserEtatSuivant();
+      if (typeof options.onAfficher === "function") options.onAfficher();
 
       async function gererDemandeFermeture() {
         if (typeof options.onFermer === "function") {
