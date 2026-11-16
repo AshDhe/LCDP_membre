@@ -23,17 +23,13 @@
   const valeurCode2 = document.querySelector('[data-lcdp-cle-code-value="2"]');
   const boutonValider = document.querySelector("[data-lcdp-cle-submit]");
   const boutonAnnuler = document.querySelector("[data-lcdp-cle-cancel]");
-  const boutonBrighta = document.querySelector("[data-lcdp-cle-brighta]");
   const boutonCheckout = document.querySelector("[data-lcdp-cle-checkout]");
   const boutonInvites = document.querySelector("[data-lcdp-cle-invites]");
-  const texteCooldown = document.querySelector("[data-lcdp-cle-cooldown]");
 
   let code1 = "";
   let code2 = "";
   let cleActive = false;
   let navigationVerrouillee = false;
-  let brightaDisponibleA = 0;
-  let intervalleCooldown = null;
   let timeoutEtatPresence = null;
   let timeoutExpirationVerrouillage = null;
   let depassementPresenceA = 0;
@@ -118,7 +114,6 @@
     boutonCode2?.addEventListener("click", () => saisirCode(2));
     boutonValider?.addEventListener("click", validerCle);
     boutonAnnuler?.addEventListener("click", gererAnnulationSaisie);
-    boutonBrighta?.addEventListener("click", gererBrighta);
     boutonCheckout?.addEventListener("click", gererCheckout);
     boutonInvites?.addEventListener("click", () => { void ouvrirAppelInvites(); });
 
@@ -246,7 +241,6 @@
       });
 
       afficherEcranActif(
-        resultat.brightaAvailableAt || "",
         resultat.overstayAt || "",
         resultat.presenceState || "active",
         resultat.lockExpiresAt || ""
@@ -266,104 +260,6 @@
       await afficherAlerte(error.message || "Impossible de valider votre clé.");
     } finally {
       definirChargementBoutonLogo(false);
-    }
-  }
-
-  async function gererBrighta() {
-    if (!cleActive || Date.now() < brightaDisponibleA) return;
-
-    definirBoutonEnCours(boutonBrighta, true);
-
-    try {
-      const preparation = await preparerConfirmation("brighta");
-      if (!preparation) return;
-
-      if (!preparation.bluetooth) {
-        throw new Error("Le Bluetooth de votre bracelet n'est pas configuré.");
-      }
-
-      const confirmation = await demanderCodeConfirmation(
-        "Confirmer BRIGHT-A",
-        preparation.code
-      );
-
-      if (!confirmation) return;
-
-      const appareil = await selectionnerBraceletBluetooth(
-        preparation.bluetooth
-      );
-
-      let geolocalisation = null;
-
-      if (preparation.locationRequired === true) {
-        geolocalisation = await obtenirGeolocalisation();
-      }
-
-      const resultatPreparation = await appelerApi("/brighta", {
-        method: "POST",
-        body: {
-          code: confirmation,
-          token: preparation.token,
-          geolocalisation
-        }
-      });
-
-      if (
-        resultatPreparation.success !== true ||
-        resultatPreparation.prepared !== true ||
-        !resultatPreparation.command
-      ) {
-        throw creerErreurApi(
-          resultatPreparation,
-          "Impossible de préparer l'allumage du bracelet."
-        );
-      }
-
-      const ack = await envoyerCommandeBluetooth(
-        appareil,
-        resultatPreparation.bluetooth || preparation.bluetooth,
-        resultatPreparation.command
-      );
-
-      const resultat = await appelerApi("/brighta-confirm", {
-        method: "POST",
-        body: {
-          command: resultatPreparation.command,
-          ack,
-          geolocalisation
-        }
-      });
-
-      if (resultat.success !== true || resultat.brighta !== true) {
-        throw creerErreurApi(
-          resultat,
-          "Le bracelet n'a pas confirmé son allumage."
-        );
-      }
-
-      definirDisponibiliteBrighta(
-        resultat.brightaAvailableAt || ""
-      );
-
-      await afficherAlerte("Votre bracelet est allumé.", {
-        fermetureParOkUniquement: true,
-        profil: "information"
-      });
-    } catch (error) {
-      if (error?.sessionRemplaceeTraitee === true) return;
-
-      console.error("Erreur BRIGHT-A :", error);
-
-      const message =
-        error?.name === "NotFoundError"
-          ? "Connexion Bluetooth au bracelet annulée."
-          : error?.message ||
-            "Le bracelet n'a pas pu être allumé. Vous pouvez réessayer.";
-
-      await afficherAlerte(message);
-    } finally {
-      definirBoutonEnCours(boutonBrighta, false);
-      actualiserCooldown();
     }
   }
 
@@ -495,7 +391,7 @@
     window.LCDP_ParcoursMaCle?.indiquerEtape(3);
   }
 
-  function afficherEcranActif(disponibiliteBrighta, overstayAt, presenceState, lockExpiresAt) {
+  function afficherEcranActif(overstayAt, presenceState, lockExpiresAt) {
     modeSaisie = "checkin";
     cleActive = true;
     ecranCheckin.hidden = true;
@@ -504,7 +400,6 @@
     document.body.classList.remove("is-cle-checkout");
     definirEtatPresence(overstayAt, presenceState);
     // Aucun délai de sortie du verrou n’est défini à ce stade.
-    definirDisponibiliteBrighta(disponibiliteBrighta);
     verrouillerNavigation();
     afficherWorkflowCle();
     window.LCDP_ParcoursMaCle?.indiquerEtape(4);
@@ -549,38 +444,6 @@
     code2 = "";
     afficherValeurCode(valeurCode1, "");
     afficherValeurCode(valeurCode2, "");
-  }
-
-  function definirDisponibiliteBrighta(valeur) {
-    const date = new Date(valeur || 0);
-    brightaDisponibleA = Number.isNaN(date.getTime()) ? 0 : date.getTime();
-    actualiserCooldown();
-
-    if (intervalleCooldown) {
-      window.clearInterval(intervalleCooldown);
-    }
-
-    intervalleCooldown = window.setInterval(actualiserCooldown, 30000);
-  }
-
-  function actualiserCooldown() {
-    if (!boutonBrighta || !texteCooldown) return;
-
-    const restant = brightaDisponibleA - Date.now();
-
-    if (restant <= 0) {
-      boutonBrighta.disabled = false;
-      boutonBrighta.textContent = "BRIGHT-A";
-      texteCooldown.hidden = true;
-      texteCooldown.textContent = "";
-      return;
-    }
-
-    const minutes = Math.max(1, Math.ceil(restant / 60000));
-    boutonBrighta.disabled = true;
-    boutonBrighta.textContent = "BRIGHT-A";
-    texteCooldown.hidden = false;
-    texteCooldown.textContent = "Disponible dans " + String(minutes) + " min";
   }
 
   function verrouillerNavigation() {
@@ -637,7 +500,7 @@
   function definirBoutonEnCours(bouton, enCours) {
     if (!bouton) return;
     bouton.dataset.lcdpEnCours = enCours ? "true" : "false";
-    bouton.disabled = enCours || (bouton === boutonBrighta && Date.now() < brightaDisponibleA);
+    bouton.disabled = enCours;
   }
 
   async function ouvrirDialogueChamp(options) {
@@ -1331,7 +1194,7 @@
         controleAccesEtat=etat;
         document.querySelector("[data-lcdp-control-access]").hidden=true;
         bluetoothActif=statut.bluetooth || null;
-        afficherEcranActif(statut.brightaAvailableAt || "",statut.overstayAt || "",statut.presenceState || "active",null);
+        afficherEcranActif(statut.overstayAt || "",statut.presenceState || "active",null);
         window.LCDP_ParcoursMaCle?.synchroniser(etat);
       } else afficherControleAcces(etat);
     })();
