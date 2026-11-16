@@ -8,6 +8,16 @@
   <meta name="description" content="Paiement sécurisé de votre abonnement La Clé du Parc.">
   <script src="../config.js"></script>
   <script>
+    (() => {
+      const cfg = window.SITE_CONFIG || {};
+      const script = document.createElement("script");
+      script.src = typeof cfg.objetUrl === "function"
+        ? cfg.objetUrl("/JSBASE/affichage-legal.js")
+        : "https://lacleduparc.fr/OBJET/JSBASE/affichage-legal.js";
+      document.head.appendChild(script);
+    })();
+  </script>
+  <script>
     (function () {
       const c = window.SITE_CONFIG || {};
       const base = String(c.objetBaseUrl || c.OBJET_BASE || 
@@ -41,7 +51,7 @@
   </style>
   <script defer src="./paiement-stripe-membre.js?v=20261113-confirm-returnurl-v8"></script>
 </head>
-<body class="lcdp-page-reserver lcdp-stripe-page">
+<body data-lcdp-suivi-vt-abo="vt-paiement-stripe-membre" class="lcdp-page-reserver lcdp-stripe-page">
   <main class="lcdp-stripe" aria-labelledby="paiement-titre">
     <header class="lcdp-stripe__entete">
       <span class="lcdp-stripe__logo">
