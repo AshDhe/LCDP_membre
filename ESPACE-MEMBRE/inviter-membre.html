@@ -20,6 +20,16 @@
   <meta name="description" content="Inviter des membres depuis vos réservations La Clé du Parc.">
 
   <script src="../config.js"></script>
+  <script>
+    (() => {
+      const cfg = window.SITE_CONFIG || {};
+      const script = document.createElement("script");
+      script.src = typeof cfg.objetUrl === "function"
+        ? cfg.objetUrl("/JSBASE/affichage-legal.js")
+        : "https://lacleduparc.fr/OBJET/JSBASE/affichage-legal.js";
+      document.head.appendChild(script);
+    })();
+  </script>
 
   <script>
     (() => {
@@ -101,7 +111,7 @@
 
 </head>
 
-<body>
+<body data-lcdp-suivi-invitation="invitation-inviter-membre">
   <div id="lcdp-attente-arrivee" class="lcdp-attente-plein-ecran" role="status" aria-label="Chargement de la page">
     <div class="lcdp-loading-spinner" aria-hidden="true">
       <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
