@@ -7,6 +7,16 @@
   <script src="../config.js"></script>
   <script>
     (() => {
+      const cfg = window.SITE_CONFIG || {};
+      const script = document.createElement("script");
+      script.src = typeof cfg.objetUrl === "function"
+        ? cfg.objetUrl("/JSBASE/affichage-legal.js")
+        : "https://lacleduparc.fr/OBJET/JSBASE/affichage-legal.js";
+      document.head.appendChild(script);
+    })();
+  </script>
+  <script>
+    (() => {
       "use strict";
       const config = window.SITE_CONFIG || {};
       const nettoyer = value => String(value || "").replace(/\/+$/, "");
@@ -158,7 +168,7 @@
     }
   </style>
 </head>
-<body class="lcdp-app-page lcdp-mes-acces-page">
+<body data-lcdp-suivi-invitation="invitation-planning-membre" class="lcdp-app-page lcdp-mes-acces-page">
   <div id="lcdp-planning-attente" role="status" aria-label="Chargement du planning">
     <div class="lcdp-loading-spinner" aria-hidden="true">
       <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3"></circle></svg>
