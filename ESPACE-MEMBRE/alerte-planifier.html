@@ -57,6 +57,16 @@
   <meta name="description" content="Créer et consulter vos recherches PLANIFIER enregistrées.">
 
   <script src="../config.js"></script>
+  <script>
+    (() => {
+      const cfg = window.SITE_CONFIG || {};
+      const script = document.createElement("script");
+      script.src = typeof cfg.objetUrl === "function"
+        ? cfg.objetUrl("/JSBASE/affichage-legal.js")
+        : "https://lacleduparc.fr/OBJET/JSBASE/affichage-legal.js";
+      document.head.appendChild(script);
+    })();
+  </script>
 
   <script>
     (() => {
@@ -140,7 +150,7 @@
   <link rel="stylesheet" href="./alerte-planifier.css">
 </head>
 
-<body class="lcdp-page-alerte-planifier lcdp-app-page">
+<body data-lcdp-suivi-vt-abo="vt-alerte-planifier" class="lcdp-page-alerte-planifier lcdp-app-page">
   <div class="lcdp-attente-plein-ecran" id="lcdp-alerte-page-attente-initiale" role="status" aria-label="Chargement d'ALERTE PLANIFIER">
     <div class="lcdp-loading-spinner" aria-hidden="true">
       <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
