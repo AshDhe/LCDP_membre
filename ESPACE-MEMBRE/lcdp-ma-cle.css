@@ -159,28 +159,6 @@ body.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-ma-cle-wrapper > 
   letter-spacing: 0.05em;
 }
 
-.lcdp-cle-action--brighta {
-  background: #ffffff;
-  border-color: var(--lcdp-color-blue);
-  color: var(--lcdp-color-blue);
-}
-
-.lcdp-cle-action--brighta:hover {
-  background: var(--lcdp-color-surface-soft);
-  border-color: var(--lcdp-color-blue-hover);
-  color: var(--lcdp-color-blue-hover);
-}
-
-.lcdp-cle-action--brighta:disabled {
-  background: #ffffff;
-  border-color: #b8c9d8;
-  color: #9db4c8;
-  opacity: 1;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
 .lcdp-cle-action--invites {
   background: #ffffff;
   border-color: var(--lcdp-color-logo-green, #355f43);
@@ -220,15 +198,6 @@ body.lcdp-page-cle-du-parc.is-cle-active.is-cle-overstay .lcdp-ma-cle-wrapper > 
   background: var(--lcdp-color-blue-hover);
   border-color: var(--lcdp-color-blue-hover);
   color: #ffffff;
-}
-
-.lcdp-cle-cooldown {
-  margin: 0;
-  color: var(--lcdp-color-text-muted);
-  font-size: 0.95rem;
-  line-height: 1.3;
-  font-weight: 650;
-  text-align: center;
 }
 
 .lcdp-cle-confirm-code {
