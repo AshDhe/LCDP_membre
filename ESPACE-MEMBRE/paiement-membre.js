@@ -584,6 +584,10 @@
       masques.forEach(({ element }) => { element.hidden = true; });
       slot.hidden = false;
       slot.replaceChildren(workflow);
+      // Le fichier paiement-membre.html est un fragment historique.
+      // Compter ici la consultation réelle du récapitulatif de commande actif.
+      (window.LCDP_affichagesLegauxEnAttente ||= []).push('vt-paiement-membre');
+      window.dispatchEvent(new Event('lcdp:affichage-legal'));
       if (typeof surOuverture === 'function') surOuverture();
       await new Promise(resolve => {
         let ferme = false;
