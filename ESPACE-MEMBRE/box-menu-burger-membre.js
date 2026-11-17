@@ -1324,7 +1324,8 @@
     liens.push(
       {
         label: "Abonnement",
-        action: "abonnement"
+        espace: "membre",
+        href: "/ESPACE-MEMBRE/membre-abonne.html"
       },
       {
         label: "Inviter",
