@@ -547,9 +547,19 @@
     const fetchNatif = window.fetch.bind(window);
     let refreshPromiseEnCours = null;
     let dernierSignalActivite = 0;
+    let deconnexionEnCours = false;
+
+    window.LCDP_suspendreRenouvellementPourDeconnexion = async () => {
+      deconnexionEnCours = true;
+      if (refreshPromiseEnCours) await refreshPromiseEnCours;
+    };
+    window.LCDP_reprendreRenouvellementApresEchecDeconnexion = () => { deconnexionEnCours = false; };
+    window.LCDP_effacerEcheanceRenouvellementMembre = () => supprimerCookiePartage(COOKIE_SESSION_MEMBRE_NEXT_REFRESH);
 
     async function verifierSiNecessaire(options = {}) {
+      if (deconnexionEnCours) return true;
       if (await window.LCDP_verifierExclusiviteCle?.() === false) return false;
+      if (deconnexionEnCours) return true;
       const maintenant = Date.now();
       const verificationAvantFetch = options && options.avantFetch === true;
 
@@ -584,6 +594,7 @@
 
           const data = await reponse.json().catch(() => null);
 
+          if (deconnexionEnCours) return true;
           if (reponse.status === 401) {
             supprimerCookiePartage(COOKIE_SESSION_MEMBRE_NEXT_REFRESH);
 
