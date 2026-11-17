@@ -514,7 +514,7 @@
 
     appliquerRoutesSite(slot);
 
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261117-deconnexion");
   }
 
   async function initialiserBurgerMembre(etat) {
@@ -874,22 +874,36 @@
       throw new Error("Le service de déconnexion membre n’est pas configuré.");
     }
 
-    const reponse = await fetch(ENDPOINT_DECONNEXION_MEMBRE + "/deconnexion", {
-      method: "POST",
-      credentials: "include",
-      cache: "no-store",
-      headers: {
-        "Accept": "application/json"
+    if (!ENDPOINT_INDEX_MEMBRE) throw new Error("Le service de vérification de session n’est pas configuré.");
+    try {
+      await window.LCDP_suspendreRenouvellementPourDeconnexion?.();
+      const reponse = await fetch(ENDPOINT_DECONNEXION_MEMBRE + "/deconnexion", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Accept": "application/json" }
+      });
+      const resultat = await reponse.json().catch(() => null);
+      if (!reponse.ok || !resultat || resultat.success !== true) {
+        throw new Error(messageErreurApi(resultat, "Impossible de fermer la session membre."));
       }
-    });
 
-    const resultat = await reponse.json().catch(() => null);
-
-    if (!reponse.ok || !resultat || resultat.success !== true) {
-      throw new Error(messageErreurApi(resultat, "Impossible de fermer la session membre."));
+      // Ne pas confondre une réponse de succès avec une session réellement fermée.
+      const controle = await fetch(ENDPOINT_INDEX_MEMBRE + "/index", {
+        method: "GET", credentials: "include", cache: "no-store",
+        headers: { "Accept": "application/json" }
+      });
+      const etat = await controle.json().catch(() => null);
+      if (!((controle.status === 401 && etat?.connected === false) ||
+            (controle.ok && etat?.success === true && etat?.connected === false))) {
+        throw new Error("La fermeture de la session membre n’a pas pu être confirmée. Merci de réessayer.");
+      }
+      window.LCDP_effacerEcheanceRenouvellementMembre?.();
+      window.location.replace(construireUrlPublic("/ESPACE-PUBLIC/accueil-public.html"));
+    } catch (erreur) {
+      window.LCDP_reprendreRenouvellementApresEchecDeconnexion?.();
+      throw erreur;
     }
-
-    redirigerPublic("/ESPACE-PUBLIC/accueil-public.html");
   }
 
 
