@@ -514,7 +514,7 @@
 
     appliquerRoutesSite(slot);
 
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261118-galerie-menu");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261118-galerie-progressive");
   }
 
   async function initialiserBurgerMembre(etat) {
