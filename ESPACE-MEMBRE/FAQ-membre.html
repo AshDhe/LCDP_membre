@@ -28,6 +28,15 @@
       window.LCDP_urlPublic = path => typeof cfg.publicUrl === 'function' ? cfg.publicUrl(path) : join(publicBase, path);
       window.LCDP_urlObjet = path => typeof cfg.objetUrl === 'function' ? cfg.objetUrl(path) : join(objetBase, path);
       document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css') + '">');
+      document.write('<link rel="stylesheet" href="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.css') + '">');
+      window.LCDP_FAQ_PAGE = {
+        membre: true,
+        publicUrl: window.LCDP_urlPublic,
+        objetUrl: window.LCDP_urlObjet,
+        stylesPrets: Promise.resolve()
+      };
+      document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.js') + '"><\/script>');
+      document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq.js?v=20261118-faq-membre') + '"><\/script>');
     })();
   </script>
 
@@ -52,66 +61,19 @@
 
   <div class="lcdp-site-page lcdp-app-wrapper">
     <div id="lcdp-bandeau-slot"></div>
-<main class="lcdp-site-main">
-      <section class="lcdp-page-section" aria-label="Page en cours de mise à jour">
+    <main class="lcdp-site-main" id="contenu-principal">
+      <section class="lcdp-page-section" aria-labelledby="lcdp-faq-titre">
         <div class="lcdp-page-container">
-          <h2 class="lcdp-boxtext__title lcdp-boxtext__title--center" style="margin-bottom: 24px;">FAQ espace membre</h2>
-          <div class="lcdp-section-sommeil" role="status" aria-labelledby="lcdp-section-sommeil-titre">
-              <div class="lcdp-section-sommeil__icone" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
-                  <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <h1 id="lcdp-section-sommeil-titre" class="lcdp-section-sommeil__titre">Section en sommeil</h1>
-              <p class="lcdp-section-sommeil__texte">Nous ne diffusons pas cette page pour le moment. Le club prépare son ouverture.</p>
-            </div>
+          <h1 id="lcdp-faq-titre" class="lcdp-boxtext__title lcdp-boxtext__title--center" style="margin-bottom: 24px;">FAQ espace membre</h1>
+          <p id="lcdp-faq-status" role="status">Chargement des FAQ…</p>
+          <div id="lcdp-faq-liste" aria-busy="true"></div>
+          <noscript><p>Activez JavaScript pour consulter les FAQ.</p></noscript>
         </div>
       </section>
     </main>
     <div id="lcdp-footer-slot"></div>
     <div id="lcdp-lightbox-slot"></div>
   </div>
-  <script>
-    (() => {
-      async function fragment(url, slot) {
-        const reponse = await fetch(url, {credentials:'omit',cache:'no-cache'});
-        if (!reponse.ok) throw new Error('Composant indisponible : ' + url);
-        const tmpl = document.createElement('template');
-        tmpl.innerHTML = (await reponse.text()).trim();
-        slot.replaceChildren(tmpl.content.cloneNode(true));
-        slot.querySelectorAll('[data-site-href]').forEach(a => {
-          a.href = a.dataset.space === 'membre' ? window.LCDP_urlMembre(a.dataset.siteHref) : window.LCDP_urlPublic(a.dataset.siteHref);
-        });
-        slot.querySelectorAll('[data-site-src]').forEach(img => {
-          img.src = window.LCDP_urlObjet(String(img.dataset.siteSrc || '').replace(/^\/?OBJET\/?/,'/'));
-        });
-      }
-      async function initBandeau() {
-        const slot = document.getElementById('lcdp-bandeau-slot');
-        await fragment(window.LCDP_urlMembre('/ESPACE-MEMBRE/box-bandeau-nav-membre.html'), slot);
-        if (typeof window.LCDP_initialiserMenuBurgerMembre !== 'function') {
-          await new Promise((resolve,reject) => {
-            const script = document.createElement('script');
-            script.src = window.LCDP_urlMembre('/ESPACE-MEMBRE/box-menu-burger-membre.js');
-            script.onload = resolve;
-            script.onerror = () => reject(new Error('Menu membre indisponible'));
-            document.body.appendChild(script);
-          });
-        }
-        if (typeof window.LCDP_initialiserMenuBurgerMembre === 'function') {
-          await window.LCDP_initialiserMenuBurgerMembre();
-        }
-      }
-      async function initFooter() {
-        await fragment(window.LCDP_urlObjet('/HTMLBASE/02-footer.html'), document.getElementById('lcdp-footer-slot'));
-      }
-      Promise.allSettled([initBandeau(), initFooter()]).then(resultats => {
-        for (const resultat of resultats) {
-          if (resultat.status === 'rejected') console.error('[FAQ MEMBRE] Initialisation :', resultat.reason);
-        }
-        window.LCDP_terminerAttenteArrivee();
-      });
-    })();
-  </script>
+
 </body>
 </html>
