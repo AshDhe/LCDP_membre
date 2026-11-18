@@ -712,7 +712,38 @@
     if (event.persisted) document.getElementById("lcdp-burger-attente-navigation")?.remove();
   });
 
+  // Charger le composant commun uniquement à la demande, sans changer de page.
+  async function ouvrirGalerieDepuisMenu(focus) {
+    if (typeof window.LCDP_BANDEAU_IMAGE?.ouvrirGalerie !== "function") {
+      if (!window.LCDP_chargementGalerieCommune) {
+        window.LCDP_chargementGalerieCommune = new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = construireUrlObjet("/JSBASE/bandeau-image.js?v=20261118-galerie-menu");
+          script.onload = () => typeof window.LCDP_BANDEAU_IMAGE?.ouvrirGalerie === "function"
+            ? resolve() : reject(new Error("Galerie indisponible."));
+          script.onerror = () => { script.remove(); reject(new Error("Galerie indisponible.")); };
+          document.head.appendChild(script);
+        }).catch(error => { delete window.LCDP_chargementGalerieCommune; throw error; });
+      }
+      await window.LCDP_chargementGalerieCommune;
+    }
+    await window.LCDP_BANDEAU_IMAGE.ouvrirGalerie(focus);
+  }
+
   function creerLienMenu(item, boutonBurger, navBurger, contexte) {
+    if (item.action === "galerie") {
+      const bouton = creerBoutonActionMenu(item.label, () => {
+        fermerMenu(boutonBurger, navBurger);
+        boutonBurger.focus({ preventScroll: true });
+        ouvrirGalerieDepuisMenu(boutonBurger).catch(error => {
+          console.error("Galerie indisponible :", error);
+          afficherAlerteBurger("La galerie est momentanément indisponible.").catch(console.error);
+        });
+      });
+      bouton.setAttribute("aria-haspopup", "dialog");
+      return bouton;
+    }
+
     if (item.action === "etre-invite") {
       return creerBoutonActionMenu(item.label, () => {
         fermerMenu(boutonBurger, navBurger);
@@ -1355,8 +1386,7 @@
       },
       {
         label: "Galerie",
-        espace: "public",
-        href: "/ESPACE-PUBLIC/galerie.html?source=menu-burger-membre"
+        action: "galerie"
       },
       {
         label: "Témoignages",
