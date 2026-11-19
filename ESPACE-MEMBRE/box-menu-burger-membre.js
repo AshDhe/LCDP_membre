@@ -1356,8 +1356,8 @@
     liens.push(
       {
         label: "Abonnement",
-        espace: "membre",
-        href: "/ESPACE-MEMBRE/membre-abonne.html"
+        espace: "public",
+        href: "/ESPACE-PUBLIC/abonnement-membre.html?source=menu-burger-membre"
       },
       {
         label: "Inviter",
