@@ -718,7 +718,7 @@
       if (!window.LCDP_chargementGalerieCommune) {
         window.LCDP_chargementGalerieCommune = new Promise((resolve, reject) => {
           const script = document.createElement("script");
-          script.src = construireUrlObjet("/JSBASE/bandeau-image.js?v=20261118-galerie-progressive");
+          script.src = construireUrlObjet("/JSBASE/bandeau-image.js?v=20261119-galerie-mobile");
           script.onload = () => typeof window.LCDP_BANDEAU_IMAGE?.ouvrirGalerie === "function"
             ? resolve() : reject(new Error("Galerie indisponible."));
           script.onerror = () => { script.remove(); reject(new Error("Galerie indisponible.")); };
