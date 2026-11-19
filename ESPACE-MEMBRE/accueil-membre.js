@@ -511,7 +511,7 @@
 
     appliquerRoutesSite(slot);
 
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261119-cycle-vie");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261120-presentation-abonnements");
   }
 
   async function initialiserBurgerMembre(etat) {
