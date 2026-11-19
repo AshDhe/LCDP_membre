@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" data-lcdp-css="c085 c034 c038 c032 c083 c036 c033 c037 c041 c040 p0fdefe76cf13">
+<html lang="fr" data-lcdp-css="c085 c034 c038 c032 c083 c036 c033 c037 c041 c040">
 <head>
   <style>
     #lcdp-attente-arrivee { position:fixed; inset:0; z-index:2147483646; display:flex; align-items:center; justify-content:center; background:#fff; }
@@ -28,20 +28,20 @@
       window.LCDP_urlPublic = path => typeof cfg.publicUrl === 'function' ? cfg.publicUrl(path) : join(publicBase, path);
       window.LCDP_urlObjet = path => typeof cfg.objetUrl === 'function' ? cfg.objetUrl(path) : join(objetBase, path);
       document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css') + '">');
-      document.write('<link rel="stylesheet" href="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.css?v=20261119-faq-typographie') + '">');
+      document.write('<link rel="stylesheet" href="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.css?v=20261119-gabarit-editorial-commun') + '">');
       window.LCDP_FAQ_PAGE = {
         membre: true,
         publicUrl: window.LCDP_urlPublic,
         objetUrl: window.LCDP_urlObjet,
         stylesPrets: Promise.resolve()
       };
-      document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.js?v=20261119-faq-typographie') + '"><\/script>');
+      document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.js?v=20261119-gabarit-editorial-commun') + '"><\/script>');
       document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq.js?v=20261118-faq-membre') + '"><\/script>');
     })();
   </script>
 
 </head>
-<body class="lcdp-page-document-legal lcdp-app-page">
+<body class="lcdp-app-page lcdp-typographie-editoriale-commune lcdp-page-faq">
   <div id="lcdp-attente-arrivee" class="lcdp-attente-plein-ecran" role="status" aria-label="Chargement de la page">
     <div class="lcdp-loading-spinner" aria-hidden="true">
       <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
@@ -64,10 +64,14 @@
     <main class="lcdp-site-main" id="contenu-principal">
       <section class="lcdp-page-section" aria-labelledby="lcdp-faq-titre">
         <div class="lcdp-page-container">
-          <h1 id="lcdp-faq-titre" class="lcdp-boxtext__title lcdp-boxtext__title--center" style="margin-bottom: 24px;">FAQ espace membre</h1>
-          <p id="lcdp-faq-status" role="status">Chargement des FAQ…</p>
-          <div id="lcdp-faq-liste" aria-busy="true"></div>
-          <noscript><p>Activez JavaScript pour consulter les FAQ.</p></noscript>
+          <div class="lcdp-page-content lcdp-stack-large lcdp-contenu-editorial">
+            <header class="lcdp-editorial-page-heading">
+              <h1 id="lcdp-faq-titre" class="lcdp-title-page-center">FAQ espace membre</h1>
+            </header>
+            <p id="lcdp-faq-status" role="status">Chargement des FAQ…</p>
+            <div id="lcdp-faq-liste" aria-busy="true"></div>
+            <noscript><p>Activez JavaScript pour consulter les FAQ.</p></noscript>
+          </div>
         </div>
       </section>
     </main>
