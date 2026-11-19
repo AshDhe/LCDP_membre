@@ -1912,7 +1912,7 @@
 
     const texte = document.createElement("span");
     texte.textContent = delaiPaiementDepasse
-      ? "[Votre abonnement est annulé (non payé)]"
+      ? "[Règlement indisponible]"
       : "[Votre abonnement est suspendu (non payé)]";
     bloc.appendChild(texte);
 
@@ -2066,7 +2066,7 @@
 
 
   function messageDelaiPaiementDepasse() {
-    return "Le délai de paiement est dépassé. Cet abonnement est annulé.";
+    return "Le règlement de cette échéance est indisponible.";
   }
 
   function paiementSuspensionDelaiDepasse(paiement) {
@@ -2076,21 +2076,9 @@
       return true;
     }
 
-    return delaiPaiementDepasseDepuisFin(paiement.fin || paiement.dateFin || paiement.finabo || "");
+    return false; // La fin du contrat ne rend pas les échéances inexigibles.
   }
 
-  function delaiPaiementDepasseDepuisFin(value) {
-    const fin = dateIsoPaiementDepuisValeur(value);
-
-    if (!fin) return false;
-
-    const maintenantParis = dateHeureParisPaiement(new Date());
-
-    if (maintenantParis.dateIso > fin) return true;
-    if (maintenantParis.dateIso < fin) return false;
-
-    return maintenantParis.heure >= 14;
-  }
 
   function dateIsoPaiementDepuisValeur(value) {
     const texte = String(value || "").trim();
@@ -3722,7 +3710,7 @@ function afficherResumePointsPassion(compte) {
     slot.appendChild(bandeau);
     appliquerRoutesSite(slot);
 
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261119-cycle-vie");
 
     if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
       await window.LCDP_initialiserMenuBurgerMembre();

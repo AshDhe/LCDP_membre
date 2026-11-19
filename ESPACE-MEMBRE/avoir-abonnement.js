@@ -254,8 +254,8 @@
         listeRemises.innerHTML = "";
         ajouterLignePrixAvoir(
           listeRemises,
-          "Frais de traitement (TTC) €",
-          prix.fraistraitementTtc,
+          prix.fraisAbonnementTtc != null ? "Frais d’abonnement (TTC) €" : "Frais de traitement (TTC) €",
+          prix.fraisAbonnementTtc ?? prix.fraistraitementTtc,
           { negatif: true }
         );
         ajouterLignePrixAvoir(

@@ -289,9 +289,9 @@
     if (statutabo === "impaye" && fin >= aujourdHui) {
       return {
         visible: true,
-        actif: false,
-        label: "Inviter (suspendu : abonnement à payer)",
-        message: "Abonnement suspendu. Vous ne pouvez pas inviter de membre.",
+        actif: true,
+        label: "Inviter",
+        message: "Seules les annulations d’invitations sont autorisées.",
         peutPayer: true,
         italique: true,
         statutabo,
@@ -349,6 +349,7 @@
     const candidats = [];
 
     [
+      donnees.abonnementInvitable,
       donnees.abonnementEnCours,
       donnees.abonnementActuel,
       donnees.abonnement,
@@ -371,7 +372,7 @@
 
       if (!etat.visible) return;
 
-      const priorite = etat.actif
+      const priorite = etat.actif && etat.statutabo === "paye"
         ? 1
         : etat.statutabo === "impaye"
           ? 2
@@ -1298,8 +1299,8 @@
       abonne,
       abonnementSuspendu: valeurBooleenneVraie(etatMembre.abonnementSuspendu || etatMembre.suspendu),
       paiementSuspension: etatMembre.paiementSuspension || etatMembre.paiementRegularisation || null,
-      statutabo: normaliserStatutabo(etatMembre.statutabo || etatMembre.statutAbo || ""),
-      fin: etatMembre.fin || etatMembre.finabo || etatMembre.dateFin || etatMembre.datefin || "",
+      statutabo: normaliserStatutabo(etatMembre.abonnementInvitable?.statutabo || etatMembre.statutabo || etatMembre.statutAbo || ""),
+      fin: etatMembre.abonnementInvitable?.fin || etatMembre.fin || etatMembre.finabo || etatMembre.dateFin || etatMembre.datefin || "",
       statudaConnue: Object.prototype.hasOwnProperty.call(etatMembre, "statuda"),
       statuda: normaliserStatuda(etatMembre.statuda),
       datenext: etatMembre.datenext || null,

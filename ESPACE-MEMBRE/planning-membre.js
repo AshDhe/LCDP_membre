@@ -795,7 +795,8 @@
         habillerBoutonInvitesVerso(inviterVerso, reservation);
       }
       if (inviterVerso && !reservationHorsAbonnementMembre(reservation) &&
-          !reservationAnnuleePlanning(reservation) && !reservationPasseePlanning(reservation)) {
+          !reservationAnnuleePlanning(reservation) && !reservationPasseePlanning(reservation) &&
+          reservation.droitExercable !== false && reservation.abonnementSuspendu !== true) {
         const duoActif = document.createElement("button");
         duoActif.type = "button";
         duoActif.className = "lcdp-planning-verso-action lcdp-planning-verso-dactif";
@@ -1148,8 +1149,9 @@
       compteur.className = "lcdp-planning-verso-compteur";
       compteur.textContent = nombre > 0 ? String(nombre) : "−";
       bouton.replaceChildren(icone, document.createTextNode("Invités"), compteur);
-      bouton.setAttribute("aria-label", "Gérer ou ajouter des invités (" + nombre + " actifs)");
-      bouton.title = "Gérer les invités";
+      const retraitSeul = reservation.droitExercable === false || reservation.abonnementSuspendu === true;
+      bouton.setAttribute("aria-label", (retraitSeul ? "Annuler des invitations (" : "Gérer ou ajouter des invités (") + nombre + " actifs)");
+      bouton.title = retraitSeul ? "Annulation des invitations uniquement" : "Gérer les invités";
     }
   }
 
@@ -2326,12 +2328,9 @@
     }
 
     if (invitation) {
-      invitation.textContent =
-        estAnnulee
-          ? "Annulée"
-          : "";
-      invitation.hidden =
-        !estAnnulee;
+      const neutralise = !estPasse && !estAnnulee && reservation.droitExercable === false;
+      invitation.textContent = estAnnulee ? "Annulée" : neutralise ? "Accès non exerçable" : "";
+      invitation.hidden = !estAnnulee && !neutralise;
     }
 
     if (date) date.textContent = formaterDateCourte(reservation.datebookd);
@@ -3588,7 +3587,7 @@
     // Afficher le formulaire DUO/FAMILLE indépendamment du déploiement Worker.
     // Une route absente ne doit plus ramener à l'ancien formulaire.
     await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css");
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261113-contexte-rpc-v2");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261119-cycle-vie");
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites&v=20261113-invites-ux-v5");
     if (!window.LCDP_InvitationsAbonnement?.monter) {
       throw new Error("Formulaire DUO/FAMILLE indisponible.");
@@ -4573,7 +4572,7 @@
       donnees.abonnementAnnuleNonPaye === true ||
       paiementSuspensionDelaiDepasse(donnees.paiementSuspension)
     ) {
-      return "Votre abonnement est annulé (non payé).";
+      return "Le règlement de cet abonnement est indisponible.";
     }
 
     if (donnees.abonnementSuspendu === true) {
@@ -4601,21 +4600,9 @@
       return true;
     }
 
-    return delaiPaiementDepasseDepuisFin(paiement.fin || paiement.dateFin || paiement.finabo || "");
+    return false; // La fin du contrat ne rend pas les échéances inexigibles.
   }
 
-  function delaiPaiementDepasseDepuisFin(value) {
-    const fin = dateIsoDepuisValeur(value);
-
-    if (!fin) return false;
-
-    const maintenantParis = dateHeureParis(new Date());
-
-    if (maintenantParis.dateIso > fin) return true;
-    if (maintenantParis.dateIso < fin) return false;
-
-    return maintenantParis.heure >= 14;
-  }
 
   function dateIsoDepuisValeur(value) {
     const texte = String(value || "").trim();
@@ -4949,7 +4936,7 @@
     slot.appendChild(bandeau);
     appliquerRoutesSite(slot);
 
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261119-cycle-vie");
 
     if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
       await window.LCDP_initialiserMenuBurgerMembre({

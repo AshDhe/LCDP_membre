@@ -106,7 +106,7 @@
     }
 
     if (paiement.delaiPaiementDepasse === true || paiement.abonnementAnnuleNonPaye === true) {
-      afficherMessage(paiement.messageDelaiPaiement || "Le délai de paiement est dépassé. Cet abonnement est annulé.", "erreur");
+      afficherMessage(paiement.messageDelaiPaiement || "Le règlement de cette échéance est indisponible.", "erreur");
       afficherQuitter();
       return;
     }

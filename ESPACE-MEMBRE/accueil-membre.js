@@ -209,9 +209,9 @@
     const paiementSuspension = resultat.paiementSuspension || resultat.paiementRegularisation || null;
     const mentionAbonnement = abonnementSuspendu
       ? (paiementSuspensionDelaiDepasse(paiementSuspension)
-        ? "[Votre abonnement est annulé (non payé)]"
+        ? "[Règlement indisponible]"
         : "[Votre abonnement est suspendu (non payé)]")
-      : "";
+      : (paiementSuspension ? "[Échéance(s) d’abonnement non payée(s)]" : "");
 
     return {
       prenommembre: nettoyerPrenom(resultat.prenommembre),
@@ -220,6 +220,7 @@
       parrainRenseigne: valeurBooleenneVraie(resultat.parrainRenseigne),
       aReservationEnCours: valeurBooleenneVraie(resultat.aReservationEnCours || resultat.aReservationValidable),
       reservationEnCours: resultat.reservationEnCours || resultat.reservationValidable || null,
+      abonnementInvitable: resultat.abonnementInvitable || null,
       statutabo: abonnementEnCours?.statutabo || "",
       typeabo: abonnementEnCours?.typeabo || abonnementEnCours?.typeaboPrix || "",
       debut: abonnementEnCours?.debut || "",
@@ -272,6 +273,14 @@
     }
 
     bloc.textContent = texteMention;
+    if (etat?.paiementSuspension?.orderid) {
+      const bouton = document.createElement("button");
+      bouton.type = "button";
+      bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
+      bouton.textContent = "Payer";
+      bouton.addEventListener("click", () => redirigerMembre(PAGE_ABONNEMENT_MEMBRE));
+      bloc.appendChild(bouton);
+    }
   }
 
   async function gererPaiementSuspensionMembre(etat) {
@@ -427,7 +436,7 @@
 
 
   function messageDelaiPaiementDepasse() {
-    return "Le délai de paiement est dépassé. Cet abonnement est annulé.";
+    return "Le règlement de cette échéance est indisponible.";
   }
 
   function paiementSuspensionDelaiDepasse(paiement) {
@@ -437,21 +446,9 @@
       return true;
     }
 
-    return delaiPaiementDepasseDepuisFin(paiement.fin || paiement.dateFin || paiement.finabo || "");
+    return false; // La fin du contrat ne rend pas les échéances inexigibles.
   }
 
-  function delaiPaiementDepasseDepuisFin(value) {
-    const fin = dateIsoPaiementDepuisValeur(value);
-
-    if (!fin) return false;
-
-    const maintenantParis = dateHeureParisPaiement(new Date());
-
-    if (maintenantParis.dateIso > fin) return true;
-    if (maintenantParis.dateIso < fin) return false;
-
-    return maintenantParis.heure >= 14;
-  }
 
   function dateIsoPaiementDepuisValeur(value) {
     const texte = String(value || "").trim();
@@ -514,7 +511,7 @@
 
     appliquerRoutesSite(slot);
 
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261118-galerie-progressive");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261119-cycle-vie");
   }
 
   async function initialiserBurgerMembre(etat) {

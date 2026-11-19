@@ -151,7 +151,7 @@
 
     const texte = document.createElement("span");
     texte.textContent = paiementSuspensionDelaiDepasse(options.paiementSuspension || etat.paiementSuspension)
-      ? "[Votre abonnement est annulé (non payé)]"
+      ? "[Règlement indisponible]"
       : "[Votre abonnement est suspendu (non payé)]";
     bloc.appendChild(texte);
 
@@ -185,7 +185,7 @@
     slot.appendChild(bandeau);
     appliquerRoutesSite(slot);
 
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261119-cycle-vie");
 
     if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
       await window.LCDP_initialiserMenuBurgerMembre({
@@ -385,7 +385,6 @@
     const boutonFacture = event.target.closest("[data-action='voir-facture']");
     const boutonAvoir = event.target.closest("[data-action='demander-avoir']");
     const boutonAvoirDepasse = event.target.closest("[data-action='avoir-delai-depasse']");
-    const boutonAnnuleCreeTermine = event.target.closest("[data-action='annule-cree-termine']");
     const boutonVoirAvoir = event.target.closest("[data-action='voir-avoir']");
 
     if (boutonPayerAbonnement) {
@@ -414,15 +413,16 @@
       return;
     }
 
-    if (boutonAvoirDepasse) {
-      await afficherInformationAbonnement("Le délai d’annulation est dépassé.", { titre: "Annulation indisponible" });
+    if (event.target.closest("[data-action='avoir-droit-inconnu']")) {
+      await afficherInformationAbonnement("Le droit de rétractation ne peut pas être vérifié actuellement.", { titre: "Rétractation" });
       return;
     }
 
-    if (boutonAnnuleCreeTermine) {
-      await afficherInformationAbonnement("L'abonnement est annulé (non payé). L'avoir est édité le 1er du mois suivant", { titre: "État de l’abonnement" });
+    if (boutonAvoirDepasse) {
+      await afficherInformationAbonnement("Cet abonnement est terminé ou le délai de rétractation est dépassé.", { titre: "Annulation indisponible" });
       return;
     }
+
 
     if (boutonVoirAvoir) {
       const card = boutonVoirAvoir.closest("[data-lcdp-box-card-abonnement]");
@@ -552,10 +552,15 @@
       return;
     }
 
+    const abonnement = retrouverAbonnementDepuisCard(card);
+    if (abonnement?.retractationPossible !== true) {
+      await afficherInformationAbonnement("Le droit de rétractation n’est pas confirmé.", { titre: "Rétractation" });
+      return;
+    }
     const confirmation = await afficherSuppressionAbonnement("Voulez-vous annuler l'abonnement ?");
     if (!confirmation) return;
 
-    const confirmationRetenue = await afficherSuppressionAbonnement("Des frais de traitement d’annulation s’appliquent conformément aux Conditions Générales de Vente.", { titre: "Confirmer l’annulation avec frais ?", annuler: "Conserver", confirmer: "Poursuivre l’annulation" });
+    const confirmationRetenue = await afficherSuppressionAbonnement("Les frais d’abonnement déduits du paiement reçu à la souscription sont de 55 € TTC sans accès exercé, du tarif 1J à privilèges comparables pour un jour consommé, ou du tarif 1M au-delà. La déduction est limitée au montant encaissé.", { titre: "Confirmer l’annulation avec frais ?", annuler: "Conserver", confirmer: "Poursuivre l’annulation" });
     if (!confirmationRetenue) return;
 
     const resultat = await enregistrerAnnulationAvoir(card);
@@ -2692,7 +2697,7 @@
 
 
   function messageDelaiPaiementDepasse() {
-    return "Le délai de paiement est dépassé. Cet abonnement est annulé.";
+    return "Le règlement de cette échéance est indisponible.";
   }
 
   function paiementSuspensionDelaiDepasse(paiement) {
@@ -2702,25 +2707,13 @@
       return true;
     }
 
-    return delaiPaiementDepasseDepuisFin(paiement.fin || paiement.dateFin || paiement.finabo || "");
+    return false; // La fin du contrat ne rend pas les échéances inexigibles.
   }
 
   function delaiPaiementDepasseAbonnement(abonnement) {
-    return delaiPaiementDepasseDepuisFin(abonnement?.fin || abonnement?.dateFin || abonnement?.finabo || "");
+    return valeurBooleenneVraie(abonnement?.delaiPaiementDepasse) || valeurBooleenneVraie(abonnement?.abonnementAnnuleNonPaye);
   }
 
-  function delaiPaiementDepasseDepuisFin(value) {
-    const fin = dateIsoPaiementDepuisValeur(value);
-
-    if (!fin) return false;
-
-    const maintenantParis = dateHeureParisPaiement(new Date());
-
-    if (maintenantParis.dateIso > fin) return true;
-    if (maintenantParis.dateIso < fin) return false;
-
-    return maintenantParis.heure >= 14;
-  }
 
   function dateIsoPaiementDepuisValeur(value) {
     const texte = String(value || "").trim();
@@ -2760,11 +2753,11 @@
 
   function echeancesNonPayeesAbonnement(abonnement) {
     const echeances = [];
-
-    ajouterEcheanceNonPayee(echeances, 1, abonnement?.etatmois1, abonnement?.datemois1, abonnement?.valmois1);
-    ajouterEcheanceNonPayee(echeances, 2, abonnement?.etatmois2, abonnement?.datemois2, abonnement?.valmois2);
-    ajouterEcheanceNonPayee(echeances, 3, abonnement?.etatmois3, abonnement?.datemois3, abonnement?.valmois3);
-
+    if (!abonnement || estAbonnementAnnule(abonnement)) return echeances;
+    const nb = Number(abonnement.ech);
+    for (let i = 1; i <= (Number.isInteger(nb) && nb >= 1 && nb <= 3 ? nb : 3); i++) {
+      ajouterEcheanceNonPayee(echeances, i, abonnement["etatmois"+i], abonnement["datemois"+i], abonnement["valmois"+i]);
+    }
     return echeances;
   }
 
@@ -3115,8 +3108,8 @@
         listeRemises.innerHTML = "";
         ajouterLignePrixAvoir(
           listeRemises,
-          "Frais de traitement (TTC) €",
-          prix.fraistraitementTtc,
+          prix.fraisAbonnementTtc != null ? "Frais d’abonnement (TTC) €" : "Frais de traitement (TTC) €",
+          prix.fraisAbonnementTtc ?? prix.fraistraitementTtc,
           { negatif: true }
         );
         ajouterLignePrixAvoir(
@@ -3477,18 +3470,13 @@
   }
 
   function determinerEtatAvoirAbonnement(abonnement, commande) {
-    if (estAbonnementCreeTermineEnAffichage(abonnement)) {
-      return { invisible: false, label: "Annulé", action: "annule-cree-termine", grise: true };
-    }
-
-    if (estAbonnementAnnule(abonnement, commande)) {
+    if (abonnement?.avoirDisponible === true || estAbonnementAnnule(abonnement, commande)) {
       return { invisible: false, label: "Avoir", action: "voir-avoir", grise: false };
     }
 
-    if (estAbonnementUnJour(abonnement)) {
-      return { invisible: true, label: "", action: "", grise: false };
+    if (abonnement?.retractationPossible == null) {
+      return { invisible: false, label: "Annuler", action: "avoir-droit-inconnu", grise: true };
     }
-
     if (!estDansDelaiAvoirAbonnement(abonnement)) {
       return { invisible: false, label: "Annuler", action: "avoir-delai-depasse", grise: true };
     }
@@ -3496,31 +3484,17 @@
     return { invisible: false, label: "Annuler", action: "demander-avoir", grise: false };
   }
 
-  function estAbonnementCreeTermineEnAffichage(abonnement) {
-    const statut = String(abonnement?.statutabo || abonnement?.statutpaiement || abonnement?.statutPaiement || "").trim().toLowerCase();
-    return statut === "cree" && delaiPaiementDepasseAbonnement(abonnement);
-  }
-
-  function estAbonnementUnJour(abonnement) {
-    const typabo = String(abonnement?.typabo || abonnement?.abonnement || "").trim().toUpperCase();
-    return typabo === "1J" || typabo.startsWith("1JF");
-  }
-
   function estDansDelaiAvoirAbonnement(abonnement) {
-    const debut = debutJourDate(abonnement?.debut);
-    if (!debut) return false;
-
-    const aujourdHui = debutJour(new Date());
-    const finDelai = new Date(debut.getFullYear(), debut.getMonth(), debut.getDate() + 14);
-
-    return aujourdHui <= finDelai;
+    // Le worker fournit la date de souscription de la commande et le droit.
+    // Une date de début d'abonnement ne constitue pas une date de souscription.
+    return abonnement?.retractationPossible === true;
   }
 
   function estAbonnementAnnule(abonnement, commande) {
     const statut = String(
-      commande?.statutPaiement ||
-      commande?.statutabo ||
       abonnement?.statutabo ||
+      commande?.statutabo ||
+      commande?.statutPaiement ||
       abonnement?.statutpaiement ||
       abonnement?.statutPaiement ||
       ""
@@ -3657,22 +3631,19 @@
   }
 
   function abonnementAvecEcheanceNonPayee(abonnement) {
-    return [abonnement?.etatmois1, abonnement?.etatmois2, abonnement?.etatmois3]
-      .map((etatEcheance) => String(etatEcheance || "").trim().toLowerCase())
-      .some((etatEcheance) => etatEcheance === "du" || etatEcheance === "impaye");
+    if (estAbonnementAnnule(abonnement)) return false;
+    return echeancesNonPayeesAbonnement(abonnement).length > 0;
   }
 
   function estAbonnementSuspenduImpaye(abonnement, commande) {
     const statut = String(commande?.statutPaiement || abonnement?.statutabo || abonnement?.statutpaiement || abonnement?.statutPaiement || "").trim().toLowerCase();
-    return statut === "impaye" || abonnementAvecEcheanceNonPayee(abonnement) || abonnementAvecEcheanceNonPayee(commande);
+    return !estAbonnementAnnule(abonnement, commande) && (statut === "impaye" || abonnementAvecEcheanceNonPayee(abonnement) || abonnementAvecEcheanceNonPayee(commande));
   }
 
   function construireMentionSuspension(abonnement, commande) {
     if (!estAbonnementSuspenduImpaye(abonnement, commande)) return "";
 
-    return delaiPaiementDepasseAbonnement(abonnement)
-      ? "Votre abonnement est annulé (non payé)"
-      : "Votre abonnement est suspendu (non payé)";
+    return "Abonnement non payé : échéances dues";
   }
 
 

@@ -51,13 +51,8 @@
       afficherEtatMembre(etatMembre);
       await actualiserBurgerMembre(etatMembre.abonne);
 
-      if (!etatMembre.abonne && !membreAbonne()) {
+      if (!etatMembre.abonne && !etatMembre.abonnementSuspendu && !etatMembre.abonnementInvitable && !membreAbonne()) {
         await afficherAlerte("Cette fonction est réservée aux membres abonnés.", { profil: "information" });
-        return;
-      }
-
-      if (etatMembre.abonnementSuspendu === true) {
-        await afficherAlerte("Votre abonnement est suspendu (non payé).", { profil: "information" });
         return;
       }
 
@@ -95,6 +90,9 @@
 
     return {
       abonne: valeurBooleenneVraie(resultat.abonne),
+      abonnementInvitable: resultat.abonnementInvitable || null,
+      statutabo: resultat.abonnementEnCours?.statutabo || "",
+      fin: resultat.abonnementEnCours?.fin || "",
       abonnementSuspendu: valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu),
       paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null
     };
@@ -141,7 +139,7 @@
 
     const texte = document.createElement("span");
     texte.textContent = delaiPaiementDepasse
-      ? "[Votre abonnement est annulé (non payé)]"
+      ? "[Règlement indisponible]"
       : "[Votre abonnement est suspendu (non payé)]";
     bloc.appendChild(texte);
 
@@ -295,7 +293,7 @@
 
 
   function messageDelaiPaiementDepasse() {
-    return "Le délai de paiement est dépassé. Cet abonnement est annulé.";
+    return "Le règlement de cette échéance est indisponible.";
   }
 
   function paiementSuspensionDelaiDepasse(paiement) {
@@ -305,21 +303,9 @@
       return true;
     }
 
-    return delaiPaiementDepasseDepuisFin(paiement.fin || paiement.dateFin || paiement.finabo || "");
+    return false; // La fin du contrat ne rend pas les échéances inexigibles.
   }
 
-  function delaiPaiementDepasseDepuisFin(value) {
-    const fin = dateIsoPaiementDepuisValeur(value);
-
-    if (!fin) return false;
-
-    const maintenantParis = dateHeureParisPaiement(new Date());
-
-    if (maintenantParis.dateIso > fin) return true;
-    if (maintenantParis.dateIso < fin) return false;
-
-    return maintenantParis.heure >= 14;
-  }
 
   function dateIsoPaiementDepuisValeur(value) {
     const texte = String(value || "").trim();
@@ -378,6 +364,7 @@
     if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
       await window.LCDP_initialiserMenuBurgerMembre({
         etatMembre: {
+          ...etatMembre,
           abonne: abonne === true
         }
       });
@@ -385,15 +372,15 @@
   }
 
   async function chargerReservations() {
-    if (!ENDPOINT_INVITATION_MEMBRE) {
-      afficherErreurListe("Le service invitation membre n’est pas configuré.");
+    if (!ENDPOINT_INVITER_MEMBRE) {
+      afficherErreurListe("Le service inviter membre n’est pas configuré.");
       return;
     }
 
     try {
       afficherChargementListe("Chargement de vos réservations...");
 
-      const reponse = await fetch(ENDPOINT_INVITATION_MEMBRE + "/reservations-invitables", {
+      const reponse = await fetch(ENDPOINT_INVITER_MEMBRE + "/reservations-invitables", {
         method: "GET",
         credentials: "include",
         cache: "no-store",
@@ -430,7 +417,8 @@
     }
 
     if (boutonInvitation) {
-      await ouvrirDialogueInvitation(String(boutonInvitation.dataset.id || ""));
+      try { await ouvrirDialogueInvitation(String(boutonInvitation.dataset.id || "")); }
+      catch (erreur) { await afficherAlerte(erreur?.message || "Formulaire d’invitation indisponible.", { profil: "information" }); }
       return;
     }
 
@@ -448,7 +436,7 @@
     if (!idflux) return;
 
     const reponse = await fetch(
-      ENDPOINT_INVITATION_MEMBRE + "/annulations?idflux=" + encodeURIComponent(idflux),
+      ENDPOINT_INVITER_MEMBRE + "/annulations?idflux=" + encodeURIComponent(idflux),
       {
         method: "GET",
         credentials: "include",
@@ -635,7 +623,7 @@
     slot.appendChild(bandeau);
     appliquerRoutesSite(slot);
 
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261119-cycle-vie");
 
     if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
       await window.LCDP_initialiserMenuBurgerMembre({
@@ -955,12 +943,16 @@
 
     if (boutonInvitation) {
       boutonInvitation.dataset.id = idFlux;
-      boutonInvitation.hidden = estPasse;
+      boutonInvitation.hidden = estPasse || reservation.statut === "cancd";
+      if (reservation.ajoutsAutorises === false) {
+        boutonInvitation.textContent = "Invités";
+        boutonInvitation.title = "Annulation des invitations uniquement";
+      }
     }
 
     if (boutonAnnuler) {
       boutonAnnuler.dataset.id = idFlux;
-      boutonAnnuler.hidden = estPasse;
+      boutonAnnuler.hidden = estPasse || reservation.statut === "cancd";
     }
 
     const stats = reservation.invitationStats || null;
@@ -1001,13 +993,13 @@
   }
 
   async function ouvrirInvitationsAbonnementSiDisponible(idflux) {
-    if (!ENDPOINT_INVITER_MEMBRE) return false;
+    if (!ENDPOINT_INVITER_MEMBRE) throw new Error("Le service inviter membre n’est pas configuré.");
     const reponse = await fetch(
       ENDPOINT_INVITER_MEMBRE + "/invites-abonnement/contexte?idflux=" + encodeURIComponent(idflux),
       { method:"GET", credentials:"include", cache:"no-store", headers:{"Accept":"application/json"} }
     );
     // Compatibilité tant que la route nouvelle n'est pas installée sur Cloudflare.
-    if (reponse.status === 404) return false;
+    if (reponse.status === 404) throw new Error("Le formulaire d’invitation est indisponible.");
     const contexte = await reponse.json().catch(() => null);
     if (!reponse.ok || contexte?.ok !== true) {
       throw new Error(contexte?.message || "Les droits DUO/FAMILLE sont indisponibles.");
@@ -1028,7 +1020,7 @@
         document.head.appendChild(link);
       });
     }
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261113-contexte-rpc-v2");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261119-cycle-vie");
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites");
     const dialogue = document.createElement("div");
     dialogue.className = "lcdp-box-dialogue-champ-inviter";
@@ -1102,12 +1094,7 @@
   }
 
   async function ouvrirDialogueInvitation(idflux) {
-    if (etatMembre.abonnementSuspendu === true) {
-      await gererPaiementSuspensionMembre(etatMembre);
-      return;
-    }
-
-    if (!etatMembre.abonne && !membreAbonne()) {
+    if (!etatMembre.abonne && !etatMembre.abonnementSuspendu && !etatMembre.abonnementInvitable && !membreAbonne()) {
       await afficherAlerte("Cette fonction est réservée aux membres abonnés.", { profil: "information" });
       return;
     }
@@ -1120,6 +1107,12 @@
       arreterAttente();
     }
     if (ouvert) return;
+    // Ne jamais revenir au formulaire historique d’ajout pour un droit neutralisé.
+    const reservation = etat.reservations.find(r => String(r.idflux) === String(idflux));
+    if (etatMembre.abonnementSuspendu === true || reservation?.ajoutsAutorises === false || reservation?.abonnementSuspendu === true) {
+      await afficherAlerte("Le formulaire d’annulation des invitations est indisponible.", { profil: "information" });
+      return;
+    }
 
     const maxinvit = lireMaxinvit();
 

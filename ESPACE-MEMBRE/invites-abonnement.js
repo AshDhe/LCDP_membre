@@ -55,6 +55,7 @@
       throw erreurDonnees();
     }
     return {
+      annulationSeulement: contexte.annulationSeulement === true || contexte.ajoutsAutorises === false || contexte.abonnementSuspendu === true,
       contacts: contexte.contacts,
       selection: contexte.selection,
       privileges: avecQuotas ? contexte.privileges : null,
@@ -151,6 +152,10 @@
       (duoPlusPossible() ? Math.max(1,droits.duoplus) : 1);
 
     function verifierSelection() {
+      if (contexte.annulationSeulement) {
+        const ajout = CATEGORIES.some(c => [...selection[c]].some(id => !selectionInitiale[c].has(id)) || emailsNouveaux(c).length > 0);
+        return ajout ? "Seules les annulations des invitations existantes sont autorisées." : "";
+      }
       if (!droits) return "";
       if (nombreCarnet("duo") > droits.maxduo) {
         return "Le maximum d’invités DUO est atteint sur cet abonnement.";
@@ -170,6 +175,7 @@
     }
 
     function motifBlocageAjout(categorie) {
+      if (contexte.annulationSeulement) return "Seules les annulations des invitations existantes sont autorisées.";
       if (!droits) return "";
       if (categorie === "duo") {
         if (nombreCarnet("duo") >= droits.maxduo) {
@@ -230,6 +236,7 @@
       caseACocher.type = "checkbox";
       // Seuls les invités encore actifs sur cet accès sont précochés.
       caseACocher.checked = selection[categorie].has(String(contact.idinviteabo));
+      caseACocher.disabled = contexte.annulationSeulement && !selectionInitiale[categorie].has(String(contact.idinviteabo));
       caseACocher.setAttribute("aria-label", "Sélectionner " + contact.email);
       etiquette.appendChild(caseACocher);
       item.append(adresse, etiquette);
@@ -252,7 +259,7 @@
     }
 
     function ajouterChamp(categorie, initial = false) {
-      if (enregistrementEnCours || ferme) return;
+      if (enregistrementEnCours || ferme || contexte.annulationSeulement) return;
       const liste = vue.querySelector('[data-lcdp-invitation-nouveaux="' + categorie + '"]');
       liste.style.display = "flex";
       liste.style.flexDirection = "column";
@@ -340,6 +347,12 @@
       }
     };
     fermerCroix.addEventListener("click", quitter);
+    if (contexte.annulationSeulement) {
+      groupe.hidden = true;
+      envoyer.textContent = "Enregistrer les annulations";
+      const messageMode = creerElement("p", "lcdp-mention-connexion", "Seules les annulations des invitations existantes sont autorisées.");
+      formulaire.prepend(messageMode);
+    }
     groupe.addEventListener("click",() =>
       info("La fonction Groupe n'est pas disponible actuellement.")
     );
