@@ -104,6 +104,15 @@
       initialiserActionsListeAbonnement();
       document.addEventListener("click", gererClicDocument);
       await chargerAbonnements();
+
+      // Entrée explicite depuis la présentation : réutiliser les contrôles DA
+      // du bouton existant avant toute ouverture du tunnel d'abonnement.
+      const urlCourante = new URL(window.location.href);
+      if (urlCourante.searchParams.get("demarrer") === "1") {
+        urlCourante.searchParams.delete("demarrer");
+        window.history.replaceState(window.history.state, "", urlCourante.toString());
+        document.getElementById("bouton-choisir-abonnement")?.click();
+      }
     } catch (error) {
       console.error("Erreur abonnement membre :", error);
       afficherErreurListe(error.message || "Erreur technique. Merci de réessayer.");
