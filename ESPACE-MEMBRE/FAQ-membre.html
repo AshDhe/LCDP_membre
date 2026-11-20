@@ -19,17 +19,6 @@
   <script src="../config.js"></script>
   <script>
     (() => {
-      // Au rechargement, repartir de la première FAQ et du haut de page.
-      const rechargement = (window.performance?.getEntriesByType?.("navigation")?.[0]?.type === "reload")
-        || (!window.performance?.getEntriesByType?.("navigation")?.length && window.performance?.navigation?.type === 1);
-      if (rechargement || !window.location.hash) {
-        if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
-      }
-      if (rechargement && window.location.hash) {
-        const url = new URL(window.location.href);
-        url.hash = "";
-        window.history.replaceState(window.history.state, "", url.href);
-      }
       const cfg = window.SITE_CONFIG || {};
       const join = (base, path) => String(base || '').replace(/\/+$/,'') + '/' + String(path || '').replace(/^\/+/, '');
       const publicBase = cfg.publicBaseUrl || cfg.PUBLIC_BASE || '';
@@ -39,15 +28,15 @@
       window.LCDP_urlPublic = path => typeof cfg.publicUrl === 'function' ? cfg.publicUrl(path) : join(publicBase, path);
       window.LCDP_urlObjet = path => typeof cfg.objetUrl === 'function' ? cfg.objetUrl(path) : join(objetBase, path);
       document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css') + '">');
-      document.write('<link rel="stylesheet" href="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.css?v=20261119-gabarit-editorial-commun') + '">');
+      document.write('<link rel="stylesheet" href="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.css?v=20261120-sans-ancrage') + '">');
       window.LCDP_FAQ_PAGE = {
         membre: true,
         publicUrl: window.LCDP_urlPublic,
         objetUrl: window.LCDP_urlObjet,
         stylesPrets: Promise.resolve()
       };
-      document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.js?v=20261119-faq-ancrage') + '"><\/script>');
-      document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq.js?v=20261119-faq-rechargement') + '"><\/script>');
+      document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.js?v=20261120-sans-ancrage') + '"><\/script>');
+      document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq.js?v=20261120-sans-ancrage') + '"><\/script>');
     })();
   </script>
 
