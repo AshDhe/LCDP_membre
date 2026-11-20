@@ -259,11 +259,6 @@
 
     bouton.textContent = "Choisir mon nouvel abonnement";
     bouton.addEventListener("click", () => {
-      if (etat.daChargee === true && !autorisationDaAbonnementLocale()) {
-        afficherMessageBlocageDaAbonnement().catch(console.error);
-        return;
-      }
-
       demarrerWorkflowNouvelAbonnement().catch(async (error) => {
         console.error("Erreur workflow abonnement :", error);
         await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
@@ -376,11 +371,6 @@
         await actualiserBurgerMembre(data.abonne, data);
       }
 
-      if (!autorisationDaAbonnementLocale()) {
-        await bloquerAccesPageAbonnementDa();
-        return;
-      }
-
       afficherAbonnements(etat.abonnements);
     } catch (error) {
       console.error("Erreur chargement abonnement membre :", error);
@@ -453,11 +443,6 @@
   }
 
   async function demarrerWorkflowProlongation(card) {
-    if (!autorisationDaAbonnementLocale()) {
-      await afficherMessageBlocageDaAbonnement();
-      return;
-    }
-
     const abonnement = retrouverAbonnementDepuisCard(card);
 
     if (!abonnement) {
@@ -1749,11 +1734,6 @@
       await afficherEtapeCalendrierMois();
     });
     boutonPayer.addEventListener("click", async () => {
-      if (!autorisationDaAbonnementLocale()) {
-        await afficherMessageBlocageDaAbonnement();
-        return;
-      }
-
       if (paiementCbDirectDepuisRecapitulatif()) {
         const confirmation = await confirmerCommandeAvantPaiement();
 
@@ -2089,11 +2069,6 @@
 
     actions.appendChild(zone);
     actions.appendChild(creerBouton("Payer", "lcdp-button-primary", async () => {
-      if (!autorisationDaAbonnementLocale()) {
-        await afficherMessageBlocageDaAbonnement();
-        return;
-      }
-
       lireOptionsPaiementDepuisDialogue(slot);
 
       if (!confirmation.checked) {
@@ -3655,11 +3630,6 @@
     return "Abonnement non payé : échéances dues";
   }
 
-
-  async function bloquerAccesPageAbonnementDa() {
-    await afficherMessageBlocageDaAbonnement();
-    window.location.href = PAGE_ACCUEIL_MEMBRE;
-  }
 
   function autorisationDaAbonnementLocale() {
     return normaliserStatuda(etat.statuda) === "oui";
