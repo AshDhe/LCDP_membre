@@ -135,6 +135,19 @@
     .lcdp-transfert-coda-cases input { box-sizing:border-box; width:48px; min-width:0; height:56px; border:1px solid var(--lcdp-color-border,#bac1b9); border-radius:12px; background:var(--lcdp-color-surface,#fff); color:var(--lcdp-color-text,#1f2a24); font:inherit; font-size:1.6rem; text-align:center; }
     .lcdp-transfert-coda-cases input:focus { outline:2px solid var(--lcdp-color-primary,#55733f); outline-offset:3px; }
     #lcdp-navigation-attente:not([hidden]) { position:fixed; inset:0; z-index:2147483647; box-sizing:border-box; display:flex; align-items:center; justify-content:center; background:var(--lcdp-color-surface,#fff); }
+    /* Accueil membre : statut de règlement sous le message de bienvenue, puis action centrée. */
+    .lcdp-page-accueil-membre #mention-suspension-abonnement-membre {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .lcdp-page-accueil-membre #mention-suspension-abonnement-membre > span { display: block; max-width: 100%; }
+    .lcdp-page-accueil-membre #mention-suspension-abonnement-membre > button { margin: 0; }
     @media (max-width:350px) { .lcdp-transfert-coda-cases { gap:6px; } .lcdp-transfert-coda-cases input { width:42px; } }
   </style>
 </head>
@@ -242,6 +255,6 @@
       if (contenu?.hidden) window.LCDP_echecAccueilMembre?.();
     }, 18000);
   </script>
-  <script src="./accueil-membre.js?v=20261120-lien-abonnement" onerror="window.LCDP_echecAccueilMembre()"></script>
+  <script src="./accueil-membre.js?v=20261120-mention-paiement-sous-accueil" onerror="window.LCDP_echecAccueilMembre()"></script>
 </body>
 </html>

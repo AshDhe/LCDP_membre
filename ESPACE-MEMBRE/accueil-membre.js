@@ -254,8 +254,8 @@
   }
 
   function afficherMentionAbonnementMembre(etat) {
-    const mention = document.getElementById("mention-statut-membre");
-    if (!mention || !mention.parentNode) return;
+    const accueil = document.getElementById("message-accueil-membre");
+    if (!accueil || !accueil.parentNode) return;
 
     let bloc = document.getElementById("mention-suspension-abonnement-membre");
     const texteMention = etat?.mentionAbonnement || "";
@@ -269,10 +269,12 @@
       bloc = document.createElement("div");
       bloc.id = "mention-suspension-abonnement-membre";
       bloc.className = "lcdp-mention-connexion lcdp-mention-suspension-abonnement";
-      mention.insertAdjacentElement("afterend", bloc);
+      accueil.insertAdjacentElement("afterend", bloc);
     }
 
-    bloc.textContent = texteMention;
+    const texte = document.createElement("span");
+    texte.textContent = texteMention;
+    bloc.replaceChildren(texte);
     if (etat?.paiementSuspension?.orderid) {
       const bouton = document.createElement("button");
       bouton.type = "button";
