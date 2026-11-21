@@ -1020,8 +1020,8 @@
         document.head.appendChild(link);
       });
     }
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261121-mineurs-dialogue-v2");
-    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites&v=20261121-mineurs-dialogue-v2");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261121-mineurs-confirmation-v3");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites&v=20261121-mineurs-confirmation-v3");
     const dialogue = document.createElement("div");
     dialogue.className = "lcdp-box-dialogue-champ-inviter";
     dialogue.setAttribute("role", "dialog");
