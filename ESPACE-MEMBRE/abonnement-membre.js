@@ -103,6 +103,10 @@
       initialiserBoutonChoisirAbonnement();
       initialiserActionsListeAbonnement();
       document.addEventListener("click", gererClicDocument);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) actualiserBoutonsRetractation();
+      });
+      window.setInterval(actualiserBoutonsRetractation, 30_000);
       await chargerAbonnements();
 
       // Entrée explicite depuis la présentation : réutiliser les contrôles DA
@@ -326,6 +330,34 @@
     });
   }
 
+  function fenetreRetractationOuverte() {
+    const morceaux = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Paris", hour: "2-digit", hourCycle: "h23"
+    }).formatToParts(new Date());
+    const heure = Number(morceaux.find(partie => partie.type === "hour")?.value);
+    return Number.isInteger(heure) && heure >= 6 && heure < 14;
+  }
+
+  function libelleDateEffetRetractation(date) {
+    const instant = new Date(String(date || ""));
+    if (!Number.isFinite(instant.getTime())) return "05 h 00 le lendemain de la demande";
+    return new Intl.DateTimeFormat("fr-FR", {
+      timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+    }).format(instant).replace(",", " à ");
+  }
+
+  function actualiserBoutonsRetractation() {
+    const ouvert = fenetreRetractationOuverte();
+    document.querySelectorAll("[data-action='demander-avoir']").forEach(bouton => {
+      bouton.disabled = !ouvert;
+      bouton.setAttribute("aria-disabled", ouvert ? "false" : "true");
+      bouton.classList.toggle("lcdp-box-card-abonnement__micro-action--disabled", !ouvert);
+      bouton.title = ouvert ? "Demander une rétractation" :
+        "Rétractation disponible de 06 h 00 à 14 h 00, heure de Paris";
+    });
+  }
+
   async function chargerAbonnements() {
     if (!ENDPOINT_ABO_MEMBRE) {
       afficherErreurListe("Le service abonnement membre n’est pas configuré.");
@@ -500,6 +532,10 @@
       const conserver = slot.querySelector('[data-lcdp-dialogue-action="conserver"]');
       const supprimer = slot.querySelector('[data-lcdp-dialogue-action="supprimer"]');
       if (!dialogue || !titre || !texte || !conserver || !supprimer) throw new Error("Structure SUPPRESSION incomplète.");
+      if (options.danger === true) {
+        dialogue.classList.add("lcdp-retractation-alerte-rouge");
+        dialogue.setAttribute("role", "alertdialog");
+      }
       titre.textContent = options.titre || "Annuler l’abonnement ?";
       texte.textContent = String(message || "");
       conserver.textContent = options.annuler || "Conserver";
@@ -551,18 +587,34 @@
       await afficherInformationAbonnement("Le droit de rétractation n’est pas confirmé.", { titre: "Rétractation" });
       return;
     }
-    const confirmation = await afficherSuppressionAbonnement("Voulez-vous annuler l'abonnement ?");
+    if (abonnement?.retractationDemandee === true) {
+      await afficherInformationAbonnement("Une rétractation est déjà enregistrée pour cet abonnement.", { titre: "Rétractation" });
+      return;
+    }
+    if (!fenetreRetractationOuverte()) {
+      await afficherInformationAbonnement("Les demandes de rétractation sont disponibles de 06 h 00 à 14 h 00, heure de Paris.", { titre: "Horaires de rétractation" });
+      return;
+    }
+
+    const confirmation = await afficherSuppressionAbonnement(
+      "La rétractation prend effet à 05 h 00 le lendemain de la demande (heure de Paris). " +
+      "Jusqu'à cette heure, les accès et les invitations restent disponibles selon les droits de l'abonnement. " +
+      "À la prise d'effet, tous les accès non exercés associés à cet abonnement ainsi que leurs invitations sont annulés.\n\n" +
+      "Frais déduits de l'encaissement : 55 € TTC sans accès exercé, tarif 1J à privilèges comparables pour un jour consommé, " +
+      "ou tarif 1M au-delà. La déduction reste limitée au montant encaissé.",
+      { titre: "Confirmer la rétractation de cet abonnement ?", annuler: "Conserver l’abonnement",
+        confirmer: "Confirmer la rétractation", danger: true }
+    );
     if (!confirmation) return;
 
-    const confirmationRetenue = await afficherSuppressionAbonnement("Les frais d’abonnement déduits du paiement reçu à la souscription sont de 55 € TTC sans accès exercé, du tarif 1J à privilèges comparables pour un jour consommé, ou du tarif 1M au-delà. La déduction est limitée au montant encaissé.", { titre: "Confirmer l’annulation avec frais ?", annuler: "Conserver", confirmer: "Poursuivre l’annulation" });
-    if (!confirmationRetenue) return;
-
     const resultat = await enregistrerAnnulationAvoir(card);
-
+    const effet = libelleDateEffetRetractation(resultat?.avoir?.dateeffet);
     await afficherInformationAbonnement(
-      resultat?.emailEnvoye === true
-        ? "Votre demande d'annulation est enregistrée. L'annulation prendra effet demain à 02 h 00. Un e-mail de confirmation avec le lien vers votre avoir vous a été envoyé."
-        : "Votre demande d'annulation est enregistrée. L'annulation prendra effet demain à 02 h 00. Votre avoir est disponible dans Mes factures."
+      "Rétractation enregistrée. Prise d’effet : " + effet + " (heure de Paris). " +
+      (resultat?.emailEnvoye === true
+        ? "Un e-mail de confirmation est envoyé."
+        : "Le document d'avoir est consultable dans Mes factures."),
+      { titre: "Rétractation enregistrée" }
     );
     await chargerAbonnements();
   }
@@ -3304,6 +3356,7 @@
     abonnementsFiltres.forEach((abonnement) => {
       zoneListe.appendChild(creerCardAbonnement(abonnement));
     });
+    actualiserBoutonsRetractation();
   }
 
   function messageVideFiltre() {
@@ -3354,6 +3407,15 @@
 
     if (categorie === "passe") {
       card.classList.add("lcdp-box-card-abonnement--passe");
+    }
+    if (abonnement?.retractationDemandee === true) {
+      card.classList.add("lcdp-retractation-demande");
+      const indicateur = document.createElement("p");
+      indicateur.className = "lcdp-retractation-demande__statut";
+      indicateur.setAttribute("role", "status");
+      indicateur.textContent = "✓ Rétractation enregistrée — prise d’effet le " +
+        libelleDateEffetRetractation(abonnement.dateEffetRetractation) + " (heure de Paris)";
+      card.appendChild(indicateur);
     }
 
     if (categorie === "encours") {
@@ -3451,9 +3513,13 @@
     bouton.dataset.action = etatAvoir.action;
     bouton.classList.toggle("lcdp-box-card-abonnement__micro-action--disabled", etatAvoir.grise === true);
     bouton.setAttribute("aria-disabled", etatAvoir.grise ? "true" : "false");
+    bouton.disabled = etatAvoir.grise === true;
   }
 
   function determinerEtatAvoirAbonnement(abonnement, commande) {
+    if (abonnement?.retractationDemandee === true) {
+      return { invisible: false, label: "Rétractation en attente", action: "avoir-en-attente", grise: true };
+    }
     if (abonnement?.avoirDisponible === true || estAbonnementAnnule(abonnement, commande)) {
       return { invisible: false, label: "Avoir", action: "voir-avoir", grise: false };
     }
