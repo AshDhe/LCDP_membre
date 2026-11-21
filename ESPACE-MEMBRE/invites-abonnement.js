@@ -87,6 +87,7 @@
       dialogue.appendChild(contenu);
       let termine = false;
       let etape = "question";
+      let retourConfirmation = null;
       const terminer = resultat => {
         if (termine) return;
         termine = true;
@@ -105,6 +106,19 @@
         titre.id = "lcdp-mineurs-titre";
         return titre;
       };
+      const dessinerConfirmation = (declaration, revenir) => {
+        etape = "confirmation";
+        retourConfirmation = revenir;
+        const titre = entete("Confirmation de la déclaration");
+        const question = creerElement("p","lcdp-mineurs-question",
+          "Confirmez-vous l'exactitude de la déclaration ?");
+        const actions = creerElement("div","lcdp-mineurs-actions");
+        actions.append(
+          bouton("Non","lcdp-button-secondary",revenir),
+          bouton("Oui","lcdp-button-primary",() => terminer(declaration))
+        );
+        contenu.replaceChildren(titre,question,actions);
+      };
       const dessinerQuestion = () => {
         etape = "question";
         const titre = entete("Déclaration de mineur");
@@ -112,9 +126,12 @@
           "Y a-t-il des personnes mineures parmi les membres invités ?");
         const actions = creerElement("div","lcdp-mineurs-actions");
         actions.append(
-          bouton("Non","lcdp-button-secondary",() => terminer(
-            Object.fromEntries(candidats.map(p => [p.email,false]))
-          )),
+          bouton("Non","lcdp-button-secondary",() =>
+            dessinerConfirmation(
+              Object.fromEntries(candidats.map(p => [p.email,false])),
+              dessinerQuestion
+            )
+          ),
           bouton("Oui","lcdp-button-primary",dessinerListe)
         );
         contenu.replaceChildren(titre,question,actions);
@@ -141,15 +158,19 @@
         const actions = creerElement("div","lcdp-mineurs-actions");
         actions.append(
           bouton("Annuler","lcdp-button-secondary",dessinerQuestion),
-          bouton("Enregistrer","lcdp-button-primary",() => terminer(
-            Object.fromEntries(saisies.map(p => [p.email,p.choix.checked]))
-          ))
+          bouton("Enregistrer","lcdp-button-primary",() => {
+            const declaration = Object.fromEntries(saisies.map(p => [p.email,p.choix.checked]));
+            // En cas de refus à l'étape de confirmation, retrouver les mêmes choix.
+            for (const personne of candidats) personne.mineur = declaration[personne.email] === true;
+            dessinerConfirmation(declaration,dessinerListe);
+          })
         );
         contenu.replaceChildren(titre,tableau,actions);
       };
       dialogue.addEventListener("cancel",event => {
         event.preventDefault();
-        if (etape === "liste") dessinerQuestion();
+        if (etape === "confirmation") retourConfirmation?.();
+        else if (etape === "liste") dessinerQuestion();
         else terminer(null);
       });
       dialogue.addEventListener("close",() => terminer(null));
