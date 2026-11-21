@@ -70,6 +70,96 @@
     return element;
   }
 
+  // Deux étapes : question préalable puis, uniquement si « Oui »,
+  // déclaration de chaque invité inconnu ou déjà déclaré mineur.
+  function demanderDeclarationMineurs(personnes) {
+    if (!Array.isArray(personnes) || !personnes.length ||
+        personnes.length > 200 || personnes.some(p =>
+          !p || !EMAIL_VALIDE.test(normaliserEmail(p.email)) ||
+          (p.mineur !== true && p.mineur !== null))) {
+      throw new Error("Liste de déclaration des mineurs incohérente.");
+    }
+    return new Promise(resolve => {
+      const candidats = personnes.map(p => ({email:normaliserEmail(p.email),mineur:p.mineur === true}));
+      const dialogue = creerElement("dialog","lcdp-mineurs-dialogue");
+      dialogue.setAttribute("aria-labelledby","lcdp-mineurs-titre");
+      const contenu = creerElement("div","lcdp-mineurs-contenu");
+      dialogue.appendChild(contenu);
+      let termine = false;
+      let etape = "question";
+      const terminer = resultat => {
+        if (termine) return;
+        termine = true;
+        if (dialogue.open) dialogue.close();
+        dialogue.remove();
+        resolve(resultat);
+      };
+      const bouton = (libelle,classe,action) => {
+        const el = creerElement("button","lcdp-button " + classe,libelle);
+        el.type = "button";
+        el.addEventListener("click",action);
+        return el;
+      };
+      const entete = libelle => {
+        const titre = creerElement("h2","lcdp-mineurs-titre",libelle);
+        titre.id = "lcdp-mineurs-titre";
+        return titre;
+      };
+      const dessinerQuestion = () => {
+        etape = "question";
+        const titre = entete("Déclaration de mineur");
+        const question = creerElement("p","lcdp-mineurs-question",
+          "Y a-t-il des personnes mineures parmi les membres invités ?");
+        const actions = creerElement("div","lcdp-mineurs-actions");
+        actions.append(
+          bouton("Non","lcdp-button-secondary",() => terminer(
+            Object.fromEntries(candidats.map(p => [p.email,false]))
+          )),
+          bouton("Oui","lcdp-button-primary",dessinerListe)
+        );
+        contenu.replaceChildren(titre,question,actions);
+      };
+      const dessinerListe = () => {
+        etape = "liste";
+        const titre = entete("Déclaration de mineur");
+        const tableau = creerElement("div","lcdp-mineurs-tableau");
+        const ligneEntete = creerElement("div","lcdp-mineurs-ligne lcdp-mineurs-ligne--entete");
+        ligneEntete.append(creerElement("span","","Invité"),creerElement("span","","Mineur"));
+        tableau.appendChild(ligneEntete);
+        const saisies = [];
+        for (const personne of candidats) {
+          const ligne = creerElement("label","lcdp-mineurs-ligne");
+          const adresse = creerElement("span","lcdp-mineurs-adresse",personne.email);
+          const choix = creerElement("input");
+          choix.type = "checkbox";
+          choix.checked = personne.mineur;
+          choix.setAttribute("aria-label","Mineur : " + personne.email);
+          saisies.push({email:personne.email,choix});
+          ligne.append(adresse,choix);
+          tableau.appendChild(ligne);
+        }
+        const actions = creerElement("div","lcdp-mineurs-actions");
+        actions.append(
+          bouton("Annuler","lcdp-button-secondary",dessinerQuestion),
+          bouton("Enregistrer","lcdp-button-primary",() => terminer(
+            Object.fromEntries(saisies.map(p => [p.email,p.choix.checked]))
+          ))
+        );
+        contenu.replaceChildren(titre,tableau,actions);
+      };
+      dialogue.addEventListener("cancel",event => {
+        event.preventDefault();
+        if (etape === "liste") dessinerQuestion();
+        else terminer(null);
+      });
+      dialogue.addEventListener("close",() => terminer(null));
+      dessinerQuestion();
+      document.body.appendChild(dialogue);
+      try { dialogue.showModal(); }
+      catch (e) { terminer(null); }
+    });
+  }
+
   async function monter({ conteneur, idflux, fragment, chargerContexte, enregistrer, chargerDuoActif, inviterDuoActif, informer, erreur, confirmerQuitter, fermer }) {
     if (!conteneur || !fragment || !idflux || typeof chargerContexte !== "function" ||
         typeof enregistrer !== "function" || typeof informer !== "function" ||
@@ -404,7 +494,14 @@
       if (spinnerEnregistrement) envoyer.appendChild(spinnerEnregistrement);
       messageLocal("");
       try {
-        const resultat = await enregistrer(idflux,donnees);
+        let resultat = await enregistrer(idflux,donnees);
+        let declarationTraitee = false;
+        if (resultat?.declarationMineursRequise === true) {
+          const declaration = await demanderDeclarationMineurs(resultat.personnes);
+          if (!declaration || ferme) return;
+          resultat = await enregistrer(idflux,donnees,declaration);
+          declarationTraitee = true;
+        }
         if (resultat?.ok !== true || resultat?.confirme !== true) {
           throw new Error(resultat?.message || "Enregistrement non confirmé. Les choix sont conservés.");
         }
@@ -413,8 +510,10 @@
         const envoiPartiel = Number(resultat.nbEnAttente || 0) > 0 ||
           Number(resultat.annulationsNonNotifiees || 0) > 0;
         await info(envoiPartiel
-          ? "Liste mise à jour. Certains destinataires n’ont pas pu être informés."
-          : "Liste mise à jour. Destinataire(s) informé(s).");
+          ? (declarationTraitee ? "Votre réponse est enregistrée. Certains e-mails ne sont pas encore confirmés." :
+              "Liste mise à jour. Certains destinataires n’ont pas pu être informés.")
+          : (declarationTraitee ? "Votre réponse est enregistrée. Les invitations sont envoyées aux membres invités." :
+              "Liste mise à jour. Destinataire(s) informé(s)."));
       } catch (erreur) {
         messageLocal(erreur?.message || "Enregistrement impossible. Les choix sont conservés.");
       } finally {
@@ -470,13 +569,23 @@
       boutons.forEach(bouton => { bouton.disabled = true; });
       afficherEtatDuoActif("Enregistrement de l'invitation DUO ACTIF…");
       try {
-        const resultat = await inviterDuoActif(idflux,personne.idduoactif);
+        let resultat = await inviterDuoActif(idflux,personne.idduoactif);
+        let declarationTraitee = false;
+        if (resultat?.declarationMineursRequise === true) {
+          const declaration = await demanderDeclarationMineurs(resultat.personnes);
+          if (!declaration || ferme) return;
+          resultat = await inviterDuoActif(idflux,personne.idduoactif,declaration);
+          declarationTraitee = true;
+        }
         if (resultat?.ok !== true || resultat?.confirme !== true) {
           throw new Error(resultat?.message || "Invitation DUO ACTIF non confirmée.");
         }
         ferme = true;
         fermer();
-        await info(resultat.message || "Invitation DUO ACTIF enregistrée.");
+        await info(declarationTraitee && !resultat.notificationNonConfirmee &&
+          Number(resultat.nbEnAttente || 0) === 0
+          ? "Votre réponse est enregistrée. Les invitations sont envoyées aux membres invités."
+          : (resultat.message || "Invitation DUO ACTIF enregistrée."));
       } catch (e) {
         afficherEtatDuoActif(e?.message || "Impossible d'enregistrer l'invitation DUO ACTIF.");
       } finally {
