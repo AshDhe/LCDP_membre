@@ -1020,8 +1020,8 @@
         document.head.appendChild(link);
       });
     }
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261119-cycle-vie");
-    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261121-duo-actif");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites&v=20261121-duo-actif");
     const dialogue = document.createElement("div");
     dialogue.className = "lcdp-box-dialogue-champ-inviter";
     dialogue.setAttribute("role", "dialog");
@@ -1042,6 +1042,35 @@
       idflux,
       fragment:dialogue,
       chargerContexte:async () => contexte,
+      chargerDuoActif:async (idflux) => {
+        const reponseDuo = await fetch(
+          ENDPOINT_INVITER_MEMBRE + "/duoactif/liste?idflux=" + encodeURIComponent(idflux),
+          {method:"GET",credentials:"include",cache:"no-store",headers:{"Accept":"application/json"}}
+        );
+        const dataDuo = await reponseDuo.json().catch(() => null);
+        if (reponseDuo.status === 401) redirigerConnexionMembre("inactive");
+        if (!reponseDuo.ok || dataDuo?.ok !== true ||
+            !Array.isArray(dataDuo.personnes) || dataDuo.personnes.length > 5) {
+          throw new Error(dataDuo?.message || "Demandes DUO ACTIF indisponibles.");
+        }
+        return dataDuo;
+      },
+      inviterDuoActif:async (idflux,idduoactif) => {
+        const reponseDuo = await fetch(ENDPOINT_INVITER_MEMBRE + "/duoactif/inviter",{
+          method:"POST",credentials:"include",cache:"no-store",
+          headers:{"Accept":"application/json","Content-Type":"application/json"},
+          body:JSON.stringify({idflux,idduoactif})
+        });
+        const resultatDuo = await reponseDuo.json().catch(() => null);
+        if (reponseDuo.status === 401) redirigerConnexionMembre("inactive");
+        if (!reponseDuo.ok || resultatDuo?.ok !== true || resultatDuo.confirme !== true) {
+          throw new Error(resultatDuo?.message || "Invitation DUO ACTIF non confirmée.");
+        }
+        void chargerReservations().catch(e =>
+          console.warn("Actualisation des réservations après DUO ACTIF :",e)
+        );
+        return resultatDuo;
+      },
       enregistrer:async (idflux, selection) => {
         const resultatHttp = await fetch(ENDPOINT_INVITER_MEMBRE + "/invites-abonnement", {
           method:"POST",credentials:"include",cache:"no-store",
