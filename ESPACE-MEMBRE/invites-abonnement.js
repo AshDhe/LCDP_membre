@@ -70,7 +70,7 @@
     return element;
   }
 
-  async function monter({ conteneur, idflux, fragment, chargerContexte, enregistrer, informer, erreur, confirmerQuitter, fermer }) {
+  async function monter({ conteneur, idflux, fragment, chargerContexte, enregistrer, chargerDuoActif, inviterDuoActif, informer, erreur, confirmerQuitter, fermer }) {
     if (!conteneur || !fragment || !idflux || typeof chargerContexte !== "function" ||
         typeof enregistrer !== "function" || typeof informer !== "function" ||
         typeof erreur !== "function" || typeof confirmerQuitter !== "function" ||
@@ -427,8 +427,130 @@
         }
       }
     });
+    // D-ACTIF partage le quota DUO et le même circuit transactionnel
+    // d'invitation. Les identités sont fournies par le Worker, jamais par le navigateur.
+    const zoneDuoActif = vue.querySelector("[data-lcdp-duoactif-zone]");
+    const listeDuoActif = vue.querySelector("[data-lcdp-duoactif-liste]");
+    const etatDuoActif = vue.querySelector("[data-lcdp-duoactif-etat]");
+    const uuidDuoActif = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    const afficherEtatDuoActif = texte => {
+      if (!etatDuoActif) return;
+      etatDuoActif.textContent = String(texte || "");
+      etatDuoActif.hidden = !texte;
+    };
+    const motifDuoActifIndisponible = () => {
+      if (contexte.annulationSeulement) {
+        return "Les invitations DUO ACTIF sont indisponibles pour cet accès.";
+      }
+      if (!droits || !usage) return "Droits DUO non vérifiables.";
+      if (usage.duoCarnet >= droits.maxduo) {
+        return "Le quota DUO de cet abonnement est atteint.";
+      }
+      if (usage.duoSelectionnesAcces > 0 || contexte.selection.duo.length > 0) {
+        return "Un invité DUO est déjà présent sur cet accès. DUO ACTIF ne se cumule pas avec DUO+.";
+      }
+      return "";
+    };
+
+    const inviterDepuisDuoActif = async (personne, boutons) => {
+      if (enregistrementEnCours || fermetureEnCours || ferme) return;
+      const blocage = motifDuoActifIndisponible();
+      if (blocage) {
+        afficherEtatDuoActif(blocage);
+        return;
+      }
+      if (modificationsEnCours()) {
+        afficherEtatDuoActif("Enregistrez ou annulez d'abord vos modifications DUO/FAMILLE avant d'utiliser DUO ACTIF.");
+        return;
+      }
+      enregistrementEnCours = true;
+      fermerCroix.disabled = true;
+      envoyer.disabled = true;
+      boutons.forEach(bouton => { bouton.disabled = true; });
+      afficherEtatDuoActif("Enregistrement de l'invitation DUO ACTIF…");
+      try {
+        const resultat = await inviterDuoActif(idflux,personne.idduoactif);
+        if (resultat?.ok !== true || resultat?.confirme !== true) {
+          throw new Error(resultat?.message || "Invitation DUO ACTIF non confirmée.");
+        }
+        ferme = true;
+        fermer();
+        await info(resultat.message || "Invitation DUO ACTIF enregistrée.");
+      } catch (e) {
+        afficherEtatDuoActif(e?.message || "Impossible d'enregistrer l'invitation DUO ACTIF.");
+      } finally {
+        enregistrementEnCours = false;
+        if (!ferme) {
+          fermerCroix.disabled = false;
+          envoyer.disabled = false;
+          boutons.forEach(bouton => { bouton.disabled = false; });
+        }
+      }
+    };
+
+    const chargerDemandesDuoActif = async () => {
+      if (!zoneDuoActif || !listeDuoActif || !etatDuoActif ||
+          typeof chargerDuoActif !== "function" || typeof inviterDuoActif !== "function") {
+        zoneDuoActif?.remove();
+        return;
+      }
+      const blocage = motifDuoActifIndisponible();
+      if (blocage) {
+        afficherEtatDuoActif(blocage);
+        return;
+      }
+      afficherEtatDuoActif("Chargement des cinq demandes les plus anciennes…");
+      try {
+        const reponse = await chargerDuoActif(idflux);
+        if (ferme) return;
+        const personnes = reponse?.personnes;
+        if (!Array.isArray(personnes) || personnes.length > 5 ||
+            !Number.isSafeInteger(reponse.total) || reponse.total < personnes.length ||
+            !personnes.every(p => p && uuidDuoActif.test(String(p.idduoactif || "")))) {
+          throw new Error("Liste DUO ACTIF incohérente.");
+        }
+        listeDuoActif.replaceChildren();
+        if (!personnes.length) {
+          afficherEtatDuoActif("Aucune demande DUO ACTIF disponible actuellement pour ce parc.");
+          return;
+        }
+        for (const personne of personnes) {
+          const ligne = creerElement("li","lcdp-duoactif-ligne");
+          const nom = [personne.prenom,personne.nom].map(s => String(s || "").trim()).filter(Boolean).join(" ") || "Membre";
+          const avatar = creerElement("span","lcdp-duoactif-avatar",nom.slice(0,1).toUpperCase());
+          avatar.setAttribute("aria-hidden","true");
+          const brut = typeof personne.selfie === "string" ? personne.selfie.replace(/\s+/g,"") : "";
+          if (brut.length >= 100 && brut.length <= 200000 && /^[A-Za-z0-9+/]+={0,2}$/.test(brut)) {
+            const photo = document.createElement("img");
+            photo.alt = "";
+            photo.loading = "lazy";
+            photo.src = (brut.startsWith("iVBORw0KGgo") ? "data:image/png;base64," : "data:image/jpeg;base64,") + brut;
+            avatar.replaceChildren(photo);
+          }
+          const identite = creerElement("span","lcdp-duoactif-identite",nom);
+          const bouton = creerElement("button","lcdp-button lcdp-button-secondary","Inviter");
+          bouton.type = "button";
+          bouton.setAttribute("aria-label","Inviter " + nom + " par DUO ACTIF");
+          bouton.addEventListener("click",() => {
+            void inviterDepuisDuoActif(personne,Array.from(listeDuoActif.querySelectorAll("button")));
+          });
+          ligne.append(avatar,identite,bouton);
+          listeDuoActif.appendChild(ligne);
+        }
+        afficherEtatDuoActif(
+          personnes.length + " demande" + (personnes.length>1?"s":"") +
+          " affichée" + (personnes.length>1?"s":"") +
+          (reponse.total > personnes.length ? " parmi " + reponse.total + " disponibles." : ".")
+        );
+      } catch (e) {
+        if (!ferme) afficherEtatDuoActif(e?.message || "Demandes DUO ACTIF indisponibles.");
+      }
+    };
+
     actualiserQuotas();
     conteneur.replaceChildren(vue);
+    void chargerDemandesDuoActif();
     return { fermer: quitter, element: vue };
   }
 
