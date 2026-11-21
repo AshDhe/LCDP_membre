@@ -1895,8 +1895,9 @@
           reservation
         );
 
-      const reservationsPersonnelles = reservationsPlage.some(r => !reservationHorsAbonnementMembre(r));
-      const invitationsRecues = reservationsPlage.some(r => reservationHorsAbonnementMembre(r));
+      // Une IG confirme un engagement personnel, elle reprend le trait rouge existant.
+      const reservationsPersonnelles = reservationsPlage.some(r => !reservationHorsAbonnementMembre(r) || r.origine_ig === true);
+      const invitationsRecues = reservationsPlage.some(r => reservationHorsAbonnementMembre(r) && r.origine_ig !== true);
       slot.classList.add(
         reservationsPersonnelles && invitationsRecues
           ? "lcdp-planifier-plage--acces-et-invitation"
