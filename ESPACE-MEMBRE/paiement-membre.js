@@ -452,16 +452,16 @@
       titreChoix.textContent = 'Démarrage pendant le délai de rétractation';
       const mention = document.createElement('p');
       mention.textContent = 'Votre abonnement ' + panier.formule + ' débute le ' +
-        dateCourteJJMMAAAA(panier.dateDebut) + ', avant la fin des 14 jours suivant votre commande.';
+        dateCourteJJMMAAAA(panier.dateDebut) + ' avant la fin de la période de rétractation de 14 jours.';
       choixFormulaire.append(titreChoix,mention);
       const choixPossibles = [
         ['renonciation', typeConsentement === '1J'
-          ? 'Je maintiens le début de mon abonnement 1J au ' + dateCourteJJMMAAAA(panier.dateDebut) + ' et renonce, pour cette raison, à la période de rétractation de 14 jours prévue par le Code de la consommation.'
-          : 'Je maintiens le début de mon abonnement au ' + dateCourteJJMMAAAA(panier.dateDebut) + ' et souhaite bénéficier dès cette date de tous les privilèges achetés, extensions comprises. Je renonce à la période de rétractation de 14 jours prévue par le Code de la consommation.'],
+          ? 'Maintenir l’abonnement et renoncer à la période de rétractation de 14 jours.'
+          : 'Maintenir l’abonnement avec tous les privilèges achetés, extensions comprises, et renoncer à la période de rétractation de 14 jours.'],
         ...(typeConsentement === 'autres' ? [
-          ['extensions_differees','Je conserve la période de rétractation : les extensions de privilèges achetées restent inutilisables pendant ce délai. Mon abonnement de base reste utilisable.']
+          ['extensions_differees','Conserver la période de rétractation et utiliser uniquement les privilèges de base pendant ce délai. Les extensions achetées deviennent utilisables après les 14 jours.']
         ] : []),
-        ['abandon','Je renonce à souscrire cet abonnement.']
+        ['abandon','Renoncer à souscrire cet abonnement.']
       ];
       const choixLabels = [];
       for (const [valeur,libelle] of choixPossibles) {
