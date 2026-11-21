@@ -2443,8 +2443,8 @@ function afficherStatutDaCompte(compte) {
         ? "Opt-in le " + formaterDate(compteMembreActuel.optinGeolocalisation)
         : "Non enregistré",
       alias: formaterAliasAffichage(compteMembreActuel.alias),
-      majoriteAffichage: ["mineur","majeur"].includes(compteMembreActuel.majorite)
-        ? compteMembreActuel.majorite : "–",
+      majoriteAffichage: compteMembreActuel.majorite === "mineur" ? "Mineur"
+        : compteMembreActuel.majorite === "majeur" ? "Majeur" : "–",
       membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
       parrainAffichage: formaterParrainAffichage(compteMembreActuel.parrain),
       departementAffichage: formaterDepartementAffichage(compteMembreActuel.departement, compteMembreActuel),
