@@ -821,6 +821,13 @@
     try {
       // Contrôle du quota dès le clic sur « Être invité(e) ».
       const etat = await requeteDuoActif();
+      if (etat.habilitation?.eligible === false) {
+        await afficherDialogueInformationPlanifier({
+          titre: "Duo Actif",
+          message: "Pour utiliser Duo Actif, vous devez avoir déjà effectué un accès complet en tant qu'invité : check-in, présence et check-out avec Ma Clé."
+        });
+        return;
+      }
       if (Number(etat.quota?.encours) >= 2) {
         await afficherDialogueInformationPlanifier({
           titre: "Duo Actif",
