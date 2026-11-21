@@ -771,9 +771,9 @@
       if (reservationHorsAbonnementMembre(reservation)) {
         const rond = document.createElement("span");
         rond.className = "lcdp-planning-verso-pastille lcdp-planning-verso-pastille--invitation";
-        rond.title = "Invitation reçue";
+        rond.title = reservation.origine_ig === true ? "Inscription garantie (IG)" : "Invitation reçue";
         rond.setAttribute("role", "img");
-        rond.setAttribute("aria-label", "Invitation reçue");
+        rond.setAttribute("aria-label", rond.title);
         ligneAcces.appendChild(rond);
       }
       if (annulerVerso) {
@@ -2329,8 +2329,9 @@
 
     if (invitation) {
       const neutralise = !estPasse && !estAnnulee && reservation.droitExercable === false;
-      invitation.textContent = estAnnulee ? "Annulée" : neutralise ? "Accès non exerçable" : "";
-      invitation.hidden = !estAnnulee && !neutralise;
+      const estIg = reservation.origine_ig === true;
+      invitation.textContent = estAnnulee ? "Annulée" : neutralise ? "Accès non exerçable" : estIg ? "Inscription garantie (IG)" : "";
+      invitation.hidden = !estAnnulee && !neutralise && !estIg;
     }
 
     if (date) date.textContent = formaterDateCourte(reservation.datebookd);
@@ -2386,9 +2387,12 @@
     }
 
     if (badgeInvitation) {
-      badgeInvitation.textContent = "";
-      badgeInvitation.hidden = true;
-      badgeInvitation.setAttribute("aria-hidden", "true");
+      // La pastille du gabarit existant identifie l origine IG, sans nouveau CSS.
+      const estIg = reservation.origine_ig === true;
+      badgeInvitation.textContent = estIg ? "IG" : "";
+      badgeInvitation.hidden = !estIg;
+      badgeInvitation.title = estIg ? "Inscription garantie" : "";
+      badgeInvitation.setAttribute("aria-hidden", estIg ? "false" : "true");
     }
 
     if (boutonAnnuler) {
@@ -3177,6 +3181,7 @@
   }
 
   function typeReservationAgenda(reservation) {
+    if (reservation?.origine_ig === true) return "Inscription garantie";
     if (
       reservationHorsAbonnementMembre(
         reservation
