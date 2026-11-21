@@ -507,7 +507,8 @@
         const personnes = reponse?.personnes;
         if (!Array.isArray(personnes) || personnes.length > 5 ||
             !Number.isSafeInteger(reponse.total) || reponse.total < personnes.length ||
-            !personnes.every(p => p && uuidDuoActif.test(String(p.idduoactif || "")))) {
+            !personnes.every(p => p && uuidDuoActif.test(String(p.idduoactif || "")) &&
+              Number.isSafeInteger(p.checkouts6M) && p.checkouts6M >= 0)) {
           throw new Error("Liste DUO ACTIF incohérente.");
         }
         listeDuoActif.replaceChildren();
@@ -528,7 +529,14 @@
             photo.src = (brut.startsWith("iVBORw0KGgo") ? "data:image/png;base64," : "data:image/jpeg;base64,") + brut;
             avatar.replaceChildren(photo);
           }
-          const identite = creerElement("span","lcdp-duoactif-identite",nom);
+          const compteur = personne.checkouts6M;
+          const libelleCompteur = compteur + " check-out" + (compteur > 1 ? "s" : "") +
+            " validé" + (compteur > 1 ? "s" : "") + " sur les 6 derniers mois";
+          const identite = creerElement("div","lcdp-duoactif-identite");
+          identite.append(
+            creerElement("span","",nom),
+            creerElement("span","lcdp-duoactif-checkouts",libelleCompteur)
+          );
           const bouton = creerElement("button","lcdp-button lcdp-button-secondary","Inviter");
           bouton.type = "button";
           bouton.setAttribute("aria-label","Inviter " + nom + " par DUO ACTIF");
