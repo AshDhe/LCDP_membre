@@ -611,9 +611,9 @@
     const effet = libelleDateEffetRetractation(resultat?.avoir?.dateeffet);
     await afficherInformationAbonnement(
       "Rétractation enregistrée. Prise d’effet : " + effet + " (heure de Paris). " +
-      (resultat?.emailEnvoye === true
-        ? "Un e-mail de confirmation est envoyé."
-        : "Le document d'avoir est consultable dans Mes factures."),
+      "Le calcul définitif de l'avoir tient compte des accès réellement consommés jusqu'à 05 h 00. " +
+      "L'avoir est disponible dans Mes factures après la prise d'effet." +
+      (resultat?.emailEnvoye === true ? " Un e-mail confirme la demande." : ""),
       { titre: "Rétractation enregistrée" }
     );
     await chargerAbonnements();
