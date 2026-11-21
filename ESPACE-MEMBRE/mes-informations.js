@@ -108,6 +108,21 @@
       }
     },
     {
+      section: "Mon compte",
+      id: "champ-majorite-membre",
+      name: "majoriteAffichage",
+      label: "Majorité",
+      type: "text",
+      key: "majoriteAffichage",
+      action: {
+        id: "modifier-majorite-membre",
+        texte: "Demander la modification de la majorité à l’administrateur",
+        mode: "picto",
+        pictoRouge: true,
+        securite: true
+      }
+    },
+    {
       section: "Sécurité du compte",
       id: "champ-email-membre",
       name: "email",
@@ -1690,7 +1705,7 @@
       bouton.disabled = true;
       bouton.setAttribute("aria-disabled", "true");
     }
-    const actionSecurite = action.neutre !== true && (action.id === "modifier-selfie" || champsCompte.some(
+    const actionSecurite = action.neutre !== true && (action.securite === true || action.id === "modifier-selfie" || champsCompte.some(
       item => item.section === "Sécurité du compte" && item.action?.id === action.id
     ));
     if (actionSecurite) {
@@ -1737,6 +1752,7 @@
 
   function initialiserActionsModification() {
     document.getElementById("modifier-geolocalisation-membre")?.addEventListener("click",demanderMiseAJourGeolocalisation);
+    document.getElementById("modifier-majorite-membre")?.addEventListener("click",demanderModificationMajorite);
     const boutonCodr=document.getElementById("modifier-code-r-membre");
     if (boutonCodr) boutonCodr.addEventListener("click",demanderModificationCodr);
     const boutonCoda = document.getElementById("modifier-code-a-membre");
@@ -2427,6 +2443,8 @@ function afficherStatutDaCompte(compte) {
         ? "Opt-in le " + formaterDate(compteMembreActuel.optinGeolocalisation)
         : "Non enregistré",
       alias: formaterAliasAffichage(compteMembreActuel.alias),
+      majoriteAffichage: ["mineur","majeur"].includes(compteMembreActuel.majorite)
+        ? compteMembreActuel.majorite : "–",
       membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
       parrainAffichage: formaterParrainAffichage(compteMembreActuel.parrain),
       departementAffichage: formaterDepartementAffichage(compteMembreActuel.departement, compteMembreActuel),
@@ -2846,6 +2864,28 @@ function afficherResumePointsPassion(compte) {
       }
     }catch(e){await afficherAlerte(e.message||"La mise à jour est indisponible.");}
     finally{demandeGeoEnCours=false;}
+  }
+
+  let demandeMajoriteEnCours=false;
+  async function demanderModificationMajorite() {
+    if (demandeMajoriteEnCours) return;
+    demandeMajoriteEnCours=true;
+    try {
+      const confirmer=await afficherChoixMesInformations(
+        "Souhaitez-vous transmettre une demande de modification de votre majorité à l’administrateur de l’application ?",
+        {titre:"Modifier votre majorité",libelleAnnuler:"Annuler",libelleConfirmer:"OK"}
+      );
+      if (!confirmer) return;
+      const reponse=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/majorite-admin-request",{
+        method:"POST",credentials:"include",cache:"no-store",
+        headers:{"Content-Type":"application/json"},body:JSON.stringify({})
+      });
+      const resultat=await reponse.json().catch(()=>null);
+      await afficherResultatSecurite(resultat?.message ||
+        "La demande de modification de majorité n’a pas pu être confirmée.");
+    } catch {
+      await afficherAlerte("La demande de modification de majorité n’a pas pu être confirmée.");
+    } finally { demandeMajoriteEnCours=false; }
   }
 
   let demandeCodrEnCours=false;
