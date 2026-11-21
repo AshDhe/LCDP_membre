@@ -455,7 +455,9 @@
         dateCourteJJMMAAAA(panier.dateDebut) + ', avant la fin des 14 jours suivant votre commande.';
       choixFormulaire.append(titreChoix,mention);
       const choixPossibles = [
-        ['renonciation','Je renonce à la période de rétractation de 14 jours prévue par le Code de la consommation.'],
+        ['renonciation', typeConsentement === '1J'
+          ? 'Je maintiens le début de mon abonnement 1J au ' + dateCourteJJMMAAAA(panier.dateDebut) + ' et renonce, pour cette raison, à la période de rétractation de 14 jours prévue par le Code de la consommation.'
+          : 'Je maintiens le début de mon abonnement au ' + dateCourteJJMMAAAA(panier.dateDebut) + ' et souhaite bénéficier dès cette date de tous les privilèges achetés, extensions comprises. Je renonce à la période de rétractation de 14 jours prévue par le Code de la consommation.'],
         ...(typeConsentement === 'autres' ? [
           ['extensions_differees','Je conserve la période de rétractation : les extensions de privilèges achetées restent inutilisables pendant ce délai. Mon abonnement de base reste utilisable.']
         ] : []),
