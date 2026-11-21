@@ -307,6 +307,7 @@
       boutonRadio.setAttribute('aria-hidden', 'true');
       label.replaceChildren(input, boutonRadio, details, prixOption);
       input.addEventListener('change', () => {
+        if (choixFormulaire?.querySelector('input[value="abandon"]:checked')) return;
         boutonPayer.textContent = (devis.totalTtc === 0 && valeur === 'comptant')
           ? 'Valider la commande'
           : 'Payer ' + EURO.format(valeur === 'echeances' ? devis.echeances[0] : devis.totalTtc);
