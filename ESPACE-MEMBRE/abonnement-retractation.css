@@ -1,0 +1,47 @@
+/* Rétractation : teintes des utilitaires Tailwind red/gray, sans dépendance CDN. */
+.lcdp-retractation-alerte-rouge [data-lcdp-dialogue-titre] {
+  color:#991b1b;
+}
+.lcdp-retractation-alerte-rouge [data-lcdp-dialogue-message] {
+  display:block;
+  white-space:pre-line;
+  color:#991b1b;
+  background:#fef2f2;
+  border:1px solid #fecaca;
+  border-left:4px solid #dc2626;
+  border-radius:8px;
+  padding:14px 16px;
+  line-height:1.6;
+}
+.lcdp-retractation-alerte-rouge [data-lcdp-dialogue-action="supprimer"] {
+  background:#dc2626;
+  border-color:#b91c1c;
+  color:#fff;
+}
+.lcdp-retractation-alerte-rouge [data-lcdp-dialogue-action="supprimer"]:hover {
+  background:#b91c1c;
+}
+.lcdp-retractation-demande {
+  background:#f3f4f6;
+  color:#6b7280;
+  border-color:#d1d5db;
+}
+.lcdp-retractation-demande__statut {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:10px 12px;
+  padding:9px 12px;
+  border:1px solid #d1d5db;
+  background:#e5e7eb;
+  border-radius:8px;
+  color:#374151;
+  font-size:.83rem;
+  font-weight:600;
+  line-height:1.4;
+}
+[data-action="demander-avoir"]:disabled,
+[data-action="avoir-en-attente"]:disabled {
+  opacity:.45;
+  cursor:not-allowed;
+}
