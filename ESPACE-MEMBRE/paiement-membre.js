@@ -59,6 +59,21 @@
       ? formatDate.format(new Date(valeur + 'T12:00:00Z')) : valeur || '—';
   }
 
+  function chevaucheRetractation(formule, dateDebut) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateDebut || ''))) return null;
+    const pieces = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    const morceau = type => pieces.find(p => p.type === type)?.value;
+    const jour14 = new Date(Date.UTC(+morceau('year'), +morceau('month') - 1, +morceau('day') + 14))
+      .toISOString().slice(0, 10);
+    return dateDebut <= jour14 ? (formule === '1J' ? '1J' : 'autres') : 'aucun';
+  }
+  function dateCourteJJMMAAAA(dateIso) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(dateIso || ''))
+      ? dateIso.slice(8,10) + '/' + dateIso.slice(5,7) + '/' + dateIso.slice(0,4) : '—';
+  }
+
   function periodeCourte(debutIso, finIso) {
     const debut = String(debutIso || ''), fin = String(finIso || '');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(debut) || !/^\d{4}-\d{2}-\d{2}$/.test(fin))
@@ -137,7 +152,7 @@
 
   // Présentation uniquement : conserve les nœuds portant les valeurs du devis
   // et les boutons déjà raccordés au paiement Stripe.
-  function presenterBonCommande(recap, panier, devis, zone, liste, message, boutonPayer) {
+  function presenterBonCommande(recap, panier, devis, zone, liste, message, boutonPayer, choixFormulaire) {
     const carte = recap.querySelector('.lcdp-box-card-recaporder__card');
     const titre = recap.querySelector('.lcdp-box-card-recaporder__title');
     const liens = recap.querySelector('.lcdp-box-card-recaporder__links');
@@ -300,6 +315,7 @@
     if (devis.totalTtc !== 0) boutonPayer.textContent = 'Payer ' + EURO.format(devis.totalTtc);
     paiement.append(zone);
     contenu.append(paiement);
+    if (choixFormulaire?.hasChildNodes()) contenu.append(choixFormulaire);
     contenu.append(liens);
 
     const pied = creer('footer', 'lcdp-paiement-refonte__pied');
@@ -421,15 +437,72 @@
       label.append(input,span);zone.append(label);
     }
     recap.querySelector('.lcdp-box-card-recaporder__actions')?.before(zone);
+
+    // Consentement présenté après le prix complet, avant de poursuivre vers Stripe.
+    // Le serveur recalcule la condition et refuse toute requête non autorisée.
+    const typeConsentement = chevaucheRetractation(panier.formule, panier.dateDebut);
+    if (typeConsentement === null) throw new Error('Date de souscription non vérifiable.');
+    const choixFormulaire = document.createElement('fieldset');
+    choixFormulaire.className = 'lcdp-paiement-retractation';
+    choixFormulaire.setAttribute('aria-label','Rétractation et date de début');
+    let choixRetractation = typeConsentement === 'aucun' ? 'sans_objet' : null;
+    if (typeConsentement !== 'aucun') {
+      const titreChoix = document.createElement('legend');
+      titreChoix.textContent = 'Démarrage pendant le délai de rétractation';
+      const mention = document.createElement('p');
+      mention.textContent = 'Votre abonnement ' + panier.formule + ' débute le ' +
+        dateCourteJJMMAAAA(panier.dateDebut) + ', avant la fin des 14 jours suivant votre commande.';
+      choixFormulaire.append(titreChoix,mention);
+      const choixPossibles = [
+        ['renonciation','Je renonce à la période de rétractation de 14 jours prévue par le Code de la consommation.'],
+        ...(typeConsentement === 'autres' ? [
+          ['extensions_differees','Je conserve la période de rétractation : les extensions de privilèges achetées restent inutilisables pendant ce délai. Mon abonnement de base reste utilisable.']
+        ] : []),
+        ['abandon','Je renonce à souscrire cet abonnement.']
+      ];
+      const choixLabels = [];
+      for (const [valeur,libelle] of choixPossibles) {
+        const label = document.createElement('label');
+        label.className = 'lcdp-paiement-retractation__option';
+        const radio = document.createElement('input');
+        radio.type = 'radio';radio.name='lcdp-choix-retractation';radio.value=valeur;
+        const span = document.createElement('span');span.textContent=libelle;
+        label.append(radio,span);
+        choixFormulaire.append(label);
+        choixLabels.push(radio);
+      }
+      const actualiserChoix=()=>{
+        choixRetractation=choixLabels.find(r=>r.checked)?.value||null;
+        boutonPayer.disabled=!choixRetractation;
+        boutonPayer.textContent=choixRetractation==='abandon' ? 'Abandonner la souscription' :
+          (devis.totalTtc===0?'Valider la commande':'Payer');
+      };
+      choixLabels.forEach(r=>r.addEventListener('change',actualiserChoix));
+      actualiserChoix();
+      // Déplacé dans la carte au rendu final, pas dans une zone ensuite remplacée.
+    }
     boutonPayer.addEventListener('click',async()=>{
-      if (boutonPayer.disabled) return;
+      if (!choixRetractation || boutonPayer.disabled) return;
       boutonPayer.disabled = true;
       const precedent = boutonPayer.textContent;
       boutonPayer.textContent = 'Validation…';
       try {
+        if (choixRetractation === 'abandon') {
+          const reponse = await fetch(endpoint + '/annuler', {
+            method:'POST',credentials:'include',cache:'no-store',
+            headers:{'Content-Type':'application/json',Accept:'application/json'},
+            body:JSON.stringify({idpanier:panier.idpanier})
+          });
+          const donnees = await reponse.json().catch(()=>null);
+          if (!reponse.ok || donnees?.ok !== true)
+            throw new Error(donnees?.message || 'Abandon de la souscription non confirmé.');
+          recap.querySelector('[data-lcdp-recaporder-cancel]')?.click();
+          window.location.reload();
+          return;
+        }
         const echeancier = zone.querySelector('input:checked')?.value || 'comptant';
         const retour = await apiPaiement('/valider',{method:'POST',
-          body:JSON.stringify({idpanier:panier.idpanier,echeancier})});
+          body:JSON.stringify({idpanier:panier.idpanier,echeancier,choixRetractation})});
         if (retour.termine && retour.commande?.statut === 'paye') {
           paiement.termine = true;
           window.location.assign(urlMembre('/ESPACE-MEMBRE/accueil-membre.html'));
@@ -505,7 +578,7 @@
       liste.before(message);
     }
 
-    presenterBonCommande(recap, panier, devis, zone, liste, message, boutonPayer);
+    presenterBonCommande(recap, panier, devis, zone, liste, message, boutonPayer, choixFormulaire);
 
     const emplacement = workflow.querySelector('[data-lcdp-workflow-abonnement-content]');
     if (!emplacement) throw new Error('Emplacement du workflow abonnement manquant.');
