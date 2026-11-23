@@ -1282,6 +1282,7 @@
     // dans le wrapper. Le retour à l’accueil reste volontaire (onClosed).
     window.LCDP_ControleAccesUI.render(root,etat,{
       onCamera:()=>lancerCaptureControleAcces(),
+      onSequenceContinue:()=>poursuivreSequenceVideo(),
       onCheckout:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:"checkout"}}));}catch(e){afficherControleAcces({screen:"capture_error",action:"checkout",message:e.message});}},
       onClosed:()=>{if(!controleAccesEtat?.unlocked)return;exclusiviteCle=false;window.clearInterval(suiviVideoTimer);window.clearInterval(controleAccesTimer);window.location.href=PAGE_ACCUEIL_MEMBRE;},
       onRetry:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:controleAccesEtat?.action || "checkin"}}));}catch(error){afficherControleAcces({screen:"capture_error",message:error.message});}},
@@ -1359,10 +1360,75 @@
     },etat.screen==="processing"?2000:10000);
   }
   let captureControleEnCours=false;
+  let sessionSequencesVideo=null;
+  async function televerserSequenceVideo(path,blob){
+    const reponse=await fetch(ENDPOINT_LA_CLE_DU_PARC+path,{
+      method:"POST",credentials:"include",cache:"no-store",
+      headers:{"Content-Type":blob.type,"Accept":"application/json"},body:blob
+    });
+    const resultat=await reponse.json().catch(()=>null);
+    if(resultat?.reason==="key_in_use"){window.LCDP_afficherCompteUtilise?.();throw creerErreurApi(resultat,"Compte utilisé sur un autre appareil.",423);}
+    if(reponse.status===401){redirigerConnexion();throw Error("Session membre inactive.");}
+    if(!reponse.ok || !resultat?.success)throw creerErreurApi(resultat,"La vidéo n’a pas pu être envoyée.",reponse.status);
+    return resultat;
+  }
+  function afficherTransitionVideo(){
+    const s=sessionSequencesVideo;
+    if(!s)return;
+    const next=s.sequences[s.index];
+    afficherControleAcces({screen:"sequence_transition",action:"checkin",simulation:s.simulation,
+      nextSequence:next.type,sequenceNumber:s.index+1,sequenceTotal:s.sequences.length});
+  }
+  async function poursuivreSequenceVideo(){
+    const s=sessionSequencesVideo;
+    if(!s || captureControleEnCours || s.index>=s.sequences.length)return;
+    captureControleEnCours=true;
+    const seq=s.sequences[s.index];
+    try{
+      // Il suffit que le fichier précédent soit enregistré, non qu'il soit analysé.
+      try{await s.previousUpload;}catch(err){if(s.index===1)throw err;}
+      const debut=await appelerApi("/video/sequence/start",{method:"POST",body:{
+        attemptId:s.attemptId,sequence:seq.type
+      }});
+      if(debut?.state!=="capture"||!debut.attemptId)throw Error("Séquence déjà effectuée ou indisponible.");
+      const root=document.querySelector("[data-lcdp-control-access]");
+      const blob=await window.LCDP_ControleAccesUI.filmerSequence(root,{
+        ...seq,number:s.index+1,total:s.sequences.length,action:"checkin"
+      });
+      // Dès l'arrêt caméra, le fichier part sur le serveur.
+      const depot=televerserSequenceVideo("/video/sequence/upload?attempt="+encodeURIComponent(debut.attemptId),blob);
+      depot.catch(()=>{}); // Ne pas perdre une éventuelle erreur avant l'étape suivante.
+      s.previousUpload=depot;
+      s.index++;
+      if(s.index<s.sequences.length)afficherTransitionVideo();
+      else{
+        afficherControleAcces({screen:"uploading",action:"checkin",simulation:s.simulation});
+        await depot.catch(()=>null); // Un contrôle complémentaire n'annule pas le verrou fixe.
+        sessionSequencesVideo=null;
+        afficherControleAcces(await appelerApi("/video/status?attempt="+encodeURIComponent(s.attemptId),{method:"GET"}));
+      }
+    }catch(error){
+      if(error.reason==="key_in_use" || error.sessionRemplaceeTraitee)return;
+      if(error.reason==="box_failed"){
+        sessionSequencesVideo=null;
+        afficherControleAcces({screen:"capture_error",action:"checkin",message:"Le verrou fixe n’est pas reconnu. Refilmez uniquement le verrou fixe."});
+      }else{
+        // Une panne vidéo complémentaire ne neutralise pas le check-in.
+        s.index++;
+        if(s.index<s.sequences.length)afficherTransitionVideo();
+        else{
+          sessionSequencesVideo=null;
+          try{afficherControleAcces(await appelerApi("/video/status?attempt="+encodeURIComponent(s.attemptId),{method:"GET"}));}
+          catch{afficherControleAcces({screen:"capture_error",action:"checkin",message:"L’état du contrôle est momentanément indisponible."});}
+        }
+      }
+    }finally{captureControleEnCours=false;}
+  }
   async function lancerCaptureControleAcces(){
     if(captureControleEnCours)return;
     window.clearInterval(suiviVideoTimer);
     captureControleEnCours=true;
+    sessionSequencesVideo=null;
     const precedent=controleAccesEtat;
     try{
       const reglage=await appelerApi("/geolocation/status",{method:"GET"});
@@ -1371,13 +1437,31 @@
       if(!preparation.success || !preparation.attempt)throw Error("Préparation du contrôle indisponible.");
       if(preparation.attempt.state==="validated"){await chargerControleAcces();return;}
       const root=document.querySelector("[data-lcdp-control-access]");
+      if(preparation.workflowVersion===2){
+        const seqs=preparation.sequences;
+        if(!Array.isArray(seqs)||!seqs.length||seqs[0]?.type!=="verrou"||
+          seqs.some(x=>!["verrou","visage","temoin"].includes(x.type)||!Number.isInteger(x.seconds)||x.seconds<3||x.seconds>15))
+          throw Error("Paramètres des séquences vidéo invalides.");
+        const blob=await window.LCDP_ControleAccesUI.filmerSequence(root,{
+          ...seqs[0],number:1,total:seqs.length,action:preparation.action
+        });
+        const depot=televerserSequenceVideo("/video/upload?attempt="+encodeURIComponent(preparation.attempt.id),blob);
+        depot.catch(()=>{});
+        if(seqs.length>1){
+          sessionSequencesVideo={attemptId:preparation.attempt.id,sequences:seqs,index:1,
+            previousUpload:depot,simulation:preparation.simulation};
+          afficherTransitionVideo();
+        }else{
+          afficherControleAcces({screen:"uploading",action:preparation.action,simulation:preparation.simulation});
+          const resultat=await depot;
+          afficherControleAcces(resultat);
+        }
+        return;
+      }
+      // Parc non activé en V2 : comportement vidéo historique conservé.
       const blob=await window.LCDP_ControleAccesUI.filmer(root,preparation);
       afficherControleAcces({screen:"uploading",simulation:preparation.simulation,action:preparation.action});
-      const reponse=await fetch(ENDPOINT_LA_CLE_DU_PARC+"/video/upload?attempt="+encodeURIComponent(preparation.attempt.id),{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":blob.type,"Accept":"application/json"},body:blob});
-      const resultat=await reponse.json().catch(()=>null);
-      if(resultat?.reason==="key_in_use"){window.LCDP_afficherCompteUtilise?.();return;}
-      if(reponse.status===401){redirigerConnexion();return;}
-      if(!reponse.ok || !resultat?.success)throw Error(resultat?.message || "La vidéo n’a pas pu être analysée.");
+      const resultat=await televerserSequenceVideo("/video/upload?attempt="+encodeURIComponent(preparation.attempt.id),blob);
       afficherControleAcces(resultat);
     }catch(error){
       if(error.reason==="key_in_use" || error.sessionRemplaceeTraitee)return;
