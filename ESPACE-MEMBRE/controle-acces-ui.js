@@ -25,6 +25,16 @@
       root.appendChild(bouton("Retour à la présence",()=>actions.onBack?.()));
       return;
     }
+    if(etat.screen==="sequence_transition"){
+      const envoi=element("p","lcdp-acces-message","La vidéo précédente est transmise pour analyse. Préparez la prise de vue suivante.");
+      envoi.setAttribute("role","status");root.appendChild(envoi);
+      const labels={visage:"votre visage",temoin:"votre témoin"};
+      root.appendChild(element("h2","lcdp-acces-parc","Séquence "+String(etat.sequenceNumber || 2)+"/"+String(etat.sequenceTotal || 3)));
+      root.appendChild(element("p","lcdp-acces-message",
+        etat.nextSequence==="visage"?"Retournez votre téléphone pour filmer votre visage.":
+        etat.nextSequence==="temoin"?"Préparez votre témoin pour le présenter devant la caméra.":"Préparez la caméra."));
+      root.appendChild(bouton("Continuer — filmer "+(labels[etat.nextSequence]||"la suite"),()=>actions.onSequenceContinue?.()));return;
+    }
     if(etat.screen==="processing" || etat.screen==="uploading"){
       const attente=element("div","lcdp-acces-spinner");attente.setAttribute("aria-hidden","true");root.appendChild(attente);
       const message=element("p","lcdp-acces-message",etat.screen==="uploading"?"Envoi de la vidéo…":"Analyse en cours…");message.setAttribute("role","status");root.appendChild(message);return;
@@ -231,5 +241,68 @@
       document.removeEventListener("visibilitychange",visibilite);global.removeEventListener("pagehide",interrompre);
     }
   }
-  global.LCDP_ControleAccesUI={render,filmer};
+  // V2 : un fichier par séquence, sans changement de caméra pendant l'enregistrement.
+  async function filmerSequence(root,{type,seconds,number=1,total=1,action="checkin"}={}){
+    if(!["verrou","visage","temoin"].includes(type)||!Number.isInteger(seconds)||seconds<3||seconds>15)
+      throw Error("Séquence vidéo invalide.");
+    if(!navigator.mediaDevices?.getUserMedia || !global.MediaRecorder)
+      throw Error("Ce navigateur ne permet pas l’enregistrement vidéo.");
+    const libelles={verrou:"Filmez le code du verrou fixe.",visage:"Filmez votre visage.",temoin:"Présentez votre témoin devant la caméra."};
+    const face=type==="verrou"?"environment":"user";
+    root.replaceChildren();
+    root.appendChild(element("h1","lcdp-acces-titre",action==="checkout"?"CONTRÔLE DE SORTIE":"CONTRÔLE D’ACCÈS"));
+    const consigne=element("p","lcdp-acces-message","Ouverture de la caméra…");consigne.setAttribute("role","status");
+    const video=element("video","lcdp-acces-video");video.autoplay=true;video.muted=true;video.playsInline=true;video.setAttribute("playsinline","");
+    if(face==="user")video.style.transform="scaleX(-1)";
+    const compteur=element("p","lcdp-acces-message");compteur.setAttribute("role","timer");
+    root.append(consigne,video,compteur);
+    let stream=null,recorder=null,erreur=null,octets=0;
+    const morceaux=[],MAX=20*1024*1024;
+    const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+    const interrompre=()=>{erreur=Error("Capture interrompue. Recommencez cette séquence.");if(recorder?.state==="recording")recorder.stop();};
+    const visibilite=()=>{if(document.visibilityState==="hidden")interrompre();};
+    document.addEventListener("visibilitychange",visibilite);
+    global.addEventListener("pagehide",interrompre);
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:face},width:{ideal:720},height:{ideal:960}},audio:false});
+      if(erreur)throw erreur;
+      video.srcObject=stream;
+      await video.play();
+      const debutImage=performance.now();
+      while(!video.videoWidth){if(erreur)throw erreur;if(performance.now()-debutImage>10000)throw Error("La caméra ne fournit pas d’image.");await pause(50);}
+      const mode=stream.getVideoTracks()[0]?.getSettings?.().facingMode;
+      if(mode&&mode!==face)throw Error("La caméra demandée n’est pas disponible.");
+      const mime=["video/mp4","video/webm;codecs=vp8","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
+      if(!mime)throw Error("Format vidéo incompatible.");
+      recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:1500000});
+      let fin,rejet;
+      const stop=new Promise((resolve,reject)=>{fin=resolve;rejet=reject;});stop.catch(()=>{});
+      recorder.ondataavailable=e=>{if(e.data.size){octets+=e.data.size;if(octets>MAX){erreur=Error("Vidéo trop volumineuse.");if(recorder.state==="recording")recorder.stop();}else morceaux.push(e.data);}};
+      recorder.onerror=()=>{erreur=Error("L’enregistrement vidéo a échoué.");rejet(erreur);};
+      recorder.onstop=fin;
+      recorder.start(500);
+      consigne.textContent=libelles[type];
+      const debut=performance.now();
+      while(performance.now()-debut<seconds*1000){
+        if(erreur)throw erreur;
+        compteur.textContent="Séquence "+number+"/"+total+" — "+Math.max(1,Math.ceil(seconds-(performance.now()-debut)/1000))+" s";
+        await pause(100);
+      }
+      if(erreur)throw erreur;
+      if(recorder.state!=="recording")throw Error("L’enregistrement s’est interrompu.");
+      recorder.stop();await stop;
+      if(erreur)throw erreur;
+      if(octets>MAX)throw Error("La vidéo est trop volumineuse.");
+      const blob=new Blob(morceaux,{type:mime.split(";")[0]});
+      if(!blob.size)throw Error("La vidéo est vide.");
+      return blob;
+    }finally{
+      if(recorder?.state==="recording")recorder.stop();
+      stream?.getTracks().forEach(track=>track.stop());
+      video.srcObject=null;
+      document.removeEventListener("visibilitychange",visibilite);
+      global.removeEventListener("pagehide",interrompre);
+    }
+  }
+  global.LCDP_ControleAccesUI={render,filmer,filmerSequence};
 })(window);
