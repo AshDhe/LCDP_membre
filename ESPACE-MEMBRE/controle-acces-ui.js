@@ -144,7 +144,7 @@
       // Un bloc de reservations consecutives reste un seul parcours Ma cle.
       // Le serveur renvoie la fin effective du droit (avec tolerance de sortie).
       const finDroit=new Date(etat.endAt || NaN);
-      if(etat.role!=="invite" && Number.isFinite(fin.getTime()) &&
+      if(Number.isFinite(fin.getTime()) &&
          Number.isFinite(finDroit.getTime()) && finDroit.getTime()>fin.getTime()+15*60*1000){
         resa.appendChild(element("p","lcdp-acces-heure",
           "Plages consécutives : accès continu jusqu’à "+formatHeure(finDroit)));
