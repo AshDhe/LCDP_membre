@@ -1386,7 +1386,7 @@
     const seq=s.sequences[s.index];
     try{
       // Il suffit que le fichier précédent soit enregistré, non qu'il soit analysé.
-      try{await s.previousUpload;}catch(err){if(s.index===1)throw err;}
+      try{await s.previousUpload;}catch(err){if(s.index===1){err.criticalVideo=true;throw err;}}
       const debut=await appelerApi("/video/sequence/start",{method:"POST",body:{
         attemptId:s.attemptId,sequence:seq.type
       }});
@@ -1409,7 +1409,7 @@
       }
     }catch(error){
       if(error.reason==="key_in_use" || error.sessionRemplaceeTraitee)return;
-      if(error.reason==="box_failed"){
+      if(error.reason==="box_failed" || error.criticalVideo===true){
         sessionSequencesVideo=null;
         afficherControleAcces({screen:"capture_error",action:"checkin",message:"Le verrou fixe n’est pas reconnu. Refilmez uniquement le verrou fixe."});
       }else{
