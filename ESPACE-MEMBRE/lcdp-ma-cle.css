@@ -704,3 +704,72 @@ body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper > #lcdp-footer-slot,
 body.lcdp-page-cle-du-parc .lcdp-ma-cle-wrapper > .lcdp-ma-cle-navigation-slot {
   flex-shrink: 0;
 }
+
+
+/* CODR : saisie identique aux quatre groupes de Mon compte, dans le wrapper Ma Clé.
+   Couleurs, espacements et bordures : variables du design system LCDP / CSS Tailwind compilé. */
+body.lcdp-page-cle-du-parc .lcdp-acces[data-screen="codr_entry"] .lcdp-acces-form {
+  width: 100%;
+  max-width: 360px;
+  margin-top: var(--lcdp-space-4, 16px);
+  gap: var(--lcdp-space-3, 12px);
+  align-items: stretch;
+}
+body.lcdp-page-cle-du-parc .lcdp-acces[data-screen="codr_entry"] .lcdp-box-champ-formulaire__label {
+  margin: 0;
+  color: var(--lcdp-color-text, #1f2a24);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+}
+body.lcdp-page-cle-du-parc .lcdp-acces[data-screen="codr_entry"] .lcdp-box-champ-formulaire__code-cases {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--lcdp-space-2, 8px);
+  width: 100%;
+  min-width: 0;
+}
+body.lcdp-page-cle-du-parc .lcdp-acces[data-screen="codr_entry"] .lcdp-box-champ-formulaire__code-cases > input {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 9px 3px;
+  border: 1px solid var(--lcdp-color-border, #d4d9d4);
+  border-radius: var(--lcdp-radius-medium, 10px);
+  background: var(--lcdp-color-surface, #fff);
+  color: var(--lcdp-color-text, #1f2a24);
+  font: inherit;
+  font-size: 1.1rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+body.lcdp-page-cle-du-parc .lcdp-acces[data-screen="codr_entry"] .lcdp-box-champ-formulaire__code-cases > input:focus-visible {
+  outline: 2px solid var(--lcdp-color-primary, #234438);
+  outline-offset: 2px;
+}
+body.lcdp-page-cle-du-parc .lcdp-acces[data-screen="codr_entry"] .lcdp-box-champ-formulaire__checkbox-line {
+  display: flex;
+  align-items: center;
+  gap: var(--lcdp-space-2, 8px);
+  margin: 0;
+  color: var(--lcdp-color-text, #1f2a24);
+  font-size: .9rem;
+}
+body.lcdp-page-cle-du-parc .lcdp-acces[data-screen="codr_entry"] .lcdp-box-champ-formulaire__checkbox-line input {
+  width: 18px;
+  height: 18px;
+}
+body.lcdp-page-cle-du-parc .lcdp-acces[data-screen="codr_entry"] .lcdp-acces-form > .lcdp-button {
+  width: 100%;
+  min-height: 44px;
+}
+body.lcdp-page-cle-du-parc .lcdp-acces[data-screen^="codr_"] .lcdp-box-formulaire__note {
+  margin: 10px 0;
+  max-width: 100%;
+  color: var(--lcdp-color-text-muted, #5f6861);
+  line-height: 1.45;
+  text-align: center;
+}
