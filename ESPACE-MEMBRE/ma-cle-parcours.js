@@ -105,7 +105,8 @@
     if (["active", "presence", "access_confirmed", "guest_list",
          "confirmation_done"].includes(etat.screen)) return 4;
     if (["camera_ready", "processing", "uploading", "capture_error",
-         "guest_pending", "guest_waiting_control", "denied"].includes(etat.screen)) return 3;
+         "guest_pending", "guest_waiting_control", "denied",
+         "sequence_transition", "codr_offer", "codr_entry", "codr_unavailable"].includes(etat.screen)) return 3;
     return 0;
   }
 
