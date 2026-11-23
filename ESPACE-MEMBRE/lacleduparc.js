@@ -1283,6 +1283,22 @@
     window.LCDP_ControleAccesUI.render(root,etat,{
       onCamera:()=>lancerCaptureControleAcces(),
       onSequenceContinue:()=>poursuivreSequenceVideo(),
+      onCodrOpen:()=>afficherControleAcces({...controleAccesEtat,screen:"codr_entry",message:""}),
+      onCodrSubmit:async codr=>{
+        const precedent=controleAccesEtat;
+        if(precedent?.screen!=="codr_entry")return;
+        try{
+          const resultat=await appelerApi("/video/codr",{method:"POST",body:{codr}});
+          afficherControleAcces(resultat);
+        }catch(error){
+          if(error?.reason==="key_in_use" || error?.sessionRemplaceeTraitee)return;
+          const r=error?.resultat||{};
+          const restants=Number.isInteger(r.codrRemaining)?r.codrRemaining:precedent.codrRemaining;
+          const bloque=r.reason==="codr_disabled"||r.reason==="codr_attempts_exhausted"||restants===0;
+          afficherControleAcces({...precedent,screen:bloque?"codr_unavailable":"codr_entry",
+            codrRemaining:restants,message:error.message||"Le code de récupération n’a pas été confirmé."});
+        }
+      },
       onCheckout:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:"checkout"}}));}catch(e){afficherControleAcces({screen:"capture_error",action:"checkout",message:e.message});}},
       onClosed:()=>{if(!controleAccesEtat?.unlocked)return;exclusiviteCle=false;window.clearInterval(suiviVideoTimer);window.clearInterval(controleAccesTimer);window.location.href=PAGE_ACCUEIL_MEMBRE;},
       onRetry:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:controleAccesEtat?.action || "checkin"}}));}catch(error){afficherControleAcces({screen:"capture_error",message:error.message});}},
