@@ -1395,6 +1395,11 @@
         href: "/ESPACE-PUBLIC/temoignages.html?source=menu-burger-membre"
       },
       {
+        label: "Boutique",
+        espace: "public",
+        href: "/ESPACE-PUBLIC/boutique.html?source=menu-burger-membre"
+      },
+      {
         label: "Changer d'espace personnel",
         action: "changer-compte"
       },
