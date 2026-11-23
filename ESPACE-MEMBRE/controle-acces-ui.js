@@ -147,7 +147,13 @@
     const instruction=element("p","lcdp-acces-message","Ouverture de la caméra…");instruction.setAttribute("role","status");
     const video=element("video","lcdp-acces-video");video.autoplay=true;video.muted=true;video.playsInline=true;video.setAttribute("playsinline","");
     const compte=element("p","lcdp-acces-message");compte.setAttribute("role","timer");
-    const switcher=bouton("Faites le selfie");switcher.hidden=true;
+    const switcher=bouton("Passer au visage");switcher.hidden=true;
+    // Le serveur conserve une vidéo unique (4 s boîtier + 6 s caméra frontale).
+    // La partie frontale se déroule en deux étapes visibles : visage, puis bracelet.
+    const troisEtapes=options.selfieSeconds>0 && options.showBraceletPrompt===true;
+    const nombreEtapes=options.selfieSeconds===0?1:(troisEtapes?3:2);
+    const dureeVisage=troisEtapes?options.braceletAtSeconds:options.selfieSeconds;
+    const dureeBracelet=troisEtapes?options.selfieSeconds-dureeVisage:0;
     root.append(titre,instruction,video,compte,switcher);
     let stream=null,sortie=null,recorder=null,raf=null,closed=false,cameraPrete=false,abortError=null,taille=0;
     const morceaux=[];const MAX=20*1024*1024;
@@ -172,9 +178,14 @@
       if(cameraPrete && video.videoWidth){const ratio=Math.min(canvas.width/video.videoWidth,canvas.height/video.videoHeight);const w=video.videoWidth*ratio,h=video.videoHeight*ratio;ctx.drawImage(video,(canvas.width-w)/2,(canvas.height-h)/2,w,h);}
       raf=requestAnimationFrame(dessiner);
     }
-    async function minuter(secondes,bracelet=false){
+    async function minuter(secondes,numeroEtape){
       const debut=performance.now();
-      while(performance.now()-debut<secondes*1000){verifier();const ecoule=(performance.now()-debut)/1000;compte.textContent=(bracelet?"Séquence 2/2 — ":"Séquence 1/"+(options.selfieSeconds>0?2:1)+" — ")+Math.max(1,Math.ceil(secondes-ecoule))+" s";if(bracelet && options.showBraceletPrompt!==false && ecoule>=options.braceletAtSeconds){instruction.hidden=false;instruction.textContent="Montrez le bracelet";}await attente(100);}
+      while(performance.now()-debut<secondes*1000){
+        verifier();
+        const ecoule=(performance.now()-debut)/1000;
+        compte.textContent="Séquence "+numeroEtape+"/"+nombreEtapes+" — "+Math.max(1,Math.ceil(secondes-ecoule))+" s";
+        await attente(100);
+      }
       verifier();compte.textContent="";
     }
     document.addEventListener("visibilitychange",visibilite);global.addEventListener("pagehide",interrompre);
@@ -191,7 +202,7 @@
       recorder.onerror=()=>{abortError=Error("L’enregistrement vidéo a échoué.");rejectStop(abortError);};
       recorder.onstop=resolveStop;recorder.start(500);
       instruction.textContent="Filmez le code du boîtier.";
-      await minuter(options.boxSeconds);
+      await minuter(options.boxSeconds,1);
       if(options.selfieSeconds>0){
       instruction.textContent="";instruction.hidden=true;switcher.hidden=false;
       await new Promise((resolve,reject)=>{
@@ -199,10 +210,14 @@
         const timer=setInterval(()=>{if(abortError || performance.now()-debut>30000){clearInterval(timer);switcher.onclick=null;reject(abortError || Error("Le passage en mode selfie a pris trop de temps. Recommencez."));}},100);
         switcher.onclick=()=>{clearInterval(timer);switcher.onclick=null;resolve();};
       });
-      verifier();switcher.hidden=true;instruction.hidden=false;instruction.textContent="Ouverture du selfie…";
+      verifier();switcher.hidden=true;instruction.hidden=false;instruction.textContent="Ouverture de la caméra frontale…";
       await ouvrirCamera("user");verifier();
-      instruction.textContent="";instruction.hidden=true;
-      await minuter(options.selfieSeconds,true);
+      instruction.textContent="Filmez votre visage.";
+      await minuter(dureeVisage,2);
+      if(dureeBracelet>0){
+        instruction.textContent="Présentez votre bracelet devant la caméra.";
+        await minuter(dureeBracelet,3);
+      }
       }
       if(recorder.state!=="recording")throw Error("L’enregistrement s’est interrompu.");
       recorder.stop();await stopPromise;verifier();
