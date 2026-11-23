@@ -61,6 +61,14 @@
     }
 
     try {
+      // Distinguer une reprise sur le navigateur maître d'une première activation.
+      // Aucun transfert de session ou de navigateur n'est accepté ici.
+      const verrouAvantOuverture = await appelerApi("/lock-status", {method:"GET"});
+      const repriseTelephoneMaitre =
+        verrouAvantOuverture?.success === true &&
+        verrouAvantOuverture.locked === true &&
+        verrouAvantOuverture.holder === true;
+
       let ouverture;
       try {
         ouverture = await appelerApi("/ouvrir", {method:"POST",body:{}});
@@ -77,16 +85,21 @@
       exclusiviteCle = true;
       verrouillerNavigation();
       if(boutonAnnuler) boutonAnnuler.hidden=true;
-      // Les deux premières étapes n'attendent pas le contrôle vidéo.
-      window.LCDP_ParcoursMaCle?.demarrer(ouverture, {
-        rafraichirControle: chargerControleAcces,
-        // Le Worker déduit le parc de la réservation de cette session.
-        // Aucun identifiant de parc n'est accepté depuis l'interface.
-        obtenirGuideAcces: () => appelerApi("/access-guide", {method:"GET"})
-      });
+      if (repriseTelephoneMaitre) {
+        // Après une panne/recharge, relire l'étape réelle depuis le serveur.
+        // Le verrou, le check-in et le navigateur propriétaire sont conservés.
+        await chargerControleAcces();
+      } else {
+        // Première activation : conserver les deux écrans d'introduction.
+        // Le contrôle vidéo ne démarre qu'au passage volontaire à l'étape 3.
+        window.LCDP_ParcoursMaCle?.demarrer(ouverture, {
+          rafraichirControle: chargerControleAcces,
+          // Le Worker déduit le parc de la réservation de cette session.
+          // Aucun identifiant de parc n'est accepté depuis l'interface.
+          obtenirGuideAcces: () => appelerApi("/access-guide", {method:"GET"})
+        });
+      }
       masquerAttenteInitiale();
-      // Étapes 1 et 2 : uniquement ouverture/CODA et préparation de l'accès.
-      // Le contrôle de check-in ne démarre qu'au passage volontaire à l'étape 3.
       void initialiserGabaritMembre();
       controleAccesTimer=window.setInterval(()=>{
         if(document.visibilityState==="visible" && ["guest_pending","guest_waiting_control"].includes(controleAccesEtat?.screen)) chargerControleAcces().catch(console.error);
