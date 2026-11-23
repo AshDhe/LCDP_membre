@@ -141,6 +141,14 @@
       const autreJour=hDebut && hFin && jour.format(debut)!==jour.format(fin);
       const horaires=(hDebut || "Début indisponible")+" – "+(hFin || "Fin non renseignée")+(autreJour?" ("+jour.format(fin)+")":"");
       resa.appendChild(element("p","lcdp-acces-heure",horaires));
+      // Un bloc de reservations consecutives reste un seul parcours Ma cle.
+      // Le serveur renvoie la fin effective du droit (avec tolerance de sortie).
+      const finDroit=new Date(etat.endAt || NaN);
+      if(etat.role!=="invite" && Number.isFinite(fin.getTime()) &&
+         Number.isFinite(finDroit.getTime()) && finDroit.getTime()>fin.getTime()+15*60*1000){
+        resa.appendChild(element("p","lcdp-acces-heure",
+          "Plages consécutives : accès continu jusqu’à "+formatHeure(finDroit)));
+      }
       const n=etat.reservation.guestCount;
       resa.appendChild(element("p","lcdp-acces-invites",Number.isInteger(n)?n+" invité"+(n===1?"":"s"):"Nombre d’invités indisponible"));root.appendChild(resa);
     }
