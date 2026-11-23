@@ -12,7 +12,6 @@
 
   const status = document.getElementById('lcdp-cgv-status');
   const contenu = document.getElementById('lcdp-cgv-contenu');
-  const date = document.getElementById('lcdp-cgv-date');
 
   const autorises = new Set(['P','BR','STRONG','EM','UL','OL','LI','A']);
 
@@ -170,18 +169,6 @@
       (window.LCDP_affichagesLegauxEnAttente ||= []).push('cgv');
       window.dispatchEvent(new Event('lcdp:affichage-legal'));
 
-      if (data.datepublication) {
-        const d = new Date(data.datepublication);
-        if (!Number.isNaN(d.valueOf())) {
-          date.textContent = 'Version publiée le ' + new Intl.DateTimeFormat('fr-FR', {
-            timeZone: 'Europe/Paris',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-          }).format(d);
-          date.hidden = false;
-        }
-      }
     } catch (e) {
       console.error('Chargement des CGV :', e);
       message('Impossible de charger les CGV.');
