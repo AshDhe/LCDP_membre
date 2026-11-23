@@ -477,68 +477,7 @@
     initialiserActionsModification();
     initialiserZoneSelfie();
     structurerSectionsCompte(form);
-    document.getElementById("modifier-wifi-bracelet")?.addEventListener("click",ouvrirWifiBracelet);
   }
-
-  let wifiBraceletActuel=null;
-  let messageBraceletIndisponible = "Aucun bracelet associé.";
-  function afficherValeurBracelet(valeur) {
-    const champ = document.getElementById("champ-bracelet-presence");
-    if (champ) champ.value = nettoyerTexteSimple(valeur) || "–";
-  }
-
-  async function chargerWifiBracelet() {
-    afficherValeurBracelet("");
-    try {
-      const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/bracelet-wifi",{credentials:"include",cache:"no-store"});
-      const d=await r.json().catch(()=>null);
-      if(r.status===401){redirigerConnexionMembre("inactive");return;}
-      if(!r.ok || !d?.ok){
-        wifiBraceletActuel=null;
-        messageBraceletIndisponible=d?.message || "Bracelet indisponible";
-        return;
-      }
-      wifiBraceletActuel=d.bracelet || null;
-      messageBraceletIndisponible = wifiBraceletActuel ? "" : "Aucun bracelet associé.";
-      // Un SSID ou un booléen Wi-Fi ne constitue pas la valeur du bracelet.
-      // Afficher seulement un libellé explicite, s'il est fourni par le Worker.
-      afficherValeurBracelet(wifiBraceletActuel?.libelle || wifiBraceletActuel?.nom || "");
-    }catch{
-      wifiBraceletActuel=null;
-      messageBraceletIndisponible="Service indisponible";
-      afficherValeurBracelet("");
-    }
-  }
-  let modificationWifiEnCours=false;
-  async function ouvrirWifiBracelet() {
-    if(modificationWifiEnCours)return;
-    modificationWifiEnCours=true;
-    try {
-      await chargerWifiBracelet();
-      if(!wifiBraceletActuel){await afficherAlerte(messageBraceletIndisponible);return;}
-      await ouvrirDialogueChamp({
-        titre:"Bracelet présence",libelleValider:"Valider",
-        message:"Renseignez le réseau Wi-Fi auquel votre bracelet devra se connecter. Confirmez avec votre CODA. Vous n’avez droit qu’à une seule tentative.",
-        champs:[
-          {id:"wifi-bracelet-ssid",name:"ssid",label:"Nom du réseau Wi-Fi",type:"text",value:wifiBraceletActuel.ssid,required:true,maxlength:32,autocomplete:"off",nettoyer:v=>v,valider:v=>new TextEncoder().encode(v).length>32 || /[\x00-\x1f\x7f]/.test(v)?"Nom du réseau invalide : 32 octets maximum.":""},
-          {id:"wifi-bracelet-password",name:"password",label:"Mot de passe du réseau Wi-Fi",type:"password",required:true,maxlength:64,autocomplete:"new-password",nettoyer:v=>v,valider:v=>/^[\x20-\x7e]{8,63}$/.test(v)||/^[a-f0-9]{64}$/i.test(v)?"":"Utilisez 8 à 63 caractères ASCII, ou une clé de 64 caractères hexadécimaux."},
-          {id:"wifi-bracelet-coda",name:"coda",label:"Authentifiez-vous",type:"coda",required:true,valider:v=>/^[0-9]{4}$/.test(v)?"":"Saisissez les quatre chiffres."}
-        ],
-        onSubmit:async donnees=>{
-          const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/bracelet-wifi",{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(donnees)});
-          const d=await r.json().catch(()=>null);
-          if(r.status===401){redirigerConnexionMembre("inactive");return true;}
-          if(!d)throw Error("Réponse indisponible");
-          // Une réponse termine cette tentative ; aucune boucle d'essais CODA.
-          await afficherAlerteSuperposee(d.message || "La modification n’a pas pu être confirmée.", { profil: r.ok && d.ok ? "information" : "erreur" });
-          if(r.ok && d.ok)await chargerWifiBracelet();
-          return true;
-        }
-      });
-    }catch{await afficherAlerte("La modification Wi-Fi n’a pas pu être confirmée. Vérifiez son état avant de réessayer.");}
-    finally{modificationWifiEnCours=false;}
-  }
-
 
   // Équipements effectivement attribués au membre, jamais de bracelet de démonstration.
   let equipementsPresenceActuels=[];
@@ -603,6 +542,53 @@
       erreur.textContent="Les témoins de présence sont momentanément indisponibles.";
       liste.replaceChildren(erreur);
     }
+  }
+
+
+  let modificationWifiTemoinEnCours=false;
+  async function ouvrirWifiTemoin(equipement,operation="ajouter"){
+    if(modificationWifiTemoinEnCours)return;
+    modificationWifiTemoinEnCours=true;
+    try{
+      const id=Number(equipement?.idclemembre);
+      if(!Number.isSafeInteger(id)||id<1)throw Error("Témoin invalide.");
+      const ajouter=operation==="ajouter";
+      if(!ajouter && !equipement.wifi?.secours?.ssid)throw Error("Aucun réseau précédent.");
+      const champs=ajouter?[
+        {id:"wifi-temoin-ssid",name:"ssid",label:"Nom du réseau Wi-Fi",type:"text",
+          required:true,maxlength:32,autocomplete:"off",value:equipement.wifi?.principal?.ssid||"",
+          nettoyer:v=>v,valider:v=>new TextEncoder().encode(v).length>32?"Nom de réseau trop long (32 octets maximum).":""},
+        {id:"wifi-temoin-password",name:"password",label:"Mot de passe Wi-Fi",
+          type:"password",required:true,maxlength:64,autocomplete:"new-password",nettoyer:v=>v,
+          valider:v=>v.length>=8 && v.length<=64?"":"Mot de passe Wi-Fi invalide."}
+      ]:[];
+      champs.push({id:"wifi-temoin-coda",name:"coda",label:"Confirmer avec votre CODA",
+        type:"coda",required:true,valider:v=>/^[0-9]{4}$/.test(v)?"":"Saisissez les quatre chiffres."});
+      const message=ajouter
+        ? "Le nouveau Wi-Fi devient principal. Le précédent reste en secours. Le témoin reçoit la mise à jour lorsqu’il possède une connexion."
+        : operation==="basculer"
+          ? "Le réseau précédent redevient principal. Confirmez avec votre CODA."
+          : "Supprimer le réseau précédent du témoin. Confirmez avec votre CODA.";
+      await ouvrirDialogueChamp({
+        titre:"Wi-Fi — "+(equipement.nom||"Témoin"),libelleValider:"Valider",message,champs,
+        onSubmit:async donnees=>{
+          const payload={idclemembre:id,operation,coda:donnees.coda};
+          if(ajouter){payload.ssid=donnees.ssid;payload.password=donnees.password;}
+          const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/temoin-wifi",{
+            method:"POST",credentials:"include",cache:"no-store",
+            headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+          const d=await r.json().catch(()=>null);
+          if(r.status===401){redirigerConnexionMembre("inactive");return true;}
+          if(!d)throw Error("Réponse non confirmée. Vérifiez l’état du témoin avant de réessayer.");
+          await afficherAlerteSuperposee(d.message||"Modification non confirmée.",{
+            profil:r.ok && d.ok?"information":"erreur"});
+          if(r.ok && d.ok)await chargerEquipementsPresence();
+          return true;
+        }
+      });
+    }catch(error){
+      await afficherAlerte(error?.message||"La modification Wi-Fi n’a pas pu être confirmée.");
+    }finally{modificationWifiTemoinEnCours=false;}
   }
 
   let selfieUrl = null;
