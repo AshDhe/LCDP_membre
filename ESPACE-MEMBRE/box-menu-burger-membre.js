@@ -797,6 +797,7 @@
 
     const lien = document.createElement("a");
     lien.className = "lcdp-box-menu-burger__link";
+    if (item.label === "Boutique club") lien.classList.add("lcdp-box-menu-burger__link--boutique");
     if (item.label === "Mon compte") {
       lien.setAttribute("data-lcdp-menu-compte", "");
     } else if (item.label === "FAQ") {
@@ -1286,10 +1287,21 @@
     }
   }
 
+  // Même style CSS que le menu public, sans styles injectés dans le HTML.
+  function assurerStyleBoutique() {
+    if (document.getElementById("lcdp-css-boutique-club")) return;
+    const lien = document.createElement("link");
+    lien.id = "lcdp-css-boutique-club";
+    lien.rel = "stylesheet";
+    lien.href = construireUrlObjet("/CSSBASE/lcdp-menu-burger-boutique.css?v=20261123-boutique-cadre");
+    document.head.appendChild(lien);
+  }
+
   async function initialiserMenuBurgerMembre(options = {}) {
     const slot = document.querySelector("[data-lcdp-burger-slot]");
 
     if (!slot) return;
+    assurerStyleBoutique();
 
     const etatMembre = options.etatMembre || {};
     const abonne = Object.prototype.hasOwnProperty.call(etatMembre, "abonne")
