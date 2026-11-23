@@ -69,6 +69,58 @@
       if(etat.checkoutEnabled)root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));
       return;
     }
+    // Secours CODR : exactement les quatre groupes de quatre lettres utilisés dans Mon compte.
+    if(etat.screen==="codr_offer" || etat.screen==="codr_unavailable"){
+      const impossible=etat.screen==="codr_unavailable";
+      root.appendChild(element("h2","lcdp-acces-parc","Contrôle du verrou fixe"));
+      const message=element("p","lcdp-acces-message",etat.message ||
+        (impossible?"Le CODR est indisponible. Contactez le club.":"Le code du verrou fixe n’a pas été reconnu après deux vidéos."));
+      message.setAttribute("role",impossible?"alert":"status");root.appendChild(message);
+      if(!impossible){
+        root.appendChild(element("p","lcdp-box-formulaire__note","Vous pouvez confirmer votre check-in avec votre code de récupération (CODR). Cette opération est enregistrée comme contrôle de secours."));
+        root.appendChild(bouton("Forcer mon check-in",()=>actions.onCodrOpen?.()));
+      }
+      return;
+    }
+    if(etat.screen==="codr_entry"){
+      root.appendChild(element("h2","lcdp-acces-parc","Check-in de secours par CODR"));
+      root.appendChild(element("p","lcdp-box-formulaire__note","Saisissez les quatre groupes de quatre lettres de votre CODR. Le recours à ce code fait l’objet d’une alerte de sécurité."));
+      if(Number.isInteger(etat.codrRemaining))root.appendChild(element("p","lcdp-box-formulaire__note","Essais disponibles : "+Math.max(0,etat.codrRemaining)+"."));
+      if(etat.message){const erreur=element("p","lcdp-acces-erreur",etat.message);erreur.setAttribute("role","alert");root.appendChild(erreur);}
+      const form=element("form","lcdp-acces-form");
+      const libelle=element("p","lcdp-box-champ-formulaire__label","Code de récupération (CODR)");
+      const cases=element("div","lcdp-box-champ-formulaire__code-cases");
+      const blocs=[];
+      for(let i=0;i<4;i++){
+        const champ=element("input");
+        champ.type="password";champ.inputMode="text";champ.maxLength=4;
+        champ.autocomplete="off";champ.autocapitalize="characters";champ.spellcheck=false;
+        champ.setAttribute("aria-label","Mot "+(i+1)+" sur 4");
+        champ.addEventListener("input",()=>{
+          champ.value=champ.value.toUpperCase().replace(/[^A-Z]/g,"").slice(0,4);
+          if(champ.value.length===4 && i<3)blocs[i+1].focus();
+        });
+        champ.addEventListener("keydown",e=>{if(e.key==="Backspace"&&!champ.value&&i>0)blocs[i-1].focus();});
+        blocs.push(champ);cases.appendChild(champ);
+      }
+      const afficher=element("label","lcdp-box-champ-formulaire__checkbox-line");
+      const coche=element("input");coche.type="checkbox";
+      const afficherTexte=element("span","", "Afficher la saisie");
+      coche.addEventListener("change",()=>blocs.forEach(ch=>ch.type=coche.checked?"text":"password"));
+      afficher.append(coche,afficherTexte);
+      const valider=bouton("Valider mon check-in");valider.type="submit";
+      const note=element("p","lcdp-box-formulaire__note");note.setAttribute("role","alert");
+      form.append(libelle,cases,afficher,valider,note);
+      form.addEventListener("submit",async event=>{
+        event.preventDefault();if(valider.disabled)return;
+        const code=blocs.map(ch=>ch.value.trim().toUpperCase()).join("-");
+        if(!/^[A-Z]{4}(?:-[A-Z]{4}){3}$/.test(code)){note.textContent="Saisissez les quatre groupes de quatre lettres.";return;}
+        note.textContent="";valider.disabled=true;
+        try{await actions.onCodrSubmit?.(code);}
+        catch(error){note.textContent=error?.message||"Validation indisponible.";valider.disabled=false;}
+      });
+      root.appendChild(form);blocs[0].focus();return;
+    }
     if(etat.screen==="capture_error"){
       const message=element("p","lcdp-acces-erreur",etat.message || "La capture n’a pas pu être terminée.");message.setAttribute("role","alert");root.appendChild(message);
       root.appendChild(bouton("Réessayer",()=>actions.onRetry?.()));return;
