@@ -539,6 +539,72 @@
     finally{modificationWifiEnCours=false;}
   }
 
+
+  // Équipements effectivement attribués au membre, jamais de bracelet de démonstration.
+  let equipementsPresenceActuels=[];
+  function afficherEquipementsPresence(equipements){
+    const liste=document.getElementById("lcdp-compte-equipements-temoins");
+    if(!liste)return;
+    const fragment=document.createDocumentFragment();
+    for(const equipement of equipements){
+      const id=Number(equipement.idclemembre);
+      if(!Number.isSafeInteger(id)||id<1)continue;
+      const ligne=document.createElement("div");
+      ligne.className="lcdp-box-champ-formulaire lcdp-compte-equipement-temoin";
+      ligne.setAttribute("data-lcdp-box-champ-formulaire","");
+      const labelZone=document.createElement("div");labelZone.className="lcdp-box-champ-formulaire__label-zone";
+      const label=document.createElement("span");label.className="lcdp-box-champ-formulaire__label";
+      label.textContent=equipement.nom || "Témoin de présence";labelZone.appendChild(label);
+      const control=document.createElement("div");control.className="lcdp-box-champ-formulaire__control";
+      control.setAttribute("data-lcdp-champ-control","");
+      const input=document.createElement("input");input.type="text";input.readOnly=true;
+      input.className="lcdp-box-champ-formulaire__lecture";
+      input.setAttribute("aria-label","Wi-Fi de "+(equipement.nom||"ce témoin"));
+      input.value=equipement.wifi?.principal?.ssid || "Wi-Fi à configurer";
+      control.appendChild(input);ligne.append(labelZone,control);
+      const idBouton="modifier-wifi-temoin-"+id;
+      ajouterPictoModificationDansChamp(input,ligne,{
+        id:idBouton,texte:"Modifier le Wi-Fi de "+(equipement.nom||"ce témoin"),
+        mode:"picto",pictoRouge:true
+      });
+      ligne.querySelector("#"+idBouton)?.addEventListener("click",()=>ouvrirWifiTemoin(equipement,"ajouter"));
+      const precedent=equipement.wifi?.secours?.ssid;
+      if(precedent){
+        const note=document.createElement("p");note.className="lcdp-box-champ-formulaire__aide";
+        note.textContent="Wi-Fi précédent : "+precedent;ligne.appendChild(note);
+        const commandes=document.createElement("div");commandes.className="lcdp-box-formulaire__actions lcdp-compte-equipements__actions";
+        for(const [titre,operation] of [["Réactiver","basculer"],["Supprimer","supprimer_secours"]]){
+          const bouton=document.createElement("button");bouton.type="button";
+          bouton.className="lcdp-button lcdp-button-secondary";bouton.textContent=titre;
+          bouton.setAttribute("aria-label",titre+" le Wi-Fi précédent de "+(equipement.nom||"ce témoin"));
+          bouton.addEventListener("click",()=>ouvrirWifiTemoin(equipement,operation));
+          commandes.appendChild(bouton);
+        }
+        ligne.appendChild(commandes);
+      }
+      fragment.appendChild(ligne);
+    }
+    liste.replaceChildren(fragment);
+  }
+  async function chargerEquipementsPresence(){
+    const liste=document.getElementById("lcdp-compte-equipements-temoins");
+    if(!liste)return;
+    try{
+      const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/equipements-presence",{credentials:"include",cache:"no-store"});
+      const d=await r.json().catch(()=>null);
+      if(r.status===401){redirigerConnexionMembre("inactive");return;}
+      if(!r.ok||!d?.ok||!Array.isArray(d.equipements))throw Error("Liste indisponible.");
+      equipementsPresenceActuels=d.equipements;
+      afficherEquipementsPresence(d.equipements);
+    }catch{
+      equipementsPresenceActuels=[];
+      const erreur=document.createElement("p");
+      erreur.className="lcdp-box-formulaire__note";erreur.setAttribute("role","status");
+      erreur.textContent="Les témoins de présence sont momentanément indisponibles.";
+      liste.replaceChildren(erreur);
+    }
+  }
+
   let selfieUrl = null;
   function initialiserZoneSelfie() {
     const codeR = document.getElementById("champ-geolocalisation-membre") || document.getElementById("champ-code-r-membre");
@@ -1833,7 +1899,7 @@
     terminerAttenteCompte();
     void Promise.allSettled([
       chargerSelfie(),
-      chargerWifiBracelet(),
+      chargerEquipementsPresence(),
       actualiserBurgerMembre(compteIndiqueAbonne(compte))
     ]);
   }
