@@ -600,8 +600,10 @@
       "La rétractation prend effet à 05 h 00 le lendemain de la demande (heure de Paris). " +
       "Jusqu'à cette heure, les accès et les invitations restent disponibles selon les droits de l'abonnement. " +
       "À la prise d'effet, tous les accès non exercés associés à cet abonnement ainsi que leurs invitations sont annulés.\n\n" +
-      "Frais déduits de l'encaissement : 55 € TTC sans accès exercé, tarif 1J à privilèges comparables pour un jour consommé, " +
-      "ou tarif 1M au-delà. La déduction reste limitée au montant encaissé.",
+      "Sans journée consommée, remboursement intégral du montant versé à la commande. " +
+      "Pour une ou deux journées consommées, déduction du tarif standard 1J par journée. " +
+      "À partir de trois journées, déduction du tarif standard 1M, selon les prix de référence applicables à la commande. " +
+      "Les retenues restent limitées au montant encaissé.",
       { titre: "Confirmer la rétractation de cet abonnement ?", annuler: "Conserver l’abonnement",
         confirmer: "Confirmer la rétractation", danger: true }
     );
