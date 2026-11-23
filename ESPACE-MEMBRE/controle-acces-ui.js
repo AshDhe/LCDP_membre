@@ -84,7 +84,7 @@
     }
     if(etat.screen==="camera_ready"){
       const ol=element("ol","lcdp-acces-instructions");
-      [...(etat.hasBracelet===false?[]:[etat.action==="checkout"?"Préparez votre bracelet.":"Allumez votre bracelet."]),"Allumez le contrôleur.","Préparez-vous à filmer.","Lancez la caméra et suivez les indications de l’application."].forEach(t=>ol.appendChild(element("li","",t)));
+      [...(etat.hasBracelet===false?[]:[etat.action==="checkout"?"Préparez votre témoin.":"Allumez votre témoin."]),"Allumez le verrou fixe.","Préparez-vous à filmer.","Lancez la caméra et suivez les indications de l’application."].forEach(t=>ol.appendChild(element("li","",t)));
       root.appendChild(ol);
       const camera=element("button","lcdp-acces-camera");camera.type="button";camera.disabled=etat.cameraEnabled!==true;camera.addEventListener("click",()=>actions.onCamera?.());camera.setAttribute("aria-label","Contrôle d’accès");
       const image=element("img","lcdp-acces-camera-image");
@@ -201,7 +201,7 @@
       recorder.ondataavailable=e=>{if(e.data.size){taille+=e.data.size;if(taille>MAX){interrompre();return;}morceaux.push(e.data);}};
       recorder.onerror=()=>{abortError=Error("L’enregistrement vidéo a échoué.");rejectStop(abortError);};
       recorder.onstop=resolveStop;recorder.start(500);
-      instruction.textContent="Filmez le code du boîtier.";
+      instruction.textContent="Filmez le code du verrou fixe.";
       await minuter(options.boxSeconds,1);
       if(options.selfieSeconds>0){
       instruction.textContent="";instruction.hidden=true;switcher.hidden=false;
@@ -215,7 +215,7 @@
       instruction.textContent="Filmez votre visage.";
       await minuter(dureeVisage,2);
       if(dureeBracelet>0){
-        instruction.textContent="Présentez votre bracelet devant la caméra.";
+        instruction.textContent="Présentez votre témoin devant la caméra.";
         await minuter(dureeBracelet,3);
       }
       }
