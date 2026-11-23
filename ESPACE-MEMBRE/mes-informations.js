@@ -175,15 +175,6 @@
     },
     {
       section: "Sécurité du compte",
-      id: "champ-bracelet-presence",
-      name: "braceletPresenceAffichage",
-      label: "BRACELET",
-      type: "text",
-      key: "braceletPresenceAffichage",
-      action: {id:"modifier-wifi-bracelet",texte:"Modifier le Wi-Fi du bracelet présence",mode:"picto",pictoRouge:true}
-    },
-    {
-      section: "Sécurité du compte",
       id: "champ-telephone-membre",
       name: "telephoneAffichage",
       label: "Numéro de téléphone",
@@ -983,6 +974,23 @@
       <div id="lcdp-compte-relations-coach" class="lcdp-compte-relations__liste"
         aria-live="polite" hidden>Chargement des coachs…</div>`;
     statut.appendChild(bloc);
+    const equipement=document.createElement("section");
+    equipement.id="lcdp-compte-equipements-presence";
+    equipement.className="lcdp-compte-equipements";
+    equipement.setAttribute("aria-labelledby","lcdp-compte-equipements-titre");
+    const titreEquipement=document.createElement("h3");
+    titreEquipement.id="lcdp-compte-equipements-titre";
+    titreEquipement.className="lcdp-title-section lcdp-compte-equipements__titre";
+    titreEquipement.textContent="ÉQUIPEMENT PRÉSENCE";
+    equipement.appendChild(titreEquipement);
+    const telephone=document.getElementById("champ-telephone-membre")?.closest("[data-lcdp-box-champ-formulaire]");
+    if(telephone)equipement.appendChild(telephone);
+    const temoins=document.createElement("div");
+    temoins.id="lcdp-compte-equipements-temoins";
+    temoins.className="lcdp-compte-equipements__liste";
+    temoins.setAttribute("aria-live","polite");
+    equipement.appendChild(temoins);
+    bloc.insertAdjacentElement("afterend",equipement);
 
     bloc.querySelectorAll("[data-lcdp-relations-ouvrir]").forEach(bouton => {
       bouton.addEventListener("click", () => {
@@ -2436,7 +2444,6 @@ function afficherStatutDaCompte(compte) {
       // Masques constants : ils ne révèlent jamais les secrets réels.
       codeAAffichage: "••••",
       codeRAffichage: "•••• - •••• - •••• - ••••",
-      braceletPresenceAffichage: "–",
       telephoneAffichage: String(compteMembreActuel.tel || compteMembreActuel.telephone || "").trim() || "–",
       cgvAffichage: "",
       geolocalisationAffichage: compteMembreActuel.optinGeolocalisation
