@@ -513,7 +513,7 @@
 
     appliquerRoutesSite(slot);
 
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261123-boutique-club");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261123-boutique-club-2");
   }
 
   async function initialiserBurgerMembre(etat) {
