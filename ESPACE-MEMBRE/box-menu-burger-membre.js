@@ -803,6 +803,12 @@
       lien.setAttribute("data-lcdp-menu-faq", "");
     }
     lien.textContent = item.label;
+    if (item.label === "Boutique Club") {
+      const repere = document.createElement("span");
+      repere.setAttribute("aria-hidden", "true");
+      repere.style.cssText = "display:block;width:34px;height:2px;margin:5px auto 0;border-radius:999px;background:var(--lcdp-color-orange,#eaa03b)";
+      lien.appendChild(repere);
+    }
     lien.href = item.espace === "membre"
       ? construireUrlMembre(item.href)
       : construireUrlPublic(item.href);
@@ -1395,7 +1401,7 @@
         href: "/ESPACE-PUBLIC/temoignages.html?source=menu-burger-membre"
       },
       {
-        label: "Boutique",
+        label: "Boutique Club",
         espace: "public",
         href: "/ESPACE-PUBLIC/boutique.html?source=menu-burger-membre"
       },
