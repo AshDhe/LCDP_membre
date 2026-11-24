@@ -29,6 +29,9 @@
     "workerPaiementUrl", "WORKER_PAIEMENT_URL", "", "paiement-api"
   );
 
+  const ENDPOINT_OPTIN_MEMBRE = construireEndpointApi("workerMonCompteMembreUrl","WORKER_MON_COMPTE_MEMBRE_URL","","mon-compte-membre-api");
+  const ENDPOINT_REGLEMENT_PUBLICATION = construireEndpointApi("workerFormInscriptionMembreUrl","WORKER_FORM_INSCRIPTION_MEMBRE_URL","","form-inscription-membre-api");
+
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
   const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
 
@@ -104,7 +107,10 @@
       document.body.classList.remove("public-home--loading");
 
       // Après Stripe, l'accueil s'affiche immédiatement : confirmation en arrière-plan.
-      traiterRetourPaiementAccueil().catch((error) => {
+      traiterOptinAccueil().catch(async error => {
+        console.error("Opt-in règlement indisponible :", error);
+        await afficherAlerte("La demande d'accord n'a pas pu être chargée. Actualisez la page pour réessayer.");
+      }).then(() => traiterRetourPaiementAccueil()).catch((error) => {
         console.warn("Vérification du règlement indisponible :", error);
       });
 
@@ -123,6 +129,84 @@
       }
       await afficherAlerte(error.message || "Erreur technique. Merci de réessayer.");
     }
+  }
+
+  // Une boîte CHOIX officielle par événement de publication non accepté.
+  async function traiterOptinAccueil() {
+    if (!etatMembre.causesSuspension?.some(c => c === "optin_reglement_app" || c === "optin_reglement_club")) return;
+    if (!ENDPOINT_OPTIN_MEMBRE || !ENDPOINT_REGLEMENT_PUBLICATION) throw Error("Service non configuré.");
+    const endpoint = ENDPOINT_OPTIN_MEMBRE + "/optin-reglements";
+    const reponse = await fetch(endpoint, {credentials:"include",cache:"no-store",headers:{Accept:"application/json"}});
+    const r = await reponse.json().catch(()=>null);
+    if (!reponse.ok || r?.ok !== true || !Array.isArray(r.demandes)) throw Error("Demandes indisponibles.");
+    for (const demande of r.demandes) {
+      await afficherDemandeOptin(demande, endpoint);
+    }
+    const actualise = await chargerEtatMembre();
+    if (actualise) {
+      etatMembre = actualise;
+      afficherEtatMembre(etatMembre);
+    }
+  }
+
+  async function afficherDemandeOptin(demande, endpoint) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(demande?.idpublication || "") ||
+        !["reglement-app","reglement-club"].includes(demande.document) || !String(demande.version||"").trim()) throw Error("Publication invalide.");
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    if (!slot) throw Error("Emplacement dialogue indisponible.");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html");
+    // Ne jamais remplacer un dialogue déjà ouvert.
+    if (slot.childElementCount) await new Promise(resolve => {
+      const observation = new MutationObserver(() => { if (!slot.childElementCount) { observation.disconnect(); resolve(); } });
+      observation.observe(slot, {childList:true});
+      if (!slot.childElementCount) { observation.disconnect(); resolve(); }
+    });
+    const avant = document.activeElement;
+    slot.replaceChildren(fragment);
+    const titre=slot.querySelector("[data-lcdp-dialogue-titre]");
+    const texte=slot.querySelector("[data-lcdp-dialogue-message]");
+    const refuser=slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
+    const accepter=slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+    if (!titre||!texte||!refuser||!accepter) { slot.replaceChildren(); throw Error("Dialogue CHOIX incomplet."); }
+    const type=demande.document==="reglement-club"?"du club":"de l’application";
+    const version=String(demande.version).trim();
+    titre.textContent="Mise à jour du règlement";
+    const lien=document.createElement("a");
+    lien.href=ENDPOINT_REGLEMENT_PUBLICATION+"/reglement-publication?id="+encodeURIComponent(demande.idpublication);
+    lien.target="_blank";lien.rel="noopener noreferrer";
+    lien.textContent="Voir le nouveau règlement "+type;
+    texte.replaceChildren("Le règlement "+type+" a été mis à jour (passage à "+(/^version\b/i.test(version)?"la "+version.charAt(0).toLowerCase()+version.slice(1):"la version "+version)+").",document.createElement("br"),"Votre accord est nécessaire.",document.createElement("br"),lien);
+    refuser.textContent="Refuser";
+    accepter.textContent="Accepter";
+    return new Promise(resolve=>{
+      let occupe=false;
+      const erreur=document.createElement("span");
+      erreur.setAttribute("role","alert");
+      const clavier=event=>{
+        if(event.key==="Escape"){event.preventDefault();return;}
+        if(event.key==="Tab"){
+          const cibles=[lien,refuser,accepter].filter(el=>!el.disabled);
+          if(event.shiftKey&&document.activeElement===cibles[0]){event.preventDefault();cibles.at(-1).focus();}
+          else if(!event.shiftKey&&document.activeElement===cibles.at(-1)){event.preventDefault();cibles[0].focus();}
+        }
+      };
+      const decider=async valeur=>{
+        if(occupe)return;occupe=true;refuser.disabled=true;accepter.disabled=true;erreur.remove();
+        try{
+          const reponse=await fetch(endpoint,{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({idpublication:demande.idpublication,accepter:valeur})});
+          const r=await reponse.json().catch(()=>null);
+          if(!reponse.ok||r?.ok!==true)throw Error(r?.message||"La décision n'a pas pu être enregistrée.");
+          document.removeEventListener("keydown",clavier);
+          slot.replaceChildren();if(avant?.isConnected)avant.focus();
+          resolve();
+        }catch(e){
+          erreur.textContent=" "+(e.message||"Réessayez.");texte.appendChild(erreur);
+          occupe=false;refuser.disabled=false;accepter.disabled=false;refuser.focus();
+        }
+      };
+      refuser.addEventListener("click",()=>decider(false));accepter.addEventListener("click",()=>decider(true));
+      document.addEventListener("keydown",clavier);refuser.focus();
+    });
   }
 
   async function traiterRetourPaiementAccueil() {
@@ -214,6 +298,7 @@
       : (paiementSuspension ? "[Échéance(s) d’abonnement non payée(s)]" : "");
 
     return {
+      causesSuspension: Array.isArray(resultat.causesSuspension) ? resultat.causesSuspension : [],
       prenommembre: nettoyerPrenom(resultat.prenommembre),
       abonne: valeurBooleenneVraie(resultat.abonne),
       emailparrain: nettoyerEmail(resultat.emailparrain),
