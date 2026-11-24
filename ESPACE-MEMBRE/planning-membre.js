@@ -661,11 +661,13 @@
       ? etat.templateListeParcsDiaporama.cloneNode(true)
       : document.createDocumentFragment();
     const zoneCartes = fragment.querySelector?.("[data-lcdp-liste-card-diaporama-list]") || fragment;
+    const accesAVenir = filtrerEtTrierReservationsAgenda(etat.reservations, "avenir");
+    const doublons = etat.periodeAffichage === "avenir"
+      ? identifierAccesEnDoublonPlanning(accesAVenir)
+      : new Set();
     const reservations = etat.periodeAffichage === "passe"
       ? reservationsRecentesPlanningMembre()
-      : filtrerReservationsPlanningMembre(
-          filtrerEtTrierReservationsAgenda(etat.reservations, "avenir")
-        );
+      : filtrerReservationsPlanningMembre(accesAVenir);
     const resultats = etat.formulaireFiltres?.querySelector("[data-lcdp-filtres-resultat]");
     if(resultats)resultats.textContent=reservations.length+" accès affiché"+(reservations.length>1?"s":"");
     actualiserEtatFiltresPlanningMembre();
@@ -739,7 +741,9 @@
           );
 
           card.classList.add("lcdp-box-card-reservation-membre--liste");
-          zoneCartes.appendChild(creerCarteVisiteDiaporama(card, reservation));
+          zoneCartes.appendChild(creerCarteVisiteDiaporama(
+            card, reservation, doublons.has(String(reservation.idflux || "").trim())
+          ));
         }
       );
     }
@@ -779,8 +783,39 @@
     if (bloc) bloc.hidden = !souscriptionDirecteAutoriseeMesAcces();
   }
 
-  function creerCarteVisiteDiaporama(cardReservation, reservation) {
-    if (!etat.templateCardParcDiaporama) return cardReservation;
+  // Flux distincts sur une même date et plage, indépendamment du parc
+  // et des filtres d'affichage. Les accès annulés/passés sont exclus en amont.
+  function identifierAccesEnDoublonPlanning(reservations) {
+    const groupes = new Map();
+    for (const reservation of reservations) {
+      const id = String(reservation?.idflux || "").trim();
+      const date = extraireDateFranceReservation(reservation?.datebookd);
+      const plage = normaliserPlageReservation(reservation);
+      if (!id || !date || !plage) continue;
+      const cle = date + "|" + plage;
+      if (!groupes.has(cle)) groupes.set(cle, new Set());
+      groupes.get(cle).add(id);
+    }
+    const doublons = new Set();
+    for (const ids of groupes.values()) {
+      if (ids.size > 1) for (const id of ids) doublons.add(id);
+    }
+    return doublons;
+  }
+
+  function creerBadgeDoublonPlanning() {
+    const badge = document.createElement("span");
+    badge.className = "lcdp-ui-badge lcdp-ui-badge--amber";
+    badge.textContent = "Créneau en doublon";
+    return badge;
+  }
+
+  function creerCarteVisiteDiaporama(cardReservation, reservation, enDoublon = false) {
+    if (!etat.templateCardParcDiaporama) {
+      if (enDoublon) cardReservation.querySelector("[data-lcdp-card-reservation-heure]")
+        ?.insertAdjacentElement("afterend", creerBadgeDoublonPlanning());
+      return cardReservation;
+    }
     const carte = etat.templateCardParcDiaporama.cloneNode(true);
     carte.classList.add("lcdp-box-card-parc--reserver", "lcdp-planning-carte-visite", "lcdp-carte-acces-visuel");
     carte.dataset.idflux = String(reservation.idflux || "");
@@ -841,6 +876,7 @@
     ligneHoraire.className = "lcdp-carte-acces-visuel__horaire";
     ligneHoraire.textContent = heure;
     blocHoraire.append(ligneDate, ligneHoraire);
+    if (enDoublon) blocHoraire.appendChild(creerBadgeDoublonPlanning());
 
     ouvrir.append(degrade, titreParc, blocHoraire);
     actualiserHoraireEffectifReservation(reservation, horaire => {
@@ -848,7 +884,8 @@
     });
     ouvrir.setAttribute("aria-label",
       "Voir les détails de la visite au " + nomAvecDepartement + " le " + date +
-      (heure ? ", de " + heure : ""));
+      (heure ? ", de " + heure : "") +
+      (enDoublon ? ", créneau en doublon" : ""));
     // Conserver intégralement le gabarit et sa hauteur : seuls les enfants sont réordonnés.
     const detailVerso = cardReservation.querySelector(".lcdp-box-card-reservation-membre__content");
     const parcVerso = cardReservation.querySelector(".lcdp-box-card-reservation-membre__place");
@@ -4964,9 +5001,8 @@
         new Intl.DateTimeFormat("fr-FR", {
           timeZone: "Europe/Paris",
           hour: "2-digit",
-          hour12: false,
           hourCycle: "h23"
-        }).format(date)
+        }).formatToParts(date).find(part => part.type === "hour")?.value
       );
 
       if (heure >= 6 && heure < 10) {
