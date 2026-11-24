@@ -1132,7 +1132,7 @@
       if (actionsPoints) statutMembre.appendChild(actionsPoints);
       const reglements = fields.querySelector('[data-lcdp-compte-section="reglements"]');
       if (reglements) {
-        convertirSousRubrique(reglements,"Règlements");
+        convertirSousRubrique(reglements,"Règlement");
         statutMembre.appendChild(reglements);
       }
     } else {
