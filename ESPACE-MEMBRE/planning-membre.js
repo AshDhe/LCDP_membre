@@ -28,6 +28,10 @@
     "inviter-membre-api"
   );
 
+  const ENDPOINT_MON_COMPTE_MEMBRE = construireEndpointApi(
+    "workerMonCompteMembreUrl", "WORKER_MON_COMPTE_MEMBRE_URL", "mon-compte-membre-api"
+  );
+
   // Même service public de lecture Entrée que la fiche parc.
   const ENDPOINT_PARC_ADMIN_PUBLIC = construireEndpointApi(
     "workerParcAdminUrl",
@@ -130,6 +134,7 @@
         lancerActualisationEtatMembrePlanning()
       ]);
       afficherStatutMembrePlanning(etat.membre);
+      void chargerDemandesDuoActifMesAcces();
     } catch (error) {
       console.error("Erreur planning membre :", error);
       afficherErreurCalendrier(error.message || "Erreur technique. Merci de réessayer.");
@@ -137,6 +142,46 @@
       // Aucun fragment ou cartouche ne doit apparaître isolément pendant l'initialisation.
       document.documentElement.classList.add("lcdp-planning-membre-ready");
     }
+  }
+
+  // Demandes distinctes des réservations : aucun impact sur les compteurs ou les filtres.
+  async function chargerDemandesDuoActifMesAcces() {
+    if (!ENDPOINT_MON_COMPTE_MEMBRE || !etat.slotPlanning) return;
+    try {
+      const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/duoactif",{
+        credentials:"include",cache:"no-store",headers:{Accept:"application/json"}
+      });
+      if (reponse.status===401) { redirigerConnexionMembre("inactive"); return; }
+      const data=await reponse.json().catch(()=>null);
+      if (!reponse.ok || data?.ok!==true || !Array.isArray(data.demandes)) throw Error("Demandes DUO ACTIF indisponibles.");
+      const ancien=document.getElementById("lcdp-mes-acces-demandes-duoactif");
+      if (!data.demandes.length) { ancien?.remove(); return; }
+      const section=document.createElement("section");
+      section.id="lcdp-mes-acces-demandes-duoactif";
+      section.className="lcdp-box-liste-card";
+      const titre=document.createElement("h2");
+      titre.className="lcdp-title-section";
+      titre.textContent="Demandes DUO ACTIF";
+      section.appendChild(titre);
+      const formatMois=new Intl.DateTimeFormat("fr-FR",{month:"long",year:"numeric",timeZone:"Europe/Paris"});
+      const formatDate=new Intl.DateTimeFormat("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"Europe/Paris"});
+      for (const demande of data.demandes) {
+        const ligne=document.createElement("p");
+        ligne.className="lcdp-box-liste-card__message";
+        const mois=/^\d{4}-\d{2}-01$/.test(String(demande.mois_cible||""))
+          ? formatMois.format(new Date(demande.mois_cible+"T12:00:00Z")) : null;
+        const expiration=new Date(demande.dateexpiration);
+        ligne.textContent=String(demande.nomparc||"Parc")+(mois?" — "+mois:Number.isFinite(expiration.getTime())?" — jusqu'au "+formatDate.format(expiration):"");
+        section.appendChild(ligne);
+      }
+      const lien=document.createElement("a");
+      lien.className="lcdp-link-secondary";
+      lien.href=construireUrlMembre("/ESPACE-MEMBRE/mes-informations.html");
+      lien.textContent="Gérer mes demandes dans Mon compte";
+      section.appendChild(lien);
+      if (ancien) ancien.replaceWith(section);
+      else etat.slotPlanning.before(section);
+    } catch (erreur) { console.warn("Demandes DUO ACTIF : ",erreur); }
   }
 
   function creerEtatMembreFallback() {
