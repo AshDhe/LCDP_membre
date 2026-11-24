@@ -2319,7 +2319,37 @@
   }
 
 
-// Vue DA conforme à la maquette : date réelle à gauche, état réel en badge.
+// Ouverture du parcours DA existant, avec ses contrôles serveur et sans duplication.
+let ouvertureDaCompteEnCours = false;
+async function ouvrirDemandeDaDepuisCompte() {
+  if (ouvertureDaCompteEnCours || document.getElementById("lcdp-da-membre-overlay-slot")) return;
+  ouvertureDaCompteEnCours = true;
+  try {
+    if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
+      await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js");
+    }
+    if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
+      throw new Error("Le formulaire de demande d'abonnement est indisponible.");
+    }
+    await window.LCDP_ouvrirPremiereDaMembre({
+      contexte: {...compteMembreActuel},
+      onStatudaChange: donnees => {
+        if (!compteMembreActuel) return;
+        const avant = normaliserStatudaCompte(compteMembreActuel.statuda || compteMembreActuel.statutDa || compteMembreActuel.da || "");
+        Object.assign(compteMembreActuel, donnees, {dateDa: donnees.dateda || null});
+        afficherStatutDaCompte(compteMembreActuel);
+        if (avant !== normaliserStatudaCompte(donnees.statuda)) {
+          void actualiserBlocAbonnementCompte(compteMembreActuel);
+        }
+      }
+    });
+  } catch (erreur) {
+    await afficherAlerte(erreur.message || "Le formulaire de demande d'abonnement est indisponible.");
+  } finally {
+    ouvertureDaCompteEnCours = false;
+  }
+}
+
 // Le champ de lecture d'origine reste dans le DOM pour le formulaire.
 function afficherStatutDaCompte(compte) {
   const input = document.getElementById("champ-da-membre");
@@ -2334,6 +2364,9 @@ function afficherStatutDaCompte(compte) {
   const enCours = ["encours", "en_cours", "attente"].includes(statutBrut);
   const validee = statutBrut === "oui";
   const nonValidee = statutBrut === "non";
+  const nonTransmise = !statutBrut && !dateBrute;
+  if (nonTransmise) label.textContent = "DA non transmise";
+  else if (enCours) label.textContent = "Votre DA a été transmise" + (dateBrute ? " le " + formaterDate(dateBrute) : "");
   const libelle = enCours ? "En cours" : validee ? "Validée" : nonValidee ? "Non validée"
     : statutBrut ? nettoyerTexteSimple(compte?.statuda || compte?.statutDa || compte?.da) : "Non transmise";
 
@@ -2343,12 +2376,27 @@ function afficherStatutDaCompte(compte) {
   ligne.classList.toggle("lcdp-compte-da--non-validee", nonValidee);
   ligne.classList.toggle("lcdp-compte-da--autre", !enCours && !validee && !nonValidee);
   let badge = controle.querySelector(".lcdp-compte-da__statut");
-  if (!badge) {
-    badge = document.createElement("span");
-    badge.className = "lcdp-compte-da__statut";
-    controle.appendChild(badge);
+  let action = controle.querySelector("[data-lcdp-compte-da-action]");
+  if (nonTransmise) {
+    badge?.remove();
+    if (!action) {
+      action = document.createElement("button");
+      action.type = "button";
+      action.className = "lcdp-ui-badge lcdp-ui-badge--action";
+      action.setAttribute("data-lcdp-compte-da-action", "");
+      action.textContent = "Faire ma demande de DA";
+      action.addEventListener("click", ouvrirDemandeDaDepuisCompte);
+      controle.appendChild(action);
+    }
+  } else {
+    action?.remove();
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "lcdp-compte-da__statut";
+      controle.appendChild(badge);
+    }
+    badge.textContent = libelle;
   }
-  badge.textContent = libelle;
 }
 
   function formaterStatutCompte(value) {
