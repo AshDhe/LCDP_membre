@@ -1620,9 +1620,10 @@
       ligne.className="lcdp-compte-alerte";
       const description=document.createElement("span");
       description.className="lcdp-compte-alerte__nom";
-      description.style.cursor="default";
-      description.textContent=nomParc+" — du "+dateDuoActifFrancais(demande.datecreation)+
-        " au "+dateDuoActifFrancais(demande.dateexpiration);
+      const mois = /^\d{4}-\d{2}-01$/.test(String(demande.mois_cible||""))
+        ? new Intl.DateTimeFormat("fr-FR",{month:"long",year:"numeric",timeZone:"Europe/Paris"}).format(new Date(demande.mois_cible+"T12:00:00Z"))
+        : null;
+      description.textContent = mois ? nomParc+" — "+mois : nomParc+" — du "+dateDuoActifFrancais(demande.datecreation)+" au "+dateDuoActifFrancais(demande.dateexpiration);
       const supprimer=document.createElement("button");
       supprimer.type="button";
       supprimer.className="lcdp-compte-alerte__action lcdp-compte-alerte__supprimer";
@@ -1780,7 +1781,9 @@
         </svg>`;
     }
 
-    champ.appendChild(bouton);
+    // Champs imbriqués : le contrôle générique fournit le conteneur positionné.
+    if (action.id === "modifier-telephone-membre" || champ.classList.contains("lcdp-compte-equipement-temoin")) zoneControl.appendChild(bouton);
+    else champ.appendChild(bouton);
   }
 
   function ajouterBadgeInformationDansChamp(champId, badgeConfig) {
