@@ -879,13 +879,12 @@
       croix.hidden=true;
       const champ=await creerChampDialogue({type:"coda",id:"selfie-coda",name:"coda",label:"Saisissez votre CODA."});
       if(!actif)return;
-      const label=champ.querySelector("[data-lcdp-champ-label-zone]");
+      message=champ.querySelector("[data-lcdp-champ-description]");
       const valeur=champ.querySelector('input[type="hidden"][name="coda"]');
       const controle=champ.querySelector("[data-lcdp-champ-control]");
-      if(!label||!valeur||!controle)throw Error("Champ CODA incomplet.");
-      message=document.createElement("p");message.className="lcdp-box-champ-formulaire__description";
+      if(!message||!valeur||!controle)throw Error("Champ CODA incomplet.");
+      message.hidden=false;
       message.setAttribute("role","status");message.setAttribute("aria-live","polite");message.textContent="Deux essais maximum";
-      label.appendChild(message);
       cases.push(...controle.querySelectorAll(".lcdp-box-champ-formulaire__code-cases input"));
       if(cases.length!==4)throw Error("Champ CODA incomplet.");
       cases.forEach((c,i)=>{
@@ -3715,6 +3714,7 @@ function afficherResumePointsPassion(compte) {
         label: "Nouveau numéro de téléphone",
         type: "tel",
         autocomplete: "tel-national",
+        placeholder: "Dix chiffres avec ou sans espaces",
         maxlength: 20,
         required: true,
         value: compteMembreActuel?.tel || compteMembreActuel?.telephone || "",
@@ -4068,6 +4068,7 @@ function afficherResumePointsPassion(compte) {
     input.type = configurationChamp.type || "text";
     input.required = configurationChamp.required === true;
     input.value = configurationChamp.value || "";
+    if (configurationChamp.placeholder) input.placeholder = configurationChamp.placeholder;
     if (configurationChamp.autocapitalize) input.setAttribute("autocapitalize",configurationChamp.autocapitalize);
     if (configurationChamp.maxlength) input.maxLength=configurationChamp.maxlength;
 
