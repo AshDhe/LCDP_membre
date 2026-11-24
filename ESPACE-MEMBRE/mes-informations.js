@@ -719,7 +719,7 @@
     section.setAttribute("data-lcdp-selfie-page","");
     section.setAttribute("aria-label","Modifier mon selfie");
     const conteneur=document.createElement("div");conteneur.className="lcdp-page-container";
-    const d=document.createElement("div");d.id="dialogue-selfie";d.dataset.etape="coda";
+    const d=document.createElement("div");d.id="dialogue-selfie";d.dataset.etape="permission-camera";
     conteneur.appendChild(d);section.appendChild(conteneur);
     anciens.forEach(({element})=>{element.hidden=true;});
     main.appendChild(section);main.scrollTop=0;
@@ -734,6 +734,76 @@
     }
     const quitter=()=>arreter();
     window.addEventListener("pagehide",quitter,{once:true});
+    async function obtenirFluxCamera(){
+      if(!navigator.mediaDevices?.getUserMedia)throw Error("La caméra n’est pas accessible. Utilisez un navigateur compatible en HTTPS.");
+      return navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"user"},width:{ideal:720},height:{ideal:720}},audio:false});
+    }
+    function messageErreurCamera(e){
+      return e.name==="NotAllowedError"||e.name==="PermissionDeniedError"
+        ?"Accès à la caméra refusé. Autorisez la caméra dans les paramètres de ce site (à gauche de la barre d’adresse), puis réessayez."
+        :e.name==="NotFoundError"?"Aucune caméra disponible sur cet appareil."
+        :e.name==="NotReadableError"?"La caméra est indisponible. Vérifiez qu’elle n’est pas utilisée par une autre application, puis réessayez."
+        :e.message||"Caméra indisponible.";
+    }
+
+    async function verifierCameraAvantCoda(){
+      if(!actif)return;
+      d.dataset.etape="permission-camera";
+      try{
+        const fragment=await chargerFragmentObjet("/HTMLBASE/04-dialogue-champ.html");
+        if(!actif)return;
+        d.replaceChildren(fragment);
+        const boite=d.querySelector("[data-lcdp-box-dialogue-champ]");
+        boite.setAttribute("role","region");boite.removeAttribute("aria-modal");
+        d.querySelector("[data-lcdp-dialogue-champ-title]").textContent="Autorisation de la caméra";
+        const form=d.querySelector("[data-lcdp-dialogue-champ-form]");
+        const zone=d.querySelector("[data-lcdp-dialogue-champ-content]");
+        const valider=d.querySelector("[data-lcdp-dialogue-champ-submit]");
+        const annuler=d.querySelector("[data-lcdp-dialogue-champ-cancel]");
+        d.querySelector("[data-lcdp-dialogue-champ-close]").hidden=true;
+        const message=document.createElement("p");
+        message.className="lcdp-cle-dialogue-note";
+        message.setAttribute("role","status");message.setAttribute("aria-live","polite");
+        message.textContent="Autorisez la caméra sur ce navigateur pour prendre votre selfie.";
+        zone.appendChild(message);
+        valider.textContent="Autoriser la caméra";
+        valider.disabled=false;
+        annuler.onclick=()=>fermerParcours();
+        let verification=false;
+        async function verifier(){
+          if(verification||!actif||d.dataset.etape!=="permission-camera")return;
+          verification=true;valider.disabled=true;message.textContent="Vérification de la caméra…";
+          try{
+            const flux=await obtenirFluxCamera();
+            // La permission est confirmée par le navigateur. Aucun flux ni image
+            // n’est conservé pendant la saisie du CODA.
+            flux.getTracks().forEach(t=>t.stop());
+            if(!actif)return;
+            await ouvrirSaisieCoda();
+          }catch(e){
+            if(actif&&d.dataset.etape==="permission-camera"){
+              message.textContent=messageErreurCamera(e);
+              valider.textContent="Réessayer";
+            }
+          }finally{
+            verification=false;
+            if(actif&&d.dataset.etape==="permission-camera")valider.disabled=false;
+          }
+        }
+        form.addEventListener("submit",event=>{event.preventDefault();void verifier();});
+        // Permissions API n’est pas disponible dans tous les navigateurs :
+        // dans ce cas, la commande explicite getUserMedia reste la référence.
+        let permission=null;
+        try{permission=await navigator.permissions?.query({name:"camera"});}catch{}
+        if(!actif||d.dataset.etape!=="permission-camera")return;
+        if(permission?.state==="granted")await verifier();
+        else if(!verification)valider.focus();
+      }catch(e){if(actif){fermerParcours();await afficherAlerte("Le contrôle de la caméra est indisponible.");}}
+    }
+
+    async function ouvrirSaisieCoda(){
+    if(!actif)return;
+    d.dataset.etape="coda";
     let form,zone,message,valider,annuler,erreur,croix;
     const cases=[];
     try{
@@ -801,6 +871,7 @@
         if(actif&&d.dataset.etape==="coda"){valider.disabled=bloque;annuler.disabled=false;if(!bloque)cases[0]?.focus();}
       }
     });
+    }
 
     async function ouvrirCameraSelfie(){
       if(!actif||!jeton)return;
@@ -830,8 +901,7 @@
         message.textContent="Ouverture de la caméra…";
         arreterCamera();
         try{
-        if(!navigator.mediaDevices?.getUserMedia)throw Error("La caméra n’est pas accessible. Utilisez un navigateur compatible en HTTPS.");
-        const obtenu=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"user"},width:{ideal:720},height:{ideal:720}},audio:false});
+        const obtenu=await obtenirFluxCamera();
         if(!actif){obtenu.getTracks().forEach(t=>t.stop());return;}
         stream=obtenu;video.srcObject=stream;
         await video.play();if(!actif)return;
@@ -844,16 +914,13 @@
             arreterCamera();video.hidden=true;
             capture.textContent="Réessayer";
             capture.onclick=activerCamera;
-            message.textContent=e.name==="NotAllowedError"||e.name==="PermissionDeniedError"
-              ?"Accès à la caméra refusé. Autorisez la caméra dans les paramètres de ce site (à gauche de la barre d’adresse), puis réessayez."
-              :e.name==="NotFoundError"?"Aucune caméra disponible sur cet appareil."
-              :e.name==="NotReadableError"?"La caméra est indisponible. Vérifiez qu’elle n’est pas utilisée par une autre application, puis réessayez."
-              :e.message||"Caméra indisponible.";
+            message.textContent=messageErreurCamera(e);
           }
         }finally{activationEnCours=false;if(actif&&d.dataset.etape==="capture")capture.disabled=false;}
       }
       capture.onclick=activerCamera;
       capture.focus();
+      await activerCamera();
     }
 
     function afficherApercuSelfie(blob){
@@ -883,6 +950,8 @@
       };
       valider.focus();
     }
+
+    await verifierCameraAvantCoda();
   }
 
   function ajouterTitresSectionsCompte() {
