@@ -68,6 +68,7 @@
 
   let compteMembreActuel = null;
   let versionChargementAbonnementsCompte = 0;
+  let abonnementPermanentCompte = false;
   let promesseChargementDiginumCompte = null;
 
   // Même texte et même présentation pour les champs bancaires et d'adresse
@@ -488,6 +489,7 @@
       ligne.setAttribute("data-lcdp-box-champ-formulaire","");
       const labelZone=document.createElement("div");labelZone.className="lcdp-box-champ-formulaire__label-zone";
       const label=document.createElement("span");label.className="lcdp-box-champ-formulaire__label";
+      label.className="lcdp-box-champ-formulaire__lecture";
       label.textContent=equipement.nom || "Témoin La Clé du Parc";labelZone.appendChild(label);
       const control=document.createElement("div");control.className="lcdp-box-champ-formulaire__control";
       control.setAttribute("data-lcdp-champ-control","");
@@ -539,7 +541,13 @@
       valeur.textContent="–";
       ligne.append(valeur);
     }
-    liste.replaceChildren(ligne,fragment);
+    if(aDesTemoins){
+      const contenu=document.createElement("div");
+      contenu.className="lcdp-compte-equipements__liste";
+      contenu.append(fragment);
+      ligne.append(contenu);
+    }
+    liste.replaceChildren(ligne);
   }
   async function chargerEquipementsPresence(){
     const liste=document.getElementById("lcdp-compte-equipements-temoins");
@@ -1053,7 +1061,7 @@
     if(!compteIndiqueAbonne(compteMembreActuel)){await afficherAlerte("Un abonnement est nécessaire.");return;}
     if(compteMembreActuel.abonnementSuspendu===true||compteMembreActuel.suspendu===true){await afficherAlerte("Votre abonnement est suspendu.");return;}
     if(typeof window.LCDP_ouvrirFormulaireAlertePlanifier!=="function")throw Error("Formulaire ALERTE PLANIFIER indisponible.");
-    await window.LCDP_ouvrirFormulaireAlertePlanifier({onEnregistre:async()=>{
+    await window.LCDP_ouvrirFormulaireAlertePlanifier({permanent:abonnementPermanentCompte,onEnregistre:async()=>{
       await chargerAlertesCompte();
       await afficherInformationMembre("L’alerte a été enregistrée.","SERVICE");
     }});
@@ -1307,6 +1315,7 @@
     const section = document.getElementById("lcdp-compte-abonnement");
     if (!section) return;
     const version = ++versionChargementAbonnementsCompte;
+    abonnementPermanentCompte = false;
     const da = normaliserStatudaCompte(compte?.statuda || compte?.statutDa || compte?.da || "");
     section.hidden = false;
     const resume = section.querySelector("#lcdp-compte-abonnement-resume");
@@ -1360,6 +1369,7 @@
       const maintenant = new Date();
       const aujourdHui = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate());
       const tries = trierAbonnementsCompte(abonnements);
+      abonnementPermanentCompte = tries.some(abo => rangAbonnementCompte(abo, aujourdHui) === 0 && ["1A","11M","10M"].includes(String(abo?.typabo || abo?.abonnement || "").trim().toUpperCase()));
       const principal = tries.find(abo => rangAbonnementCompte(abo, aujourdHui) === 0) ||
         tries.find(abo => rangAbonnementCompte(abo, aujourdHui) === 1);
       if (principal) {
@@ -2011,7 +2021,7 @@
     const data=await apiDuoActifCompte();
     liste.replaceChildren();
     if(!Array.isArray(data.demandes)||!data.demandes.length) {
-      afficherServiceVideAvecAction(liste,"Aucune demande enregistrée.","Faire une demande",()=>{window.location.href=construireUrlMembre("/ESPACE-MEMBRE/planning-membre.html");});
+      afficherServiceVideAvecAction(liste,"Aucune demande enregistrée.","Faire une demande",()=>{window.location.href=construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html");});
       return;
     }
     for(const demande of data.demandes) {
