@@ -834,27 +834,23 @@
       annuler=d.querySelector("[data-lcdp-dialogue-champ-cancel]");
       croix=d.querySelector("[data-lcdp-dialogue-champ-close]");
       croix.hidden=true;
-      const description=document.createElement("p");
-      description.className="lcdp-cle-dialogue-description";description.textContent="Saisissez votre CODA.";
-      message=document.createElement("p");message.className="lcdp-cle-dialogue-note";
+      const champ=await creerChampDialogue({type:"coda",id:"selfie-coda",name:"coda",label:"Saisissez votre CODA."});
+      if(!actif)return;
+      const label=champ.querySelector("[data-lcdp-champ-label-zone]");
+      const valeur=champ.querySelector('input[type="hidden"][name="coda"]');
+      const controle=champ.querySelector("[data-lcdp-champ-control]");
+      if(!label||!valeur||!controle)throw Error("Champ CODA incomplet.");
+      message=document.createElement("p");message.className="lcdp-box-champ-formulaire__description";
       message.setAttribute("role","status");message.setAttribute("aria-live","polite");message.textContent="Deux essais maximum";
-      const groupe=document.createElement("div");groupe.className="lcdp-cle-code-quatre-cases";
-      groupe.setAttribute("role","group");groupe.setAttribute("aria-label","Saisie du code à quatre chiffres");
-      for(let i=0;i<4;i++){
-        const c=document.createElement("input");c.type="password";c.inputMode="numeric";c.maxLength=1;c.autocomplete="off";c.pattern="[0-9]";
-        c.setAttribute("aria-label","Chiffre "+String(i+1)+" sur 4");
-        c.addEventListener("input",()=>{c.value=c.value.replace(/\D/g,"").slice(-1);erreur.hidden=true;erreur.textContent="";if(c.value&&i<3)cases[i+1].focus();});
-        c.addEventListener("keydown",e=>{if(e.key==="Backspace"&&!c.value&&i>0)cases[i-1].focus();if(e.key==="ArrowLeft"&&i>0)cases[i-1].focus();if(e.key==="ArrowRight"&&i<3)cases[i+1].focus();});
-        c.addEventListener("paste",e=>{const chiffres=(e.clipboardData?.getData("text")||"").replace(/\D/g,"").slice(0,4-i);if(!chiffres)return;e.preventDefault();Array.from(chiffres).forEach((ch,j)=>{cases[i+j].value=ch;});erreur.hidden=true;erreur.textContent="";cases[Math.min(3,i+chiffres.length)].focus();});
-        cases.push(c);groupe.appendChild(c);
-      }
-      const montrer=document.createElement("label");
-      montrer.className="lcdp-box-champ-formulaire__checkbox-line";
-      const afficher=document.createElement("input");afficher.type="checkbox";
-      const texte=document.createElement("span");texte.textContent="Afficher la saisie";
-      afficher.addEventListener("change",()=>cases.forEach(c=>{c.type=afficher.checked?"text":"password";}));
-      montrer.append(afficher,texte);
-      zone.append(description,groupe,montrer,message);
+      label.appendChild(message);
+      cases.push(...controle.querySelectorAll(".lcdp-box-champ-formulaire__code-cases input"));
+      if(cases.length!==4)throw Error("Champ CODA incomplet.");
+      cases.forEach((c,i)=>{
+        c.addEventListener("input",()=>{erreur.hidden=true;erreur.textContent="";});
+        c.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"&&i>0)cases[i-1].focus();if(e.key==="ArrowRight"&&i<3)cases[i+1].focus();});
+        c.addEventListener("paste",e=>{const chiffres=(e.clipboardData?.getData("text")||"").replace(/\D/g,"").slice(0,4-i);if(!chiffres)return;e.preventDefault();Array.from(chiffres).forEach((ch,j)=>{cases[i+j].value=ch;});valeur.value=cases.map(ch=>ch.value).join("");erreur.hidden=true;erreur.textContent="";cases[Math.min(3,i+chiffres.length)].focus();});
+      });
+      zone.appendChild(champ);
       annuler.onclick=()=>{if(!occupe)fermerParcours();};
       cases[0].focus();
     }catch(e){fermerParcours();await afficherAlerte("Le formulaire CODA est indisponible.");return;}
