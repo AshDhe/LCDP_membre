@@ -592,8 +592,8 @@
   }
 
   const selfiesCompte = {
-    biometrie: {prefixe:"selfie",libelle:"SELFIE BIOMÉTRIQUE",route:"/selfie",coda:true,url:null},
-    duoday: {prefixe:"selfie-duoday",libelle:"SELFIE DUO DAY",route:"/selfie-duoday",coda:false,url:null}
+    biometrie: {prefixe:"selfie",libelle:"SELFIE BIOMÉTRIQUE",lignes:["SELFIE BIO","MÉTRIQUE"],route:"/selfie",coda:true,url:null},
+    duoday: {prefixe:"selfie-duoday",libelle:"SELFIE GEO ACTIF",lignes:["SELFIE","GEO ACTIF"],route:"/selfie-duoday",coda:false,url:null}
   };
   function initialiserZoneSelfie(type="biometrie",apres=null) {
     const config=selfiesCompte[type];
@@ -608,7 +608,7 @@
     zone.setAttribute("aria-label", config.libelle);
     zone.className = bloc.className;
     zone.setAttribute("data-lcdp-box-champ-formulaire", "");
-    zone.innerHTML = '<div class="lcdp-box-champ-formulaire__label-zone"><span class="lcdp-box-champ-formulaire__label">'+config.libelle+'</span></div><div class="lcdp-box-champ-formulaire__control lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><button type="button" id="'+id+'-badge" aria-label="Agrandir mon selfie" title="Agrandir mon selfie" hidden><img id="'+id+'-photo" alt="Votre selfie" hidden></button><span class="lcdp-selfie-texte" id="'+id+'-libelle"><span id="'+id+'-etat" role="status">–</span></span></div></div>';
+    zone.innerHTML = '<div class="lcdp-box-champ-formulaire__label-zone"><span class="lcdp-box-champ-formulaire__label">'+config.lignes[0]+'<br>'+config.lignes[1]+'</span><span class="lcdp-selfie-texte" id="'+id+'-libelle" hidden><span id="'+id+'-etat" role="status"></span></span></div><div class="lcdp-box-champ-formulaire__control lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><button type="button" id="'+id+'-badge" aria-label="Aucun selfie enregistré" disabled><svg data-selfie-silhouette width="40" height="40" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="12" cy="7.5" r="4"></circle><path d="M3 21v-2a9 9 0 0 1 18 0v2z"></path></svg><img id="'+id+'-photo" alt="" hidden></button></div></div>';
     const fauxInput = {parentNode:zone.lastElementChild};
     ajouterPictoModificationDansChamp(fauxInput, zone, {id:"modifier-"+id,texte:"Prendre ou remplacer mon "+config.libelle.toLowerCase(),pictoRouge:config.coda,neutre:!config.coda});
     cible.insertAdjacentElement("afterend", zone);
@@ -671,29 +671,35 @@
     const badge = document.getElementById(id+"-badge");
     if(!statut||!photo||!badge)return;
     function masquerPhoto() {
-      document.getElementById(id+"-libelle")?.removeAttribute("hidden");
       photo.hidden = true;
-      badge.hidden = true;
+      badge.disabled = true;
+      badge.setAttribute("aria-label","Aucun selfie enregistré");
+      badge.removeAttribute("title");
+      badge.querySelector("[data-selfie-silhouette]").hidden=false;
       photo.removeAttribute("src");
       if (config.url) URL.revokeObjectURL(config.url);
       config.url = null;
     }
     photo.onerror = () => {
       masquerPhoto();
-      statut.textContent = "Selfie indisponible. Réessayez.";
+      statut.textContent = "Selfie indisponible.";
+      document.getElementById(id+"-libelle")?.removeAttribute("hidden");
     };
     try {
       const r = await fetch(ENDPOINT_MON_COMPTE_MEMBRE+config.route,{credentials:"include",cache:"no-store"});
       if(r.status===401){redirigerConnexionMembre("inactive");return;}
-      if(r.status===404){masquerPhoto();statut.textContent="–";return;}
+      if(r.status===404){masquerPhoto();statut.textContent="";document.getElementById(id+"-libelle")?.setAttribute("hidden","");return;}
       if(!r.ok)throw Error("Selfie indisponible");
       const blob=await r.blob();
       const image=document.getElementById(id+"-photo");
-      const ancienne=config.url;config.url=URL.createObjectURL(blob);image.src=config.url;image.hidden=false;badge.hidden=false;
+      const ancienne=config.url;config.url=URL.createObjectURL(blob);image.src=config.url;
+      if(typeof image.decode==="function")await image.decode();
+      image.hidden=false;badge.disabled=false;badge.setAttribute("aria-label","Agrandir mon selfie");badge.title="Agrandir mon selfie";
+      badge.querySelector("[data-selfie-silhouette]").hidden=true;
       document.getElementById(id+"-libelle")?.setAttribute("hidden", "");
       if(ancienne)URL.revokeObjectURL(ancienne);
       statut.textContent="";
-    } catch { masquerPhoto();statut.textContent="Selfie indisponible. Réessayez."; }
+    } catch { masquerPhoto();statut.textContent="Selfie indisponible.";document.getElementById(id+"-libelle")?.removeAttribute("hidden"); }
   }
   function agrandirSelfie(type="biometrie") {
     const config=selfiesCompte[type];
@@ -762,6 +768,23 @@
     async function verifierCameraAvantCoda(){
       if(!actif)return;
       d.dataset.etape="permission-camera";
+      let permission=null;
+      try{permission=await navigator.permissions?.query({name:"camera"});}catch{}
+      if(!actif)return;
+      let refusInitial=null;
+      if(permission?.state==="granted"){
+        try{
+          const flux=await obtenirFluxCamera();
+          flux.getTracks().forEach(t=>t.stop());
+          if(!actif)return;
+          permissionConfirmee=true;
+        }catch(e){refusInitial=e;}
+        if(!actif)return;
+        if(permissionConfirmee){
+          if(config.coda)await ouvrirSaisieCoda();else await ouvrirCameraSelfie();
+          return;
+        }
+      }
       try{
         const fragment=await chargerFragmentObjet("/HTMLBASE/04-dialogue-champ.html");
         if(!actif)return;
@@ -779,13 +802,14 @@
         message.setAttribute("role","status");message.setAttribute("aria-live","polite");
         message.textContent="Autorisez la caméra sur ce navigateur pour prendre votre selfie.";
         zone.appendChild(message);
-        valider.textContent="Autoriser la caméra";
+        valider.textContent=refusInitial?"Réessayer":"Autoriser la caméra";
+        if(refusInitial)message.textContent=messageErreurCamera(refusInitial);
         valider.disabled=false;
         annuler.onclick=()=>fermerParcours();
         let verification=false;
         async function verifier(){
           if(verification||!actif||d.dataset.etape!=="permission-camera")return;
-          verification=true;valider.disabled=true;message.textContent="Vérification de la caméra…";
+          verification=true;valider.disabled=true;form.setAttribute("aria-busy","true");
           try{
             const flux=await obtenirFluxCamera();
             // La permission est confirmée par le navigateur. Aucun flux ni image
@@ -801,17 +825,11 @@
             }
           }finally{
             verification=false;
-            if(actif&&d.dataset.etape==="permission-camera")valider.disabled=false;
+            if(actif&&d.dataset.etape==="permission-camera"){valider.disabled=false;form.removeAttribute("aria-busy");}
           }
         }
         form.addEventListener("submit",event=>{event.preventDefault();void verifier();});
-        // Permissions API n’est pas disponible dans tous les navigateurs :
-        // dans ce cas, la commande explicite getUserMedia reste la référence.
-        let permission=null;
-        try{permission=await navigator.permissions?.query({name:"camera"});}catch{}
-        if(!actif||d.dataset.etape!=="permission-camera")return;
-        if(permission?.state==="granted")await verifier();
-        else if(!verification)valider.focus();
+        if(actif&&d.dataset.etape==="permission-camera"&&!verification)valider.focus();
       }catch(e){if(actif){fermerParcours();await afficherAlerte("Le contrôle de la caméra est indisponible.");}}
     }
 
@@ -860,7 +878,7 @@
       const coda=cases.map(c=>c.value).join("");
       if(!/^\d{4}$/.test(coda)){erreur.textContent="Saisissez les quatre chiffres de votre CODA.";erreur.hidden=false;return;}
       occupe=true;valider.disabled=true;annuler.disabled=true;erreur.hidden=true;cases.forEach(c=>{c.disabled=true;});
-      message.textContent="Vérification…";
+      form.setAttribute("aria-busy","true");
       try{
         const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie/autoriser",{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({coda})});
         const resultat=await r.json().catch(()=>null);
@@ -878,7 +896,7 @@
       finally{
         cases.forEach(c=>{c.value="";c.disabled=bloque;});
         occupe=false;
-        if(actif&&d.dataset.etape==="coda"){valider.disabled=bloque;annuler.disabled=false;if(!bloque)cases[0]?.focus();}
+        if(actif&&d.dataset.etape==="coda"){form.removeAttribute("aria-busy");valider.disabled=bloque;annuler.disabled=false;if(!bloque)cases[0]?.focus();}
       }
     });
     }
@@ -886,13 +904,13 @@
     async function ouvrirCameraSelfie(){
       if(!actif||!peutCapturer())return;
       d.dataset.etape="capture";
-      d.innerHTML='<div class="lcdp-box-dialogue-champ" role="region"><div class="lcdp-box-dialogue-champ__card"><h2 id="titre-selfie" class="lcdp-box-dialogue-champ__title">Selfie</h2><video autoplay playsinline muted aria-label="Aperçu de votre selfie" hidden></video><p class="lcdp-cle-dialogue-note" role="status" aria-live="polite" data-selfie-message>Activez votre caméra pour prendre votre selfie.</p><div class="lcdp-box-dialogue-champ__actions"><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Annuler</button><button type="button" class="lcdp-button lcdp-button-primary" data-selfie-capture>Activer la caméra</button></div></div></div>';
+      d.innerHTML='<div class="lcdp-box-dialogue-champ" role="region"><div class="lcdp-box-dialogue-champ__card"><h2 id="titre-selfie" class="lcdp-box-dialogue-champ__title">Selfie</h2><video autoplay playsinline muted aria-label="Aperçu de votre selfie" hidden></video><p class="lcdp-cle-dialogue-note" role="status" aria-live="polite" data-selfie-message>Placez votre visage au centre de l’image.</p><div class="lcdp-box-dialogue-champ__actions"><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Annuler</button><button type="button" class="lcdp-button lcdp-button-primary" data-selfie-capture disabled>Prendre la photo</button></div></div></div>';
       video=d.querySelector("video");
       const message=d.querySelector("[data-selfie-message]"),capture=d.querySelector("[data-selfie-capture]"),fermer=d.querySelector("[data-selfie-fermer]");
       fermer.onclick=()=>{if(!occupe)fermerParcours();};
       async function prendrePhoto(){
         if(occupe||!actif||!peutCapturer()||!video.videoWidth)return;
-        occupe=true;capture.disabled=true;fermer.disabled=true;message.textContent="Préparation de la photo…";
+        occupe=true;capture.disabled=true;fermer.disabled=true;
         try{
           const canvas=document.createElement("canvas");canvas.width=512;canvas.height=512;
           const cote=Math.min(video.videoWidth,video.videoHeight);
@@ -908,7 +926,7 @@
       async function activerCamera(){
         if(activationEnCours||!actif||!peutCapturer())return;
         activationEnCours=true;capture.disabled=true;
-        message.textContent="Ouverture de la caméra…";
+        message.textContent="Placez votre visage au centre de l’image.";
         arreterCamera();
         try{
         const obtenu=await obtenirFluxCamera();
@@ -946,7 +964,7 @@
       reprendre.onclick=()=>{if(occupe||!actif||!peutCapturer())return;libererApercu();void ouvrirCameraSelfie();};
       valider.onclick=async()=>{
         if(occupe||!actif||!peutCapturer())return;
-        occupe=true;reprendre.disabled=true;valider.disabled=true;fermer.disabled=true;message.textContent="Enregistrement…";
+        occupe=true;reprendre.disabled=true;valider.disabled=true;fermer.disabled=true;d.setAttribute("aria-busy","true");
         try{
           const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+config.route,{method:"PUT",credentials:"include",cache:"no-store",headers:{"Content-Type":"image/jpeg",...(config.coda?{"Authorization":"Bearer "+jeton}:{})},body:blob});
           const resultat=await r.json().catch(()=>null);
@@ -956,7 +974,7 @@
           if(!r.ok||resultat?.ok!==true)throw Error(resultat?.message||"La photo n’a pas pu être enregistrée.");
           arreter();fermerParcours();await chargerSelfie(type);
         }catch(e){if(actif)message.textContent=e.message||"Enregistrement impossible.";}
-        finally{occupe=false;if(actif){reprendre.disabled=!peutCapturer();valider.disabled=!peutCapturer();fermer.disabled=false;}}
+        finally{occupe=false;if(actif){d.removeAttribute("aria-busy");reprendre.disabled=!peutCapturer();valider.disabled=!peutCapturer();fermer.disabled=false;}}
       };
       valider.focus();
     }
