@@ -593,7 +593,7 @@
 
   const selfiesCompte = {
     biometrie: {prefixe:"selfie",libelle:"SELFIE BIOMÉTRIQUE",lignes:["SELFIE BIO","MÉTRIQUE"],route:"/selfie",coda:true,url:null},
-    duoday: {prefixe:"selfie-duoday",libelle:"SELFIE GEO ACTIF",lignes:["SELFIE","GEO ACTIF"],route:"/selfie-duoday",coda:false,url:null}
+    duoday: {prefixe:"selfie-duoday",libelle:"SELFIE DUO ACTIF",lignes:["SELFIE","DUO ACTIF"],route:"/selfie-duoday",coda:false,url:null}
   };
   function initialiserZoneSelfie(type="biometrie",apres=null) {
     const config=selfiesCompte[type];
