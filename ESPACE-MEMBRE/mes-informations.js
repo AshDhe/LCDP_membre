@@ -663,46 +663,79 @@
   async function ouvrirSelfie() {
     if(document.getElementById("dialogue-selfie"))return;
     const retourFocus=document.activeElement;
-    const d=document.createElement("dialog");
-    d.id="dialogue-selfie";d.dataset.etape="coda";
-    d.setAttribute("aria-labelledby","titre-selfie");
-    document.body.appendChild(d);
+    const main=document.querySelector(".lcdp-site-page > .lcdp-site-main");
+    if(!main)return;
+    const anciens=Array.from(main.children).map(element=>({element,hidden:element.hidden}));
+    const ancienScroll=main.scrollTop;
+    const section=document.createElement("section");
+    section.className="lcdp-page-section";
+    section.setAttribute("data-lcdp-selfie-page","");
+    section.setAttribute("aria-label","Modifier mon selfie");
+    const conteneur=document.createElement("div");conteneur.className="lcdp-page-container";
+    const d=document.createElement("div");d.id="dialogue-selfie";d.dataset.etape="coda";
+    conteneur.appendChild(d);section.appendChild(conteneur);
+    anciens.forEach(({element})=>{element.hidden=true;});
+    main.appendChild(section);main.scrollTop=0;
     let stream=null,actif=true,occupe=false,jeton=null,video=null,apercuUrl=null;
     function arreterCamera(){stream?.getTracks().forEach(t=>t.stop());stream=null;if(video)video.srcObject=null;}
     function libererApercu(){if(apercuUrl)URL.revokeObjectURL(apercuUrl);apercuUrl=null;}
     function arreter(){actif=false;jeton=null;arreterCamera();libererApercu();}
+    function fermerParcours(){
+      arreter();window.removeEventListener("pagehide",quitter);section.remove();
+      anciens.forEach(({element,hidden})=>{if(element.isConnected)element.hidden=hidden;});
+      main.scrollTop=ancienScroll;retourFocus?.focus();
+    }
     const quitter=()=>arreter();
-    d.addEventListener("close",()=>{arreter();window.removeEventListener("pagehide",quitter);d.remove();retourFocus?.focus();},{once:true});
-    d.addEventListener("cancel",e=>{if(occupe)e.preventDefault();});
     window.addEventListener("pagehide",quitter,{once:true});
-    d.innerHTML='<h2 id="titre-selfie" class="lcdp-title-section">Modifier mon selfie</h2><form class="lcdp-box-dialogue-champ__form" novalidate><div data-selfie-coda></div><p role="status" aria-live="polite" data-selfie-message>Deux essais maximum</p><div class="lcdp-selfie-actions"><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Annuler</button><button type="submit" class="lcdp-button lcdp-button-primary" disabled>Valider</button></div></form>';
-    d.showModal();
-    const form=d.querySelector("form"),zone=d.querySelector("[data-selfie-coda]"),message=d.querySelector("[data-selfie-message]"),valider=form.querySelector('button[type="submit"]'),annuler=d.querySelector("[data-selfie-fermer]");
-    annuler.onclick=()=>{if(!occupe)d.close();};
-    let champ;
+    let form,zone,message,valider,annuler,erreur,croix;
+    const cases=[];
     try{
-      champ=await creerChampDialogue({id:"coda-selfie",name:"coda",label:"Saisissez votre CODA",type:"coda",required:true});
+      const fragment=await chargerFragmentObjet("/HTMLBASE/04-dialogue-champ.html");
       if(!actif)return;
-      zone.appendChild(champ);valider.disabled=false;
-      champ.querySelector('input[type="password"]')?.focus();
-    }catch(e){if(actif)message.textContent="Le formulaire CODA est indisponible.";return;}
-    const cases=[...champ.querySelectorAll(".lcdp-box-champ-formulaire__code-cases input")];
-    const valeur=champ.querySelector('input[name="coda"]');
+      d.replaceChildren(fragment);
+      const boite=d.querySelector("[data-lcdp-box-dialogue-champ]");
+      boite.setAttribute("role","region");boite.removeAttribute("aria-modal");
+      d.querySelector("[data-lcdp-dialogue-champ-title]").textContent="Modifier mon selfie";
+      form=d.querySelector("[data-lcdp-dialogue-champ-form]");
+      zone=d.querySelector("[data-lcdp-dialogue-champ-content]");
+      erreur=d.querySelector("[data-lcdp-dialogue-champ-error]");
+      valider=d.querySelector("[data-lcdp-dialogue-champ-submit]");
+      annuler=d.querySelector("[data-lcdp-dialogue-champ-cancel]");
+      croix=d.querySelector("[data-lcdp-dialogue-champ-close]");
+      croix.hidden=true;
+      const description=document.createElement("p");
+      description.className="lcdp-cle-dialogue-description";description.textContent="Saisissez votre CODA.";
+      message=document.createElement("p");message.className="lcdp-cle-dialogue-note";
+      message.setAttribute("role","status");message.setAttribute("aria-live","polite");message.textContent="Deux essais maximum";
+      const groupe=document.createElement("div");groupe.className="lcdp-cle-code-quatre-cases";
+      groupe.setAttribute("role","group");groupe.setAttribute("aria-label","Saisie du code à quatre chiffres");
+      for(let i=0;i<4;i++){
+        const c=document.createElement("input");c.type="password";c.inputMode="numeric";c.maxLength=1;c.autocomplete="off";c.pattern="[0-9]";
+        c.setAttribute("aria-label","Chiffre "+String(i+1)+" sur 4");
+        c.addEventListener("input",()=>{c.value=c.value.replace(/\D/g,"").slice(-1);erreur.hidden=true;erreur.textContent="";if(c.value&&i<3)cases[i+1].focus();});
+        c.addEventListener("keydown",e=>{if(e.key==="Backspace"&&!c.value&&i>0)cases[i-1].focus();if(e.key==="ArrowLeft"&&i>0)cases[i-1].focus();if(e.key==="ArrowRight"&&i<3)cases[i+1].focus();});
+        c.addEventListener("paste",e=>{const chiffres=(e.clipboardData?.getData("text")||"").replace(/\D/g,"").slice(0,4-i);if(!chiffres)return;e.preventDefault();Array.from(chiffres).forEach((ch,j)=>{cases[i+j].value=ch;});erreur.hidden=true;erreur.textContent="";cases[Math.min(3,i+chiffres.length)].focus();});
+        cases.push(c);groupe.appendChild(c);
+      }
+      zone.append(description,groupe,message);
+      annuler.onclick=()=>{if(!occupe)fermerParcours();};
+      cases[0].focus();
+    }catch(e){fermerParcours();await afficherAlerte("Le formulaire CODA est indisponible.");return;}
     let bloque=false;
     form.addEventListener("submit",async e=>{
       e.preventDefault();if(occupe||bloque||!actif)return;
-      const coda=valeur.value;
-      if(!/^\d{4}$/.test(coda)){message.textContent="Saisissez les quatre chiffres de votre CODA.";return;}
-      occupe=true;valider.disabled=true;annuler.disabled=true;
+      const coda=cases.map(c=>c.value).join("");
+      if(!/^\d{4}$/.test(coda)){erreur.textContent="Saisissez les quatre chiffres de votre CODA.";erreur.hidden=false;return;}
+      occupe=true;valider.disabled=true;annuler.disabled=true;erreur.hidden=true;cases.forEach(c=>{c.disabled=true;});
       message.textContent="Vérification…";
       try{
         const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie/autoriser",{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({coda})});
         const resultat=await r.json().catch(()=>null);
         if(!actif)return;
-        if(r.status===401){d.close();redirigerConnexionMembre("inactive");return;}
+        if(r.status===401){fermerParcours();redirigerConnexionMembre("inactive");return;}
         if(!r.ok||resultat?.ok!==true||typeof resultat.jeton!=="string"||!/^[a-f0-9]{64}$/.test(resultat.jeton)){
           bloque=r.status===429||resultat?.attemptsRemaining===0||resultat?.reason==="coda_absent";
-          message.textContent=resultat?.message||"La vérification CODA est indisponible.";
+          message.textContent=resultat?.message||(r.status===404?"Le Worker MON COMPTE ne reconnaît pas la route selfie.":"La vérification CODA est indisponible.");
           return;
         }
         jeton=resultat.jeton;
@@ -710,7 +743,7 @@
         await ouvrirCameraSelfie();
       }catch(e){if(actif)message.textContent="La vérification CODA est indisponible.";}
       finally{
-        valeur.value="";cases.forEach(c=>{c.value="";});
+        cases.forEach(c=>{c.value="";c.disabled=bloque;});
         occupe=false;
         if(actif&&d.dataset.etape==="coda"){valider.disabled=bloque;annuler.disabled=false;if(!bloque)cases[0]?.focus();}
       }
@@ -719,10 +752,10 @@
     async function ouvrirCameraSelfie(){
       if(!actif||!jeton)return;
       d.dataset.etape="capture";
-      d.innerHTML='<h2 id="titre-selfie" class="lcdp-title-section">Selfie</h2><video autoplay playsinline muted aria-label="Aperçu de votre selfie"></video><p role="status" aria-live="polite" data-selfie-message>Ouverture de la caméra…</p><div class="lcdp-selfie-actions"><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Annuler</button><button type="button" class="lcdp-button lcdp-button-primary" data-selfie-capture disabled>Prendre la photo</button></div>';
+      d.innerHTML='<div class="lcdp-box-dialogue-champ" role="region"><div class="lcdp-box-dialogue-champ__card"><h2 id="titre-selfie" class="lcdp-box-dialogue-champ__title">Selfie</h2><video autoplay playsinline muted aria-label="Aperçu de votre selfie"></video><p role="status" aria-live="polite" data-selfie-message>Ouverture de la caméra…</p><div class="lcdp-box-dialogue-champ__actions"><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Annuler</button><button type="button" class="lcdp-button lcdp-button-primary" data-selfie-capture disabled>Prendre la photo</button></div></div></div>';
       video=d.querySelector("video");
       const message=d.querySelector("[data-selfie-message]"),capture=d.querySelector("[data-selfie-capture]"),fermer=d.querySelector("[data-selfie-fermer]");
-      fermer.onclick=()=>{if(!occupe)d.close();};
+      fermer.onclick=()=>{if(!occupe)fermerParcours();};
       capture.onclick=async()=>{
         if(occupe||!actif||!jeton||!video.videoWidth)return;
         occupe=true;capture.disabled=true;fermer.disabled=true;message.textContent="Préparation de la photo…";
@@ -753,10 +786,10 @@
       apercuUrl=URL.createObjectURL(blob);
       arreterCamera();
       d.dataset.etape="apercu";
-      d.innerHTML='<h2 id="titre-selfie" class="lcdp-title-section">Vérifier mon selfie</h2><img data-selfie-apercu alt="Votre selfie avant validation"><p role="status" aria-live="polite" data-selfie-message>Cette photo vous convient-elle ?</p><div class="lcdp-selfie-actions"><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-reprendre>Reprendre</button><button type="button" class="lcdp-button lcdp-button-primary" data-selfie-valider>Valider</button><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Annuler</button></div>';
+      d.innerHTML='<div class="lcdp-box-dialogue-champ" role="region"><div class="lcdp-box-dialogue-champ__card"><h2 id="titre-selfie" class="lcdp-box-dialogue-champ__title">Vérifier mon selfie</h2><img data-selfie-apercu alt="Votre selfie avant validation"><p role="status" aria-live="polite" data-selfie-message>Cette photo vous convient-elle ?</p><div class="lcdp-box-dialogue-champ__actions"><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-reprendre>Reprendre</button><button type="button" class="lcdp-button lcdp-button-primary" data-selfie-valider>Valider</button><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer data-selfie-annulation-seule>Annuler</button></div></div></div>';
       d.querySelector("[data-selfie-apercu]").src=apercuUrl;
       const message=d.querySelector("[data-selfie-message]"),reprendre=d.querySelector("[data-selfie-reprendre]"),valider=d.querySelector("[data-selfie-valider]"),fermer=d.querySelector("[data-selfie-fermer]");
-      fermer.onclick=()=>{if(!occupe)d.close();};
+      fermer.onclick=()=>{if(!occupe)fermerParcours();};
       reprendre.onclick=()=>{if(occupe||!actif||!jeton)return;libererApercu();void ouvrirCameraSelfie();};
       valider.onclick=async()=>{
         if(occupe||!actif||!jeton)return;
@@ -765,10 +798,10 @@
           const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie",{method:"PUT",credentials:"include",cache:"no-store",headers:{"Content-Type":"image/jpeg","Authorization":"Bearer "+jeton},body:blob});
           const resultat=await r.json().catch(()=>null);
           if(!actif)return;
-          if(r.status===401){d.close();redirigerConnexionMembre("inactive");return;}
+          if(r.status===401){fermerParcours();redirigerConnexionMembre("inactive");return;}
           if(r.status===403){jeton=null;message.textContent=resultat?.message||"Authentifiez-vous à nouveau avec votre CODA.";return;}
           if(!r.ok||resultat?.ok!==true)throw Error(resultat?.message||"La photo n’a pas pu être enregistrée.");
-          arreter();d.close();await chargerSelfie();
+          arreter();fermerParcours();await chargerSelfie();
         }catch(e){if(actif)message.textContent=e.message||"Enregistrement impossible.";}
         finally{occupe=false;if(actif){reprendre.disabled=!jeton;valider.disabled=!jeton;fermer.disabled=false;}}
       };
