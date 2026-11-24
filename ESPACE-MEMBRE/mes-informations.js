@@ -1106,18 +1106,21 @@
     listeAlertes.className="lcdp-compte-alertes-liste";
     listeAlertes.setAttribute("aria-live","polite");
     afficherSlotService(listeAlertes,"Chargement des alertes…");
-    const titreAlertes=document.createElement("h3");
-    titreAlertes.className="lcdp-compte-service__sous-titre";
-    titreAlertes.textContent="ALERTE PLANIFIÉE";
-    const titreDuoActif=document.createElement("h3");
-    titreDuoActif.className="lcdp-compte-service__sous-titre";
-    titreDuoActif.textContent="DEMANDE DUO ACTIF";
+    function creerCarteService(libelle, liste) {
+      const carte=document.createElement("div");
+      carte.className="lcdp-compte-relations__ligne";
+      const titre=document.createElement("span");
+      titre.className="lcdp-compte-relations__libelle";
+      titre.textContent=libelle;
+      carte.append(titre,liste);
+      return carte;
+    }
     const listeDuoActif=document.createElement("div");
     listeDuoActif.id="lcdp-compte-duoactif-liste";
     listeDuoActif.className="lcdp-compte-alertes-liste";
     listeDuoActif.setAttribute("aria-live","polite");
     afficherSlotService(listeDuoActif,"Chargement des demandes Duo Actif…");
-    services.append(titreServices,titreAlertes,listeAlertes,titreDuoActif,listeDuoActif);
+    services.append(titreServices,creerCarteService("Alerte planifiée",listeAlertes),creerCarteService("Demande DUO ACTIF",listeDuoActif));
     const statutMembre=fields.querySelector('[data-lcdp-compte-section="participation"]');
     if(statutMembre) {
       const abonnement = statutMembre.querySelector("#lcdp-compte-abonnement");
