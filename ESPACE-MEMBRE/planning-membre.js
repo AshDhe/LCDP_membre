@@ -70,7 +70,9 @@
       abonne: false,
       abonnementSuspendu: false,
       abonnementAnnuleNonPaye: false,
-      paiementSuspension: null
+      paiementSuspension: null,
+      statuda: null,
+      sourceApi: false
     }
   };
 
@@ -170,6 +172,7 @@
 
       etat.membre = membre;
       afficherStatutMembrePlanning(etat.membre);
+      actualiserSouscriptionMesAccesVide();
       return true;
     } catch (error) {
       console.warn("Statut membre indisponible sur le planning.", error);
@@ -213,6 +216,7 @@
       abonnementSuspendu: valeurBooleenneVraie(data.abonnementSuspendu || data.suspendu),
       abonnementAnnuleNonPaye: valeurBooleenneVraie(data.abonnementAnnuleNonPaye || data.abonnementAnnule || data.annuleNonPaye),
       paiementSuspension: data.paiementSuspension || data.paiementRegularisation || null,
+      statuda: String(data.statuda || "").trim().toLowerCase(),
       sourceApi: true
     };
   }
@@ -630,7 +634,51 @@
         etat.periodeAffichage === "avenir"
           ? (filtresPlanningActifs() ? "Aucun accès ne correspond aux filtres sélectionnés." : "Vous n’avez aucun accès à venir.")
           : "Aucun accès récent sur le mois en cours ou le mois précédent.";
-      zoneCartes.appendChild(message);
+      // Proposer les actions uniquement si aucun accès à venir n'existe,
+      // jamais lorsque les filtres masquent des réservations.
+      const aucunAccesAvenir = !filtrerEtTrierReservationsAgenda(etat.reservations, "avenir").length;
+      if (etat.periodeAffichage === "avenir" && !filtresPlanningActifs() && aucunAccesAvenir) {
+        const vide = document.createElement("div");
+        vide.className = "lcdp-mes-acces-vide";
+        vide.appendChild(message);
+
+        const textePlanifier = document.createElement("p");
+        textePlanifier.className = "lcdp-mes-acces-vide__texte";
+        textePlanifier.textContent = "Planifiez un nouvel accès ou une demande d'invitation.";
+        vide.appendChild(textePlanifier);
+
+        const boutonPlanifier = document.createElement("button");
+        boutonPlanifier.type = "button";
+        boutonPlanifier.className = "lcdp-button lcdp-button-primary lcdp-mes-acces-vide__bouton";
+        boutonPlanifier.textContent = "PLANIFIER";
+        boutonPlanifier.addEventListener("click", () => {
+          window.location.assign(construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html"));
+        });
+        vide.appendChild(boutonPlanifier);
+
+        const blocSouscription = document.createElement("div");
+        blocSouscription.className = "lcdp-mes-acces-vide__souscription";
+        blocSouscription.dataset.lcdpMesAccesSouscription = "";
+        blocSouscription.hidden = !souscriptionDirecteAutoriseeMesAcces();
+
+        const texteSouscription = document.createElement("p");
+        texteSouscription.className = "lcdp-mes-acces-vide__texte";
+        texteSouscription.textContent = "Souscrire directement un nouvel abonnement.";
+        blocSouscription.appendChild(texteSouscription);
+
+        const boutonSouscrire = document.createElement("button");
+        boutonSouscrire.type = "button";
+        boutonSouscrire.className = "lcdp-button lcdp-button-secondary lcdp-mes-acces-vide__bouton";
+        boutonSouscrire.textContent = "SOUSCRIRE";
+        boutonSouscrire.addEventListener("click", () => {
+          window.location.assign(construireUrlMembre("/ESPACE-MEMBRE/reserver-membre.html?mode=aboreza"));
+        });
+        blocSouscription.appendChild(boutonSouscrire);
+        vide.appendChild(blocSouscription);
+        zoneCartes.appendChild(vide);
+      } else {
+        zoneCartes.appendChild(message);
+      }
     } else {
       reservations.forEach(
         (reservation, index) => {
@@ -659,6 +707,7 @@
       slotPlanning.replaceChildren(
         fragment
       );
+      actualiserSouscriptionMesAccesVide();
       etat.modeAffichage = "liste";
       actualiserModeWrapperPlanning();
       actualiserBoutonAffichagePlanningMembre();
@@ -671,6 +720,18 @@
         );
       });
     });
+  }
+
+  function souscriptionDirecteAutoriseeMesAcces() {
+    // Le seul statut exploitable est celui du Worker Index membre.
+    return etat.membre?.sourceApi === true &&
+      etat.membre.statuda === "oui" &&
+      etat.membre.abonne === false;
+  }
+
+  function actualiserSouscriptionMesAccesVide() {
+    const bloc = etat.slotPlanning?.querySelector("[data-lcdp-mes-acces-souscription]");
+    if (bloc) bloc.hidden = !souscriptionDirecteAutoriseeMesAcces();
   }
 
   function creerCarteVisiteDiaporama(cardReservation, reservation) {
