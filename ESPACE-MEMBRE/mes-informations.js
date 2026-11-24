@@ -835,7 +835,7 @@
             'class="lcdp-compte-relations__nombre" aria-expanded="false" ' +
             'aria-controls="lcdp-compte-abonnement-liste" ' +
             'aria-label="Afficher la liste des abonnements souscrits" disabled>' +
-            '<span id="lcdp-compte-abonnement-nombre">0</span>' +
+            '<span id="lcdp-compte-abonnement-nombre">–</span>' +
           '</button>' +
         '</div>' +
         '<div id="lcdp-compte-abonnement-liste" class="lcdp-compte-relations__liste" ' +
@@ -920,6 +920,11 @@
     conteneur.replaceChildren(liste);
   }
 
+  // Présentation uniquement : un compteur vide est représenté par un tiret.
+  function libelleCompteurCompte(nombre) {
+    return Number.isSafeInteger(nombre) && nombre > 0 ? String(nombre) : "–";
+  }
+
   async function actualiserBlocAbonnementCompte(compte) {
     const section = document.getElementById("lcdp-compte-abonnement");
     if (!section) return;
@@ -931,7 +936,7 @@
     const bouton = section.querySelector("#lcdp-compte-abonnement-compteur");
     const liste = section.querySelector("#lcdp-compte-abonnement-liste");
     resume.textContent = "";
-    nombre.textContent = "0";
+    nombre.textContent = "–";
     bouton.disabled = true;
     bouton.setAttribute("aria-expanded", "false");
     liste.hidden = true;
@@ -957,7 +962,7 @@
       if (version !== versionChargementAbonnementsCompte) return;
 
       const abonnements = donnees.abonnements;
-      nombre.textContent = String(abonnements.length);
+      nombre.textContent = libelleCompteurCompte(abonnements.length);
       bouton.disabled = abonnements.length === 0;
       if (!abonnements.length) return;
 
@@ -1293,7 +1298,7 @@
         .sort((a,b) => (a.nom || a.email).localeCompare(b.nom || b.email,"fr"))
     }));
     afficherInvitesParAbonnementCompte(conteneur, resultat);
-    compteur.textContent = String(resultat.reduce((somme,abo) => somme + abo.personnes.length,0));
+    compteur.textContent = libelleCompteurCompte(resultat.reduce((somme,abo) => somme + abo.personnes.length,0));
   }
 
   // Une même personne peut figurer plusieurs fois dans l'historique :
@@ -1354,7 +1359,7 @@
       };
     }).filter(Boolean);
     const invitantsUniques = dedoublonnerInvitantsCompte(personnes);
-    compteur.textContent = String(invitantsUniques.length);
+    compteur.textContent = libelleCompteurCompte(invitantsUniques.length);
     afficherListeRelationsCompte(conteneur, invitantsUniques,
       "Aucun invitant dans votre historique.");
   }
@@ -1408,7 +1413,7 @@
         coachs = donnees.coachs;
       }
       const uniques = coachesUniquesCompte(coachs);
-      compteur.textContent = String(uniques.length);
+      compteur.textContent = libelleCompteurCompte(uniques.length);
       afficherListeRelationsCompte(liste, uniques, "Aucun coach dans vos inscriptions.");
     } catch (erreur) {
       console.error("Inscriptions aux coachs indisponibles :", erreur);
