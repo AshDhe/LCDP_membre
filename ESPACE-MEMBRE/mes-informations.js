@@ -3489,7 +3489,7 @@ function afficherResumePointsPassion(compte) {
 
   // Même structure et mêmes champs que les pages d'inscription CODA.html / CODR.html.
   // Seul le premier groupe est utilisé : la confirmation est effectuée par le CODR.
-  function ouvrirEcranCodeCompte(contenu,type,onSubmit=null) {
+  function ouvrirEcranCodeCompte(contenu,type,onSubmit=null,essaisRestants=null) {
     const estCoda=type==="coda";
     contenu.classList.add("lcdp-security-tunnel");
     contenu.dataset.securityStep=estCoda?"1":"2";
@@ -3513,8 +3513,18 @@ function afficherResumePointsPassion(compte) {
     entete.append(titre,etape);
     const consignes=document.createElement("ul");
     consignes.className="lcdp-box-formulaire__note lcdp-security-rules";
-    const lignes=estCoda?["Saisissez votre nouveau CODA.","Puis vous validerez avec votre CODR."]:["Confirmez avec votre CODR.","Attention : vous n’avez que deux essais. Après deux erreurs, le CODR est désactivé."];
+    const lignes=estCoda?["Saisissez votre nouveau CODA.","Puis vous validerez avec votre CODR."]:["Confirmez avec votre CODR."];
     lignes.forEach(texte=>{const li=document.createElement("li");li.textContent=texte;consignes.appendChild(li);});
+    const avertissement=document.createElement("div");
+    avertissement.className="lcdp-setup-flow__note";
+    const titreAvertissement=document.createElement("strong");
+    const texteAvertissement=document.createElement("div");
+    function actualiserAvertissement(restants){
+      titreAvertissement.textContent=restants===1?"Attention : dernier essai":"Attention : deux essais maximum";
+      texteAvertissement.textContent=restants===1?"Une nouvelle erreur désactive votre CODR. Vous devez alors contacter l’administrateur.":"Après deux erreurs, votre CODR est désactivé. Vous devez alors contacter l’administrateur.";
+    }
+    avertissement.append(titreAvertissement,texteAvertissement);
+    actualiserAvertissement(essaisRestants);
     const fields=document.createElement("div");
     fields.className="lcdp-box-formulaire__fields";
     const template=document.createElement("template");
@@ -3533,13 +3543,15 @@ function afficherResumePointsPassion(compte) {
     erreur.className="lcdp-box-dialogue-champ__error";
     erreur.setAttribute("role","status");erreur.setAttribute("aria-live","polite");erreur.hidden=true;
     const actions=document.createElement("div");
-    actions.className="lcdp-box-formulaire__actions";
+    actions.className="lcdp-box-dialogue-champ__actions";
     const annuler=document.createElement("button");
     annuler.type="button";annuler.className="lcdp-button lcdp-button-secondary";annuler.textContent="Annuler";
     const valider=document.createElement("button");
     valider.type="submit";valider.className="lcdp-button lcdp-button-primary";valider.textContent=estCoda?"Suivant":"Confirmer";
     actions.append(annuler,valider);
-    form.append(entete,consignes,fields,erreur,actions);
+    form.append(entete,consignes);
+    if(!estCoda)form.appendChild(avertissement);
+    form.append(fields,erreur,actions);
     inner.appendChild(form);section.appendChild(inner);contenu.replaceChildren(section);
     const cases=Array.from(fields.querySelectorAll("[data-code-value]"));
     afficher.addEventListener("change",()=>cases.forEach(champ=>{champ.type=afficher.checked?"text":"password";}));
@@ -3569,6 +3581,7 @@ function afficherResumePointsPassion(compte) {
         try{
           const resultat=await onSubmit(valeur);
           if(resultat?.reessayer){
+            actualiserAvertissement(1);
             cases.forEach(champ=>{champ.value="";});
             erreur.textContent=resultat.message;erreur.hidden=false;
           }else fermer(true);
@@ -3594,7 +3607,7 @@ function afficherResumePointsPassion(compte) {
       const statut = await reponse.json().catch(() => null);
       if (reponse.status === 401) { parcours.fermer();redirigerConnexionMembre("inactive"); return; }
       if (!reponse.ok || !statut?.ok) { parcours.fermer();await afficherAlerte(statut?.message || "Le service de sécurité est indisponible."); return; }
-      if (statut.desactive) { parcours.fermer();await afficherAlerte("Le CODR est désactivé. Contactez l’administrateur."); return; }
+      if (statut.desactive || statut.essais_restants===0) { parcours.fermer();await afficherAlerte("Le CODR est désactivé. Contactez l’administrateur."); return; }
       const premier=await ouvrirEcranCodeCompte(parcours.contenu,"coda");
       if(!premier)return;
       nouveauCoda=premier;
@@ -3617,7 +3630,7 @@ function afficherResumePointsPassion(compte) {
         }catch{message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer.";}
         if(nouvelleTentative)return {reessayer:true,message};
         confirmation={succes,message};
-      });
+      },statut.essais_restants);
       parcours.fermer();
       if(confirmation?.sessionInactive){redirigerConnexionMembre("inactive");return;}
       if(confirmation){
