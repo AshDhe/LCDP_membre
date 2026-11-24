@@ -243,12 +243,11 @@
       section: "Règlement",
       id: "champ-reglement-club",
       name: "reglementClubAffichage",
-      label: "Club",
+      label: "Règlement du club",
       type: "text",
       key: "reglementClubAffichage",
       lien: {
-        texteAvant: "Lire le ",
-        texteLien: "règlement du club",
+        texteLien: "Lire",
         href: "/ESPACE-PUBLIC/reglement-club.html"
       }
     },
@@ -256,12 +255,11 @@
       section: "Règlement",
       id: "champ-reglement-application",
       name: "reglementApplicationAffichage",
-      label: "Application",
+      label: "Règlement de l’application",
       type: "text",
       key: "reglementApplicationAffichage",
       lien: {
-        texteAvant: "Lire le ",
-        texteLien: "règlement de l'application",
+        texteLien: "Lire",
         href: "/ESPACE-PUBLIC/reglement-app.html"
       }
     },
@@ -269,15 +267,13 @@
       section: "Règlement",
       id: "champ-cgv-membre",
       name: "cgvAffichage",
-      label: "Conditions générales de vente",
+      label: "CGV",
       type: "text",
       key: "cgvAffichage",
       lien: {
-        texteAvant: "Lire les ",
-        texteLien: "conditions générales de vente",
+        texteLien: "Lire",
         href: "/ESPACE-MEMBRE/cgv-lcdp.html",
-        espace: "membre",
-        sansValeur: true
+        espace: "membre"
       }
     },
     {
@@ -492,7 +488,7 @@
       ligne.setAttribute("data-lcdp-box-champ-formulaire","");
       const labelZone=document.createElement("div");labelZone.className="lcdp-box-champ-formulaire__label-zone";
       const label=document.createElement("span");label.className="lcdp-box-champ-formulaire__label";
-      label.textContent="Témoin La Clé du Parc" + (equipement.nom ? " — " + equipement.nom : "");labelZone.appendChild(label);
+      label.textContent=equipement.nom || "Témoin La Clé du Parc";labelZone.appendChild(label);
       const control=document.createElement("div");control.className="lcdp-box-champ-formulaire__control";
       control.setAttribute("data-lcdp-champ-control","");
       const input=document.createElement("input");input.type="text";input.readOnly=true;
@@ -522,20 +518,28 @@
       }
       fragment.appendChild(ligne);
     }
-    if (!fragment.childNodes.length) {
-      const ligne=document.createElement("div");
-      ligne.className="lcdp-compte-relations__ligne";
-      const label=document.createElement("span");
-      label.className="lcdp-compte-relations__libelle";
-      label.textContent="Témoin La Clé du Parc";
-      const acheter=document.createElement("a");
-      acheter.className="lcdp-ui-badge lcdp-ui-badge--action lcdp-ui-badge--amber";
-      acheter.textContent="Acheter";
-      acheter.href=construireUrlPublic("/ESPACE-PUBLIC/boutique.html#lcdp-boutique-temoins");
-      ligne.append(label,acheter);
-      fragment.appendChild(ligne);
+    const aDesTemoins=fragment.childNodes.length>0;
+    const ligne=document.createElement("div");
+    ligne.className="lcdp-box-champ-formulaire";
+    ligne.setAttribute("data-lcdp-box-champ-formulaire","");
+    const labelZone=document.createElement("div");
+    labelZone.className="lcdp-box-champ-formulaire__label-zone";
+    const label=document.createElement("span");
+    label.className="lcdp-box-champ-formulaire__label";
+    label.textContent="Témoin La Clé du Parc";
+    const acheter=document.createElement("a");
+    acheter.className="lcdp-ui-badge lcdp-ui-badge--action lcdp-ui-badge--amber";
+    acheter.textContent=aDesTemoins?"Ajouter":"Acheter";
+    acheter.href=construireUrlPublic("/ESPACE-PUBLIC/boutique.html#lcdp-boutique-temoins");
+    labelZone.append(label,acheter);
+    ligne.append(labelZone);
+    if(!aDesTemoins){
+      const valeur=document.createElement("span");
+      valeur.className="lcdp-box-champ-formulaire__lecture";
+      valeur.textContent="–";
+      ligne.append(valeur);
     }
-    liste.replaceChildren(fragment);
+    liste.replaceChildren(ligne,fragment);
   }
   async function chargerEquipementsPresence(){
     const liste=document.getElementById("lcdp-compte-equipements-temoins");
@@ -1024,6 +1028,37 @@
     liste.replaceChildren(texte);
   }
 
+  function afficherServiceVideAvecAction(liste,message,libelle,action) {
+    const ligne=document.createElement("div");
+    ligne.className="lcdp-compte-alerte";
+    const texte=document.createElement("span");
+    texte.className="lcdp-compte-placeholder-da";
+    texte.textContent=message;
+    const bouton=document.createElement("button");
+    bouton.type="button";
+    bouton.className="lcdp-ui-badge lcdp-ui-badge--action";
+    bouton.textContent=libelle;
+    bouton.addEventListener("click",async()=>{
+      if(bouton.disabled)return;
+      bouton.disabled=true;
+      try{await action();}catch(err){await afficherAlerte(err.message||"Service indisponible.");}
+      finally{bouton.disabled=false;}
+    });
+    ligne.append(texte,bouton);
+    liste.replaceChildren(ligne);
+  }
+
+  async function creerAlerteDepuisCompte(){
+    if(!compteMembreActuel){await afficherAlerte("Votre compte est en cours de chargement.");return;}
+    if(!compteIndiqueAbonne(compteMembreActuel)){await afficherAlerte("Un abonnement est nécessaire.");return;}
+    if(compteMembreActuel.abonnementSuspendu===true||compteMembreActuel.suspendu===true){await afficherAlerte("Votre abonnement est suspendu.");return;}
+    if(typeof window.LCDP_ouvrirFormulaireAlertePlanifier!=="function")throw Error("Formulaire ALERTE PLANIFIER indisponible.");
+    await window.LCDP_ouvrirFormulaireAlertePlanifier({onEnregistre:async()=>{
+      await chargerAlertesCompte();
+      await afficherInformationMembre("L’alerte a été enregistrée.","SERVICE");
+    }});
+  }
+
   function structurerSectionsCompte(form) {
     const fields = form.querySelector("[data-lcdp-formulaire-fields]");
     if (!fields || fields.classList.contains("lcdp-mon-compte-sections")) return;
@@ -1072,18 +1107,9 @@
     const adresse = fields.querySelector('[data-lcdp-compte-section="facturation"]');
     const remboursement = fields.querySelector('[data-lcdp-compte-section="remboursement"]');
     if (adresse && remboursement) {
-      const facturation = document.createElement("section");
-      facturation.id = "lcdp-compte-facturation";
-      facturation.className = "lcdp-mon-compte-section";
-      facturation.setAttribute("aria-labelledby","lcdp-compte-facturation-titre");
-      const titre = document.createElement("h2");
-      titre.id = "lcdp-compte-facturation-titre";
-      titre.className = "lcdp-title-section";
-      titre.textContent = "Facturation";
-      remboursement.insertAdjacentElement("beforebegin",facturation);
-      convertirSousRubrique(adresse,"Adresse de facturation");
-      convertirSousRubrique(remboursement,"IBAN de remboursement");
-      facturation.append(titre,adresse,remboursement);
+      adresse.querySelector(":scope > .lcdp-title-section").textContent="Adresse de facturation";
+      remboursement.querySelector(":scope > .lcdp-title-section").textContent="IBAN de remboursement";
+      remboursement.insertAdjacentElement("beforebegin",adresse);
     }
     // Sécurité du compte : dernière rubrique indépendante.
     const securite = fields.querySelector('[data-lcdp-compte-section="securite"]');
@@ -1093,11 +1119,7 @@
     const services=document.createElement("section");
     services.className="lcdp-compte-equipements lcdp-compte-service";
     services.dataset.lcdpCompteSection="service";
-    services.setAttribute("aria-labelledby","lcdp-mon-compte-titre-service");
-    const titreServices=document.createElement("h3");
-    titreServices.id="lcdp-mon-compte-titre-service";
-    titreServices.className="lcdp-title-section lcdp-compte-equipements__titre";
-    titreServices.textContent="Services";
+    services.setAttribute("aria-label","Services");
     const listeAlertes=document.createElement("div");
     listeAlertes.id="lcdp-compte-alertes-liste";
     listeAlertes.className="lcdp-compte-alertes-liste";
@@ -1125,7 +1147,7 @@
     listeDuoActif.className="lcdp-compte-alertes-liste";
     listeDuoActif.setAttribute("aria-live","polite");
     afficherSlotService(listeDuoActif,"Chargement des demandes Duo Actif…");
-    services.append(titreServices,creerCarteService("Alerte planifiée",listeAlertes),creerCarteService("Demande DUO ACTIF",listeDuoActif));
+    services.append(creerCarteService("Service d’alerte planifiée",listeAlertes),creerCarteService("Demande DUO ACTIF",listeDuoActif));
     const statutMembre=fields.querySelector('[data-lcdp-compte-section="participation"]');
     if(statutMembre) {
       const abonnement = statutMembre.querySelector("#lcdp-compte-abonnement");
@@ -1172,7 +1194,7 @@
     section.setAttribute("aria-label", "Abonnement");
     section.innerHTML =
       '<div class="lcdp-compte-relations__ligne">' +
-          '<div class="lcdp-compte-relations__libelle">Abonnement<br><span id="lcdp-compte-abonnement-resume" class="lcdp-compte-placeholder-da"></span></div>' +
+          '<div class="lcdp-compte-relations__libelle"><span class="lcdp-box-champ-formulaire__label">Abonnement</span><span id="lcdp-compte-abonnement-resume" class="lcdp-compte-placeholder-da"></span></div>' +
           '<button type="button" id="lcdp-compte-abonnement-compteur" ' +
             'class="lcdp-compte-relations__nombre" aria-expanded="false" ' +
             'aria-controls="lcdp-compte-abonnement-liste" ' +
@@ -1907,7 +1929,7 @@
     const data=await apiAlertesCompte("/alertes");
     liste.replaceChildren();
     if(!Array.isArray(data.alertes)||!data.alertes.length){
-      afficherSlotService(liste,"Aucune alerte planifiée");
+      afficherServiceVideAvecAction(liste,"Aucune alerte planifiée","Créer une alerte",creerAlerteDepuisCompte);
       return;
     }
     for(const alerte of data.alertes){
@@ -1989,7 +2011,7 @@
     const data=await apiDuoActifCompte();
     liste.replaceChildren();
     if(!Array.isArray(data.demandes)||!data.demandes.length) {
-      afficherSlotService(liste,"Aucune demande enregistrée.");
+      afficherServiceVideAvecAction(liste,"Aucune demande enregistrée.","Faire une demande",()=>{window.location.href=construireUrlMembre("/ESPACE-MEMBRE/planning-membre.html");});
       return;
     }
     for(const demande of data.demandes) {
@@ -2047,16 +2069,8 @@
 
     if (!champ) return;
 
-    // Les CGV sont un lien de lecture et non un champ renseigné :
-    // retirer leur contrôle supprime aussi le tiret de valeur.
-    if (lienConfig.sansValeur === true) {
-      champ.querySelector("[data-lcdp-champ-control]")?.remove();
-    }
-
-    const note = document.createElement("p");
-    note.className = "lcdp-box-champ-formulaire__aide";
-    note.append(lienConfig.texteAvant || "");
-
+    const labelZone=champ.querySelector(".lcdp-box-champ-formulaire__label-zone");
+    if(!labelZone)return;
     const lien = document.createElement("a");
     lien.className = "lcdp-link-secondary";
     lien.href = lienConfig.espace === "membre"
@@ -2066,8 +2080,7 @@
     lien.target = "_blank";
     lien.rel = "noopener noreferrer";
 
-    note.appendChild(lien);
-    champ.appendChild(note);
+    labelZone.appendChild(lien);
   }
 
   function ajouterActionsAdresseFacturation() {
@@ -2911,7 +2924,7 @@ function afficherStatutDaCompte(compte) {
   }
 
   function formaterReglementCompte(label, value) {
-    return value ? "Accepté le " + formaterDate(value) : "Non renseigné";
+    return "Dernier opt-in : " + (value ? formaterDate(value) : "non renseigné");
   }
 
   function afficherCompteMembre(compte) {
@@ -2927,7 +2940,7 @@ function afficherStatutDaCompte(compte) {
       codeAAffichage: "••••",
       codeRAffichage: "•••• - •••• - •••• - ••••",
       telephoneAffichage: String(compteMembreActuel.tel || compteMembreActuel.telephone || "").trim() || "–",
-      cgvAffichage: "",
+      cgvAffichage: "Dernier opt-in : date indisponible",
       geolocalisationAffichage: compteMembreActuel.optinGeolocalisation
         ? "Opt-in le " + formaterDate(compteMembreActuel.optinGeolocalisation)
         : "Non enregistré",
