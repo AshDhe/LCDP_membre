@@ -1301,12 +1301,13 @@
     fields.setAttribute("data-lcdp-fermeture-codr","");
     const consigne = document.createElement("p");
     consigne.className = "lcdp-dialogue-ref__message";
-    consigne.textContent = "Confirmez votre code R. Vous avez deux essais.";
+    consigne.textContent = "Vous avez deux essais.";
+    consigne.setAttribute("aria-live","polite");
     const fieldset = document.createElement("fieldset");
     fieldset.className = "lcdp-box-champ-formulaire lcdp-box-champ-formulaire--code";
     const legend = document.createElement("legend");
     legend.className = "lcdp-box-champ-formulaire__label lcdp-box-champ-formulaire__label-zone";
-    legend.textContent = "Saisissez votre code R";
+    legend.textContent = "Saisissez votre CODR";
     const casesZone = document.createElement("div");
     casesZone.className = "lcdp-box-champ-formulaire__code-cases";
     const cases = Array.from({length:4},(_,i)=>{
@@ -1322,7 +1323,7 @@
       casesZone.appendChild(champ);
       return champ;
     });
-    fieldset.append(legend,casesZone);
+    fieldset.append(legend,consigne,casesZone);
     const montrer=document.createElement("label");
     montrer.className="lcdp-box-champ-formulaire__checkbox-line";
     const afficher=document.createElement("input");
@@ -1335,7 +1336,7 @@
     erreur.setAttribute("role","status");
     erreur.setAttribute("aria-live","polite");
     erreur.hidden=true;
-    fields.append(consigne,fieldset,montrer,erreur);
+    fields.append(fieldset,montrer,erreur);
     bloc.appendChild(fields);
     message.insertAdjacentElement("afterend",bloc);
     afficher.addEventListener("change",()=>cases.forEach(c=>{c.type=afficher.checked?"text":"password";}));
@@ -1380,10 +1381,10 @@
             bloque=resultat.attemptsRemaining===0||resultat.reason!=="codr_incorrect";
             if(bloque){
               consigne.textContent="Aucun essai restant.";
-              afficherErreur(resultat.message||"Le code R n’est pas bon.");
+              afficherErreur((resultat.message||"Le CODR n’est pas bon.").replace(/code\s+R\b/gi,"CODR"));
             }else if(resultat.attemptsRemaining===1){
-              consigne.textContent="Confirmez votre code R. Il vous reste un essai.";
-              afficherErreur("Le code R n’est pas bon.");
+              consigne.textContent="Il vous reste un essai.";
+              afficherErreur("Le CODR n’est pas bon.");
             }else{
               bloque=true;
               afficherErreur("Le contrôle des essais n’a pas pu être confirmé.");
