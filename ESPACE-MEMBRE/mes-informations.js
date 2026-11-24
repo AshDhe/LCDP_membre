@@ -1277,6 +1277,135 @@
     message.append(lien, " pour plus d’information sur la fermeture du compte.");
   }
 
+
+  // Dernière confirmation dans le wrapper de Mon compte. Aucun CODR conservé.
+  async function confirmerFermetureCodr(slot) {
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html");
+    slot.replaceChildren(fragment);
+    const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="suppression"]');
+    const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+    const message = slot.querySelector("[data-lcdp-dialogue-message]");
+    const annuler = slot.querySelector('[data-lcdp-dialogue-action="conserver"]');
+    const confirmer = slot.querySelector('[data-lcdp-dialogue-action="supprimer"]');
+    if (!dialogue || !titre || !message || !annuler || !confirmer) throw Error("Dialogue de confirmation indisponible.");
+    dialogue.setAttribute("role","region");
+    dialogue.removeAttribute("aria-modal");
+    titre.textContent = "Fermez-vous votre compte ?";
+    message.textContent = "Votre compte est suspendu pendant 30 jours à compter de votre confirmation.";
+    annuler.textContent = "Annuler";
+    confirmer.textContent = "Confirmer";
+    const bloc = document.createElement("div");
+    bloc.className = "lcdp-security-tunnel";
+    bloc.dataset.securityStep = "2";
+    const fields = document.createElement("div");
+    fields.setAttribute("data-lcdp-fermeture-codr","");
+    const consigne = document.createElement("p");
+    consigne.className = "lcdp-dialogue-ref__message";
+    consigne.textContent = "Confirmez votre code R. Vous avez deux essais.";
+    const fieldset = document.createElement("fieldset");
+    fieldset.className = "lcdp-box-champ-formulaire lcdp-box-champ-formulaire--code";
+    const legend = document.createElement("legend");
+    legend.className = "lcdp-box-champ-formulaire__label lcdp-box-champ-formulaire__label-zone";
+    legend.textContent = "Saisissez votre code R";
+    const casesZone = document.createElement("div");
+    casesZone.className = "lcdp-box-champ-formulaire__code-cases";
+    const cases = Array.from({length:4},(_,i)=>{
+      const champ=document.createElement("input");
+      champ.type="password";
+      champ.inputMode="text";
+      champ.maxLength=4;
+      champ.autocapitalize="characters";
+      champ.spellcheck=false;
+      champ.autocomplete="new-password";
+      champ.setAttribute("aria-label","Mot "+(i+1));
+      champ.setAttribute("data-code-value","");
+      casesZone.appendChild(champ);
+      return champ;
+    });
+    fieldset.append(legend,casesZone);
+    const montrer=document.createElement("label");
+    montrer.className="lcdp-box-champ-formulaire__checkbox-line";
+    const afficher=document.createElement("input");
+    afficher.type="checkbox";
+    const libelle=document.createElement("span");
+    libelle.textContent="Afficher mon CODR";
+    montrer.append(afficher,libelle);
+    const erreur=document.createElement("p");
+    erreur.className="lcdp-box-dialogue-champ__error";
+    erreur.setAttribute("role","status");
+    erreur.setAttribute("aria-live","polite");
+    erreur.hidden=true;
+    fields.append(consigne,fieldset,montrer,erreur);
+    bloc.appendChild(fields);
+    message.insertAdjacentElement("afterend",bloc);
+    afficher.addEventListener("change",()=>cases.forEach(c=>{c.type=afficher.checked?"text":"password";}));
+    cases.forEach((champ,i)=>{
+      champ.addEventListener("input",()=>{
+        champ.value=champ.value.toUpperCase().replace(/[^A-Z]/g,"").slice(0,4);
+        if(champ.value.length===4&&i<3)cases[i+1].focus();
+      });
+      champ.addEventListener("keydown",e=>{
+        if(e.key==="Backspace"&&!champ.value&&i>0)cases[i-1].focus();
+        if(e.key==="Enter"){e.preventDefault();confirmer.click();}
+      });
+    });
+    return await new Promise(resolve=>{
+      let termine=false, occupe=false, bloque=false;
+      function effacer(){cases.forEach(c=>{c.value="";c.type="password";});afficher.checked=false;}
+      function terminer(valeur){
+        if(termine)return;
+        termine=true;effacer();document.removeEventListener("keydown",clavier);
+        slot.replaceChildren();resolve(valeur);
+      }
+      function clavier(e){if(e.key==="Escape"&&!occupe){e.preventDefault();terminer(null);}}
+      function afficherErreur(texte){erreur.textContent=texte;erreur.hidden=false;}
+      annuler.addEventListener("click",()=>{if(!occupe)terminer(null);});
+      document.addEventListener("keydown",clavier);
+      confirmer.addEventListener("click",async()=>{
+        if(occupe||termine||bloque)return;
+        const mots=cases.map(c=>c.value);
+        if(mots.some(m=>! /^[A-Z]{4}$/.test(m))){
+          afficherErreur("Saisissez les quatre mots de quatre lettres du CODR.");return;
+        }
+        occupe=true;annuler.disabled=true;confirmer.disabled=true;afficher.disabled=true;cases.forEach(c=>c.disabled=true);
+        try{
+          const reponse=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/fermeture-compte",{
+            method:"POST",credentials:"include",cache:"no-store",
+            headers:{"Accept":"application/json","Content-Type":"application/json"},
+            body:JSON.stringify({action:"fermer",mots})
+          });
+          const resultat=await reponse.json().catch(()=>null);
+          if(resultat?.reason==="codr_incorrect"||resultat?.reason==="fermeture_codr_bloquee"||resultat?.reason==="codr_disabled"){
+            effacer();
+            bloque=resultat.attemptsRemaining===0||resultat.reason!=="codr_incorrect";
+            if(bloque){
+              consigne.textContent="Aucun essai restant.";
+              afficherErreur(resultat.message||"Le code R n’est pas bon.");
+            }else if(resultat.attemptsRemaining===1){
+              consigne.textContent="Confirmez votre code R. Il vous reste un essai.";
+              afficherErreur("Le code R n’est pas bon.");
+            }else{
+              bloque=true;
+              afficherErreur("Le contrôle des essais n’a pas pu être confirmé.");
+            }
+            return;
+          }
+          terminer({reponse,resultat});
+        }catch{
+          terminer({reponse:null,resultat:null});
+        }finally{
+          mots.fill("");occupe=false;
+          if(!termine){
+            annuler.disabled=false;confirmer.disabled=bloque;afficher.disabled=bloque;
+            cases.forEach(c=>c.disabled=bloque);
+            if(bloque)annuler.focus();else cases[0].focus();
+          }
+        }
+      });
+      cases[0].focus();
+    });
+  }
+
   async function gererFermetureCompte() {
     if (fermetureCompteEnCours || !compteMembreActuel) return;
     const avant = lireEtatFermetureCompte(compteMembreActuel);
@@ -1298,31 +1427,26 @@
         }, parcours.contenu);
         if (!continuer) return;
       }
-      const confirme = await demanderSuppressionAlerte("", rouvrir ? {
-        profil: "choix",
-        titre: "Voulez-vous rouvrir votre compte ?",
-        message: "",
-        annuler: "Non",
-        confirmer: "Oui"
-      } : {
-        titre: "Fermez-vous votre compte ?",
-        message: "Votre compte est suspendu pendant 30 jours à compter de votre confirmation.",
-        annuler: "Annuler",
-        confirmer: "Confirmer"
-      }, parcours.contenu);
-      if (!confirme) return;
-      if (avant === null || !ENDPOINT_MON_COMPTE_MEMBRE) {
-        await afficherAlerte("Votre demande n’a pas pu être enregistrée.", parcours.contenu);
-        return;
+      let reponse, resultat;
+      if (rouvrir) {
+        const confirme = await demanderSuppressionAlerte("", {
+          profil: "choix", titre: "Voulez-vous rouvrir votre compte ?",
+          message: "", annuler: "Non", confirmer: "Oui"
+        }, parcours.contenu);
+        if (!confirme) return;
+        reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/fermeture-compte", {
+          method: "POST", credentials: "include", cache: "no-store",
+          headers: {"Accept":"application/json","Content-Type":"application/json"},
+          body: JSON.stringify({action:"rouvrir"})
+        });
+        resultat = await reponse.json().catch(()=>null);
+      } else {
+        if(!ENDPOINT_MON_COMPTE_MEMBRE)throw Error("Votre demande n’a pas pu être enregistrée.");
+        const confirmation=await confirmerFermetureCodr(parcours.contenu);
+        if(!confirmation)return;
+        ({reponse,resultat}=confirmation);
+        if(!reponse)throw Error("Votre demande n’a pas pu être enregistrée.");
       }
-      const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/fermeture-compte", {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        headers: { "Accept": "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify({ action: rouvrir ? "rouvrir" : "fermer" })
-      });
-      const resultat = await reponse.json().catch(() => null);
       if (reponse.status === 401) {
         redirigerConnexionMembre("inactive");
         return;
