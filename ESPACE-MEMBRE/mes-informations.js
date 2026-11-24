@@ -1412,7 +1412,7 @@
       <div id="lcdp-compte-relations-invite" class="lcdp-compte-relations__liste"
         aria-live="polite" hidden>Chargement des invités…</div>
       <div class="lcdp-compte-relations__ligne">
-        <span class="lcdp-compte-relations__libelle">Mes invitants (« parrain »)</span>
+        <span class="lcdp-compte-relations__libelle">Mes « invitants »</span>
         <button type="button" class="lcdp-compte-relations__nombre"
           data-lcdp-relations-ouvrir="invitant" aria-expanded="false"
           aria-controls="lcdp-compte-relations-invitant"
@@ -1441,7 +1441,7 @@
     const titreEquipement=document.createElement("h3");
     titreEquipement.id="lcdp-compte-equipements-titre";
     titreEquipement.className="lcdp-title-section lcdp-compte-equipements__titre";
-    titreEquipement.textContent="ÉQUIPEMENT PRÉSENCE";
+    titreEquipement.textContent="ÉQUIPEMENT DE PRÉSENCE";
     equipement.appendChild(titreEquipement);
     const telephone=document.getElementById("champ-telephone-membre")?.closest("[data-lcdp-box-champ-formulaire]");
     if(telephone)equipement.appendChild(telephone);
