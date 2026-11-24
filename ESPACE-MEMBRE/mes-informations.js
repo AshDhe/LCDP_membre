@@ -1290,7 +1290,7 @@
     if (!dialogue || !titre || !message || !annuler || !confirmer) throw Error("Dialogue de confirmation indisponible.");
     dialogue.setAttribute("role","region");
     dialogue.removeAttribute("aria-modal");
-    titre.textContent = "Fermez votre compte";
+    titre.textContent = "Fermer votre compte";
     message.textContent = "Votre compte est suspendu pendant 30 jours à compter de votre confirmation.";
     annuler.textContent = "Annuler";
     confirmer.textContent = "Confirmer";
