@@ -616,6 +616,7 @@
         vueParcs.hidden = true;
         document.body.classList.remove("lcdp-planifier-vue-parcs-active");
         filtreParcOuvert = false;
+        choixParcDuoActif = false;
       };
       navigationParcs.fermer = fermer;
       close.addEventListener("click", ()=>{
@@ -715,6 +716,10 @@
       });
       return true;
     }
+    if (typeClic === "mois" && droitsActifs?.compteSuspendu === true) {
+      await afficherDialogueInformationPlanifier({titre:"Horizon de consultation",message:"Votre compte est suspendu. La consultation est limitée à M+2.",onAffiche:contexte.onAffiche});
+      return true;
+    }
     const statuda = statutDaPourPlanning(droitsActifs);
     const sansDa = statuda === null;
     const daValidee = statuda === "oui";
@@ -733,36 +738,31 @@
     const motif = depassementAffiche
       ? "Un nouvel abonnement est nécessaire pour planifier au-delà de cette date."
       : "Un nouvel abonnement est nécessaire pour planifier un nouvel accès à cette date.";
-    let texte = motif;
-    if (!daValidee) {
-      texte += " Vous ne disposez pas encore d'un droit d'abonnement.";
-      if (statuda === "encours") texte += " Votre demande est en cours d'étude.";
-    }
-    const datenext = String(droitsActifs?.datenext || etatMembre.datenext || "").trim();
-    const dateReprise = datenext ? Date.parse(datenext) : NaN;
-    const peutFaireDa = sansDa ||
-      (statuda === "non" && Number.isFinite(dateReprise) && dateReprise <= Date.now());
-
-    // Les actions existantes sont conservées, y compris Duo Actif au clic jour.
+    const jour = typeClic === "jour";
+    const parc = etatPage.calendrierMoisActif?.parc;
+    const invitation = parc ? "Demandez à être invité(e) sur ce parc." : "Demandez à être invité(e) DUO ACTIF sur un parc.";
+    const texte = (daValidee || sansDa) ? motif + (sansDa ? " Vous ne disposez pas encore d'un droit d'abonnement." : "") + (jour ? " " + invitation : "")
+      : jour ? invitation : "Vous ne disposez pas actuellement d'un droit d'abonnement.";
     const boutonAbonnement = {label:"Abonnement",valeur:"abonnement"};
     const boutonDemande = {label:"Faire ma demande",valeur:"demande"};
-    const boutonInvitation = {label:"Être invité(e)",valeur:"invitation"};
-    const boutons = typeClic === "jour"
-      ? [...(daValidee ? [boutonAbonnement] : peutFaireDa ? [boutonDemande] : []), boutonInvitation]
-      : [daValidee ? boutonAbonnement : sansDa ? boutonDemande : boutonInvitation];
-
+    const boutonInvitation = {label:"Demande DUO ACTIF",valeur:"invitation"};
+    const boutons = [...(daValidee ? [boutonAbonnement] : sansDa ? [boutonDemande] : []), ...(jour ? [boutonInvitation] : [])];
     let choix;
+    if (!boutons.length) {
+      await afficherDialogueInformationPlanifier({titre,message:texte,onAffiche:contexte.onAffiche});
+      return true;
+    }
     if (boutons.length === 1) {
       const action = boutons[0];
       choix = await afficherDialogueInformationPlanifier({
-        titre, message: texte, libelleAction: action.label, valeurAction: action.valeur,
-        annulable: !(depassement && daValidee), onAffiche: contexte.onAffiche
+        titre:action.valeur === "invitation" ? "Demande DUO ACTIF" : titre,
+        message:texte,libelleAction:action.label,valeurAction:action.valeur,
+        annulable: !(depassement && daValidee),onAffiche:contexte.onAffiche
       });
     } else {
-      // Deux actions métier distinctes : le choix générique restitue leur valeur.
-      choix = await afficherChoixPlanifier(texte, {
-        titre, libelleAnnuler: boutons[1].label, libelleConfirmer: boutons[0].label,
-        fermetureFondValeur: null, annulable: true, onAffiche: contexte.onAffiche
+      choix = await afficherChoixPlanifier(texte,{
+        titre,libelleAnnuler:boutons[1].label,libelleConfirmer:boutons[0].label,
+        principalEnPremier:true,fermetureFondValeur:null,annulable:true,onAffiche:contexte.onAffiche
       });
       choix = choix === true ? boutons[0].valeur : choix === false ? boutons[1].valeur : null;
     }
@@ -803,67 +803,49 @@
       throw erreur;
     }
     if (!reponse.ok || donnees?.ok !== true) {
-      throw new Error(donnees?.message || "Le service Duo Actif est momentanément indisponible.");
+      const erreur = new Error(donnees?.message || "Le service Duo Actif est momentanément indisponible.");
+      erreur.code = donnees?.code;
+      throw erreur;
     }
     return donnees;
   }
 
-  async function proposerDuoActif() {
-    const parc = etatPage.calendrierMoisActif?.parc;
+  let choixParcDuoActif = false;
+  async function proposerDuoActif(parc = etatPage.calendrierMoisActif?.parc) {
     if (!parc) {
-      await afficherDialogueInformationPlanifier({
-        titre: "Choisir un parc",
-        message: "Sélectionnez d'abord un parc."
-      });
+      if (filtreParcOuvert) return;
+      choixParcDuoActif = true;
+      try { await ouvrirFiltreParcPlanifier(); } catch (err) { choixParcDuoActif = false; throw err; }
       return;
     }
     const idparc = String(parc.idparc || parc.id || "").trim();
     if (!idparc) return;
-    if (etatMembre.abonne === true) {
-      await afficherDialogueInformationPlanifier({
-        titre: "Duo Actif",
-        message: "Duo Actif est réservé aux membres sans abonnement en cours."
-      });
-      return;
-    }
     try {
-      // Contrôle du quota dès le clic sur « Être invité(e) ».
       const etat = await requeteDuoActif();
-      if (etat.habilitation?.eligible === false) {
-        await afficherDialogueInformationPlanifier({
-          titre: "Duo Actif",
-          message: "Pour utiliser Duo Actif, vous devez avoir déjà effectué un accès complet en tant qu'invité : check-in, présence et check-out avec Ma Clé."
-        });
-        return;
-      }
-      if (Number(etat.quota?.encours) >= 2) {
-        await afficherDialogueInformationPlanifier({
-          titre: "Duo Actif",
-          message: "Vous avez déjà deux demandes d'actif en cours."
-        });
-        return;
-      }
-      const confirmation = await afficherChoixPlanifier(
-        "Souhaitez-vous faire une déclaration Duo Actif pour ce parc ?",
-        {titre: "Duo Actif", libelleAnnuler: "Non", libelleConfirmer: "Oui"}
-      );
-      // Non, fermeture et clic extérieur : aucun enregistrement.
-      if (confirmation !== true) return;
-      // Le quota est revérifié de manière atomique en base à l'enregistrement.
-      const resultat = await requeteDuoActif("POST", {idparc});
-      await afficherDialogueInformationPlanifier({
-        titre: "Duo Actif",
-        message: resultat.message ||
-          "Votre demande Duo Actif est enregistrée. Retrouvez-la dans Mon compte, rubrique Services."
+      const mois = etat.moisAutorises;
+      if (!Array.isArray(mois) || mois.length !== 3 || !mois.every(m=>/^\d{4}-(0[1-9]|1[0-2])$/.test(m)))
+        throw new Error("Le service DUO ACTIF est en cours de mise à jour.");
+      const format = new Intl.DateTimeFormat("fr-FR",{month:"long",year:"numeric",timeZone:"Europe/Paris"});
+      const nomMois = m => format.format(new Date(m+"-01T12:00:00Z"));
+      const choix = await afficherDialogueInformationPlanifier({
+        titre:"Demande DUO ACTIF",message:"Pour quel mois demandez-vous une invitation ?",
+        actions:mois.map((m,i)=>({valeur:m,label:i===0?"Ce mois-ci":i===1?"Le mois prochain":nomMois(m).split(" ")[0].replace(/^./,c=>c.toUpperCase())})),
+        annulable:true
       });
+      if (!mois.includes(choix)) return;
+      const confirmation = await afficherChoixPlanifier(
+        "Faire une demande DUO ACTIF sur ce parc pour le mois de "+nomMois(choix)+" ?",
+        {titre:"DUO ACTIF",libelleAnnuler:"Non",libelleConfirmer:"Oui",annulable:true}
+      );
+      if (confirmation !== true) return;
+      const resultat = await requeteDuoActif("POST",{idparc,mois:choix});
+      if (resultat.demande?.mois_cible !== choix+"-01") throw new Error("Enregistrement du mois non confirmé. Consultez Mon compte avant de réessayer.");
+      await afficherDialogueInformationPlanifier({titre:"DUO ACTIF",message:"Votre demande est enregistrée. Retrouvez-la depuis Mon compte ou Mes accès.",libelleAction:"Fermer"});
     } catch (erreur) {
-      if (erreur.sessionExpiree) {
-        redirigerConnexionMembre("inactive");
-        return;
-      }
-      await afficherDialogueInformationPlanifier({
-        titre: "Duo Actif",
-        message: erreur.message || "L'enregistrement de votre demande est impossible."
+      if (erreur.sessionExpiree) { redirigerConnexionMembre("inactive"); return; }
+      await afficherErreurPlanifier(erreur.message || "L'enregistrement de votre demande est impossible.",{
+        titre:"DUO ACTIF",superposition:true,libelleBouton:"Fermer",
+        lienInvitation:erreur.code === "DUO_HABILITATION"
       });
     }
   }
@@ -1346,6 +1328,13 @@
       if (!parc) throw new Error("Parc introuvable.");
       if (estParcProjet(parc)) {
         await informerParcProjet();
+        return;
+      }
+      if (choixParcDuoActif) {
+        choixParcDuoActif = false;
+        navigationParcs?.fermer?.();
+        fermerShiftDetailParc();
+        await proposerDuoActif(parc);
         return;
       }
       // Ne pas perdre le parc précédent lorsque le chargement échoue.
@@ -4127,8 +4116,13 @@
       clicJourPlanifierEnCours = true;
       const masquerAttente = afficherAttenteClicJourPlanifier();
       try {
-        // Sans parc, aucun contrôle de DA ni d'abonnement ne doit être lancé.
+        // Sans parc, la demande DUO ACTIF ouvre le sélecteur existant.
         if (!etatPage.calendrierMoisActif?.parc) {
+          if (!window.LCDP_ABOREZA?.actif() && !preparationAbonnementPlanifier &&
+              (membreSansDaValidee() || !jourCouvertParAbonnementPayePlanifier(String(jourCalendrier.dataset.date || "")))) {
+            await afficherDialogueAbonnementPlanning("jour",etatPage.droitsPlanningParcActifs,{dateIso:String(jourCalendrier.dataset.date || ""),onAffiche:masquerAttente});
+            return;
+          }
           const choix = await ouvrirDialogueBoutonsSuperpose({
             titre: "Choisir un parc",
             texte: "Vous n'avez pas de parc sélectionné.",
@@ -5983,7 +5977,7 @@
     }
   }
 
-  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null, classe = "", lignes = null, annulable = false }) {
+  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null, classe = "", lignes = null, annulable = false, actions = null }) {
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
@@ -6043,7 +6037,18 @@
             resolve(valeur);
           }
         };
-        fermer.addEventListener('click', () => clore(), { once: true });
+        if (Array.isArray(actions) && actions.length) {
+          const zone = fermer.parentElement;
+          zone.replaceChildren();
+          for (const action of actions) {
+            const bouton = fermer.cloneNode(false);
+            bouton.removeAttribute("data-lcdp-dialogue-action");
+            bouton.textContent = action.label;
+            bouton.addEventListener("click",()=>clore(action.valeur),{once:true});
+            zone.appendChild(bouton);
+          }
+          zone.firstElementChild?.focus();
+        } else fermer.addEventListener('click', () => clore(), { once: true });
         if (fermetureLibre || annulable) {
           dialogue.addEventListener('click', event => {
             if (event.target === dialogue) clore(annulable ? null : valeurAction);
@@ -6058,7 +6063,7 @@
             }
           });
         }
-        fermer.focus();
+        if (!Array.isArray(actions) || !actions.length) fermer.focus();
       });
     } catch (erreur) {
       enveloppe.remove();
@@ -6594,6 +6599,7 @@
       texte.textContent = String(message || "");
       annuler.textContent = options.libelleAnnuler || "Annuler";
       confirmer.textContent = options.libelleConfirmer || "Confirmer";
+      if (options.principalEnPremier === true) annuler.before(confirmer);
       dialogue.dataset.lcdpDialogueContext = "conteneur";
       if (typeof options.onAffiche === "function") {
         window.requestAnimationFrame(() => { Promise.resolve(options.onAffiche()).catch(console.error); });
@@ -6654,6 +6660,14 @@
 
       titre.textContent = options.titre || "Erreur";
       texte.textContent = String(message || "");
+      if (options.lienInvitation === true) {
+        const lien = document.createElement("a");
+        lien.className = "lcdp-link-secondary";
+        lien.href = construireUrlPublic("/ESPACE-PUBLIC/reglement-app.html");
+        lien.target = "_blank"; lien.rel = "noopener noreferrer";
+        lien.textContent = "Règlement de l'application — Invitation";
+        texte.append(document.createElement("br"),lien);
+      }
       bouton.textContent = options.libelleBouton || "OK";
       if (options.classe) dialogue.classList.add(options.classe);
       if (options.couleurBouton === "vert-plein-partage") {
