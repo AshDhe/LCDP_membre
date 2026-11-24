@@ -47,7 +47,7 @@
       ].forEach(path => {
         // Comme sur mes-informations.html : conserver l'ordre de cascade CSS
         // avant le style de page, sans chargement asynchrone concurrent.
-        const versionVue = path.endsWith("/lcdp-mes-acces-membre.css") ? "?v=20261114-filtre-vert-compteur-v4" : "";
+        const versionVue = path.endsWith("/lcdp-mes-acces-membre.css") ? "?v=20261124-etat-vide-actions-v1" : "";
         document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(path) + versionVue + '">');
       });
       document.write('<script src="' + window.LCDP_urlObjet('/JSBASE/03-galerie.js') + '"><\/script>');
@@ -196,6 +196,6 @@
     <div id="lcdp-lightbox-slot"></div>
   </div>
 
-  <script src="./planning-membre.js?interface=spinner-officiel&amp;v=20261120-lien-abonnement"></script>
+  <script src="./planning-membre.js?interface=spinner-officiel&amp;v=20261124-etat-vide-actions-v1"></script>
 </body>
 </html>
