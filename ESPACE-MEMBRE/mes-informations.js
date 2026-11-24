@@ -3472,6 +3472,101 @@ function afficherResumePointsPassion(compte) {
     }
   }
 
+  // Même structure et mêmes champs que les pages d'inscription CODA.html / CODR.html.
+  // Seul le premier groupe est utilisé : la confirmation est effectuée par le CODR.
+  function ouvrirEcranCodeCompte(contenu,type,onSubmit=null) {
+    const estCoda=type==="coda";
+    contenu.classList.add("lcdp-security-tunnel");
+    contenu.dataset.securityStep=estCoda?"1":"2";
+    const section=document.createElement("section");
+    section.className="lcdp-component lcdp-box-formulaire-page lcdp-box-formulaire-page--compact";
+    section.setAttribute("data-lcdp-box-formulaire-page","");
+    const inner=document.createElement("div");
+    inner.className="lcdp-box-formulaire-page__inner";
+    const form=document.createElement("form");
+    form.id="formulaire-code-securite";
+    form.className="lcdp-box-formulaire";
+    form.noValidate=true;
+    const entete=document.createElement("header");
+    entete.className="lcdp-box-formulaire__header";
+    const titre=document.createElement("h1");
+    titre.className="lcdp-box-formulaire__title";
+    titre.textContent="Mettre à jour mon CODA";
+    const etape=document.createElement("span");
+    etape.className="lcdp-step-progress__badge";
+    etape.textContent=estCoda?"Étape 1 / 2":"Étape 2 / 2";
+    entete.append(titre,etape);
+    const consignes=document.createElement("ul");
+    consignes.className="lcdp-box-formulaire__note lcdp-security-rules";
+    const lignes=estCoda?["Saisissez votre nouveau CODA.","Puis vous validerez avec votre CODR."]:["Confirmez avec votre CODR.","Attention : vous n’avez que deux essais. Après deux erreurs, le CODR est désactivé."];
+    lignes.forEach(texte=>{const li=document.createElement("li");li.textContent=texte;consignes.appendChild(li);});
+    const fields=document.createElement("div");
+    fields.className="lcdp-box-formulaire__fields";
+    const template=document.createElement("template");
+    template.innerHTML=estCoda?"<fieldset class=\"lcdp-box-champ-formulaire lcdp-box-champ-formulaire--code\">\n                    <legend class=\"lcdp-box-champ-formulaire__label lcdp-box-champ-formulaire__label-zone\">Votre code d’accès</legend>\n                    <div class=\"lcdp-box-champ-formulaire__code-cases\">\n                      <input type=\"password\" inputmode=\"numeric\" pattern=\"[0-9]\" maxlength=\"1\" autocomplete=\"new-password\" id=\"code-1\" name=\"code-1\" aria-label=\"Chiffre 1\" data-code-value required>\n<input type=\"password\" inputmode=\"numeric\" pattern=\"[0-9]\" maxlength=\"1\" autocomplete=\"new-password\" id=\"code-2\" name=\"code-2\" aria-label=\"Chiffre 2\" data-code-value required>\n<input type=\"password\" inputmode=\"numeric\" pattern=\"[0-9]\" maxlength=\"1\" autocomplete=\"new-password\" id=\"code-3\" name=\"code-3\" aria-label=\"Chiffre 3\" data-code-value required>\n<input type=\"password\" inputmode=\"numeric\" pattern=\"[0-9]\" maxlength=\"1\" autocomplete=\"new-password\" id=\"code-4\" name=\"code-4\" aria-label=\"Chiffre 4\" data-code-value required>\n                    </div>\n                  </fieldset>":"<fieldset class=\"lcdp-box-champ-formulaire lcdp-box-champ-formulaire--code\">\n                    <legend class=\"lcdp-box-champ-formulaire__label lcdp-box-champ-formulaire__label-zone\">Votre code de récupération</legend>\n                    <div class=\"lcdp-box-champ-formulaire__code-cases\">\n                      <input type=\"password\" inputmode=\"text\" maxlength=\"4\" autocapitalize=\"characters\" spellcheck=\"false\" autocomplete=\"new-password\" id=\"code-1\" name=\"code-1\" aria-label=\"Mot 1\" data-code-value required>\n<input type=\"password\" inputmode=\"text\" maxlength=\"4\" autocapitalize=\"characters\" spellcheck=\"false\" autocomplete=\"new-password\" id=\"code-2\" name=\"code-2\" aria-label=\"Mot 2\" data-code-value required>\n<input type=\"password\" inputmode=\"text\" maxlength=\"4\" autocapitalize=\"characters\" spellcheck=\"false\" autocomplete=\"new-password\" id=\"code-3\" name=\"code-3\" aria-label=\"Mot 3\" data-code-value required>\n<input type=\"password\" inputmode=\"text\" maxlength=\"4\" autocapitalize=\"characters\" spellcheck=\"false\" autocomplete=\"new-password\" id=\"code-4\" name=\"code-4\" aria-label=\"Mot 4\" data-code-value required>\n                    </div>\n                  </fieldset>";
+    fields.appendChild(template.content);
+    fields.querySelector("legend").textContent=estCoda?"Saisir mon CODA":"Confirmer avec mon CODR";
+    const montrer=document.createElement("label");
+    montrer.className="lcdp-box-champ-formulaire__checkbox-line";
+    montrer.htmlFor="afficher-code";
+    const afficher=document.createElement("input");
+    afficher.type="checkbox";afficher.id="afficher-code";
+    const mention=document.createElement("span");
+    mention.textContent=estCoda?"Afficher mon CODA":"Afficher mon CODR";
+    montrer.append(afficher,mention);fields.appendChild(montrer);
+    const erreur=document.createElement("p");
+    erreur.className="lcdp-box-dialogue-champ__error";
+    erreur.setAttribute("role","status");erreur.setAttribute("aria-live","polite");erreur.hidden=true;
+    const actions=document.createElement("div");
+    actions.className="lcdp-box-formulaire__actions";
+    const annuler=document.createElement("button");
+    annuler.type="button";annuler.className="lcdp-button lcdp-button-secondary";annuler.textContent="Annuler";
+    const valider=document.createElement("button");
+    valider.type="submit";valider.className="lcdp-button lcdp-button-primary";valider.textContent=estCoda?"Suivant":"Confirmer";
+    actions.append(annuler,valider);
+    form.append(entete,consignes,fields,erreur,actions);
+    inner.appendChild(form);section.appendChild(inner);contenu.replaceChildren(section);
+    const cases=Array.from(fields.querySelectorAll("[data-code-value]"));
+    afficher.addEventListener("change",()=>cases.forEach(champ=>{champ.type=afficher.checked?"text":"password";}));
+    cases.forEach((champ,i)=>{
+      champ.addEventListener("input",()=>{
+        champ.value=estCoda?champ.value.replace(/[^0-9]/g,"").slice(-1):champ.value.toUpperCase().replace(/[^A-Z]/g,"").slice(0,4);
+        erreur.hidden=true;
+        if(champ.value.length===champ.maxLength&&i<3)cases[i+1].focus();
+      });
+      champ.addEventListener("keydown",event=>{if(event.key==="Backspace"&&!champ.value&&i>0)cases[i-1].focus();});
+    });
+    return new Promise(resolve=>{
+      let termine=false,occupe=false;
+      const fermer=valeur=>{
+        if(termine)return;termine=true;
+        cases.forEach(champ=>{champ.value="";});
+        contenu.replaceChildren();resolve(valeur);
+      };
+      annuler.addEventListener("click",()=>{if(!occupe)fermer(null);});
+      form.addEventListener("submit",async event=>{
+        event.preventDefault();if(occupe||termine)return;
+        const valeur=cases.map(champ=>champ.value).join(estCoda?"":"-");
+        const message=estCoda?validerNouveauCodaDirect(valeur):(/^[A-Z]{4}(-[A-Z]{4}){3}$/.test(valeur)?"":"Saisissez les quatre mots de quatre lettres du CODR.");
+        if(message){erreur.textContent=message;erreur.hidden=false;return;}
+        if(!onSubmit){fermer(valeur);return;}
+        occupe=true;annuler.disabled=true;valider.disabled=true;afficher.disabled=true;cases.forEach(champ=>{champ.disabled=true;});
+        try{
+          const resultat=await onSubmit(valeur);
+          if(resultat?.reessayer){
+            cases.forEach(champ=>{champ.value="";});
+            erreur.textContent=resultat.message;erreur.hidden=false;
+          }else fermer(true);
+        }catch(e){fermer(null);throw e;}
+        finally{
+          occupe=false;
+          if(!termine){annuler.disabled=false;valider.disabled=false;afficher.disabled=false;cases.forEach(champ=>{champ.disabled=false;});cases[0].focus();}
+        }
+      });
+      cases[0].focus();
+    });
+  }
+
   let verificationCodaEnCours = false;
   async function ouvrirModificationCoda() {
     if (verificationCodaEnCours) return;
@@ -3485,52 +3580,29 @@ function afficherResumePointsPassion(compte) {
       if (statut.desactive) { await afficherAlerte("Le CODR est désactivé. Contactez l’administrateur."); return; }
       parcours=ouvrirParcoursCompte("dialogue-modification-coda","Mettre à jour mon CODA");
       if(!parcours)return;
-      const premier=await ouvrirDialogueChamp({
-        titre:"Mettre à jour mon CODA", libelleValider:"Suivant",
-        consignes:["Étape 1 sur 2","Saisissez votre nouveau CODA.","Puis vous validerez avec votre CODR.","Saisir mon CODA"],
-        champs:[{id:"nouveau-coda-membre",name:"coda",label:"Saisir mon CODA",type:"coda",required:true,
-          libelleAfficher:"Afficher mon CODA",valider:validerNouveauCodaDirect}]
-      },parcours.contenu);
+      const premier=await ouvrirEcranCodeCompte(parcours.contenu,"coda");
       if(!premier)return;
-      nouveauCoda=premier.coda;
-      premier.coda="";
-      await ouvrirDialogueChamp({
-        titre:"Mettre à jour mon CODA", libelleValider:"Confirmer",
-        consignes:["Étape 2 sur 2","Confirmez avec votre CODR.","Attention : deux essais maximum pour le CODR. Après deux erreurs, le CODR est désactivé."],
-        champs:[{id:"codr-modification-membre",name:"codr",label:"Confirmer avec mon CODR",type:"codr",required:true,
-          libelleAfficher:"Afficher mon CODR",
-          valider:v=>/^[A-Z]{4}(-[A-Z]{4}){3}$/.test(v)?"":"Saisissez les quatre mots de quatre lettres du CODR."}],
-        onSubmit:async donnees=>{
-          const mots=donnees.codr.split("-");
-          let message="La modification n’a pas pu être confirmée.";
-          let succes=false, nouvelleTentative=false;
-          try {
-            const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/coda-change",{
-              method:"POST",credentials:"include",cache:"no-store",
-              headers:{"Content-Type":"application/json"},
-              body:JSON.stringify({coda:nouveauCoda,mots})
-            });
-            const d=await r.json().catch(()=>null);
-            if(r.status===401){confirmation={sessionInactive:true};return true;}
-            message=d?.message || message;
-            succes=r.ok && d?.success===true;
-            nouvelleTentative=!succes && r.status!==429 && d?.reason==="codr_incorrect" && d?.desactive!==true && d?.attemptsRemaining!==0;
-            if(!d) message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer.";
-          } catch { message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer."; }
-          if(nouvelleTentative){
-            const erreur=parcours.contenu.querySelector("[data-lcdp-dialogue-champ-error]");
-            erreur.textContent=message;erreur.hidden=false;
-            const cache=document.getElementById("codr-modification-membre");
-            const groupe=cache?.parentNode;
-            if(cache) cache.value="";
-            groupe?.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"])').forEach(champ=>{champ.value="";});
-            groupe?.querySelector('input:not([type="hidden"]):not([type="checkbox"])')?.focus();
-            return false;
-          }
-          confirmation={succes,message};
-          return true;
-        }
-      },parcours.contenu);
+      nouveauCoda=premier;
+      await ouvrirEcranCodeCompte(parcours.contenu,"codr",async codr=>{
+        const mots=codr.split("-");
+        let message="La modification n’a pas pu être confirmée.";
+        let succes=false, nouvelleTentative=false;
+        try {
+          const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/coda-change",{
+            method:"POST",credentials:"include",cache:"no-store",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({coda:nouveauCoda,mots})
+          });
+          const d=await r.json().catch(()=>null);
+          if(r.status===401){confirmation={sessionInactive:true};return;}
+          message=d?.message || message;
+          succes=r.ok && d?.success===true;
+          nouvelleTentative=!succes && r.status!==429 && d?.reason==="codr_incorrect" && d?.desactive!==true && d?.attemptsRemaining!==0;
+          if(!d)message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer.";
+        }catch{message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer.";}
+        if(nouvelleTentative)return {reessayer:true,message};
+        confirmation={succes,message};
+      });
       parcours.fermer();
       if(confirmation?.sessionInactive){redirigerConnexionMembre("inactive");return;}
       if(confirmation){
@@ -3878,8 +3950,8 @@ function afficherResumePointsPassion(compte) {
     return resultat;
   }
 
-  async function ouvrirDialogueChamp(options, slotParcours=null) {
-    const slot = slotParcours || document.getElementById("lcdp-lightbox-slot");
+  async function ouvrirDialogueChamp(options) {
+    const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) return null;
 
     slot.innerHTML = "";
@@ -3902,11 +3974,6 @@ function afficherResumePointsPassion(compte) {
     titre.textContent = options.titre || "";
     if (options.variante === "alias") dialogue.classList.add("lcdp-compte-dialogue-alias");
     if (options.variante === "telephone") dialogue.classList.add("lcdp-compte-dialogue-telephone");
-    if (slotParcours) {
-      dialogue.setAttribute("role","region");
-      dialogue.removeAttribute("aria-modal");
-      boutonFermer.hidden=true;
-    }
     const boutonValider = slot.querySelector("[data-lcdp-dialogue-champ-submit]");
     if (options.libelleValider && boutonValider) boutonValider.textContent = options.libelleValider;
     if (options.message) {
@@ -3916,12 +3983,6 @@ function afficherResumePointsPassion(compte) {
       zoneContent.appendChild(note);
     }
 
-    for (const consigne of options.consignes || []) {
-      const texte=document.createElement("p");
-      texte.className="lcdp-box-dialogue-champ__label";
-      texte.textContent=consigne;
-      zoneContent.appendChild(texte);
-    }
     for (const champ of options.champs || []) {
       zoneContent.appendChild(await creerChampDialogue(champ));
     }
@@ -3947,7 +4008,7 @@ function afficherResumePointsPassion(compte) {
       boutonAnnuler.addEventListener("click", () => fermer(null));
 
       dialogue.addEventListener("click", (event) => {
-        if (!slotParcours && event.target === dialogue && !soumissionEnCours) fermer(null);
+        if (event.target === dialogue && !soumissionEnCours) fermer(null);
       });
 
       let soumissionEnCours = false;
@@ -4004,9 +4065,7 @@ function afficherResumePointsPassion(compte) {
         }
 
         if (champRequisManquant || messageValidation) {
-          const message=messageValidation || "Merci de renseigner le champ demandé.";
-          if(slotParcours){erreur.textContent=message;erreur.hidden=false;}
-          else await afficherAlerteSuperposee(message);
+          await afficherAlerteSuperposee(messageValidation || "Merci de renseigner le champ demandé.");
           return;
         }
 
