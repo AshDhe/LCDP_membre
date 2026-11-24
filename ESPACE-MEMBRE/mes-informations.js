@@ -1233,70 +1233,48 @@
     titre.className = "lcdp-title-section";
     titre.textContent = "Fermeture du compte";
 
-    const carte = document.createElement("div");
-    carte.className = "lcdp-box-champ-formulaire";
-    carte.setAttribute("data-lcdp-box-champ-formulaire", "");
-    const paragraphes = [
-      "Vous pouvez fermer votre compte membre. Cette action suspend votre compte pendant 30 jours. Cela signifie que vous pouvez accéder à votre compte sans qu’aucune nouvelle action ne soit possible. Par exemple, un compte suspendu empêche toute invitation ou annulation d’invitation, ainsi que tout accès planifié ou annulation d’accès.",
-      "Vos abonnements ne sont toutefois pas annulés et les sommes dues avant la fin de la période de 30 jours restent exigibles.",
-      "Vous pouvez rouvrir votre compte depuis ce même emplacement pendant la période de 30 jours. Passé ce délai, votre compte est définitivement fermé dans l’application. Il n’est plus accessible. Les sommes dues à cette date restent exigibles."
-    ];
-    for (const texte of paragraphes) {
-      const p = document.createElement("p");
-      p.className = "lcdp-dialogue-ref__message";
-      p.textContent = texte;
-      carte.appendChild(p);
-    }
-    const mention = document.createElement("p");
-    mention.className = "lcdp-dialogue-ref__message";
-    mention.append("Consultez le ");
-    const lien = document.createElement("a");
-    lien.className = "lcdp-link-secondary";
-    lien.href = construireUrlPublic("/ESPACE-PUBLIC/reglement-app.html");
-    lien.target = "_blank";
-    lien.rel = "noopener noreferrer";
-    lien.textContent = "règlement de l’application";
-    mention.append(lien, " pour plus d’information sur la fermeture du compte.");
-    carte.appendChild(mention);
-
     const actions = document.createElement("div");
     actions.className = "lcdp-compte-actions-adresse";
     const bouton = document.createElement("button");
     bouton.id = "lcdp-compte-fermeture-action";
     bouton.type = "button";
     bouton.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--suppression";
-    bouton.textContent = "Fermer mon compte";
+    bouton.textContent = "Fermer";
     bouton.disabled = true;
-    bouton.setAttribute("aria-describedby", "lcdp-compte-fermeture-etat");
     bouton.addEventListener("click", gererFermetureCompte);
     actions.appendChild(bouton);
 
-    const etat = document.createElement("p");
-    etat.id = "lcdp-compte-fermeture-etat";
-    etat.className = "lcdp-dialogue-ref__message";
-    etat.setAttribute("aria-live", "polite");
-    etat.textContent = "Chargement de l’état du compte…";
-    carte.append(actions, etat);
-    section.append(titre, carte);
+    section.append(titre, actions);
     if (securite) securite.insertAdjacentElement("afterend", section);
     else fields.appendChild(section);
   }
 
   function afficherFermetureCompte(compte) {
     const bouton = document.getElementById("lcdp-compte-fermeture-action");
-    const mention = document.getElementById("lcdp-compte-fermeture-etat");
-    if (!bouton || !mention) return;
+    if (!bouton) return;
     const etat = lireEtatFermetureCompte(compte);
     const suspendu = etat === "suspendu";
-    bouton.textContent = suspendu ? "Rouvrir mon compte" : "Fermer mon compte";
+    bouton.textContent = suspendu ? "Rouvrir mon compte" : "Fermer";
     bouton.classList.toggle("lcdp-dialogue-ref__bouton--principal", suspendu);
     bouton.classList.toggle("lcdp-dialogue-ref__bouton--suppression", !suspendu);
     bouton.hidden = etat === "ferme";
     bouton.disabled = fermetureCompteEnCours || !compte || etat === "ferme";
-    mention.textContent = etat === "ferme" ? "Votre compte est fermé."
-      : suspendu ? "Votre compte est suspendu à votre demande."
-      : etat === null ? "Cette fonctionnalité n’est pas encore disponible." : "";
-    mention.hidden = !mention.textContent;
+
+  }
+
+  function construireAvertissementFermeture(message) {
+    const paragraphes = [
+      "Vous pouvez fermer votre compte membre. Cette action suspend votre compte pendant 30 jours. Cela signifie que vous pouvez accéder à votre compte sans qu’aucune nouvelle action ne soit possible. Par exemple, un compte suspendu empêche toute invitation ou annulation d’invitation, ainsi que tout accès planifié ou annulation d’accès.",
+      "Vos abonnements ne sont toutefois pas annulés et les sommes dues avant la fin de la période de 30 jours restent exigibles.",
+      "Vous pouvez rouvrir votre compte depuis ce même emplacement pendant la période de 30 jours. Passé ce délai, votre compte est définitivement fermé dans l’application. Il n’est plus accessible. Les sommes dues à cette date restent exigibles."
+    ];
+    message.textContent = paragraphes.join("\n\n") + "\n\nConsultez le ";
+    const lien = document.createElement("a");
+    lien.href = construireUrlPublic("/ESPACE-PUBLIC/reglement-app.html");
+    lien.target = "_blank";
+    lien.rel = "noopener noreferrer";
+    lien.textContent = "règlement de l’application";
+    message.append(lien, " pour plus d’information sur la fermeture du compte.");
   }
 
   async function gererFermetureCompte() {
@@ -1308,6 +1286,16 @@
     fermetureCompteEnCours = true;
     afficherFermetureCompte(compteMembreActuel);
     try {
+      if (!rouvrir) {
+        const continuer = await demanderSuppressionAlerte("", {
+          titre: "Avertissement avant fermeture",
+          avertissementFermeture: true,
+          construireMessage: construireAvertissementFermeture,
+          annuler: "Annuler",
+          confirmer: "Continuer"
+        });
+        if (!continuer) return;
+      }
       const confirme = await demanderSuppressionAlerte("", rouvrir ? {
         profil: "choix",
         titre: "Voulez-vous rouvrir votre compte ?",
@@ -1322,7 +1310,7 @@
       });
       if (!confirme) return;
       if (avant === null || !ENDPOINT_MON_COMPTE_MEMBRE) {
-        await afficherInformationMembre("La fermeture du compte n’est pas encore disponible. Aucune modification n’a été enregistrée.", "Information", null, "OK");
+        await afficherAlerte("Votre demande n’a pas pu être enregistrée.");
         return;
       }
       const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/fermeture-compte", {
@@ -2072,7 +2060,9 @@
     dialogue.querySelector("[data-lcdp-dialogue-titre]").textContent=
       options.titre || "Supprimer cette alerte ?";
     const message=dialogue.querySelector("[data-lcdp-dialogue-message]");
-    message.textContent=options.message ?? ("Supprimer définitivement l’alerte « "+titre+" » ?");
+    if (options.avertissementFermeture) dialogue.setAttribute("data-lcdp-avertissement-fermeture", "");
+    if (typeof options.construireMessage === "function") options.construireMessage(message);
+    else message.textContent=options.message ?? ("Supprimer définitivement l’alerte « "+titre+" » ?");
     message.hidden=!message.textContent;
     const conserver=dialogue.querySelector('[data-lcdp-dialogue-action="'+(choix?"annuler":"conserver")+'"]');
     const supprimer=dialogue.querySelector('[data-lcdp-dialogue-action="'+(choix?"confirmer":"supprimer")+'"]');
@@ -2091,8 +2081,9 @@
       const echap=e=>{
         if(e.key==="Escape"){e.preventDefault();terminer(false);}
         if(e.key==="Tab"){
-          if(e.shiftKey&&document.activeElement===conserver){e.preventDefault();supprimer.focus();}
-          else if(!e.shiftKey&&document.activeElement===supprimer){e.preventDefault();conserver.focus();}
+          const premier=message.querySelector("a[href]") || conserver;
+          if(e.shiftKey&&document.activeElement===premier){e.preventDefault();supprimer.focus();}
+          else if(!e.shiftKey&&document.activeElement===supprimer){e.preventDefault();premier.focus();}
         }
       };
       document.addEventListener("keydown",echap);
