@@ -749,6 +749,8 @@
     // Les choix multiples conservent leur objet CHOIX existant.
     const informationAbonnement = depassement && daValidee &&
       boutons.length === 1 && boutons[0].valeur === "abonnement";
+    const informationDemande = typeClic === "mois" && sansDa &&
+      boutons.length === 1 && boutons[0].valeur === "demande";
     const choix = informationAbonnement
       ? await afficherDialogueInformationPlanifier({
           titre,
@@ -757,7 +759,16 @@
           valeurAction: "abonnement",
           onAffiche: contexte.onAffiche
         })
-      : await ouvrirDialogueBoutonsSuperpose({titre,texte,boutons,onAffiche: contexte.onAffiche});
+      : informationDemande
+        ? await afficherDialogueInformationPlanifier({
+            titre,
+            message: texte,
+            libelleAction: boutons[0].label,
+            valeurAction: boutons[0].valeur,
+            annulable: true,
+            onAffiche: contexte.onAffiche
+          })
+        : await ouvrirDialogueBoutonsSuperpose({titre,texte,boutons,onAffiche: contexte.onAffiche});
     if (choix === "demande") {
       await ouvrirDemandeAbonnementDepuisPlanning();
     } else if (choix === "invitation") {
@@ -5975,7 +5986,7 @@
     }
   }
 
-  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null, classe = "", lignes = null }) {
+  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null, classe = "", lignes = null, annulable = false }) {
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
@@ -6025,20 +6036,29 @@
       }
       return await new Promise(resolve => {
         let termine = false;
-        const clore = () => {
+        const clore = (valeur = valeurAction) => {
           if (termine) return;
           termine = true;
           if (dialogue.classList.contains('lcdp-aboreza-dialogue-transition'))
-            refermerDialoguePrivileges(enveloppe, dialogue, () => resolve(valeurAction));
+            refermerDialoguePrivileges(enveloppe, dialogue, () => resolve(valeur));
           else {
             enveloppe.remove();
-            resolve(valeurAction);
+            resolve(valeur);
           }
         };
-        fermer.addEventListener('click', clore, { once: true });
-        if (fermetureLibre) {
+        fermer.addEventListener('click', () => clore(), { once: true });
+        if (fermetureLibre || annulable) {
           dialogue.addEventListener('click', event => {
-            if (event.target === dialogue) clore();
+            if (event.target === dialogue) clore(annulable ? null : valeurAction);
+          });
+        }
+        if (annulable) {
+          dialogue.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              event.stopPropagation();
+              clore(null);
+            }
           });
         }
         fermer.focus();
