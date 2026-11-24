@@ -112,7 +112,7 @@
     remplirTexte(racine, "[data-lcdp-facture-date]", formaterDate(facture.datefacture || facture.date || ""));
 
     if (String(facture?.typeDocument || "").trim().toLowerCase() === "avoir") {
-      remplacerTexteExact(racine, "FACTURE", "AVOIR");
+      remplacerTexteExact(racine, "FACTURE", facture.projet === true ? "PROJET D’AVOIR — NON ÉMIS" : "AVOIR");
     }
 
     const slotEmetteur = racine.querySelector("[data-lcdp-facture-emetteur-slot]");
@@ -124,7 +124,7 @@
       throw new Error("Slots facture incomplets.");
     }
 
-    slotEmetteur.appendChild(await creerCardCoordonneesFacture("Émetteur", null));
+    slotEmetteur.appendChild(await creerCardCoordonneesFacture("Émetteur", facture.emetteur || null));
     slotDestinataire.appendChild(await creerCardCoordonneesFacture("Destinataire", facture.destinataire || {}));
     slotCard.appendChild(await creerCardDetailFacture(facture));
     slotMentions.appendChild(await creerCardMentionsFacture(facture));
@@ -178,10 +178,86 @@
       remplacerTexteExact(slotProduit, "Commande", "Commande annulée");
     }
 
+    if (facture.versionCalcul === "avoir-calcul-v3") {
+      const listeProduit = slotProduit.querySelector(".lcdp-box-card-facture__list");
+      if (!listeProduit) throw Error("Référence de la facture initiale introuvable.");
+      ajouterLigneComptable(listeProduit, facture.projet ? "Référence interne de l’avoir" : "N° d’avoir", facture.numeroavoir || "");
+      ajouterLigneComptable(listeProduit, "N° de facture annulée", facture.factureAnnulee || "Non attribué (facture test)");
+      ajouterLigneComptable(listeProduit, "Date de facture initiale", formaterDate(facture.dateFactureInitiale));
+      for (const option of facture.produit?.options || []) {
+        ajouterLigneComptable(listeProduit, "Option annulée", String(option.code || "") + " × " + String(option.multiplicateur || 1));
+      }
+      card.replaceChildren(slotProduit, creerBlocComptableAvoir(facture.comptabilite));
+      return card;
+    }
     slotPaiement.appendChild(await creerCardPaiementFacture(facture.paiement || {}));
     slotPrix.appendChild(await creerCardPrixFacture(facture.prix || {}));
 
     return card;
+  }
+
+
+  function ajouterLigneComptable(liste, libelle, valeur) {
+    const ligne = document.createElement("div");
+    ligne.className = "lcdp-box-card-facture__row";
+    const dt = document.createElement("dt");
+    dt.textContent = libelle;
+    const dd = document.createElement("dd");
+    dd.textContent = valeur;
+    ligne.append(dt, dd);
+    liste.appendChild(ligne);
+  }
+
+  function construireLignesComptablesAvoir(c) {
+    if (!c || !Number.isSafeInteger(c.joursConsommes) || c.joursConsommes < 0) throw Error("Calcul comptable absent.");
+    const montant = v => {
+      if (v === null || v === undefined || v === "" || !Number.isFinite(Number(v))) throw Error("Montant comptable absent.");
+      return formaterMontant(v);
+    };
+    const triple = b => [["Montant TTC", montant(b.ttc)], ["Montant HT", montant(b.ht)], ["TVA", montant(b.tva)]];
+    const j = c.joursConsommes;
+    const detail = j === 0 ? "Aucun jour consommé" : j === 1 ? "Un jour consommé" : j === 2 ? "Deux jours consommés" : "Trois jours ou plus consommés (" + j + " jours)";
+    const suffixe = j === 0 ? "" : " — " + c.tarif.quantite + " × " + montant(c.tarif.prix_unitaire_ttc) + " (" + c.tarif.reference + ")";
+    const r = c.remboursement;
+    if (Number(r.net_ttc) > 0) throw Error("Net à rembourser positif : contrôle requis.");
+    return [
+      {titre:"Annulation intégrale de la prestation facturée",lignes:triple(c.annulation)},
+      {titre:"Facturation des accès consommés avant rétractation (selon conditions générales de vente)",detail:detail+suffixe,lignes:triple(c.consommation)},
+      {titre:"Net de l’avoir",lignes:triple(c.net)},
+      {titre:"Montant à rembourser TTC",lignes:[
+        ["Montant encaissé à la commande à rembourser",montant(r.encaisse_commande_ttc)],
+        ["Montant facturé à la rétractation",montant(r.facture_retractation_ttc)],
+        ["Net à rembourser",montant(r.net_ttc)]
+      ],mention:Number(r.net_ttc)<0 ? "Le remboursement intervient au plus tard dans les 14 jours calendaires suivant la notification de la rétractation." : "Aucun remboursement dû."}
+    ];
+  }
+
+  function creerBlocComptableAvoir(c) {
+    const bloc = document.createElement("div");
+    for (const partie of construireLignesComptablesAvoir(c)) {
+      const section = document.createElement("section");
+      section.className = "lcdp-box-card-prix-in-facture";
+      const titre = document.createElement("h3");
+      titre.className = "lcdp-box-card-facture__section-title";
+      titre.textContent = partie.titre;
+      section.appendChild(titre);
+      if (partie.detail) {
+        const p = document.createElement("p");
+        p.textContent = partie.detail;
+        section.appendChild(p);
+      }
+      const liste = document.createElement("dl");
+      liste.className = "lcdp-box-card-facture__list" + (partie.titre === "Net de l’avoir" || partie.titre === "Montant à rembourser TTC" ? " lcdp-box-card-facture__list--total" : "");
+      for (const [libelle,valeur] of partie.lignes) ajouterLigneComptable(liste,libelle,valeur);
+      section.appendChild(liste);
+      if (partie.mention) {
+        const p = document.createElement("p");
+        p.textContent = partie.mention;
+        section.appendChild(p);
+      }
+      bloc.appendChild(section);
+    }
+    return bloc;
   }
 
   async function creerCardProduitFacture(produit) {
