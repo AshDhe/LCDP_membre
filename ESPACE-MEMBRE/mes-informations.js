@@ -3365,7 +3365,7 @@ function afficherResumePointsPassion(compte) {
     try{
       const confirmer=await afficherChoixMesInformations(
         "Cette opération vous déconnectera.",
-        {titre:"Mettre à jour votre autorisation de géolocalisation ?",libelleAnnuler:"Annuler",libelleConfirmer:"OK"}
+        {titre:"Mettre à jour votre autorisation de géolocalisation ?",libelleAnnuler:"Annuler",libelleConfirmer:"Modifier"}
       );
       if(confirmer){
         const cfg=window.SITE_CONFIG||{};
@@ -3408,7 +3408,7 @@ function afficherResumePointsPassion(compte) {
     try {
       const confirmer=await afficherChoixMesInformations(
         "Souhaitez-vous transmettre une demande de modification de votre CODR à l’administrateur de l’application ?",
-        {titre:"Modifier votre CODR",libelleAnnuler:"Annuler",libelleConfirmer:"OK"}
+        {titre:"Modifier votre CODR",libelleAnnuler:"Annuler",libelleConfirmer:"Transmettre"}
       );
       if (!confirmer) return;
       const reponse=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/codr-admin-request",{
@@ -3466,16 +3466,19 @@ function afficherResumePointsPassion(compte) {
       if (reponse.status === 401) { redirigerConnexionMembre("inactive"); return; }
       if (!reponse.ok || !statut?.ok) { await afficherAlerte(statut?.message || "Le service de sécurité est indisponible."); return; }
       if (statut.desactive) { await afficherAlerte("Le CODR est désactivé. Contactez l’administrateur."); return; }
+      const premier=await ouvrirDialogueChamp({
+        titre:"Mettre à jour mon CODA", variante:"modification-coda", libelleValider:"Suivant",
+        consignes:["Étape 1 sur 2","Saisissez votre nouveau CODA.","Puis vous validerez avec votre CODR.","Saisir mon CODA"],
+        champs:[{id:"nouveau-coda-membre",name:"coda",label:"Saisir mon CODA",type:"coda",required:true,
+          libelleAfficher:"Afficher mon CODA",valider:validerNouveauCodaDirect}]
+      });
+      if(!premier)return;
       await ouvrirDialogueChamp({
-        titre:"Modifier le CODA", libelleValider:"Valider",
-        message:"Définissez votre nouveau CODA, puis confirmez avec votre CODR.",
-        champs:[
-          {id:"nouveau-coda-membre",name:"coda",label:"Nouveau CODA",type:"coda",required:true,
-            valider:validerNouveauCodaDirect},
-          {id:"codr-modification-membre",name:"codr",label:"Code de récupération (CODR)",type:"codr",required:true,
-            valider:v=>/^[A-Z]{4}(-[A-Z]{4}){3}$/.test(v)?"":"Saisissez les quatre mots de quatre lettres du CODR."}
-        ],
-        noteFin:"Attention : deux essais maximum pour le CODR. Après deux erreurs, le CODR est désactivé. Ces informations sont strictement confidentielles.",
+        titre:"Mettre à jour mon CODA", variante:"modification-coda", libelleValider:"Confirmer",
+        consignes:["Étape 2 sur 2","Confirmez avec votre CODR.","Attention : deux essais maximum pour le CODR. Après deux erreurs, le CODR est désactivé."],
+        champs:[{id:"codr-modification-membre",name:"codr",label:"Confirmer avec mon CODR",type:"codr",required:true,
+          libelleAfficher:"Afficher mon CODR",
+          valider:v=>/^[A-Z]{4}(-[A-Z]{4}){3}$/.test(v)?"":"Saisissez les quatre mots de quatre lettres du CODR."}],
         onSubmit:async donnees=>{
           const mots=donnees.codr.split("-");
           let message="La modification n’a pas pu être confirmée.";
@@ -3484,12 +3487,12 @@ function afficherResumePointsPassion(compte) {
             const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/coda-change",{
               method:"POST",credentials:"include",cache:"no-store",
               headers:{"Content-Type":"application/json"},
-              body:JSON.stringify({coda:donnees.coda,mots})
+              body:JSON.stringify({coda:premier.coda,mots})
             });
             const d=await r.json().catch(()=>null);
             message=d?.message || message;
             succes=r.ok && d?.success===true;
-            nouvelleTentative=!succes && d?.reason==="codr_incorrect";
+            nouvelleTentative=!succes && r.status!==429 && d?.reason==="codr_incorrect" && d?.desactive!==true && d?.attemptsRemaining!==0;
             if(!d) message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer.";
           } catch { message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer."; }
           await afficherAlerteSuperposee(message, { profil: succes ? "information" : "erreur" });
@@ -3865,6 +3868,10 @@ function afficherResumePointsPassion(compte) {
     titre.textContent = options.titre || "";
     if (options.variante === "alias") dialogue.classList.add("lcdp-compte-dialogue-alias");
     if (options.variante === "telephone") dialogue.classList.add("lcdp-compte-dialogue-telephone");
+    if (options.variante === "modification-coda") {
+      dialogue.setAttribute("data-lcdp-modification-coda","");
+      boutonFermer.hidden=true;
+    }
     const boutonValider = slot.querySelector("[data-lcdp-dialogue-champ-submit]");
     if (options.libelleValider && boutonValider) boutonValider.textContent = options.libelleValider;
     if (options.message) {
@@ -3874,6 +3881,12 @@ function afficherResumePointsPassion(compte) {
       zoneContent.appendChild(note);
     }
 
+    for (const consigne of options.consignes || []) {
+      const texte=document.createElement("p");
+      texte.className="lcdp-box-dialogue-champ__label";
+      texte.textContent=consigne;
+      zoneContent.appendChild(texte);
+    }
     for (const champ of options.champs || []) {
       zoneContent.appendChild(await creerChampDialogue(champ));
     }
@@ -3981,7 +3994,7 @@ function afficherResumePointsPassion(compte) {
         fermer(data);
       });
 
-      const premierInput = formulaire.querySelector("input, textarea, select");
+      const premierInput = formulaire.querySelector("input:not([type=hidden]), textarea, select");
       if (premierInput) premierInput.focus();
     });
   }
@@ -4029,7 +4042,7 @@ function afficherResumePointsPassion(compte) {
       const montrer=document.createElement("label");
       montrer.className="lcdp-box-champ-formulaire__checkbox-line";
       const afficher=document.createElement("input");afficher.type="checkbox";
-      const texte=document.createElement("span");texte.textContent="Afficher la saisie";
+      const texte=document.createElement("span");texte.textContent=configurationChamp.libelleAfficher || "Afficher la saisie";
       afficher.addEventListener("change",()=>elements.forEach(c=>{c.type=afficher.checked?"text":"password";}));
       montrer.append(afficher,texte);
       zoneControl.append(valeur,groupe,montrer);
