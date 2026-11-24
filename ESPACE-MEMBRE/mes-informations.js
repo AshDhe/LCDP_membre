@@ -1016,15 +1016,12 @@
 
   // Presentation only: every real field, link and editing control is preserved.
   // Grouping gives each section a stable CSS hook without hardcoded data.
-  // État vide, chargement ou erreur : même emplacement gris qu'une demande enregistrée.
+  // État vide, chargement ou erreur : mention commune du compte.
   function afficherSlotService(liste, message) {
-    const cadre=document.createElement("div");
-    cadre.className="lcdp-compte-alerte lcdp-compte-alerte--vide";
-    const texte=document.createElement("p");
-    texte.className="lcdp-compte-alertes-vide lcdp-compte-placeholder-da";
+    const texte=document.createElement("span");
+    texte.className="lcdp-compte-placeholder-da";
     texte.textContent=message;
-    cadre.appendChild(texte);
-    liste.replaceChildren(cadre);
+    liste.replaceChildren(texte);
   }
 
   function structurerSectionsCompte(form) {
@@ -1108,11 +1105,19 @@
     afficherSlotService(listeAlertes,"Chargement des alertes…");
     function creerCarteService(libelle, liste) {
       const carte=document.createElement("div");
-      carte.className="lcdp-compte-relations__ligne";
+      carte.className="lcdp-box-champ-formulaire";
+      carte.setAttribute("data-lcdp-box-champ-formulaire","");
+      const labelZone=document.createElement("div");
+      labelZone.className="lcdp-box-champ-formulaire__label-zone";
       const titre=document.createElement("span");
-      titre.className="lcdp-compte-relations__libelle";
+      titre.className="lcdp-box-champ-formulaire__label";
       titre.textContent=libelle;
-      carte.append(titre,liste);
+      labelZone.appendChild(titre);
+      const control=document.createElement("div");
+      control.className="lcdp-box-champ-formulaire__control";
+      control.setAttribute("data-lcdp-champ-control","");
+      control.appendChild(liste);
+      carte.append(labelZone,control);
       return carte;
     }
     const listeDuoActif=document.createElement("div");
