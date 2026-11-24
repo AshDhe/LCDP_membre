@@ -764,7 +764,13 @@
         c.addEventListener("paste",e=>{const chiffres=(e.clipboardData?.getData("text")||"").replace(/\D/g,"").slice(0,4-i);if(!chiffres)return;e.preventDefault();Array.from(chiffres).forEach((ch,j)=>{cases[i+j].value=ch;});erreur.hidden=true;erreur.textContent="";cases[Math.min(3,i+chiffres.length)].focus();});
         cases.push(c);groupe.appendChild(c);
       }
-      zone.append(description,groupe,message);
+      const montrer=document.createElement("label");
+      montrer.className="lcdp-box-champ-formulaire__checkbox-line";
+      const afficher=document.createElement("input");afficher.type="checkbox";
+      const texte=document.createElement("span");texte.textContent="Afficher la saisie";
+      afficher.addEventListener("change",()=>cases.forEach(c=>{c.type=afficher.checked?"text":"password";}));
+      montrer.append(afficher,texte);
+      zone.append(description,groupe,montrer,message);
       annuler.onclick=()=>{if(!occupe)fermerParcours();};
       cases[0].focus();
     }catch(e){fermerParcours();await afficherAlerte("Le formulaire CODA est indisponible.");return;}
