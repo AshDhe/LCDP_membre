@@ -57,12 +57,11 @@
   let emailMembreActuel = "";
 
   const PAGE_POINTS_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-points.html");
-  // Prévisualisation des points : restriction d'affichage uniquement.
-  // Les calculs et journaux de points restent indépendants de cette page.
-  const IDMEMBRE_AUTORISE_POINTS = "169d9253-9c5b-4788-a014-1158d5d9caa9";
+  // Affichage suspendu pour tous les membres. Les calculs et journaux restent actifs.
+  const AFFICHAGE_POINTS_COMPTE_ACTIF = false;
 
-  function autoriserAffichagePointsCompte(compte) {
-    return String(compte?.idmembre || "").trim().toLowerCase() === IDMEMBRE_AUTORISE_POINTS;
+  function autoriserAffichagePointsCompte() {
+    return AFFICHAGE_POINTS_COMPTE_ACTIF;
   }
   const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
   const PAGE_FACTURES_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-factures-membre.html");
@@ -93,6 +92,14 @@
       label: "Prénom",
       type: "text",
       key: "prenom"
+    },
+    {
+      section: "Mon compte",
+      id: "champ-membre-depuis",
+      name: "membreDepuisAffichage",
+      label: "Inscription",
+      type: "text",
+      key: "membreDepuisAffichage"
     },
     {
       section: "Mon compte",
@@ -186,14 +193,6 @@
         mode: "picto",
         neutre: true
       }
-    },
-    {
-      section: "Club",
-      id: "champ-membre-depuis",
-      name: "membreDepuisAffichage",
-      label: "Inscription",
-      type: "text",
-      key: "membreDepuisAffichage"
     },
     {
       section: "Club",
@@ -1061,19 +1060,46 @@
     fields.replaceChildren(fragment);
     // L’abonnement est intégré au Club, immédiatement après le droit d’abonnement (DA).
     ajouterBlocAbonnementCompte(fields);
-    // Sécurité du compte : dernière rubrique, après l'adresse de facturation.
-    // Déplacement du noeud existant : tous les champs, actions et écouteurs sont conservés.
+    // Les sous-rubriques reprennent le format existant d’Équipement présence.
+    // Déplacer les nœuds préserve leurs identifiants, actions et écouteurs.
+    function convertirSousRubrique(rubrique, titre) {
+      if (!rubrique) return;
+      rubrique.classList.remove("lcdp-mon-compte-section");
+      rubrique.classList.add("lcdp-compte-equipements");
+      const entete = rubrique.querySelector(":scope > .lcdp-title-section");
+      if (entete) {
+        entete.classList.add("lcdp-compte-equipements__titre");
+        if (titre) entete.textContent = titre;
+      }
+    }
+    const adresse = fields.querySelector('[data-lcdp-compte-section="facturation"]');
+    const remboursement = fields.querySelector('[data-lcdp-compte-section="remboursement"]');
+    if (adresse && remboursement) {
+      const facturation = document.createElement("section");
+      facturation.id = "lcdp-compte-facturation";
+      facturation.className = "lcdp-mon-compte-section";
+      facturation.setAttribute("aria-labelledby","lcdp-compte-facturation-titre");
+      const titre = document.createElement("h2");
+      titre.id = "lcdp-compte-facturation-titre";
+      titre.className = "lcdp-title-section";
+      titre.textContent = "Facturation";
+      remboursement.insertAdjacentElement("beforebegin",facturation);
+      convertirSousRubrique(adresse,"Adresse de facturation");
+      convertirSousRubrique(remboursement,"IBAN de remboursement");
+      facturation.append(titre,adresse,remboursement);
+    }
+    // Sécurité du compte : dernière rubrique indépendante.
     const securite = fields.querySelector('[data-lcdp-compte-section="securite"]');
     if (securite) fields.appendChild(securite);
 
     // Service : liste membre, sans bouton de navigation vers une seconde page.
     const services=document.createElement("section");
-    services.className="lcdp-mon-compte-section lcdp-compte-service";
+    services.className="lcdp-compte-equipements lcdp-compte-service";
     services.dataset.lcdpCompteSection="service";
     services.setAttribute("aria-labelledby","lcdp-mon-compte-titre-service");
-    const titreServices=document.createElement("h2");
+    const titreServices=document.createElement("h3");
     titreServices.id="lcdp-mon-compte-titre-service";
-    titreServices.className="lcdp-title-section";
+    titreServices.className="lcdp-title-section lcdp-compte-equipements__titre";
     titreServices.textContent="Services";
     const listeAlertes=document.createElement("div");
     listeAlertes.id="lcdp-compte-alertes-liste";
@@ -1094,9 +1120,25 @@
     services.append(titreServices,titreAlertes,listeAlertes,titreDuoActif,listeDuoActif);
     const statutMembre=fields.querySelector('[data-lcdp-compte-section="participation"]');
     if(statutMembre) {
-      statutMembre.insertAdjacentElement("afterend",services);
+      const abonnement = statutMembre.querySelector("#lcdp-compte-abonnement");
+      if (abonnement) abonnement.insertAdjacentElement("afterend",services);
+      else statutMembre.appendChild(services);
       ajouterBlocRelationsInvitationsCompte(statutMembre);
-    } else fields.insertBefore(services,securite||null);
+
+      // Points club avant les règlements, même si leur affichage est suspendu.
+      const points = statutMembre.querySelector("#champ-points-club-membre")?.closest("[data-lcdp-box-champ-formulaire]");
+      const actionsPoints = statutMembre.querySelector("#voir-mes-points")?.closest(".lcdp-compte-actions-adresse");
+      if (points) statutMembre.appendChild(points);
+      if (actionsPoints) statutMembre.appendChild(actionsPoints);
+      const reglements = fields.querySelector('[data-lcdp-compte-section="reglements"]');
+      if (reglements) {
+        convertirSousRubrique(reglements,"Règlements");
+        statutMembre.appendChild(reglements);
+      }
+    } else {
+      services.classList.add("lcdp-mon-compte-section");
+      fields.insertBefore(services,securite||null);
+    }
     chargerAlertesCompte().catch(err=>{
       console.error("SERVICE : alertes indisponibles",err);
       afficherSlotService(listeAlertes,"Impossible de charger les alertes.");
