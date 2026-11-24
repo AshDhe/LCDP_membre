@@ -605,10 +605,57 @@
     const fauxInput = {parentNode:zone.lastElementChild};
     ajouterPictoModificationDansChamp(fauxInput, zone, {id:"modifier-selfie",texte:"Prendre ou remplacer mon selfie",pictoRouge:true});
     bloc.insertAdjacentElement("afterend", zone);
-    document.getElementById("modifier-selfie").addEventListener("click", ouvrirSelfie);
+    document.getElementById("modifier-selfie").addEventListener("click", proposerActionsSelfie);
     document.getElementById("selfie-badge").addEventListener("click", agrandirSelfie);
 
   }
+  let choixSelfieEnCours = false;
+  async function proposerActionsSelfie() {
+    if (choixSelfieEnCours || document.getElementById("dialogue-selfie") || document.getElementById("dialogue-selfie-agrandi")) return;
+    if (!selfieUrl) return ouvrirSelfie();
+    const slot = document.getElementById("lcdp-lightbox-slot");
+    if (!slot) return;
+    const focusInitial = document.activeElement;
+    choixSelfieEnCours = true;
+    let choix = null;
+    try {
+      const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html");
+      slot.replaceChildren(fragment);
+      const dialogue = slot.querySelector('[data-lcdp-dialogue-reference="choix"]');
+      const titre = slot.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = slot.querySelector("[data-lcdp-dialogue-message]");
+      const afficher = slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
+      const modifier = slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+      if (!dialogue || !titre || !texte || !afficher || !modifier) throw Error("Structure CHOIX incomplète.");
+      titre.textContent = "Mon selfie";
+      texte.textContent = "Consultez ou modifiez votre selfie.";
+      afficher.textContent = "Afficher mon selfie";
+      modifier.textContent = "Modifier mon selfie";
+      choix = await new Promise(resolve => {
+        let termine = false;
+        function fermer(action) {
+          if (termine) return;
+          termine = true;
+          document.removeEventListener("keydown", clavier);
+          slot.replaceChildren();
+          focusInitial?.focus();
+          resolve(action);
+        }
+        function clavier(event) { if (event.key === "Escape") { event.preventDefault(); fermer(null); } }
+        afficher.addEventListener("click", () => fermer("afficher"), {once:true});
+        modifier.addEventListener("click", () => fermer("modifier"), {once:true});
+        dialogue.addEventListener("click", event => { if (event.target === dialogue) fermer(null); });
+        document.addEventListener("keydown", clavier);
+        afficher.focus();
+      });
+    } catch {
+      slot.replaceChildren();
+      await afficherAlerte("Les actions du selfie sont momentanément indisponibles.");
+    } finally { choixSelfieEnCours = false; }
+    if (choix === "afficher") agrandirSelfie();
+    if (choix === "modifier") await ouvrirSelfie();
+  }
+
   async function chargerSelfie() {
     const statut = document.getElementById("selfie-etat");
     const photo = document.getElementById("selfie-photo");
@@ -752,11 +799,11 @@
     async function ouvrirCameraSelfie(){
       if(!actif||!jeton)return;
       d.dataset.etape="capture";
-      d.innerHTML='<div class="lcdp-box-dialogue-champ" role="region"><div class="lcdp-box-dialogue-champ__card"><h2 id="titre-selfie" class="lcdp-box-dialogue-champ__title">Selfie</h2><video autoplay playsinline muted aria-label="Aperçu de votre selfie"></video><p role="status" aria-live="polite" data-selfie-message>Ouverture de la caméra…</p><div class="lcdp-box-dialogue-champ__actions"><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Annuler</button><button type="button" class="lcdp-button lcdp-button-primary" data-selfie-capture disabled>Prendre la photo</button></div></div></div>';
+      d.innerHTML='<div class="lcdp-box-dialogue-champ" role="region"><div class="lcdp-box-dialogue-champ__card"><h2 id="titre-selfie" class="lcdp-box-dialogue-champ__title">Selfie</h2><video autoplay playsinline muted aria-label="Aperçu de votre selfie" hidden></video><p class="lcdp-cle-dialogue-note" role="status" aria-live="polite" data-selfie-message>Activez votre caméra pour prendre votre selfie.</p><div class="lcdp-box-dialogue-champ__actions"><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Annuler</button><button type="button" class="lcdp-button lcdp-button-primary" data-selfie-capture>Activer la caméra</button></div></div></div>';
       video=d.querySelector("video");
       const message=d.querySelector("[data-selfie-message]"),capture=d.querySelector("[data-selfie-capture]"),fermer=d.querySelector("[data-selfie-fermer]");
       fermer.onclick=()=>{if(!occupe)fermerParcours();};
-      capture.onclick=async()=>{
+      async function prendrePhoto(){
         if(occupe||!actif||!jeton||!video.videoWidth)return;
         occupe=true;capture.disabled=true;fermer.disabled=true;message.textContent="Préparation de la photo…";
         try{
@@ -769,15 +816,38 @@
           afficherApercuSelfie(blob);
         }catch(e){if(actif)message.textContent=e.message||"La photo n’a pas pu être créée.";}
         finally{occupe=false;if(actif&&d.dataset.etape==="capture"){capture.disabled=false;fermer.disabled=false;}}
-      };
-      try{
+      }
+      let activationEnCours=false;
+      async function activerCamera(){
+        if(activationEnCours||!actif||!jeton)return;
+        activationEnCours=true;capture.disabled=true;
+        message.textContent="Ouverture de la caméra…";
+        arreterCamera();
+        try{
         if(!navigator.mediaDevices?.getUserMedia)throw Error("La caméra n’est pas accessible. Utilisez un navigateur compatible en HTTPS.");
         const obtenu=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"user"},width:{ideal:720},height:{ideal:720}},audio:false});
         if(!actif){obtenu.getTracks().forEach(t=>t.stop());return;}
         stream=obtenu;video.srcObject=stream;
         await video.play();if(!actif)return;
-        capture.disabled=false;message.textContent="Placez votre visage au centre de l’image.";
-      }catch(e){if(actif){stream?.getTracks().forEach(t=>t.stop());video.srcObject=null;message.textContent=e.name==="NotAllowedError"?"Autorisez l’accès à la caméra pour prendre votre selfie.":e.name==="NotFoundError"?"Aucune caméra disponible sur cet appareil.":e.message||"Caméra indisponible.";}}
+        video.hidden=false;
+        capture.textContent="Prendre la photo";
+        capture.onclick=prendrePhoto;
+        message.textContent="Placez votre visage au centre de l’image.";
+        }catch(e){
+          if(actif){
+            arreterCamera();video.hidden=true;
+            capture.textContent="Réessayer";
+            capture.onclick=activerCamera;
+            message.textContent=e.name==="NotAllowedError"||e.name==="PermissionDeniedError"
+              ?"Accès à la caméra refusé. Autorisez la caméra dans les paramètres de ce site (à gauche de la barre d’adresse), puis réessayez."
+              :e.name==="NotFoundError"?"Aucune caméra disponible sur cet appareil."
+              :e.name==="NotReadableError"?"La caméra est indisponible. Vérifiez qu’elle n’est pas utilisée par une autre application, puis réessayez."
+              :e.message||"Caméra indisponible.";
+          }
+        }finally{activationEnCours=false;if(actif&&d.dataset.etape==="capture")capture.disabled=false;}
+      }
+      capture.onclick=activerCamera;
+      capture.focus();
     }
 
     function afficherApercuSelfie(blob){
