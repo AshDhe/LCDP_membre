@@ -2300,6 +2300,7 @@
     afficherCompteMembre(compte);
     // Si /compte n'expose pas encore membres.tel, le récupérer via la demande de DA.
     void completerTelephoneCompteDepuisDa(compte);
+    void actualiserDisponibiliteModificationCoda();
     afficherEtatMembreCompte(compte);
     void chargerCoachsCompte(document.getElementById("lcdp-compte-relations"), compte);
     // Le compte est prêt : les appels optionnels ne retardent plus l'affichage.
@@ -3521,7 +3522,7 @@ function afficherResumePointsPassion(compte) {
     const texteAvertissement=document.createElement("div");
     function actualiserAvertissement(restants){
       titreAvertissement.textContent=restants===1?"Attention : dernier essai":"Attention : deux essais maximum";
-      texteAvertissement.textContent=restants===1?"Une nouvelle erreur désactive votre CODR. Vous devez alors contacter l’administrateur.":"Après deux erreurs, votre CODR est désactivé. Vous devez alors contacter l’administrateur.";
+      texteAvertissement.textContent=restants===1?"Une nouvelle erreur bloque la modification de votre CODA. Vos codes restent utilisables. Contactez alors l’administrateur.":"Après deux erreurs, la modification de votre CODA est bloquée. Vos codes restent utilisables. Contactez alors l’administrateur.";
     }
     avertissement.append(titreAvertissement,texteAvertissement);
     actualiserAvertissement(essaisRestants);
@@ -3595,6 +3596,28 @@ function afficherResumePointsPassion(compte) {
     });
   }
 
+  function afficherBlocageModificationCoda(bloque){
+    const bouton=document.getElementById("modifier-code-a-membre");
+    if(!bouton)return;
+    bouton.disabled=bloque;
+    bouton.setAttribute("aria-disabled",String(bloque));
+    bouton.title=bloque?"Modification du CODA bloquée. Contactez l’administrateur.":"Modifier le CODA";
+    const champ=document.getElementById("champ-code-a-membre")?.closest("[data-lcdp-box-champ-formulaire]");
+    if(!champ)return;
+    let note=champ.querySelector("[data-lcdp-coda-modification-bloquee]");
+    if(!bloque){note?.remove();return;}
+    if(!note){note=document.createElement("p");note.className="lcdp-box-champ-formulaire__aide";note.setAttribute("data-lcdp-coda-modification-bloquee","");champ.appendChild(note);}
+    note.textContent="Modification bloquée. Contactez l’administrateur.";
+  }
+
+  async function actualiserDisponibiliteModificationCoda(){
+    try{
+      const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/security-status",{credentials:"include",cache:"no-store"});
+      const d=await r.json();
+      if(r.ok&&d?.ok===true&&typeof d.coda_modification_active==="boolean")afficherBlocageModificationCoda(!d.coda_modification_active);
+    }catch{/* Le contrôle serveur reste obligatoire au clic. */}
+  }
+
   let verificationCodaEnCours = false;
   async function ouvrirModificationCoda() {
     if (verificationCodaEnCours) return;
@@ -3607,7 +3630,9 @@ function afficherResumePointsPassion(compte) {
       const statut = await reponse.json().catch(() => null);
       if (reponse.status === 401) { parcours.fermer();redirigerConnexionMembre("inactive"); return; }
       if (!reponse.ok || !statut?.ok) { parcours.fermer();await afficherAlerte(statut?.message || "Le service de sécurité est indisponible."); return; }
-      if (statut.desactive || statut.essais_restants===0) { parcours.fermer();await afficherAlerte("Le CODR est désactivé. Contactez l’administrateur."); return; }
+      if(statut.coda_modification_active===false){parcours.fermer();afficherBlocageModificationCoda(true);await afficherInformationMembre("La modification du CODA est bloquée. Contactez l’administrateur.");return;}
+      if(typeof statut.coda_modification_essais_restants!=="number"){parcours.fermer();await afficherInformationMembre("Le contrôle de modification du CODA est indisponible.");return;}
+      if (statut.desactive || statut.essais_restants===0) { parcours.fermer();await afficherInformationMembre("Le CODR est désactivé. Contactez l’administrateur."); return; }
       const premier=await ouvrirEcranCodeCompte(parcours.contenu,"coda");
       if(!premier)return;
       nouveauCoda=premier;
@@ -3625,12 +3650,13 @@ function afficherResumePointsPassion(compte) {
           if(r.status===401){confirmation={sessionInactive:true};return;}
           message=d?.message || message;
           succes=r.ok && d?.success===true;
+          if(d?.reason==="coda_modification_disabled")afficherBlocageModificationCoda(true);
           nouvelleTentative=!succes && r.status!==429 && d?.reason==="codr_incorrect" && d?.desactive!==true && d?.attemptsRemaining!==0;
           if(!d)message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer.";
         }catch{message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer.";}
         if(nouvelleTentative)return {reessayer:true,message};
         confirmation={succes,message};
-      },statut.essais_restants);
+      },statut.coda_modification_essais_restants);
       parcours.fermer();
       if(confirmation?.sessionInactive){redirigerConnexionMembre("inactive");return;}
       if(confirmation){
