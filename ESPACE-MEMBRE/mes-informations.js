@@ -67,6 +67,7 @@
   const PAGE_FACTURES_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/mes-factures-membre.html");
 
   let compteMembreActuel = null;
+  let fermetureCompteEnCours = false;
   let versionChargementAbonnementsCompte = 0;
   let abonnementPermanentCompte = false;
   let promesseChargementDiginumCompte = null;
@@ -1135,9 +1136,10 @@
       remboursement.querySelector(":scope > .lcdp-title-section").textContent="IBAN de remboursement";
       remboursement.insertAdjacentElement("beforebegin",adresse);
     }
-    // Sécurité du compte : dernière rubrique indépendante.
+    // Sécurité du compte, puis fermeture volontaire en dernière rubrique.
     const securite = fields.querySelector('[data-lcdp-compte-section="securite"]');
     if (securite) fields.appendChild(securite);
+    ajouterBlocFermetureCompte(fields, securite);
 
     // Service : liste membre, sans bouton de navigation vers une seconde page.
     const services=document.createElement("section");
@@ -1205,6 +1207,154 @@
   }
 
 
+
+
+  // Fermeture VOLONTAIRE uniquement, indépendante des impayés et suspensions administratives.
+  // Contrat provisoire à raccorder ultérieurement :
+  // GET /compte -> compte.fermetureCompte = { etat: "actif" | "suspendu" | "ferme" }
+  // POST /fermeture-compte { action: "fermer" | "rouvrir" }
+  // -> { ok: true, fermetureCompte: { etat: "suspendu" | "actif" } }
+  // En l'absence du champ serveur, aucun POST, aucune simulation ni persistance locale.
+  function lireEtatFermetureCompte(compte) {
+    const etat = compte?.fermetureCompte?.etat;
+    return ["actif", "suspendu", "ferme"].includes(etat) ? etat : null;
+  }
+
+  function ajouterBlocFermetureCompte(fields, securite) {
+    if (document.getElementById("lcdp-compte-fermeture")) return;
+    const section = document.createElement("section");
+    section.id = "lcdp-compte-fermeture";
+    section.className = "lcdp-mon-compte-section";
+    section.dataset.lcdpCompteSection = "fermeture";
+    section.setAttribute("aria-labelledby", "lcdp-mon-compte-titre-fermeture");
+
+    const titre = document.createElement("h2");
+    titre.id = "lcdp-mon-compte-titre-fermeture";
+    titre.className = "lcdp-title-section";
+    titre.textContent = "Fermeture du compte";
+
+    const carte = document.createElement("div");
+    carte.className = "lcdp-box-champ-formulaire";
+    carte.setAttribute("data-lcdp-box-champ-formulaire", "");
+    const paragraphes = [
+      "Vous pouvez fermer votre compte membre. Cette action suspend votre compte pendant 30 jours. Cela signifie que vous pouvez accéder à votre compte sans qu’aucune nouvelle action ne soit possible. Par exemple, un compte suspendu empêche toute invitation ou annulation d’invitation, ainsi que tout accès planifié ou annulation d’accès.",
+      "Vos abonnements ne sont toutefois pas annulés et les sommes dues avant la fin de la période de 30 jours restent exigibles.",
+      "Vous pouvez rouvrir votre compte depuis ce même emplacement pendant la période de 30 jours. Passé ce délai, votre compte est définitivement fermé dans l’application. Il n’est plus accessible. Les sommes dues à cette date restent exigibles."
+    ];
+    for (const texte of paragraphes) {
+      const p = document.createElement("p");
+      p.className = "lcdp-dialogue-ref__message";
+      p.textContent = texte;
+      carte.appendChild(p);
+    }
+    const mention = document.createElement("p");
+    mention.className = "lcdp-dialogue-ref__message";
+    mention.append("Consultez le ");
+    const lien = document.createElement("a");
+    lien.className = "lcdp-link-secondary";
+    lien.href = construireUrlPublic("/ESPACE-PUBLIC/reglement-app.html");
+    lien.target = "_blank";
+    lien.rel = "noopener noreferrer";
+    lien.textContent = "règlement de l’application";
+    mention.append(lien, " pour plus d’information sur la fermeture du compte.");
+    carte.appendChild(mention);
+
+    const actions = document.createElement("div");
+    actions.className = "lcdp-compte-actions-adresse";
+    const bouton = document.createElement("button");
+    bouton.id = "lcdp-compte-fermeture-action";
+    bouton.type = "button";
+    bouton.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--suppression";
+    bouton.textContent = "Fermer mon compte";
+    bouton.disabled = true;
+    bouton.setAttribute("aria-describedby", "lcdp-compte-fermeture-etat");
+    bouton.addEventListener("click", gererFermetureCompte);
+    actions.appendChild(bouton);
+
+    const etat = document.createElement("p");
+    etat.id = "lcdp-compte-fermeture-etat";
+    etat.className = "lcdp-dialogue-ref__message";
+    etat.setAttribute("aria-live", "polite");
+    etat.textContent = "Chargement de l’état du compte…";
+    carte.append(actions, etat);
+    section.append(titre, carte);
+    if (securite) securite.insertAdjacentElement("afterend", section);
+    else fields.appendChild(section);
+  }
+
+  function afficherFermetureCompte(compte) {
+    const bouton = document.getElementById("lcdp-compte-fermeture-action");
+    const mention = document.getElementById("lcdp-compte-fermeture-etat");
+    if (!bouton || !mention) return;
+    const etat = lireEtatFermetureCompte(compte);
+    const suspendu = etat === "suspendu";
+    bouton.textContent = suspendu ? "Rouvrir mon compte" : "Fermer mon compte";
+    bouton.classList.toggle("lcdp-dialogue-ref__bouton--principal", suspendu);
+    bouton.classList.toggle("lcdp-dialogue-ref__bouton--suppression", !suspendu);
+    bouton.hidden = etat === "ferme";
+    bouton.disabled = fermetureCompteEnCours || !compte || etat === "ferme";
+    mention.textContent = etat === "ferme" ? "Votre compte est fermé."
+      : suspendu ? "Votre compte est suspendu à votre demande."
+      : etat === null ? "Cette fonctionnalité n’est pas encore disponible." : "";
+    mention.hidden = !mention.textContent;
+  }
+
+  async function gererFermetureCompte() {
+    if (fermetureCompteEnCours || !compteMembreActuel) return;
+    const avant = lireEtatFermetureCompte(compteMembreActuel);
+    if (avant === "ferme") return;
+    const rouvrir = avant === "suspendu";
+    const bouton = document.getElementById("lcdp-compte-fermeture-action");
+    fermetureCompteEnCours = true;
+    afficherFermetureCompte(compteMembreActuel);
+    try {
+      const confirme = await demanderSuppressionAlerte("", rouvrir ? {
+        profil: "choix",
+        titre: "Voulez-vous rouvrir votre compte ?",
+        message: "",
+        annuler: "Non",
+        confirmer: "Oui"
+      } : {
+        titre: "Fermez-vous votre compte ?",
+        message: "Votre compte est suspendu pendant 30 jours à compter de votre confirmation.",
+        annuler: "Annuler",
+        confirmer: "Confirmer"
+      });
+      if (!confirme) return;
+      if (avant === null || !ENDPOINT_MON_COMPTE_MEMBRE) {
+        await afficherInformationMembre("La fermeture du compte n’est pas encore disponible. Aucune modification n’a été enregistrée.", "Information", null, "OK");
+        return;
+      }
+      const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/fermeture-compte", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Accept": "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ action: rouvrir ? "rouvrir" : "fermer" })
+      });
+      const resultat = await reponse.json().catch(() => null);
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+      const attendu = rouvrir ? "actif" : "suspendu";
+      if (!reponse.ok || resultat?.ok !== true ||
+          lireEtatFermetureCompte(resultat) !== attendu) {
+        throw new Error(messageErreurApi(resultat, "La modification du compte n’a pas pu être confirmée."));
+      }
+      // Le changement d'affichage repose exclusivement sur la réponse du serveur.
+      compteMembreActuel.fermetureCompte = resultat.fermetureCompte;
+      afficherFermetureCompte(compteMembreActuel);
+      await afficherInformationMembre(rouvrir ? "Votre compte est rouvert."
+        : "Votre compte est suspendu pour une période de 30 jours.", "Information", null, "OK");
+    } catch (erreur) {
+      await afficherAlerte(erreur?.message || "La modification du compte n’a pas pu être confirmée.");
+    } finally {
+      fermetureCompteEnCours = false;
+      afficherFermetureCompte(compteMembreActuel);
+      if (bouton?.isConnected && !bouton.hidden && !bouton.disabled) bouton.focus();
+    }
+  }
 
   // Petit bloc Club, placé après la demande de droit d’abonnement (DA).
   function ajouterBlocAbonnementCompte(fields) {
@@ -1913,17 +2063,21 @@
   async function demanderSuppressionAlerte(titre, options = {}) {
     const slot=document.getElementById("lcdp-lightbox-slot");
     if(!slot)throw new Error("Emplacement du dialogue introuvable.");
-    const fragment=await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html");
+    const choix = options.profil === "choix";
+    const profil = choix ? "choix" : "suppression";
+    const fragment=await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-"+profil+".html");
     slot.replaceChildren(fragment);
-    const dialogue=slot.querySelector('[data-lcdp-dialogue-reference="suppression"]');
-    if(!dialogue)throw new Error("Dialogue de suppression indisponible.");
+    const dialogue=slot.querySelector('[data-lcdp-dialogue-reference="'+profil+'"]');
+    if(!dialogue)throw new Error("Dialogue de confirmation indisponible.");
     dialogue.querySelector("[data-lcdp-dialogue-titre]").textContent=
       options.titre || "Supprimer cette alerte ?";
-    dialogue.querySelector("[data-lcdp-dialogue-message]").textContent=
-      options.message || ("Supprimer définitivement l’alerte « "+titre+" » ?");
-    const conserver=dialogue.querySelector('[data-lcdp-dialogue-action="conserver"]');
-    const supprimer=dialogue.querySelector('[data-lcdp-dialogue-action="supprimer"]');
-    supprimer.textContent="Supprimer";
+    const message=dialogue.querySelector("[data-lcdp-dialogue-message]");
+    message.textContent=options.message ?? ("Supprimer définitivement l’alerte « "+titre+" » ?");
+    message.hidden=!message.textContent;
+    const conserver=dialogue.querySelector('[data-lcdp-dialogue-action="'+(choix?"annuler":"conserver")+'"]');
+    const supprimer=dialogue.querySelector('[data-lcdp-dialogue-action="'+(choix?"confirmer":"supprimer")+'"]');
+    if(options.annuler)conserver.textContent=options.annuler;
+    supprimer.textContent=options.confirmer || "Supprimer";
     const avant=document.activeElement;
     return new Promise(resolve=>{
       let done=false;
@@ -2957,6 +3111,7 @@ function afficherStatutDaCompte(compte) {
 
   function afficherCompteMembre(compte) {
     compteMembreActuel = compte || {};
+    afficherFermetureCompte(compteMembreActuel);
     emailMembreActuel = nettoyerEmail(compteMembreActuel.email);
     const pointsVisibles = autoriserAffichagePointsCompte(compteMembreActuel);
     document.getElementById("form-mes-informations-membre")
@@ -4254,7 +4409,7 @@ function afficherResumePointsPassion(compte) {
     return champ;
   }
 
-  async function afficherInformationMembre(message, titre = "Information", fragmentPrepare = null) {
+  async function afficherInformationMembre(message, titre = "Information", fragmentPrepare = null, libelleBouton = "Fermer") {
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) return null;
     const fragment = fragmentPrepare || await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
@@ -4269,7 +4424,7 @@ function afficherResumePointsPassion(compte) {
     }
     titreElement.textContent = titre;
     texte.textContent = String(message || "");
-    bouton.textContent = "Fermer";
+    bouton.textContent = libelleBouton;
     return new Promise(resolve => {
       let resolu = false;
       const fermer = () => {
