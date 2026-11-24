@@ -268,13 +268,14 @@
       section: "Règlement",
       id: "champ-cgv-membre",
       name: "cgvAffichage",
-      label: "CGV",
+      label: "CGV en cours d’application",
       type: "text",
       key: "cgvAffichage",
       lien: {
         texteLien: "Lire",
         href: "/ESPACE-MEMBRE/cgv-lcdp.html",
-        espace: "membre"
+        espace: "membre",
+        sansValeur: true
       }
     },
     {
@@ -1057,9 +1058,9 @@
   }
 
   async function creerAlerteDepuisCompte(){
-    if(!compteMembreActuel){await afficherAlerte("Votre compte est en cours de chargement.");return;}
-    if(!compteIndiqueAbonne(compteMembreActuel)){await afficherAlerte("Un abonnement est nécessaire.");return;}
-    if(compteMembreActuel.abonnementSuspendu===true||compteMembreActuel.suspendu===true){await afficherAlerte("Votre abonnement est suspendu.");return;}
+    if(!compteMembreActuel){await afficherInformationMembre("Votre compte est en cours de chargement.");return;}
+    if(!compteIndiqueAbonne(compteMembreActuel)){await afficherInformationMembre("Un abonnement est nécessaire.");return;}
+    if(compteMembreActuel.abonnementSuspendu===true||compteMembreActuel.suspendu===true){await afficherInformationMembre("Votre abonnement est suspendu.");return;}
     if(typeof window.LCDP_ouvrirFormulaireAlertePlanifier!=="function")throw Error("Formulaire ALERTE PLANIFIER indisponible.");
     await window.LCDP_ouvrirFormulaireAlertePlanifier({permanent:abonnementPermanentCompte,onEnregistre:async()=>{
       await chargerAlertesCompte();
@@ -2091,6 +2092,7 @@
     lien.rel = "noopener noreferrer";
 
     labelZone.appendChild(lien);
+    if (lienConfig.sansValeur === true) champ.querySelector("[data-lcdp-champ-control]")?.remove();
   }
 
   function ajouterActionsAdresseFacturation() {
@@ -2950,7 +2952,7 @@ function afficherStatutDaCompte(compte) {
       codeAAffichage: "••••",
       codeRAffichage: "•••• - •••• - •••• - ••••",
       telephoneAffichage: String(compteMembreActuel.tel || compteMembreActuel.telephone || "").trim() || "–",
-      cgvAffichage: "Dernier opt-in : date indisponible",
+      cgvAffichage: "",
       geolocalisationAffichage: compteMembreActuel.optinGeolocalisation
         ? "Opt-in le " + formaterDate(compteMembreActuel.optinGeolocalisation)
         : "Non enregistré",
@@ -3713,11 +3715,11 @@ function afficherResumePointsPassion(compte) {
         label: "Nouveau numéro de téléphone",
         type: "tel",
         autocomplete: "tel-national",
-        maxlength: 10,
+        maxlength: 20,
         required: true,
         value: compteMembreActuel?.tel || compteMembreActuel?.telephone || "",
-        nettoyer: valeur => String(valeur || "").replace(/\\s+/g, ""),
-        valider: valeur => /^\\d{10}$/.test(valeur)
+        nettoyer: valeur => String(valeur || "").replace(/[\s.-]+/g, ""),
+        valider: valeur => /^\d{10}$/.test(valeur)
           ? ""
           : "Votre numéro de téléphone doit contenir 10 chiffres."
       }]
