@@ -749,32 +749,48 @@
     fermer.focus();
   }
 
-  async function ouvrirSelfie(type="biometrie") {
-    const config=selfiesCompte[type];if(!config)return;
-    if(document.getElementById("dialogue-selfie"))return;
-    const retourFocus=document.activeElement;
+  // Wrapper commun aux parcours intégrés de Mon compte.
+  function ouvrirParcoursCompte(id,libelle){
     const main=document.querySelector(".lcdp-site-page > .lcdp-site-main");
-    if(!main)return;
+    if(!main||main.querySelector("[data-lcdp-compte-parcours]"))return null;
+    const retourFocus=document.activeElement;
     const anciens=Array.from(main.children).map(element=>({element,hidden:element.hidden}));
     const ancienScroll=main.scrollTop;
     const section=document.createElement("section");
     section.className="lcdp-page-section";
-    section.setAttribute("data-lcdp-selfie-page","");
-    section.setAttribute("aria-label","Modifier mon selfie");
-    const conteneur=document.createElement("div");conteneur.className="lcdp-page-container";
-    const d=document.createElement("div");d.id="dialogue-selfie";d.dataset.etape="permission-camera";
-    conteneur.appendChild(d);section.appendChild(conteneur);
+    section.setAttribute("data-lcdp-compte-parcours","");
+    section.setAttribute("aria-label",libelle);
+    const conteneur=document.createElement("div");
+    conteneur.className="lcdp-page-container";
+    const contenu=document.createElement("div");
+    contenu.id=id;
+    contenu.setAttribute("data-lcdp-compte-parcours-contenu","");
+    conteneur.appendChild(contenu);section.appendChild(conteneur);
     anciens.forEach(({element})=>{element.hidden=true;});
     main.appendChild(section);main.scrollTop=0;
+    let ferme=false;
+    return {contenu,fermer(){
+      if(ferme)return;
+      ferme=true;section.remove();
+      anciens.forEach(({element,hidden})=>{if(element.isConnected)element.hidden=hidden;});
+      main.scrollTop=ancienScroll;
+      if(retourFocus?.isConnected)retourFocus.focus();
+    }};
+  }
+
+  async function ouvrirSelfie(type="biometrie") {
+    const config=selfiesCompte[type];if(!config)return;
+    const parcours=ouvrirParcoursCompte("dialogue-selfie","Modifier mon selfie");
+    if(!parcours)return;
+    const d=parcours.contenu;
+    d.dataset.etape="permission-camera";
     let stream=null,actif=true,occupe=false,jeton=null,video=null,apercuUrl=null,permissionConfirmee=false,autorisationRefusee=false;
     const peutCapturer=()=>permissionConfirmee&&!autorisationRefusee&&(!config.coda||Boolean(jeton));
     function arreterCamera(){stream?.getTracks().forEach(t=>t.stop());stream=null;if(video)video.srcObject=null;}
     function libererApercu(){if(apercuUrl)URL.revokeObjectURL(apercuUrl);apercuUrl=null;}
     function arreter(){actif=false;jeton=null;arreterCamera();libererApercu();}
     function fermerParcours(){
-      arreter();window.removeEventListener("pagehide",quitter);section.remove();
-      anciens.forEach(({element,hidden})=>{if(element.isConnected)element.hidden=hidden;});
-      main.scrollTop=ancienScroll;retourFocus?.focus();
+      arreter();window.removeEventListener("pagehide",quitter);parcours.fermer();
     }
     const quitter=()=>arreter();
     window.addEventListener("pagehide",quitter,{once:true});
@@ -3460,21 +3476,26 @@ function afficherResumePointsPassion(compte) {
   async function ouvrirModificationCoda() {
     if (verificationCodaEnCours) return;
     verificationCodaEnCours = true;
+    let parcours=null, nouveauCoda="", confirmation=null;
     try {
       const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/security-status", {credentials:"include",cache:"no-store"});
       const statut = await reponse.json().catch(() => null);
       if (reponse.status === 401) { redirigerConnexionMembre("inactive"); return; }
       if (!reponse.ok || !statut?.ok) { await afficherAlerte(statut?.message || "Le service de sécurité est indisponible."); return; }
       if (statut.desactive) { await afficherAlerte("Le CODR est désactivé. Contactez l’administrateur."); return; }
+      parcours=ouvrirParcoursCompte("dialogue-modification-coda","Mettre à jour mon CODA");
+      if(!parcours)return;
       const premier=await ouvrirDialogueChamp({
-        titre:"Mettre à jour mon CODA", variante:"modification-coda", libelleValider:"Suivant",
+        titre:"Mettre à jour mon CODA", libelleValider:"Suivant",
         consignes:["Étape 1 sur 2","Saisissez votre nouveau CODA.","Puis vous validerez avec votre CODR.","Saisir mon CODA"],
         champs:[{id:"nouveau-coda-membre",name:"coda",label:"Saisir mon CODA",type:"coda",required:true,
           libelleAfficher:"Afficher mon CODA",valider:validerNouveauCodaDirect}]
-      });
+      },parcours.contenu);
       if(!premier)return;
+      nouveauCoda=premier.coda;
+      premier.coda="";
       await ouvrirDialogueChamp({
-        titre:"Mettre à jour mon CODA", variante:"modification-coda", libelleValider:"Confirmer",
+        titre:"Mettre à jour mon CODA", libelleValider:"Confirmer",
         consignes:["Étape 2 sur 2","Confirmez avec votre CODR.","Attention : deux essais maximum pour le CODR. Après deux erreurs, le CODR est désactivé."],
         champs:[{id:"codr-modification-membre",name:"codr",label:"Confirmer avec mon CODR",type:"codr",required:true,
           libelleAfficher:"Afficher mon CODR",
@@ -3487,16 +3508,18 @@ function afficherResumePointsPassion(compte) {
             const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/coda-change",{
               method:"POST",credentials:"include",cache:"no-store",
               headers:{"Content-Type":"application/json"},
-              body:JSON.stringify({coda:premier.coda,mots})
+              body:JSON.stringify({coda:nouveauCoda,mots})
             });
             const d=await r.json().catch(()=>null);
+            if(r.status===401){confirmation={sessionInactive:true};return true;}
             message=d?.message || message;
             succes=r.ok && d?.success===true;
             nouvelleTentative=!succes && r.status!==429 && d?.reason==="codr_incorrect" && d?.desactive!==true && d?.attemptsRemaining!==0;
             if(!d) message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer.";
           } catch { message="Réponse non confirmée. Vérifiez l’état du compte avant de réessayer."; }
-          await afficherAlerteSuperposee(message, { profil: succes ? "information" : "erreur" });
           if(nouvelleTentative){
+            const erreur=parcours.contenu.querySelector("[data-lcdp-dialogue-champ-error]");
+            erreur.textContent=message;erreur.hidden=false;
             const cache=document.getElementById("codr-modification-membre");
             const groupe=cache?.parentNode;
             if(cache) cache.value="";
@@ -3504,12 +3527,23 @@ function afficherResumePointsPassion(compte) {
             groupe?.querySelector('input:not([type="hidden"]):not([type="checkbox"])')?.focus();
             return false;
           }
-          if(succes) redirigerConnexionMembre("coda_modifie");
+          confirmation={succes,message};
           return true;
         }
-      });
-    } catch { await afficherAlerte("Le service de sécurité est momentanément indisponible."); }
-    finally { verificationCodaEnCours=false; }
+      },parcours.contenu);
+      parcours.fermer();
+      if(confirmation?.sessionInactive){redirigerConnexionMembre("inactive");return;}
+      if(confirmation){
+        if(confirmation.succes){
+          await afficherInformationMembre(confirmation.message);
+          redirigerConnexionMembre("coda_modifie");
+        }else await afficherAlerte(confirmation.message);
+      }
+    } catch {
+      parcours?.fermer();
+      await afficherAlerte("Le service de sécurité est momentanément indisponible.");
+    }
+    finally { nouveauCoda="";parcours?.fermer();verificationCodaEnCours=false; }
   }
 
   function validerNouveauCodaDirect(code) {
@@ -3844,8 +3878,8 @@ function afficherResumePointsPassion(compte) {
     return resultat;
   }
 
-  async function ouvrirDialogueChamp(options) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
+  async function ouvrirDialogueChamp(options, slotParcours=null) {
+    const slot = slotParcours || document.getElementById("lcdp-lightbox-slot");
     if (!slot) return null;
 
     slot.innerHTML = "";
@@ -3868,8 +3902,9 @@ function afficherResumePointsPassion(compte) {
     titre.textContent = options.titre || "";
     if (options.variante === "alias") dialogue.classList.add("lcdp-compte-dialogue-alias");
     if (options.variante === "telephone") dialogue.classList.add("lcdp-compte-dialogue-telephone");
-    if (options.variante === "modification-coda") {
-      dialogue.setAttribute("data-lcdp-modification-coda","");
+    if (slotParcours) {
+      dialogue.setAttribute("role","region");
+      dialogue.removeAttribute("aria-modal");
       boutonFermer.hidden=true;
     }
     const boutonValider = slot.querySelector("[data-lcdp-dialogue-champ-submit]");
@@ -3912,7 +3947,7 @@ function afficherResumePointsPassion(compte) {
       boutonAnnuler.addEventListener("click", () => fermer(null));
 
       dialogue.addEventListener("click", (event) => {
-        if (event.target === dialogue && !soumissionEnCours) fermer(null);
+        if (!slotParcours && event.target === dialogue && !soumissionEnCours) fermer(null);
       });
 
       let soumissionEnCours = false;
@@ -3969,7 +4004,9 @@ function afficherResumePointsPassion(compte) {
         }
 
         if (champRequisManquant || messageValidation) {
-          await afficherAlerteSuperposee(messageValidation || "Merci de renseigner le champ demandé.");
+          const message=messageValidation || "Merci de renseigner le champ demandé.";
+          if(slotParcours){erreur.textContent=message;erreur.hidden=false;}
+          else await afficherAlerteSuperposee(message);
           return;
         }
 
