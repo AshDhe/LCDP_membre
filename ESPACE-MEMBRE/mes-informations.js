@@ -10,7 +10,7 @@
     "mon-compte-membre-api"
   );
 
-  // Source de repli du téléphone enregistré lors de la DA : membres.tel.
+  // Source de repli du téléphone enregistré lors de la demande de DA : membres.tel.
   const ENDPOINT_DA_MEMBRE_COMPTE = construireEndpointApi(
     "workerDaMembreUrl",
     "WORKER_DA_MEMBRE_URL",
@@ -72,7 +72,7 @@
   let promesseChargementDiginumCompte = null;
 
   // Même texte et même présentation pour les champs bancaires et d'adresse
-  // restant à renseigner avec la DA.
+  // restant à renseigner lors de la demande de DA.
   const CHAMPS_A_RENSEIGNER_AVEC_DA = new Set([
     "iban", "swift", "rib", "adresse1", "adresse2", "adresse3"
   ]);
@@ -205,14 +205,6 @@
     },
     {
       section: "Club",
-      id: "champ-da-membre",
-      name: "daAffichage",
-      label: "DA",
-      type: "text",
-      key: "daAffichage"
-    },
-    {
-      section: "Club",
       id: "champ-departement-membre",
       name: "departementAffichage",
       label: "Département",
@@ -223,6 +215,14 @@
         texte: "Modifier le département",
         mode: "picto"
       }
+    },
+    {
+      section: "Club",
+      id: "champ-da-membre",
+      name: "daAffichage",
+      label: "Droit d’abonnement (DA)",
+      type: "text",
+      key: "daAffichage"
     },
     {
       section: "Club",
@@ -493,7 +493,7 @@
       ligne.setAttribute("data-lcdp-box-champ-formulaire","");
       const labelZone=document.createElement("div");labelZone.className="lcdp-box-champ-formulaire__label-zone";
       const label=document.createElement("span");label.className="lcdp-box-champ-formulaire__label";
-      label.textContent=equipement.nom || "Témoin de présence";labelZone.appendChild(label);
+      label.textContent="Témoin La Clé du Parc" + (equipement.nom ? " — " + equipement.nom : "");labelZone.appendChild(label);
       const control=document.createElement("div");control.className="lcdp-box-champ-formulaire__control";
       control.setAttribute("data-lcdp-champ-control","");
       const input=document.createElement("input");input.type="text";input.readOnly=true;
@@ -521,6 +521,19 @@
         }
         ligne.appendChild(commandes);
       }
+      fragment.appendChild(ligne);
+    }
+    if (!fragment.childNodes.length) {
+      const ligne=document.createElement("div");
+      ligne.className="lcdp-compte-relations__ligne";
+      const label=document.createElement("span");
+      label.className="lcdp-compte-relations__libelle";
+      label.textContent="Témoin La Clé du Parc";
+      const acheter=document.createElement("a");
+      acheter.className="lcdp-ui-badge lcdp-ui-badge--action lcdp-ui-badge--amber";
+      acheter.textContent="Acheter";
+      acheter.href=construireUrlPublic("/ESPACE-PUBLIC/boutique.html#lcdp-boutique-temoins");
+      ligne.append(label,acheter);
       fragment.appendChild(ligne);
     }
     liste.replaceChildren(fragment);
@@ -1046,6 +1059,7 @@
     });
 
     fields.replaceChildren(fragment);
+    // L’abonnement est intégré au Club, immédiatement après le droit d’abonnement (DA).
     ajouterBlocAbonnementCompte(fields);
     // Sécurité du compte : dernière rubrique, après l'adresse de facturation.
     // Déplacement du noeud existant : tous les champs, actions et écouteurs sont conservés.
@@ -1096,21 +1110,19 @@
 
 
 
-  // Rubrique autonome, immédiatement après « Mon compte ».
+  // Petit bloc Club, placé après la demande de droit d’abonnement (DA).
   function ajouterBlocAbonnementCompte(fields) {
     if (fields.querySelector("#lcdp-compte-abonnement")) return;
-    const compte = fields.querySelector('[data-lcdp-compte-section="etat-civil"]');
-    if (!compte) return;
-    const section = document.createElement("section");
+    const club = fields.querySelector('[data-lcdp-compte-section="participation"]');
+    const demandeDa = club?.querySelector("#champ-da-membre")?.closest("[data-lcdp-box-champ-formulaire]");
+    if (!demandeDa) return;
+    const section = document.createElement("div");
     section.id = "lcdp-compte-abonnement";
-    section.className = "lcdp-mon-compte-section";
-    section.dataset.lcdpCompteSection = "abonnement";
-    section.setAttribute("aria-labelledby", "lcdp-mon-compte-titre-abonnement");
+    section.className = "lcdp-compte-relations";
+    section.setAttribute("aria-label", "Abonnement");
     section.innerHTML =
-      '<h2 id="lcdp-mon-compte-titre-abonnement" class="lcdp-title-section">Abonnement</h2>' +
-      '<div class="lcdp-compte-relations">' +
-        '<div class="lcdp-compte-relations__ligne">' +
-          '<span id="lcdp-compte-abonnement-resume" class="lcdp-compte-relations__libelle"></span>' +
+      '<div class="lcdp-compte-relations__ligne">' +
+          '<div class="lcdp-compte-relations__libelle">Abonnement<br><span id="lcdp-compte-abonnement-resume" class="lcdp-compte-placeholder-da"></span></div>' +
           '<button type="button" id="lcdp-compte-abonnement-compteur" ' +
             'class="lcdp-compte-relations__nombre" aria-expanded="false" ' +
             'aria-controls="lcdp-compte-abonnement-liste" ' +
@@ -1120,9 +1132,8 @@
           '<a id="lcdp-compte-abonnement-action" class="lcdp-ui-badge lcdp-ui-badge--action" hidden></a>' +
         '</div>' +
         '<div id="lcdp-compte-abonnement-liste" class="lcdp-compte-relations__liste" ' +
-          'aria-live="polite" hidden></div>' +
-      '</div>';
-    compte.insertAdjacentElement("afterend", section);
+          'aria-live="polite" hidden></div>';
+    demandeDa.insertAdjacentElement("afterend", section);
     const bouton = section.querySelector("#lcdp-compte-abonnement-compteur");
     const liste = section.querySelector("#lcdp-compte-abonnement-liste");
     bouton.addEventListener("click", () => {
@@ -1357,8 +1368,9 @@
     temoins.className="lcdp-compte-equipements__liste";
     temoins.setAttribute("aria-live","polite");
     equipement.appendChild(temoins);
-    bloc.insertAdjacentElement("afterend",equipement);
     initialiserZoneSelfie("duoday",bloc);
+    const selfieDuo = statut.querySelector("#zone-selfie-duoday");
+    (selfieDuo || bloc).insertAdjacentElement("afterend",equipement);
 
     bloc.querySelectorAll("[data-lcdp-relations-ouvrir]").forEach(bouton => {
       bouton.addEventListener("click", () => {
@@ -2196,7 +2208,7 @@
     const compte = resultat.compte;
 
     afficherCompteMembre(compte);
-    // Si /compte n'expose pas encore membres.tel, le récupérer via la DA.
+    // Si /compte n'expose pas encore membres.tel, le récupérer via la demande de DA.
     void completerTelephoneCompteDepuisDa(compte);
     afficherEtatMembreCompte(compte);
     void chargerCoachsCompte(document.getElementById("lcdp-compte-relations"), compte);
@@ -2210,7 +2222,7 @@
     ]);
   }
 
-  // La DA enregistre tel dans membres ; /contexte relit cette même colonne
+  // La demande de DA enregistre tel dans membres ; /contexte relit cette même colonne
   // pour le membre authentifié. Le complément n'empêche jamais l'ouverture du compte.
   async function completerTelephoneCompteDepuisDa(compte) {
     if (String(compte?.tel || compte?.telephone || "").trim() || !ENDPOINT_DA_MEMBRE_COMPTE) return;
@@ -2238,7 +2250,7 @@
       compteMembreActuel.tel = telephoneDa;
       remplirChamp("champ-telephone-membre", telephoneDa);
     } catch (erreur) {
-      console.warn("Téléphone de la DA indisponible dans Mon compte :", erreur);
+      console.warn("Téléphone de la demande de DA indisponible dans Mon compte :", erreur);
     }
   }
 
@@ -2593,25 +2605,25 @@
     const dateDa = compte?.dateDa || compte?.dateda || "";
     const statuda = nettoyerTexteSimple(compte?.statuda || "");
 
-    if (dateDa || statuda) {
-      return "DA du " + formaterDate(dateDa) + " (" + (statuda || "Non renseigné") + ")";
-    }
-
-    return "DA non transmise";
+    const etat = normaliserStatudaCompte(statuda);
+    if (etat === "oui") return "DA accordé";
+    if (etat === "non") return "DA non accordé";
+    if (dateDa || etat) return "Demande de DA" + (dateDa ? " du " + formaterDate(dateDa) : "") + " en cours";
+    return "Demande de DA non transmise";
   }
 
 
-// Ouverture du parcours DA existant, avec ses contrôles serveur et sans duplication.
+// Ouverture du parcours de demande de DA existant, avec ses contrôles serveur et sans duplication.
 let ouvertureDaCompteEnCours = false;
 async function ouvrirDemandeDaDepuisCompte() {
   if (ouvertureDaCompteEnCours || document.getElementById("lcdp-da-membre-overlay-slot")) return;
   ouvertureDaCompteEnCours = true;
   try {
     if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
-      await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js");
+      await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js?v=20261124-droit-abonnement");
     }
     if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
-      throw new Error("Le formulaire de demande d'abonnement est indisponible.");
+      throw new Error("Le formulaire de demande de DA est indisponible.");
     }
     await window.LCDP_ouvrirPremiereDaMembre({
       contexte: {...compteMembreActuel},
@@ -2626,7 +2638,7 @@ async function ouvrirDemandeDaDepuisCompte() {
       }
     });
   } catch (erreur) {
-    await afficherAlerte(erreur.message || "Le formulaire de demande d'abonnement est indisponible.");
+    await afficherAlerte(erreur.message || "Le formulaire de demande de DA est indisponible.");
   } finally {
     ouvertureDaCompteEnCours = false;
   }
@@ -2641,15 +2653,15 @@ function afficherStatutDaCompte(compte) {
   if (!input || !ligne || !label || !controle) return;
 
   const dateBrute = compte?.dateDa || compte?.dateda || "";
-  label.textContent = dateBrute ? "DA du " + formaterDate(dateBrute) : "DA";
+  label.textContent = dateBrute ? "Demande de DA du " + formaterDate(dateBrute) : "Droit d’abonnement (DA)";
   const statutBrut = normaliserStatudaCompte(compte?.statuda || compte?.statutDa || compte?.da || "");
   const enCours = ["encours", "en_cours", "attente"].includes(statutBrut);
   const validee = statutBrut === "oui";
   const nonValidee = statutBrut === "non";
   const nonTransmise = !statutBrut && !dateBrute;
-  if (nonTransmise) label.textContent = "DA non transmise";
-  else if (enCours) label.textContent = "Votre DA a été transmise" + (dateBrute ? " le " + formaterDate(dateBrute) : "");
-  const libelle = enCours ? "En cours" : validee ? "Validée" : nonValidee ? "Non validée"
+  if (nonTransmise) label.textContent = "Demande de DA non transmise";
+  else if (enCours) label.textContent = "Demande de DA transmise" + (dateBrute ? " le " + formaterDate(dateBrute) : "");
+  const libelle = enCours ? "En cours" : validee ? "DA accordé" : nonValidee ? "DA non accordé"
     : statutBrut ? nettoyerTexteSimple(compte?.statuda || compte?.statutDa || compte?.da) : "Non transmise";
 
   ligne.classList.add("lcdp-compte-da");
@@ -2889,7 +2901,7 @@ function afficherStatutDaCompte(compte) {
         champ.id,
         compteAffiche[champ.key],
         CHAMPS_A_RENSEIGNER_AVEC_DA.has(champ.key)
-          ? "À renseigner avec votre DA"
+          ? "À renseigner lors de votre demande de DA"
           : "Non renseigné"
       );
     });
@@ -4374,7 +4386,7 @@ function afficherResumePointsPassion(compte) {
     if (!element) return;
 
     const texte = valeur || texteSiVide;
-    element.classList.toggle("lcdp-compte-placeholder-da", !valeur && texteSiVide === "À renseigner avec votre DA");
+    element.classList.toggle("lcdp-compte-placeholder-da", !valeur && texteSiVide === "À renseigner lors de votre demande de DA");
 
     if ("value" in element) {
       element.value = texte;

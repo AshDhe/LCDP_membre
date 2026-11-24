@@ -202,7 +202,7 @@
 
     const section = document.createElement("section");
     section.className = "lcdp-page-section lcdp-da-membre-page";
-    section.setAttribute("aria-label", "Demande d'abonnement");
+    section.setAttribute("aria-label", "Demande de DA");
     const conteneur = document.createElement("div");
     conteneur.className = "lcdp-page-container";
     const contenu = document.createElement("div");
@@ -411,7 +411,7 @@
     }
 
     if (!reponse.ok || !data || !(data.ok === true || data.success === true)) {
-      throw new Error(data?.message || "Impossible de préparer votre DA.");
+      throw new Error(data?.message || "Impossible de préparer votre demande de DA.");
     }
 
     return data;
@@ -445,13 +445,13 @@
           return;
         }
 
-        await afficherAlerteDa("Vous avez une DA en cours.", { profil: "information" });
+        await afficherAlerteDa("Vous avez une demande de DA en cours.", { profil: "information" });
         return;
       }
 
       if (daactive === false) {
         if (!dateDaAtteinte(datenext)) {
-          await afficherAlerteDa("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(datenext) + ".", { profil: "information" });
+          await afficherAlerteDa("Vous êtes membre invité. Vous pouvez faire une demande de DA à partir du " + formaterDateDa(datenext) + ".", { profil: "information" });
           return;
         }
 
@@ -465,12 +465,12 @@
       }
 
       if (statuda === "encours") {
-        await afficherAlerteDa("Vous avez une DA en cours.", { profil: "information" });
+        await afficherAlerteDa("Vous avez une demande de DA en cours.", { profil: "information" });
         return;
       }
 
       if (statuda === "non") {
-        await afficherAlerteDa("Vous êtes membre invité. Vous pouvez faire une DA à partir du " + formaterDateDa(datenext) + ".", { profil: "information" });
+        await afficherAlerteDa("Vous êtes membre invité. Vous pouvez faire une demande de DA à partir du " + formaterDateDa(datenext) + ".", { profil: "information" });
         return;
       }
 
@@ -524,7 +524,7 @@
     if (workflow) {
       workflow.setAttribute("role", "region");
       workflow.removeAttribute("aria-modal");
-      workflow.setAttribute("aria-label", "Parcours de demande d'abonnement");
+      workflow.setAttribute("aria-label", "Parcours de demande de DA");
     }
 
     if (!workflow || !contenu || !card) {
@@ -552,7 +552,7 @@
 
     const titre = document.createElement("h2");
     titre.className = "lcdp-title-page-center";
-    titre.textContent = "Demande d'abonnement (DA)";
+    titre.textContent = "Demande de droit d’abonnement (DA)";
     bloc.appendChild(titre);
 
     const sections = await chargerSectionsDaPubliees();
@@ -565,7 +565,7 @@
     const bouton = document.createElement("button");
     bouton.type = "button";
     bouton.className = "lcdp-button lcdp-button-primary";
-    bouton.textContent = "Faire ma DA";
+    bouton.textContent = "Faire ma demande de DA";
     bouton.addEventListener("click", () => afficherFormulaireDa(membre, parrain, options).catch(console.error));
 
     actions.appendChild(bouton);
@@ -604,8 +604,8 @@
     // Repli : même information que la version déjà exposée aux membres.
     return [
       {
-        titre: "Qu'est-ce qu'une DA ?",
-        texte: "La DA permet au club de mieux faire votre connaissance et de vous identifier comme candidat membre abonné. Le club s'attache à fournir un service nominatif de qualité et à promouvoir des valeurs de respect, de convivialité et de curiosité. Cela implique un réseau de partenaires."
+        titre: "Qu’est-ce qu’un DA ?",
+        texte: "Le droit d’abonnement (DA) autorise la souscription d’un abonnement. La demande de DA permet au club de mieux faire votre connaissance et de vous identifier comme candidat membre abonné. Le club s'attache à fournir un service nominatif de qualité et à promouvoir des valeurs de respect, de convivialité et de curiosité. Cela implique un réseau de partenaires."
       },
       {
         titre: "À confirmer ou compléter",
@@ -613,7 +613,7 @@
       },
       {
         titre: "Après envoi",
-        texte: "Votre DA est prise en compte par le club. Un échange visio ou visu peut être organisé. Vous êtes informé(e) de la suite donnée par le club à votre DA (retenue ou non retenue). Une copie numérique de votre pièce d'identité sera demandée par e-mail pour finaliser votre DA retenue. Vous pouvez faire une nouvelle DA après trois mois si la précédente n'a pas été retenue."
+        texte: "Votre demande de DA est prise en compte par le club. Un échange visio ou visu peut être organisé. Vous êtes informé(e) de la suite donnée par le club à votre demande (DA accordé ou non accordé). Une copie numérique de votre pièce d'identité sera demandée par e-mail pour finaliser votre demande acceptée. Vous pouvez faire une nouvelle demande de DA après trois mois si le DA n’a pas été accordé."
       }
     ];
   }
@@ -678,8 +678,8 @@
   function construireConfigurationDa() {
     return {
       id: "formulaire-da-membre",
-      ariaLabel: "Première demande d'abonnement membre",
-      titre: "DA",
+      ariaLabel: "Première demande de DA membre",
+      titre: "Demande de DA",
       sousTitre: "La Clé du Parc",
       champs: [
         champLectureSeule("da-nom-membre", "nommembre", "", "text", "Déjà renseigné"),
@@ -1111,7 +1111,7 @@
     const attente = document.createElement("div");
     attente.className = "lcdp-da-transmission-attente lcdp-attente-plein-ecran";
     attente.setAttribute("role", "status");
-    attente.setAttribute("aria-label", "Transmission de votre DA en cours");
+    attente.setAttribute("aria-label", "Transmission de votre demande de DA en cours");
     const roue = document.createElement("div");
     roue.className = "lcdp-loading-spinner";
     roue.setAttribute("aria-hidden", "true");
@@ -1137,7 +1137,7 @@
       return;
     }
 
-    const confirmation = await afficherAlerteDa("Votre DA est terminée ?", { mode: "confirmation", boutonOk: "Confirmer", sansCroix: true });
+    const confirmation = await afficherAlerteDa("Votre demande de DA est terminée ?", { mode: "confirmation", boutonOk: "Confirmer", sansCroix: true });
     if (!confirmation) return;
 
     const bouton =
@@ -1169,7 +1169,7 @@ form.dataset.lcdpTransmissionDaEnCours =
       const data = await reponse.json().catch(() => null);
 
       if (!reponse.ok || !data || !(data.ok === true || data.success === true)) {
-        throw new Error(data?.message || "Impossible de transmettre votre DA.");
+        throw new Error(data?.message || "Impossible de transmettre votre demande de DA.");
       }
 
       majContexte(options, {
@@ -1183,16 +1183,16 @@ form.dataset.lcdpTransmissionDaEnCours =
       retirerAttenteDa();
 
       const informationsDaFin = [
-        "Un e-mail de confirmation récapitulant les informations de votre demande d'abonnement vous a été envoyé.",
-        "Votre demande d'abonnement sera étudiée par le Club dans les prochains jours. Vous serez informé(e) de sa décision.",
-        "Une fois votre DA validée, vous pourrez acheter votre bracelet d'accès aux parcs dans la boutique."
+        "Un e-mail de confirmation récapitulant les informations de votre demande de DA vous a été envoyé.",
+        "Votre demande de DA sera étudiée par le Club dans les prochains jours. Vous serez informé(e) de sa décision.",
+        "Une fois votre DA accordé, vous pourrez acheter votre bracelet d'accès aux parcs dans la boutique."
       ];
       const confirmationLue =
         await afficherAlerteDa(
           informationsDaFin.join("\n\n"),
           {
             profil: "information",
-            titre: "Demande d'abonnement envoyée",
+            titre: "Demande de DA envoyée",
             boutonOk: "Fermer",
             sansCroix: true,
             paragraphes: informationsDaFin,
@@ -1360,7 +1360,7 @@ form.dataset.lcdpTransmissionDaEnCours =
       event.stopPropagation();
     }
 
-    const ok = await afficherAlerteDa("Quitter ma DA ?", { mode: "confirmation" });
+    const ok = await afficherAlerteDa("Quitter ma demande de DA ?", { mode: "confirmation" });
     if (ok) fermerWorkflowDa();
   }
 
