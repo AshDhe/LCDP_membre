@@ -3284,8 +3284,12 @@ function afficherStatutDaCompte(compte) {
     return correspondances[badge] || "";
   }
 
-  function formaterReglementCompte(label, value) {
-    return "Dernier opt-in : " + (value ? formaterDate(value) : "non renseigné");
+  function formaterReglementCompte(label, value, historique) {
+    const document = label === "Club" ? "reglement-club" : "reglement-app";
+    const acceptations = Array.isArray(historique) ? historique.filter(x => x.document === document && x.dateoptin) : [];
+    const dernier = acceptations.sort((a,b)=>Date.parse(b.dateoptin)-Date.parse(a.dateoptin))[0];
+    return dernier ? String(dernier.version || "") + " – Opt-in le " + formaterDate(dernier.dateoptin)
+      : "Dernier opt-in : " + (value ? formaterDate(value) : "non renseigné");
   }
 
   function afficherCompteMembre(compte) {
@@ -3316,8 +3320,8 @@ function afficherStatutDaCompte(compte) {
       daAffichage: formaterDaCompte(compteMembreActuel),
       statutAffichage: formaterStatutCompte(compteMembreActuel.statut),
       pointsClubAffichage: pointsVisibles ? formaterPointsClub(compteMembreActuel) : "",
-      reglementClubAffichage: formaterReglementCompte("Club", compteMembreActuel.reglementClub),
-      reglementApplicationAffichage: formaterReglementCompte("Application", compteMembreActuel.reglementApplication)
+      reglementClubAffichage: formaterReglementCompte("Club", compteMembreActuel.reglementClub, compteMembreActuel.historiqueOptin),
+      reglementApplicationAffichage: formaterReglementCompte("Application", compteMembreActuel.reglementApplication, compteMembreActuel.historiqueOptin)
     };
 
     champsCompte.forEach((champ) => {
