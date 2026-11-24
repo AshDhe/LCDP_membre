@@ -663,43 +663,94 @@
   async function ouvrirSelfie() {
     if(document.getElementById("dialogue-selfie"))return;
     const retourFocus=document.activeElement;
-    const d=document.createElement("dialog");d.id="dialogue-selfie";
+    const d=document.createElement("dialog");
+    d.id="dialogue-selfie";d.dataset.etape="coda";
     d.setAttribute("aria-labelledby","titre-selfie");
-    d.innerHTML='<h2 id="titre-selfie" class="lcdp-title-section">Selfie</h2><p>Prenez une photo de votre visage pour le contrôle d’accès.</p><video autoplay playsinline muted></video><p role="status" data-selfie-message>Ouverture de la caméra…</p><div class="lcdp-selfie-actions"><button type="button" class="lcdp-button" data-selfie-capture disabled>Prendre la photo</button><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Fermer</button></div>';
-    document.body.appendChild(d);d.showModal();
-    const video=d.querySelector("video"),message=d.querySelector("[data-selfie-message]"),capture=d.querySelector("[data-selfie-capture]"),fermer=d.querySelector("[data-selfie-fermer]");
-    let stream=null,actif=true,enregistrement=false;
-    function arreter(){actif=false;stream?.getTracks().forEach(t=>t.stop());video.srcObject=null;}
-    d.addEventListener("close",()=>{arreter();d.remove();retourFocus?.focus();});
-    d.addEventListener("cancel",e=>{if(enregistrement)e.preventDefault();});
-    fermer.onclick=()=>d.close();
-    const quitter=()=>arreter();window.addEventListener("pagehide",quitter,{once:true});
-    d.addEventListener("close",()=>window.removeEventListener("pagehide",quitter),{once:true});
-    capture.onclick=async()=>{
-      if(enregistrement || !video.videoWidth)return;
-      enregistrement=true;capture.disabled=true;fermer.disabled=true;message.textContent="Enregistrement…";
-      try {
-        const canvas=document.createElement("canvas");canvas.width=512;canvas.height=512;
-        const cote=Math.min(video.videoWidth,video.videoHeight);
-        canvas.getContext("2d").drawImage(video,(video.videoWidth-cote)/2,(video.videoHeight-cote)/2,cote,cote,0,0,512,512);
-        const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.85));
-        if(!blob)throw Error("La photo n’a pas pu être créée.");
-        const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie",{method:"PUT",credentials:"include",cache:"no-store",headers:{"Content-Type":"image/jpeg"},body:blob});
-        if(r.status===401){redirigerConnexionMembre("inactive");return;}
+    document.body.appendChild(d);
+    let stream=null,actif=true,occupe=false,jeton=null,video=null;
+    function arreter(){actif=false;jeton=null;stream?.getTracks().forEach(t=>t.stop());if(video)video.srcObject=null;}
+    const quitter=()=>arreter();
+    d.addEventListener("close",()=>{arreter();window.removeEventListener("pagehide",quitter);d.remove();retourFocus?.focus();},{once:true});
+    d.addEventListener("cancel",e=>{if(occupe)e.preventDefault();});
+    window.addEventListener("pagehide",quitter,{once:true});
+    d.innerHTML='<h2 id="titre-selfie" class="lcdp-title-section">Modifier mon selfie</h2><form class="lcdp-box-dialogue-champ__form" novalidate><div data-selfie-coda></div><p role="status" aria-live="polite" data-selfie-message>Deux essais maximum</p><div class="lcdp-selfie-actions"><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Annuler</button><button type="submit" class="lcdp-button lcdp-button-primary" disabled>Valider</button></div></form>';
+    d.showModal();
+    const form=d.querySelector("form"),zone=d.querySelector("[data-selfie-coda]"),message=d.querySelector("[data-selfie-message]"),valider=form.querySelector('button[type="submit"]'),annuler=d.querySelector("[data-selfie-fermer]");
+    annuler.onclick=()=>{if(!occupe)d.close();};
+    let champ;
+    try{
+      champ=await creerChampDialogue({id:"coda-selfie",name:"coda",label:"Saisissez votre CODA",type:"coda",required:true});
+      if(!actif)return;
+      zone.appendChild(champ);valider.disabled=false;
+      champ.querySelector('input[type="password"]')?.focus();
+    }catch(e){if(actif)message.textContent="Le formulaire CODA est indisponible.";return;}
+    const cases=[...champ.querySelectorAll(".lcdp-box-champ-formulaire__code-cases input")];
+    const valeur=champ.querySelector('input[name="coda"]');
+    let bloque=false;
+    form.addEventListener("submit",async e=>{
+      e.preventDefault();if(occupe||bloque||!actif)return;
+      const coda=valeur.value;
+      if(!/^\d{4}$/.test(coda)){message.textContent="Saisissez les quatre chiffres de votre CODA.";return;}
+      occupe=true;valider.disabled=true;annuler.disabled=true;
+      message.textContent="Vérification…";
+      try{
+        const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie/autoriser",{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({coda})});
         const resultat=await r.json().catch(()=>null);
-        if(!r.ok || !resultat?.ok)throw Error(resultat?.message || "La photo n’a pas pu être enregistrée.");
-        await chargerSelfie();d.close();
-      }catch(e){message.textContent=e.message || "Enregistrement impossible.";}
-      finally{enregistrement=false;capture.disabled=false;fermer.disabled=false;}
-    };
-    try {
-      if(!navigator.mediaDevices?.getUserMedia)throw Error("La caméra n’est pas accessible. Utilisez un navigateur compatible en HTTPS.");
-      const obtenu=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"user"},width:{ideal:720},height:{ideal:720}},audio:false});
-      if(!actif){obtenu.getTracks().forEach(t=>t.stop());return;}
-      stream=obtenu;video.srcObject=stream;
-      await video.play();if(!actif)return;
-      capture.disabled=false;message.textContent="Placez votre visage au centre de l’image.";
-    }catch(e){if(actif)message.textContent=e.name==="NotAllowedError"?"Autorisez l’accès à la caméra pour prendre votre selfie.":e.name==="NotFoundError"?"Aucune caméra disponible sur cet appareil.":e.message || "Caméra indisponible.";}
+        if(!actif)return;
+        if(r.status===401){d.close();redirigerConnexionMembre("inactive");return;}
+        if(!r.ok||resultat?.ok!==true||typeof resultat.jeton!=="string"||!/^[a-f0-9]{64}$/.test(resultat.jeton)){
+          bloque=r.status===429||resultat?.attemptsRemaining===0||resultat?.reason==="coda_absent";
+          message.textContent=resultat?.message||"La vérification CODA est indisponible.";
+          return;
+        }
+        jeton=resultat.jeton;
+        occupe=false;
+        await ouvrirCameraSelfie();
+      }catch(e){if(actif)message.textContent="La vérification CODA est indisponible.";}
+      finally{
+        valeur.value="";cases.forEach(c=>{c.value="";});
+        occupe=false;
+        if(actif&&d.dataset.etape==="coda"){valider.disabled=bloque;annuler.disabled=false;if(!bloque)cases[0]?.focus();}
+      }
+    });
+
+    async function ouvrirCameraSelfie(){
+      if(!actif||!jeton)return;
+      d.dataset.etape="capture";
+      d.innerHTML='<h2 id="titre-selfie" class="lcdp-title-section">Selfie</h2><video autoplay playsinline muted aria-label="Aperçu de votre selfie"></video><p role="status" aria-live="polite" data-selfie-message>Ouverture de la caméra…</p><div class="lcdp-selfie-actions"><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Annuler</button><button type="button" class="lcdp-button lcdp-button-primary" data-selfie-capture disabled>Prendre la photo</button></div>';
+      video=d.querySelector("video");
+      const message=d.querySelector("[data-selfie-message]"),capture=d.querySelector("[data-selfie-capture]"),fermer=d.querySelector("[data-selfie-fermer]");
+      fermer.onclick=()=>{if(!occupe)d.close();};
+      capture.onclick=async()=>{
+        if(occupe||!actif||!jeton||!video.videoWidth)return;
+        occupe=true;capture.disabled=true;fermer.disabled=true;message.textContent="Enregistrement…";
+        let termine=false;
+        try{
+          const canvas=document.createElement("canvas");canvas.width=512;canvas.height=512;
+          const cote=Math.min(video.videoWidth,video.videoHeight);
+          canvas.getContext("2d").drawImage(video,(video.videoWidth-cote)/2,(video.videoHeight-cote)/2,cote,cote,0,0,512,512);
+          const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.85));
+          if(!blob)throw Error("La photo n’a pas pu être créée.");
+          if(!actif||!jeton)return;
+          const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie",{method:"PUT",credentials:"include",cache:"no-store",headers:{"Content-Type":"image/jpeg","Authorization":"Bearer "+jeton},body:blob});
+          const resultat=await r.json().catch(()=>null);
+          if(!actif)return;
+          if(r.status===401){d.close();redirigerConnexionMembre("inactive");return;}
+          if(r.status===403){jeton=null;stream?.getTracks().forEach(t=>t.stop());video.srcObject=null;message.textContent=resultat?.message||"Authentifiez-vous à nouveau avec votre CODA.";return;}
+          if(!r.ok||resultat?.ok!==true)throw Error(resultat?.message||"La photo n’a pas pu être enregistrée.");
+          termine=true;arreter();d.close();await chargerSelfie();
+        }catch(e){if(actif)message.textContent=e.message||"Enregistrement impossible.";}
+        finally{occupe=false;if(actif&&!termine){capture.disabled=!jeton;fermer.disabled=false;}}
+      };
+      try{
+        if(!navigator.mediaDevices?.getUserMedia)throw Error("La caméra n’est pas accessible. Utilisez un navigateur compatible en HTTPS.");
+        const obtenu=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"user"},width:{ideal:720},height:{ideal:720}},audio:false});
+        if(!actif){obtenu.getTracks().forEach(t=>t.stop());return;}
+        stream=obtenu;video.srcObject=stream;
+        await video.play();if(!actif)return;
+        capture.disabled=false;message.textContent="Placez votre visage au centre de l’image.";
+      }catch(e){if(actif){stream?.getTracks().forEach(t=>t.stop());video.srcObject=null;message.textContent=e.name==="NotAllowedError"?"Autorisez l’accès à la caméra pour prendre votre selfie.":e.name==="NotFoundError"?"Aucune caméra disponible sur cet appareil.":e.message||"Caméra indisponible.";}}
+    }
   }
 
   function ajouterTitresSectionsCompte() {
