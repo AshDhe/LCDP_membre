@@ -1530,11 +1530,11 @@
       if(f.mois && moisReservationPlanningMembre(reservation)!==f.mois)return false;
       if(f.departement && departement!==f.departement)return false;
       if(f.parc && nom!==f.parc)return false;
-      if(!f.recues && reservationHorsAbonnementMembre(reservation))return false;
-      if(!f.envoyees && !reservationHorsAbonnementMembre(reservation) &&
-        (nombreInvitesEnvoyesPlanning(reservation)>0 ||
-         etat.reservationsAvecInvites.has(String(reservation.idflux||""))))return false;
-      return true;
+      // Les deux cases cochées conservent la liste complète, y compris les accès seuls.
+      if(f.recues && f.envoyees)return true;
+      if(!f.recues && !f.envoyees)return false;
+      if(f.recues)return reservationHorsAbonnementMembre(reservation);
+      return reservationAvecInvitesActifsAgenda(reservation);
     });
   }
 
