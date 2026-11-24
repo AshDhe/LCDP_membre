@@ -1283,6 +1283,8 @@
     if (avant === "ferme") return;
     const rouvrir = avant === "suspendu";
     const bouton = document.getElementById("lcdp-compte-fermeture-action");
+    const parcours = ouvrirParcoursCompte("dialogue-fermeture-compte", rouvrir ? "Réouverture du compte" : "Fermeture du compte");
+    if (!parcours) return;
     fermetureCompteEnCours = true;
     afficherFermetureCompte(compteMembreActuel);
     try {
@@ -1293,7 +1295,7 @@
           construireMessage: construireAvertissementFermeture,
           annuler: "Annuler",
           confirmer: "Continuer"
-        });
+        }, parcours.contenu);
         if (!continuer) return;
       }
       const confirme = await demanderSuppressionAlerte("", rouvrir ? {
@@ -1307,10 +1309,10 @@
         message: "Votre compte est suspendu pendant 30 jours à compter de votre confirmation.",
         annuler: "Annuler",
         confirmer: "Confirmer"
-      });
+      }, parcours.contenu);
       if (!confirme) return;
       if (avant === null || !ENDPOINT_MON_COMPTE_MEMBRE) {
-        await afficherAlerte("Votre demande n’a pas pu être enregistrée.");
+        await afficherAlerte("Votre demande n’a pas pu être enregistrée.", parcours.contenu);
         return;
       }
       const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/fermeture-compte", {
@@ -1334,12 +1336,13 @@
       compteMembreActuel.fermetureCompte = resultat.fermetureCompte;
       afficherFermetureCompte(compteMembreActuel);
       await afficherInformationMembre(rouvrir ? "Votre compte est rouvert."
-        : "Votre compte est suspendu pour une période de 30 jours.", "Information", null, "OK");
+        : "Votre compte est suspendu pour une période de 30 jours.", "Information", null, "OK", parcours.contenu);
     } catch (erreur) {
-      await afficherAlerte(erreur?.message || "La modification du compte n’a pas pu être confirmée.");
+      await afficherAlerte(erreur?.message || "La modification du compte n’a pas pu être confirmée.", parcours.contenu);
     } finally {
       fermetureCompteEnCours = false;
       afficherFermetureCompte(compteMembreActuel);
+      parcours.fermer();
       if (bouton?.isConnected && !bouton.hidden && !bouton.disabled) bouton.focus();
     }
   }
@@ -2048,8 +2051,8 @@
     return data;
   }
 
-  async function demanderSuppressionAlerte(titre, options = {}) {
-    const slot=document.getElementById("lcdp-lightbox-slot");
+  async function demanderSuppressionAlerte(titre, options = {}, slotParcours = null) {
+    const slot=slotParcours || document.getElementById("lcdp-lightbox-slot");
     if(!slot)throw new Error("Emplacement du dialogue introuvable.");
     const choix = options.profil === "choix";
     const profil = choix ? "choix" : "suppression";
@@ -2057,6 +2060,7 @@
     slot.replaceChildren(fragment);
     const dialogue=slot.querySelector('[data-lcdp-dialogue-reference="'+profil+'"]');
     if(!dialogue)throw new Error("Dialogue de confirmation indisponible.");
+    if(slotParcours){dialogue.setAttribute("role","region");dialogue.removeAttribute("aria-modal");}
     dialogue.querySelector("[data-lcdp-dialogue-titre]").textContent=
       options.titre || "Supprimer cette alerte ?";
     const message=dialogue.querySelector("[data-lcdp-dialogue-message]");
@@ -2089,7 +2093,7 @@
       document.addEventListener("keydown",echap);
       conserver.addEventListener("click",()=>terminer(false),{once:true});
       supprimer.addEventListener("click",()=>terminer(true),{once:true});
-      dialogue.addEventListener("click",e=>{if(e.target===dialogue)terminer(false);});
+      dialogue.addEventListener("click",e=>{if(!slotParcours&&e.target===dialogue)terminer(false);});
       conserver.focus();
     });
   }
@@ -4400,8 +4404,8 @@ function afficherResumePointsPassion(compte) {
     return champ;
   }
 
-  async function afficherInformationMembre(message, titre = "Information", fragmentPrepare = null, libelleBouton = "Fermer") {
-    const slot = document.getElementById("lcdp-lightbox-slot");
+  async function afficherInformationMembre(message, titre = "Information", fragmentPrepare = null, libelleBouton = "Fermer", slotParcours = null) {
+    const slot = slotParcours || document.getElementById("lcdp-lightbox-slot");
     if (!slot) return null;
     const fragment = fragmentPrepare || await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
     slot.replaceChildren(fragment);
@@ -4413,6 +4417,7 @@ function afficherResumePointsPassion(compte) {
       slot.replaceChildren();
       throw new Error("Structure du dialogue INFORMATION incomplète.");
     }
+    if(slotParcours){dialogue.setAttribute("role","region");dialogue.removeAttribute("aria-modal");}
     titreElement.textContent = titre;
     texte.textContent = String(message || "");
     bouton.textContent = libelleBouton;
@@ -4526,8 +4531,8 @@ function afficherResumePointsPassion(compte) {
     }
   }
 
-  async function afficherAlerte(message) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
+  async function afficherAlerte(message, slotParcours = null) {
+    const slot = slotParcours || document.getElementById("lcdp-lightbox-slot");
     if (!slot) return null;
 
     slot.replaceChildren();
@@ -4542,6 +4547,7 @@ function afficherResumePointsPassion(compte) {
       slot.replaceChildren();
       throw new Error("Structure du dialogue ERREUR incomplète.");
     }
+    if(slotParcours){dialogue.setAttribute("role","region");dialogue.removeAttribute("aria-modal");}
     titre.textContent = "Erreur";
     texte.textContent = message || "";
     bouton.textContent = "Fermer";
@@ -4567,7 +4573,7 @@ function afficherResumePointsPassion(compte) {
       }
       bouton.addEventListener("click", () => fermer(true), { once: true });
       dialogue.addEventListener("click", event => {
-        if (event.target === dialogue) fermer(false);
+        if (!slotParcours && event.target === dialogue) fermer(false);
       });
       document.addEventListener("keydown", gererClavier);
       bouton.focus();
