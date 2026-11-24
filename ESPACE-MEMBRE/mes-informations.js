@@ -3374,12 +3374,27 @@ function afficherResumePointsPassion(compte) {
     return ["iban", "swift", "rib"].includes(valeur) ? valeur : "";
   }
 
+  async function ouvrirChoixSecurite(message,options){
+    const parcours=ouvrirParcoursCompte("dialogue-securite-compte",options.titre);
+    if(!parcours)return false;
+    try{return await afficherChoixMesInformations(message,options,parcours.contenu);}
+    finally{parcours.fermer();}
+  }
+
+  async function ouvrirChampSecurite(options){
+    const parcours=ouvrirParcoursCompte("dialogue-securite-compte",options.titre);
+    if(!parcours)return null;
+    try{return await ouvrirDialogueChamp(options,parcours.contenu);}
+    catch{parcours.fermer();await afficherAlerte("Le formulaire est momentanément indisponible.");return null;}
+    finally{parcours.fermer();}
+  }
+
   let demandeGeoEnCours=false;
   async function demanderMiseAJourGeolocalisation(){
     if(demandeGeoEnCours)return;
     demandeGeoEnCours=true;
     try{
-      const confirmer=await afficherChoixMesInformations(
+      const confirmer=await ouvrirChoixSecurite(
         "Cette opération vous déconnectera.",
         {titre:"Mettre à jour votre autorisation de géolocalisation ?",libelleAnnuler:"Annuler",libelleConfirmer:"Modifier"}
       );
@@ -3400,9 +3415,9 @@ function afficherResumePointsPassion(compte) {
     if (demandeMajoriteEnCours) return;
     demandeMajoriteEnCours=true;
     try {
-      const confirmer=await afficherChoixMesInformations(
+      const confirmer=await ouvrirChoixSecurite(
         "Souhaitez-vous transmettre une demande de modification de votre majorité à l’administrateur de l’application ?",
-        {titre:"Modifier votre majorité",libelleAnnuler:"Annuler",libelleConfirmer:"OK"}
+        {titre:"Modifier votre majorité",libelleAnnuler:"Annuler",libelleConfirmer:"Transmettre"}
       );
       if (!confirmer) return;
       const reponse=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/majorite-admin-request",{
@@ -3422,7 +3437,7 @@ function afficherResumePointsPassion(compte) {
     if (demandeCodrEnCours) return;
     demandeCodrEnCours=true;
     try {
-      const confirmer=await afficherChoixMesInformations(
+      const confirmer=await ouvrirChoixSecurite(
         "Souhaitez-vous transmettre une demande de modification de votre CODR à l’administrateur de l’application ?",
         {titre:"Modifier votre CODR",libelleAnnuler:"Annuler",libelleConfirmer:"Transmettre"}
       );
@@ -3536,7 +3551,7 @@ function afficherResumePointsPassion(compte) {
       });
       champ.addEventListener("keydown",event=>{if(event.key==="Backspace"&&!champ.value&&i>0)cases[i-1].focus();});
     });
-    return new Promise(resolve=>{
+    return new Promise((resolve,reject)=>{
       let termine=false,occupe=false;
       const fermer=valeur=>{
         if(termine)return;termine=true;
@@ -3557,7 +3572,7 @@ function afficherResumePointsPassion(compte) {
             cases.forEach(champ=>{champ.value="";});
             erreur.textContent=resultat.message;erreur.hidden=false;
           }else fermer(true);
-        }catch(e){fermer(null);throw e;}
+        }catch(e){termine=true;cases.forEach(champ=>{champ.value="";});contenu.replaceChildren();reject(e);}
         finally{
           occupe=false;
           if(!termine){annuler.disabled=false;valider.disabled=false;afficher.disabled=false;cases.forEach(champ=>{champ.disabled=false;});cases[0].focus();}
@@ -3573,13 +3588,13 @@ function afficherResumePointsPassion(compte) {
     verificationCodaEnCours = true;
     let parcours=null, nouveauCoda="", confirmation=null;
     try {
-      const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/security-status", {credentials:"include",cache:"no-store"});
-      const statut = await reponse.json().catch(() => null);
-      if (reponse.status === 401) { redirigerConnexionMembre("inactive"); return; }
-      if (!reponse.ok || !statut?.ok) { await afficherAlerte(statut?.message || "Le service de sécurité est indisponible."); return; }
-      if (statut.desactive) { await afficherAlerte("Le CODR est désactivé. Contactez l’administrateur."); return; }
       parcours=ouvrirParcoursCompte("dialogue-modification-coda","Mettre à jour mon CODA");
       if(!parcours)return;
+      const reponse = await fetch(ENDPOINT_MON_COMPTE_MEMBRE + "/security-status", {credentials:"include",cache:"no-store"});
+      const statut = await reponse.json().catch(() => null);
+      if (reponse.status === 401) { parcours.fermer();redirigerConnexionMembre("inactive"); return; }
+      if (!reponse.ok || !statut?.ok) { parcours.fermer();await afficherAlerte(statut?.message || "Le service de sécurité est indisponible."); return; }
+      if (statut.desactive) { parcours.fermer();await afficherAlerte("Le CODR est désactivé. Contactez l’administrateur."); return; }
       const premier=await ouvrirEcranCodeCompte(parcours.contenu,"coda");
       if(!premier)return;
       nouveauCoda=premier;
@@ -3672,7 +3687,7 @@ function afficherResumePointsPassion(compte) {
   }
 
   async function ouvrirDialogueEmailMembre() {
-    const resultat = await ouvrirDialogueChamp({
+    const resultat = await ouvrirChampSecurite({
       titre: "Modifier mon e-mail",
       champs: [
         {
@@ -3814,7 +3829,7 @@ function afficherResumePointsPassion(compte) {
 
   // Même circuit de modification simple que le département, sans CODA/CODR.
   async function ouvrirDialogueTelephoneMembre() {
-    const resultat = await ouvrirDialogueChamp({
+    const resultat = await ouvrirChampSecurite({
       titre: "Modifier le numéro de téléphone",
       variante: "telephone",
       champs: [{
@@ -3950,8 +3965,8 @@ function afficherResumePointsPassion(compte) {
     return resultat;
   }
 
-  async function ouvrirDialogueChamp(options) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
+  async function ouvrirDialogueChamp(options, slotParcours=null) {
+    const slot = slotParcours || document.getElementById("lcdp-lightbox-slot");
     if (!slot) return null;
 
     slot.innerHTML = "";
@@ -3973,7 +3988,12 @@ function afficherResumePointsPassion(compte) {
 
     titre.textContent = options.titre || "";
     if (options.variante === "alias") dialogue.classList.add("lcdp-compte-dialogue-alias");
-    if (options.variante === "telephone") dialogue.classList.add("lcdp-compte-dialogue-telephone");
+    if (options.variante === "telephone" && !slotParcours) dialogue.classList.add("lcdp-compte-dialogue-telephone");
+    if (slotParcours) {
+      dialogue.setAttribute("role","region");
+      dialogue.removeAttribute("aria-modal");
+      boutonFermer.hidden=true;
+    }
     const boutonValider = slot.querySelector("[data-lcdp-dialogue-champ-submit]");
     if (options.libelleValider && boutonValider) boutonValider.textContent = options.libelleValider;
     if (options.message) {
@@ -4008,7 +4028,7 @@ function afficherResumePointsPassion(compte) {
       boutonAnnuler.addEventListener("click", () => fermer(null));
 
       dialogue.addEventListener("click", (event) => {
-        if (event.target === dialogue && !soumissionEnCours) fermer(null);
+        if (!slotParcours && event.target === dialogue && !soumissionEnCours) fermer(null);
       });
 
       let soumissionEnCours = false;
@@ -4060,12 +4080,16 @@ function afficherResumePointsPassion(compte) {
         });
 
         if (checkboxRequiseManquante) {
-          await afficherAlerteSuperposee("Vous devez confirmer être l'unique utilisateur.");
+          const message="Vous devez confirmer être l'unique utilisateur.";
+          if(slotParcours){erreur.textContent=message;erreur.hidden=false;}
+          else await afficherAlerteSuperposee(message);
           return;
         }
 
         if (champRequisManquant || messageValidation) {
-          await afficherAlerteSuperposee(messageValidation || "Merci de renseigner le champ demandé.");
+          const message=messageValidation || "Merci de renseigner le champ demandé.";
+          if(slotParcours){erreur.textContent=message;erreur.hidden=false;}
+          else await afficherAlerteSuperposee(message);
           return;
         }
 
@@ -4279,8 +4303,8 @@ function afficherResumePointsPassion(compte) {
     }
   }
 
-  async function afficherChoixMesInformations(message, options = {}) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
+  async function afficherChoixMesInformations(message, options = {}, slotParcours=null) {
+    const slot = slotParcours || document.getElementById("lcdp-lightbox-slot");
     if (!slot) return false;
     slot.replaceChildren();
     try {
@@ -4291,6 +4315,7 @@ function afficherResumePointsPassion(compte) {
       const annuler = slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
       const confirmer = slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
       if (!dialogue || !titre || !texte || !annuler || !confirmer) throw new Error("Structure CHOIX incomplète.");
+      if(slotParcours){dialogue.setAttribute("role","region");dialogue.removeAttribute("aria-modal");}
       titre.textContent = options.titre || "Confirmation";
       texte.textContent = String(message || "");
       annuler.textContent = options.libelleAnnuler || "Annuler";
@@ -4306,7 +4331,7 @@ function afficherResumePointsPassion(compte) {
         annuler.addEventListener("click", () => fermer(false), { once: true });
         confirmer.addEventListener("click", () => fermer(true), { once: true });
         dialogue.addEventListener("click", event => {
-          if (event.target === dialogue) fermer(false);
+          if (!slotParcours && event.target === dialogue) fermer(false);
         });
         confirmer.focus();
       });
