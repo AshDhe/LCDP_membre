@@ -1550,23 +1550,82 @@
     });
   }
 
+  function joursRestantsRetractationCompte(abo, maintenant = new Date()) {
+    if (abo?.retractationPossible !== true) return null;
+    const date = new Date(abo.dateSouscription || "");
+    if (!Number.isFinite(date.getTime()) || date > maintenant) return null;
+    const format = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"
+    });
+    const jour = valeur => {
+      const p = format.formatToParts(valeur);
+      const n = type => Number(p.find(v => v.type === type)?.value);
+      return Date.UTC(n("year"), n("month") - 1, n("day"));
+    };
+    const reste = 14 - (jour(maintenant) - jour(date)) / 86400000;
+    return Number.isInteger(reste) && reste >= 0 && reste <= 14 ? reste : null;
+  }
+
+  function libellesExtensionsCompte(abo) {
+    if (!Array.isArray(abo?.optionsExtensions)) return "";
+    return abo.optionsExtensions.filter(option => typeof option?.code === "string" && option.code.trim())
+      .map(option => option.code.trim() +
+        (option.code.trim() === "+5 DUO+" && Number.isInteger(option.multiplicateur) && option.multiplicateur > 1
+          ? " (" + option.multiplicateur + " mois)" : "")).join(" · ");
+  }
+
+  function messageRetractationCompte(abo, jours) {
+    if (jours !== null) return "La demande de rétractation n’est pas encore disponible depuis cet emplacement.";
+    if (abo.retractationDemandee === true || abo.motifRetractation === "avoir")
+      return "Une demande de rétractation ou un avoir existe déjà pour cet abonnement.";
+    if (abo.motifRetractation === "1J" || libelleAbonnementCompte(abo) === "1J")
+      return "Cet abonnement ne dispose pas d’une période de rétractation.";
+    if (abo.motifRetractation === "renonciation")
+      return "Vous avez renoncé à la période de rétractation pour cet abonnement.";
+    if (abo.motifRetractation === "close" || (abo.retractationPossible === true && jours === null && abo.dateSouscription))
+      return "La période de rétractation est close.";
+    return "Le droit de rétractation n’est pas disponible ou n’a pas pu être vérifié.";
+  }
+
   function remplirHistoriqueAbonnementsCompte(conteneur, abonnements) {
     const liste = document.createElement("ul");
     liste.className = "lcdp-compte-relations__personnes";
     abonnements.forEach(abo => {
       const item = document.createElement("li");
-      const ligne = document.createElement("span");
-      ligne.className = "lcdp-compte-relations__nom";
+      const ligne = document.createElement("div");
+      ligne.className = "lcdp-compte-relations__ligne";
+      const texte = document.createElement("span");
+      texte.className = "lcdp-compte-relations__nom";
       const debut = formaterDateAbonnementCompte(abo.debut);
       const fin = formaterDateAbonnementCompte(abo.fin);
-      ligne.textContent = [libelleAbonnementCompte(abo),
+      const annule = abonnementAnnuleCompte(abo);
+      texte.textContent = [annule ? "Annulé –" : "", libelleAbonnementCompte(abo),
         debut && fin ? "du " + debut + " au " + fin : ""].filter(Boolean).join(" ");
+      ligne.appendChild(texte);
       item.appendChild(ligne);
-      if (abonnementAnnuleCompte(abo)) {
-        const statut = document.createElement("span");
-        statut.className = "lcdp-compte-relations__detail";
-        statut.textContent = "Annulé";
-        item.appendChild(statut);
+      if (!annule) {
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        const actualiser = () => {
+          const jours = joursRestantsRetractationCompte(abo);
+          bouton.className = "lcdp-ui-badge lcdp-ui-badge--action lcdp-ui-badge--" + (jours === null ? "neutral" : "red");
+          bouton.textContent = "Annuler" + (jours === null ? "" : " · J-" + jours);
+          bouton.setAttribute("aria-label", bouton.textContent + " : " + texte.textContent);
+          return jours;
+        };
+        actualiser();
+        bouton.addEventListener("click", () => {
+          const jours = actualiser();
+          void afficherInformationMembre(messageRetractationCompte(abo, jours), "Rétractation");
+        });
+        ligne.appendChild(bouton);
+        const extensions = libellesExtensionsCompte(abo);
+        if (extensions) {
+          const detail = document.createElement("span");
+          detail.className = "lcdp-compte-relations__detail";
+          detail.textContent = extensions;
+          item.appendChild(detail);
+        }
       }
       liste.appendChild(item);
     });
