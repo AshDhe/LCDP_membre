@@ -644,7 +644,7 @@
 
         const textePlanifier = document.createElement("p");
         textePlanifier.className = "lcdp-mes-acces-vide__texte";
-        textePlanifier.textContent = "Planifiez un nouvel accès ou une demande d'invitation.";
+        textePlanifier.textContent = "Planifier un nouvel accès ou une demande d'invitation.";
         vide.appendChild(textePlanifier);
 
         const boutonPlanifier = document.createElement("button");
