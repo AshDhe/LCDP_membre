@@ -697,78 +697,44 @@
       ? dateIso.slice(0,7)<=horizonCouvert : true;
     const jourHorsCouverture = typeClic === "jour" && aPaye && daValidee && Boolean(dateIso) && dansHorizon;
     const depassement = typeClic === "mois" || (typeClic === "jour" && aPaye && daValidee && !dansHorizon);
-    let titre = "Abonnement nécessaire";
-    let texte = depassement
-      ? "Pour consulter au-delà de votre horizon actuel, choisissez un abonnement compatible."
-      : "Un abonnement est nécessaire pour continuer.";
-    let boutons;
-
-    if (typeClic === "jour") {
-      // L'invitation (Duo Actif) est proposée pour tous les états DA.
-      // Une DA seulement transmise ne donne jamais le droit de s'abonner.
-      const boutonInvitation = {label:"Être invité(e)",valeur:"invitation",style:"lcdp-button-secondary"};
-      if (daValidee) {
-        if (jourHorsCouverture) {
-          titre = "Nouvel abonnement";
-          texte = "Cette date n'est pas couverte par votre abonnement.";
-        } else if (depassement) {
-          titre = "Nouvel abonnement";
-        }
-        boutons = [
-          {label:"M'abonner",valeur:"abonnement",style:"lcdp-button-primary"},
-          boutonInvitation
-        ];
-      } else if (statuda === "encours") {
-        // Demande en cours d'étude : aucune nouvelle DA cliquable.
-        boutons = [boutonInvitation];
-      } else {
-        // Après refus, le Worker DA n'accepte une nouvelle demande qu'à
-        // l'échéance datenext. Ne pas proposer une action qu'il rejetterait.
-        const datenext = String(droitsActifs?.datenext || etatMembre.datenext || "").trim();
-        const dateReprise = datenext ? Date.parse(datenext) : NaN;
-        const peutFaireDa = sansDa ||
-          (statuda === "non" && Number.isFinite(dateReprise) && dateReprise <= Date.now());
-        boutons = peutFaireDa
-          ? [{label:"Faire ma DA",valeur:"demande",style:"lcdp-button-primary"}, boutonInvitation]
-          : [boutonInvitation];
-      }
-    } else if (sansDa) {
-      // Navigation mensuelle : comportement antérieur préservé.
-      boutons = [{label:"Faire ma DA",valeur:"demande",style:"lcdp-button-primary"}];
-    } else if (!daValidee) {
-      boutons = [{label:"Être invité(e)",valeur:"invitation",style:"lcdp-button-primary"}];
-    } else if (jourHorsCouverture) {
-      titre = "Nouvel abonnement";
-      texte = "Cette date n'est pas couverte par votre abonnement.";
-      boutons = [{label:"Abonnement",valeur:"abonnement",style:"lcdp-button-primary"}];
-    } else {
-      if (depassement) titre = "Nouvel abonnement";
-      boutons = [{label:"Abonnement",valeur:"abonnement",style:"lcdp-button-primary"}];
+    const depassementAffiche = typeClic === "mois" || (typeClic === "jour" && Boolean(dateIso) && !dansHorizon);
+    const titre = depassementAffiche ? "Nouvel abonnement" : "Abonnement nécessaire";
+    const motif = depassementAffiche
+      ? "Un nouvel abonnement est nécessaire pour planifier au-delà de cette date."
+      : "Un nouvel abonnement est nécessaire pour planifier un nouvel accès à cette date.";
+    let texte = motif;
+    if (!daValidee) {
+      texte += " Vous ne disposez pas encore d'un droit d'abonnement.";
+      if (statuda === "encours") texte += " Votre demande est en cours d'étude.";
     }
-    // Une information avec une seule action relève du dialogue INFORMATION générique.
-    // Les choix multiples conservent leur objet CHOIX existant.
-    const informationAbonnement = depassement && daValidee &&
-      boutons.length === 1 && boutons[0].valeur === "abonnement";
-    const informationDemande = typeClic === "mois" && sansDa &&
-      boutons.length === 1 && boutons[0].valeur === "demande";
-    const choix = informationAbonnement
-      ? await afficherDialogueInformationPlanifier({
-          titre,
-          message: "Un nouvel abonnement est nécessaire au-delà de cette date.",
-          libelleAction: "Abonnement",
-          valeurAction: "abonnement",
-          onAffiche: contexte.onAffiche
-        })
-      : informationDemande
-        ? await afficherDialogueInformationPlanifier({
-            titre,
-            message: texte,
-            libelleAction: boutons[0].label,
-            valeurAction: boutons[0].valeur,
-            annulable: true,
-            onAffiche: contexte.onAffiche
-          })
-        : await ouvrirDialogueBoutonsSuperpose({titre,texte,boutons,onAffiche: contexte.onAffiche});
+    const datenext = String(droitsActifs?.datenext || etatMembre.datenext || "").trim();
+    const dateReprise = datenext ? Date.parse(datenext) : NaN;
+    const peutFaireDa = sansDa ||
+      (statuda === "non" && Number.isFinite(dateReprise) && dateReprise <= Date.now());
+
+    // Les actions existantes sont conservées, y compris Duo Actif au clic jour.
+    const boutonAbonnement = {label:"Abonnement",valeur:"abonnement"};
+    const boutonDemande = {label:"Faire ma demande",valeur:"demande"};
+    const boutonInvitation = {label:"Être invité(e)",valeur:"invitation"};
+    const boutons = typeClic === "jour"
+      ? [...(daValidee ? [boutonAbonnement] : peutFaireDa ? [boutonDemande] : []), boutonInvitation]
+      : [daValidee ? boutonAbonnement : sansDa ? boutonDemande : boutonInvitation];
+
+    let choix;
+    if (boutons.length === 1) {
+      const action = boutons[0];
+      choix = await afficherDialogueInformationPlanifier({
+        titre, message: texte, libelleAction: action.label, valeurAction: action.valeur,
+        annulable: !(depassement && daValidee), onAffiche: contexte.onAffiche
+      });
+    } else {
+      // Deux actions métier distinctes : le choix générique restitue leur valeur.
+      choix = await afficherChoixPlanifier(texte, {
+        titre, libelleAnnuler: boutons[1].label, libelleConfirmer: boutons[0].label,
+        fermetureFondValeur: null, annulable: true, onAffiche: contexte.onAffiche
+      });
+      choix = choix === true ? boutons[0].valeur : choix === false ? boutons[1].valeur : null;
+    }
     if (choix === "demande") {
       await ouvrirDemandeAbonnementDepuisPlanning();
     } else if (choix === "invitation") {
@@ -6598,6 +6564,9 @@
       annuler.textContent = options.libelleAnnuler || "Annuler";
       confirmer.textContent = options.libelleConfirmer || "Confirmer";
       dialogue.dataset.lcdpDialogueContext = "conteneur";
+      if (typeof options.onAffiche === "function") {
+        window.requestAnimationFrame(() => { Promise.resolve(options.onAffiche()).catch(console.error); });
+      }
       return await new Promise(resolve => {
         let termine = false;
         const fermer = valeur => {
@@ -6611,6 +6580,15 @@
         dialogue.addEventListener("click", event => {
           if (event.target === dialogue) fermer(Object.prototype.hasOwnProperty.call(options, "fermetureFondValeur") ? options.fermetureFondValeur : false);
         });
+        if (options.annulable === true) {
+          dialogue.addEventListener("keydown", event => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              fermer(null);
+            }
+          });
+        }
         confirmer.focus();
       });
     } catch (erreur) {
