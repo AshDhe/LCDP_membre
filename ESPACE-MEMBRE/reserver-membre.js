@@ -684,6 +684,19 @@
   // une date hors couverture dans l'horizon, et le dépassement de l'horizon.
   async function afficherDialogueAbonnementPlanning(typeClic, droits = null, contexte = {}) {
     const droitsActifs = droits || etatPage.droitsPlanningParcActifs;
+    // La limite absolue est fournie exclusivement par RÉZABO.
+    const moisCible = String(contexte.moisCible || contexte.dateIso || "").slice(0,7);
+    const moisMaximumAbsolu = String(droitsActifs?.moisMaximumAbsolu || "");
+    if (/^\d{4}-\d{2}$/.test(moisMaximumAbsolu) &&
+        /^\d{4}-\d{2}$/.test(moisCible) && moisCible > moisMaximumAbsolu) {
+      await afficherDialogueInformationPlanifier({
+        titre: "Horizon maximum atteint",
+        message: "La planification est limitée au mois M+9 inclus.",
+        libelleAction: "Fermer",
+        onAffiche: contexte.onAffiche
+      });
+      return true;
+    }
     const statuda = statutDaPourPlanning(droitsActifs);
     const sansDa = statuda === null;
     const daValidee = statuda === "oui";
