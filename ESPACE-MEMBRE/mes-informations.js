@@ -729,7 +729,7 @@
     const cadre=document.createElement("div");
     cadre.className="lcdp-compte-alerte lcdp-compte-alerte--vide";
     const texte=document.createElement("p");
-    texte.className="lcdp-compte-alertes-vide";
+    texte.className="lcdp-compte-alertes-vide lcdp-compte-placeholder-da";
     texte.textContent=message;
     cadre.appendChild(texte);
     liste.replaceChildren(cadre);
@@ -837,6 +837,7 @@
             'aria-label="Afficher la liste des abonnements souscrits" disabled>' +
             '<span id="lcdp-compte-abonnement-nombre">–</span>' +
           '</button>' +
+          '<a id="lcdp-compte-abonnement-action" class="lcdp-ui-badge lcdp-ui-badge--action" hidden></a>' +
         '</div>' +
         '<div id="lcdp-compte-abonnement-liste" class="lcdp-compte-relations__liste" ' +
           'aria-live="polite" hidden></div>' +
@@ -925,24 +926,45 @@
     return Number.isSafeInteger(nombre) && nombre > 0 ? String(nombre) : "–";
   }
 
+  function afficherAbonnementVideCompte(resume, bouton, action, daValidee) {
+    resume.textContent = daValidee
+      ? "Aucun abonnement souscrit"
+      : "Vous ne pouvez pas encore souscrire d’abonnement";
+    resume.classList.add("lcdp-compte-placeholder-da");
+    bouton.hidden = true;
+    bouton.disabled = true;
+    action.textContent = daValidee ? "Souscrire" : "Être invité(e)";
+    action.href = construireUrlMembre(daValidee
+      ? "/ESPACE-MEMBRE/reserver-membre.html?mode=aboreza"
+      : "/ESPACE-MEMBRE/reserver-membre.html");
+    action.hidden = false;
+  }
+
   async function actualiserBlocAbonnementCompte(compte) {
     const section = document.getElementById("lcdp-compte-abonnement");
     if (!section) return;
     const version = ++versionChargementAbonnementsCompte;
     const da = normaliserStatudaCompte(compte?.statuda || compte?.statutDa || compte?.da || "");
-    section.hidden = da === "non";
+    section.hidden = false;
     const resume = section.querySelector("#lcdp-compte-abonnement-resume");
     const nombre = section.querySelector("#lcdp-compte-abonnement-nombre");
     const bouton = section.querySelector("#lcdp-compte-abonnement-compteur");
     const liste = section.querySelector("#lcdp-compte-abonnement-liste");
-    resume.textContent = "";
+    const action = section.querySelector("#lcdp-compte-abonnement-action");
+    resume.textContent = "Chargement des abonnements…";
+    resume.classList.add("lcdp-compte-placeholder-da");
     nombre.textContent = "–";
     bouton.disabled = true;
+    bouton.hidden = true;
+    action.hidden = true;
+    action.removeAttribute("href");
     bouton.setAttribute("aria-expanded", "false");
     liste.hidden = true;
     liste.replaceChildren();
-    // Absence de DA ou DA en cours : cadre visible, vierge.
-    if (da !== "oui") return;
+    if (da !== "oui") {
+      afficherAbonnementVideCompte(resume, bouton, action, false);
+      return;
+    }
 
     try {
       if (!ENDPOINT_ABONNEMENTS_COMPTE) throw new Error("Service non configuré.");
@@ -962,9 +984,15 @@
       if (version !== versionChargementAbonnementsCompte) return;
 
       const abonnements = donnees.abonnements;
+      if (!abonnements.length) {
+        afficherAbonnementVideCompte(resume, bouton, action, true);
+        return;
+      }
+      resume.classList.remove("lcdp-compte-placeholder-da");
+      resume.textContent = abonnements.length + (abonnements.length === 1 ? " abonnement souscrit" : " abonnements souscrits");
       nombre.textContent = libelleCompteurCompte(abonnements.length);
-      bouton.disabled = abonnements.length === 0;
-      if (!abonnements.length) return;
+      bouton.hidden = false;
+      bouton.disabled = false;
 
       const maintenant = new Date();
       const aujourdHui = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate());
@@ -977,7 +1005,7 @@
         const fin = formaterDateAbonnementCompte(principal.fin);
         resume.textContent = rangAbonnementCompte(principal, aujourdHui) === 0 && fin
           ? type + " jusqu'au " + fin
-          : debut && fin ? type + " du " + debut + " au " + fin : "";
+          : debut && fin ? type + " du " + debut + " au " + fin : resume.textContent;
       }
       remplirHistoriqueAbonnementsCompte(liste, tries);
     } catch (erreur) {
@@ -986,6 +1014,8 @@
       resume.textContent = "Impossible de charger les abonnements.";
       nombre.textContent = "–";
       bouton.disabled = true;
+      bouton.hidden = true;
+      action.hidden = true;
     }
   }
 
@@ -1534,7 +1564,7 @@
     const data=await apiAlertesCompte("/alertes");
     liste.replaceChildren();
     if(!Array.isArray(data.alertes)||!data.alertes.length){
-      afficherSlotService(liste,"Aucune alerte enregistrée.");
+      afficherSlotService(liste,"Aucune alerte planifiée");
       return;
     }
     for(const alerte of data.alertes){
