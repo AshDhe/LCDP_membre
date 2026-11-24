@@ -591,28 +591,35 @@
     }finally{modificationWifiTemoinEnCours=false;}
   }
 
-  let selfieUrl = null;
-  function initialiserZoneSelfie() {
+  const selfiesCompte = {
+    biometrie: {prefixe:"selfie",libelle:"SELFIE BIOMÉTRIQUE",route:"/selfie",coda:true,url:null},
+    duoday: {prefixe:"selfie-duoday",libelle:"SELFIE DUO DAY",route:"/selfie-duoday",coda:false,url:null}
+  };
+  function initialiserZoneSelfie(type="biometrie",apres=null) {
+    const config=selfiesCompte[type];
+    if(!config)return;
     const codeR = document.getElementById("champ-geolocalisation-membre") || document.getElementById("champ-code-r-membre");
     const bloc = codeR?.closest("[data-lcdp-box-champ-formulaire]");
-    if (!bloc || document.getElementById("zone-selfie")) return;
+    const cible=apres||bloc;
+    const id=config.prefixe;
+    if (!bloc || !cible || document.getElementById("zone-"+id)) return;
     const zone = document.createElement("section");
-    zone.id = "zone-selfie";
-    zone.setAttribute("aria-label", "Selfie pour le contrôle d’accès");
+    zone.id = "zone-"+id;
+    zone.setAttribute("aria-label", config.libelle);
     zone.className = bloc.className;
     zone.setAttribute("data-lcdp-box-champ-formulaire", "");
-    zone.innerHTML = '<div class="lcdp-box-champ-formulaire__label-zone"><span class="lcdp-box-champ-formulaire__label">SELFIE</span></div><div class="lcdp-box-champ-formulaire__control lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><button type="button" id="selfie-badge" aria-label="Agrandir mon selfie" title="Agrandir mon selfie" hidden><img id="selfie-photo" alt="Votre selfie" hidden></button><span class="lcdp-selfie-texte" id="selfie-libelle"><span id="selfie-etat" role="status">–</span></span></div></div>';
+    zone.innerHTML = '<div class="lcdp-box-champ-formulaire__label-zone"><span class="lcdp-box-champ-formulaire__label">'+config.libelle+'</span></div><div class="lcdp-box-champ-formulaire__control lcdp-selfie-control" data-lcdp-champ-control><div class="lcdp-selfie-contenu"><button type="button" id="'+id+'-badge" aria-label="Agrandir mon selfie" title="Agrandir mon selfie" hidden><img id="'+id+'-photo" alt="Votre selfie" hidden></button><span class="lcdp-selfie-texte" id="'+id+'-libelle"><span id="'+id+'-etat" role="status">–</span></span></div></div>';
     const fauxInput = {parentNode:zone.lastElementChild};
-    ajouterPictoModificationDansChamp(fauxInput, zone, {id:"modifier-selfie",texte:"Prendre ou remplacer mon selfie",pictoRouge:true});
-    bloc.insertAdjacentElement("afterend", zone);
-    document.getElementById("modifier-selfie").addEventListener("click", proposerActionsSelfie);
-    document.getElementById("selfie-badge").addEventListener("click", agrandirSelfie);
-
+    ajouterPictoModificationDansChamp(fauxInput, zone, {id:"modifier-"+id,texte:"Prendre ou remplacer mon "+config.libelle.toLowerCase(),pictoRouge:config.coda,neutre:!config.coda});
+    cible.insertAdjacentElement("afterend", zone);
+    document.getElementById("modifier-"+id).addEventListener("click", ()=>proposerActionsSelfie(type));
+    document.getElementById(id+"-badge").addEventListener("click", ()=>agrandirSelfie(type));
   }
   let choixSelfieEnCours = false;
-  async function proposerActionsSelfie() {
+  async function proposerActionsSelfie(type="biometrie") {
+    const config=selfiesCompte[type];if(!config)return;
     if (choixSelfieEnCours || document.getElementById("dialogue-selfie") || document.getElementById("dialogue-selfie-agrandi")) return;
-    if (!selfieUrl) return ouvrirSelfie();
+    if (!config.url) return ouvrirSelfie(type);
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) return;
     const focusInitial = document.activeElement;
@@ -627,7 +634,7 @@
       const afficher = slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
       const modifier = slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
       if (!dialogue || !titre || !texte || !afficher || !modifier) throw Error("Structure CHOIX incomplète.");
-      titre.textContent = "Mon selfie";
+      titre.textContent = config.libelle;
       texte.textContent = "Consultez ou modifiez votre selfie.";
       afficher.textContent = "Afficher mon selfie";
       modifier.textContent = "Modifier mon selfie";
@@ -652,41 +659,45 @@
       slot.replaceChildren();
       await afficherAlerte("Les actions du selfie sont momentanément indisponibles.");
     } finally { choixSelfieEnCours = false; }
-    if (choix === "afficher") agrandirSelfie();
-    if (choix === "modifier") await ouvrirSelfie();
+    if (choix === "afficher") agrandirSelfie(type);
+    if (choix === "modifier") await ouvrirSelfie(type);
   }
 
-  async function chargerSelfie() {
-    const statut = document.getElementById("selfie-etat");
-    const photo = document.getElementById("selfie-photo");
-    const badge = document.getElementById("selfie-badge");
+  async function chargerSelfie(type="biometrie") {
+    const config=selfiesCompte[type];if(!config)return;
+    const id=config.prefixe;
+    const statut = document.getElementById(id+"-etat");
+    const photo = document.getElementById(id+"-photo");
+    const badge = document.getElementById(id+"-badge");
+    if(!statut||!photo||!badge)return;
     function masquerPhoto() {
-      document.getElementById("selfie-libelle")?.removeAttribute("hidden");
+      document.getElementById(id+"-libelle")?.removeAttribute("hidden");
       photo.hidden = true;
       badge.hidden = true;
       photo.removeAttribute("src");
-      if (selfieUrl) URL.revokeObjectURL(selfieUrl);
-      selfieUrl = null;
+      if (config.url) URL.revokeObjectURL(config.url);
+      config.url = null;
     }
     photo.onerror = () => {
       masquerPhoto();
       statut.textContent = "Selfie indisponible. Réessayez.";
     };
     try {
-      const r = await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie",{credentials:"include",cache:"no-store"});
+      const r = await fetch(ENDPOINT_MON_COMPTE_MEMBRE+config.route,{credentials:"include",cache:"no-store"});
       if(r.status===401){redirigerConnexionMembre("inactive");return;}
       if(r.status===404){masquerPhoto();statut.textContent="–";return;}
       if(!r.ok)throw Error("Selfie indisponible");
       const blob=await r.blob();
-      const image=document.getElementById("selfie-photo");
-      const ancienne=selfieUrl;selfieUrl=URL.createObjectURL(blob);image.src=selfieUrl;image.hidden=false;badge.hidden=false;
-      document.getElementById("selfie-libelle")?.setAttribute("hidden", "");
+      const image=document.getElementById(id+"-photo");
+      const ancienne=config.url;config.url=URL.createObjectURL(blob);image.src=config.url;image.hidden=false;badge.hidden=false;
+      document.getElementById(id+"-libelle")?.setAttribute("hidden", "");
       if(ancienne)URL.revokeObjectURL(ancienne);
       statut.textContent="";
     } catch { masquerPhoto();statut.textContent="Selfie indisponible. Réessayez."; }
   }
-  function agrandirSelfie() {
-    if (!selfieUrl || document.getElementById("dialogue-selfie-agrandi")) return;
+  function agrandirSelfie(type="biometrie") {
+    const config=selfiesCompte[type];
+    if (!config?.url || document.getElementById("dialogue-selfie-agrandi")) return;
     const retourFocus = document.activeElement;
     const dialogue = document.createElement("dialog");
     dialogue.id = "dialogue-selfie-agrandi";
@@ -697,7 +708,7 @@
     fermer.textContent = "×";
     const photo = document.createElement("img");
     photo.alt = "Votre selfie agrandi";
-    photo.src = selfieUrl;
+    photo.src = config.url;
     dialogue.append(fermer, photo);
     document.body.appendChild(dialogue);
     dialogue.addEventListener("close", () => { dialogue.remove(); retourFocus?.focus(); }, {once:true});
@@ -707,7 +718,8 @@
     fermer.focus();
   }
 
-  async function ouvrirSelfie() {
+  async function ouvrirSelfie(type="biometrie") {
+    const config=selfiesCompte[type];if(!config)return;
     if(document.getElementById("dialogue-selfie"))return;
     const retourFocus=document.activeElement;
     const main=document.querySelector(".lcdp-site-page > .lcdp-site-main");
@@ -723,7 +735,8 @@
     conteneur.appendChild(d);section.appendChild(conteneur);
     anciens.forEach(({element})=>{element.hidden=true;});
     main.appendChild(section);main.scrollTop=0;
-    let stream=null,actif=true,occupe=false,jeton=null,video=null,apercuUrl=null;
+    let stream=null,actif=true,occupe=false,jeton=null,video=null,apercuUrl=null,permissionConfirmee=false,autorisationRefusee=false;
+    const peutCapturer=()=>permissionConfirmee&&!autorisationRefusee&&(!config.coda||Boolean(jeton));
     function arreterCamera(){stream?.getTracks().forEach(t=>t.stop());stream=null;if(video)video.srcObject=null;}
     function libererApercu(){if(apercuUrl)URL.revokeObjectURL(apercuUrl);apercuUrl=null;}
     function arreter(){actif=false;jeton=null;arreterCamera();libererApercu();}
@@ -779,7 +792,8 @@
             // n’est conservé pendant la saisie du CODA.
             flux.getTracks().forEach(t=>t.stop());
             if(!actif)return;
-            await ouvrirSaisieCoda();
+            permissionConfirmee=true;
+            if(config.coda)await ouvrirSaisieCoda();else await ouvrirCameraSelfie();
           }catch(e){
             if(actif&&d.dataset.etape==="permission-camera"){
               message.textContent=messageErreurCamera(e);
@@ -812,7 +826,7 @@
       d.replaceChildren(fragment);
       const boite=d.querySelector("[data-lcdp-box-dialogue-champ]");
       boite.setAttribute("role","region");boite.removeAttribute("aria-modal");
-      d.querySelector("[data-lcdp-dialogue-champ-title]").textContent="Modifier mon selfie";
+      d.querySelector("[data-lcdp-dialogue-champ-title]").textContent=config.libelle;
       form=d.querySelector("[data-lcdp-dialogue-champ-form]");
       zone=d.querySelector("[data-lcdp-dialogue-champ-content]");
       erreur=d.querySelector("[data-lcdp-dialogue-champ-error]");
@@ -874,14 +888,14 @@
     }
 
     async function ouvrirCameraSelfie(){
-      if(!actif||!jeton)return;
+      if(!actif||!peutCapturer())return;
       d.dataset.etape="capture";
       d.innerHTML='<div class="lcdp-box-dialogue-champ" role="region"><div class="lcdp-box-dialogue-champ__card"><h2 id="titre-selfie" class="lcdp-box-dialogue-champ__title">Selfie</h2><video autoplay playsinline muted aria-label="Aperçu de votre selfie" hidden></video><p class="lcdp-cle-dialogue-note" role="status" aria-live="polite" data-selfie-message>Activez votre caméra pour prendre votre selfie.</p><div class="lcdp-box-dialogue-champ__actions"><button type="button" class="lcdp-button lcdp-button-secondary" data-selfie-fermer>Annuler</button><button type="button" class="lcdp-button lcdp-button-primary" data-selfie-capture>Activer la caméra</button></div></div></div>';
       video=d.querySelector("video");
       const message=d.querySelector("[data-selfie-message]"),capture=d.querySelector("[data-selfie-capture]"),fermer=d.querySelector("[data-selfie-fermer]");
       fermer.onclick=()=>{if(!occupe)fermerParcours();};
       async function prendrePhoto(){
-        if(occupe||!actif||!jeton||!video.videoWidth)return;
+        if(occupe||!actif||!peutCapturer()||!video.videoWidth)return;
         occupe=true;capture.disabled=true;fermer.disabled=true;message.textContent="Préparation de la photo…";
         try{
           const canvas=document.createElement("canvas");canvas.width=512;canvas.height=512;
@@ -889,14 +903,14 @@
           canvas.getContext("2d").drawImage(video,(video.videoWidth-cote)/2,(video.videoHeight-cote)/2,cote,cote,0,0,512,512);
           const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.85));
           if(!blob)throw Error("La photo n’a pas pu être créée.");
-          if(!actif||!jeton)return;
+          if(!actif||!peutCapturer())return;
           afficherApercuSelfie(blob);
         }catch(e){if(actif)message.textContent=e.message||"La photo n’a pas pu être créée.";}
         finally{occupe=false;if(actif&&d.dataset.etape==="capture"){capture.disabled=false;fermer.disabled=false;}}
       }
       let activationEnCours=false;
       async function activerCamera(){
-        if(activationEnCours||!actif||!jeton)return;
+        if(activationEnCours||!actif||!peutCapturer())return;
         activationEnCours=true;capture.disabled=true;
         message.textContent="Ouverture de la caméra…";
         arreterCamera();
@@ -924,7 +938,7 @@
     }
 
     function afficherApercuSelfie(blob){
-      if(!actif||!jeton)return;
+      if(!actif||!peutCapturer())return;
       libererApercu();
       apercuUrl=URL.createObjectURL(blob);
       arreterCamera();
@@ -933,20 +947,20 @@
       d.querySelector("[data-selfie-apercu]").src=apercuUrl;
       const message=d.querySelector("[data-selfie-message]"),reprendre=d.querySelector("[data-selfie-reprendre]"),valider=d.querySelector("[data-selfie-valider]"),fermer=d.querySelector("[data-selfie-fermer]");
       fermer.onclick=()=>{if(!occupe)fermerParcours();};
-      reprendre.onclick=()=>{if(occupe||!actif||!jeton)return;libererApercu();void ouvrirCameraSelfie();};
+      reprendre.onclick=()=>{if(occupe||!actif||!peutCapturer())return;libererApercu();void ouvrirCameraSelfie();};
       valider.onclick=async()=>{
-        if(occupe||!actif||!jeton)return;
+        if(occupe||!actif||!peutCapturer())return;
         occupe=true;reprendre.disabled=true;valider.disabled=true;fermer.disabled=true;message.textContent="Enregistrement…";
         try{
-          const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/selfie",{method:"PUT",credentials:"include",cache:"no-store",headers:{"Content-Type":"image/jpeg","Authorization":"Bearer "+jeton},body:blob});
+          const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+config.route,{method:"PUT",credentials:"include",cache:"no-store",headers:{"Content-Type":"image/jpeg",...(config.coda?{"Authorization":"Bearer "+jeton}:{})},body:blob});
           const resultat=await r.json().catch(()=>null);
           if(!actif)return;
           if(r.status===401){fermerParcours();redirigerConnexionMembre("inactive");return;}
-          if(r.status===403){jeton=null;message.textContent=resultat?.message||"Authentifiez-vous à nouveau avec votre CODA.";return;}
+          if(r.status===403){jeton=null;autorisationRefusee=true;message.textContent=resultat?.message||(config.coda?"Authentifiez-vous à nouveau avec votre CODA.":"Modification non autorisée.");return;}
           if(!r.ok||resultat?.ok!==true)throw Error(resultat?.message||"La photo n’a pas pu être enregistrée.");
-          arreter();fermerParcours();await chargerSelfie();
+          arreter();fermerParcours();await chargerSelfie(type);
         }catch(e){if(actif)message.textContent=e.message||"Enregistrement impossible.";}
-        finally{occupe=false;if(actif){reprendre.disabled=!jeton;valider.disabled=!jeton;fermer.disabled=false;}}
+        finally{occupe=false;if(actif){reprendre.disabled=!peutCapturer();valider.disabled=!peutCapturer();fermer.disabled=false;}}
       };
       valider.focus();
     }
@@ -1330,6 +1344,7 @@
     temoins.setAttribute("aria-live","polite");
     equipement.appendChild(temoins);
     bloc.insertAdjacentElement("afterend",equipement);
+    initialiserZoneSelfie("duoday",bloc);
 
     bloc.querySelectorAll("[data-lcdp-relations-ouvrir]").forEach(bouton => {
       bouton.addEventListener("click", () => {
@@ -2175,6 +2190,7 @@
     terminerAttenteCompte();
     void Promise.allSettled([
       chargerSelfie(),
+      chargerSelfie("duoday"),
       chargerEquipementsPresence(),
       actualiserBurgerMembre(compteIndiqueAbonne(compte))
     ]);
