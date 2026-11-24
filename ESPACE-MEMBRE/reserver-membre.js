@@ -248,6 +248,24 @@
         bouton.setAttribute("aria-disabled", String(!abonnementPermanentActifCoach(etatMembre)));
       });
       masquerAttenteInitialePlanifier();
+      // Ouverture directe du catalogue ABO-RÉZA depuis un droit membre vérifié.
+      // La vue ABO-RÉZA reste intégrée au wrapper PLANIFIER, sans contourner ses APIs.
+      const urlOuverture = new URL(window.location.href);
+      if (urlOuverture.searchParams.get("mode") === "aboreza") {
+        urlOuverture.searchParams.delete("mode");
+        window.history.replaceState(window.history.state, "", urlOuverture.href);
+        const daValidee = etatMembre.statudaConnue === true &&
+          normaliserStatudaReservation(etatMembre.statuda) === "oui";
+        const sansAbonnement = etatMembre.abonne === false;
+        if (daValidee && sansAbonnement) {
+          await ouvrirAbonnementDepuisPlanning({ origine: "sans_abonnement" });
+        } else {
+          await afficherDialogueInformationPlanifier({
+            titre: "Abonnement",
+            message: "Votre demande d'abonnement doit être validée et vous ne devez pas disposer d'un abonnement en cours pour utiliser cette entrée."
+          });
+        }
+      }
       // ALERTE PLANIFIER réutilise le diaporama des parcs déjà présent.
       if(new URL(window.location.href).searchParams.get("mode")==="alerte"){
         const urlSansMode=new URL(window.location.href);
