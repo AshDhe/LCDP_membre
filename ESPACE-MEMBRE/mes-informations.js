@@ -2071,6 +2071,8 @@
     const base=ENDPOINT_MON_COMPTE_MEMBRE+"/invitants";
     const r=await fetch(base,{credentials:"include",cache:"no-store",headers:{Accept:"application/json"}});
     if(r.status===401){redirigerConnexionMembre("inactive");return;}
+    // Compatibilité pendant le déploiement : lecture seule, aucune action simulée.
+    if(r.status===404||r.status===503)return chargerInvitantsHistoriqueCompte(conteneur,compteur);
     const data=await r.json().catch(()=>null);
     if(!r.ok||data?.ok!==true||!Array.isArray(data.invitants))throw Error(data?.message||"Impossible de charger les invitants.");
     const personnes=data.invitants;
@@ -2132,6 +2134,50 @@
       carte.append(photo,texte,actions);ligne.append(carte);liste.append(ligne);
     }
     conteneur.append(liste);
+  }
+
+  async function chargerInvitantsHistoriqueCompte(conteneur, compteur) {
+    if (!ENDPOINT_PLANNING_COMPTE) throw new Error("Service de planning non configuré.");
+    const reponse = await fetch(ENDPOINT_PLANNING_COMPTE + "/mes-reservations", {
+      credentials: "include", cache: "no-store",
+      headers: { "Accept": "application/json" }
+    });
+    if (reponse.status === 401) {
+      redirigerConnexionMembre("inactive");
+      return;
+    }
+    const donnees = await reponse.json().catch(() => null);
+    if (!reponse.ok || !donnees ||
+        (donnees.ok !== true && donnees.success !== true) ||
+        !Array.isArray(donnees.reservations)) {
+      throw new Error(donnees?.message || "Impossible de charger les invitants.");
+    }
+    const personnes = donnees.reservations.filter(reservation =>
+      reservation && (reservation.invitation === true || reservation.invitation === "true")
+    ).map(reservation => {
+      const parrain = reservation.parrain || {};
+      const affichage = reservation.parrainInvitation || {};
+      const id = String(reservation.idparrain || parrain.idmembre ||
+        affichage.idmembre || "").trim();
+      const prenom = String(parrain.prenommembre || parrain.prenom ||
+        affichage.prenommembre || "").trim();
+      const nom = String(parrain.nommembre || parrain.nom ||
+        affichage.nommembre || "").trim();
+      const email = String(parrain.emailmembre || parrain.email || "").trim();
+      const alias = String(parrain.alias || affichage.alias ||
+        affichage.affichage || "").trim();
+      if (!id && !email) return null;
+      return {
+        idmembre_invitant: id,
+        prenom: prenom || (!nom && !email ? alias : ""),
+        nom,
+        email
+      };
+    }).filter(Boolean);
+    const invitantsUniques = dedoublonnerInvitantsCompte(personnes);
+    compteur.textContent = libelleCompteurCompte(invitantsUniques.length);
+    afficherListeRelationsCompte(conteneur, invitantsUniques,
+      "Aucun invitant dans votre historique.");
   }
 
   // Une inscription doit être reliée au membre connecté ; le catalogue des
