@@ -2067,6 +2067,76 @@
   // Source authentifiée des invitants : les réservations reçues comportent
   // idparrain et l'identité associée, indépendamment de tout abonnement.
   async function chargerInvitantsDepuisPlanningCompte(conteneur, compteur) {
+    if (!ENDPOINT_MON_COMPTE_MEMBRE) throw new Error("Service du compte non configuré.");
+    const base=ENDPOINT_MON_COMPTE_MEMBRE+"/invitants";
+    const r=await fetch(base,{credentials:"include",cache:"no-store",headers:{Accept:"application/json"}});
+    if(r.status===401){redirigerConnexionMembre("inactive");return;}
+    // Compatibilité pendant le déploiement : lecture seule, aucune action simulée.
+    if(r.status===404||r.status===503)return chargerInvitantsHistoriqueCompte(conteneur,compteur);
+    const data=await r.json().catch(()=>null);
+    if(!r.ok||data?.ok!==true||!Array.isArray(data.invitants))throw Error(data?.message||"Impossible de charger les invitants.");
+    const personnes=data.invitants;
+    compteur.textContent=libelleCompteurCompte(personnes.length);
+    conteneur.replaceChildren();
+    if(!personnes.length){afficherListeRelationsCompte(conteneur,[],"Aucun invitant dans votre liste.");return;}
+    const liste=document.createElement("ul");
+    liste.className="lcdp-compte-relations__personnes";
+    let operationEnCours=false;
+    for(const p of personnes){
+      const id=String(p.idmembre_invitant||"");
+      if(!/^[0-9a-f-]{36}$/i.test(id))throw Error("Identifiant invitant invalide.");
+      const ligne=document.createElement("li");
+      const carte=document.createElement("div");carte.className="lcdp-editorial-card lcdp-compte-invitant";
+      const photo=document.createElement("div");photo.className="lcdp-compte-invitant__photo";
+      photo.textContent="Sans selfie";
+      if(p.selfie){
+        const img=document.createElement("img");img.width=56;img.height=56;img.alt="Selfie de l’invitant";
+        void (async()=>{try{
+          const reponse=await fetch(base+"/"+encodeURIComponent(id)+"/selfie",{credentials:"include",cache:"no-store"});
+          if(!reponse.ok||reponse.headers.get("Content-Type")?.split(";")[0]!=="image/jpeg")return;
+          const blob=await reponse.blob();if(!photo.isConnected)return;
+          const url=URL.createObjectURL(blob);const liberer=()=>URL.revokeObjectURL(url);
+          img.addEventListener("load",liberer,{once:true});img.addEventListener("error",()=>{liberer();photo.textContent="Sans selfie";},{once:true});
+          img.src=url;photo.replaceChildren(img);
+        }catch{/* Le nom et les actions restent disponibles. */}})();
+      }
+      const texte=document.createElement("div");texte.className="lcdp-compte-invitant__identite";
+      const nom=document.createElement("span");nom.className="lcdp-compte-relations__nom";
+      const identite=[p.nom,p.prenom].filter(Boolean).join(" ")||"Membre";nom.textContent=identite;texte.append(nom);
+      if(p.bloque){const etat=document.createElement("span");etat.className="lcdp-compte-relations__detail";etat.textContent="Bloqué";texte.append(etat);}
+      const actions=document.createElement("div");actions.className="lcdp-compte-invitant__actions";
+      const ajouter=(action,libelle)=>{
+        const bouton=document.createElement("button");bouton.type="button";bouton.className="lcdp-button lcdp-button-secondary";bouton.textContent=libelle;
+        bouton.setAttribute("aria-label",libelle+" : "+identite);
+        bouton.addEventListener("click",async()=>{
+          if(operationEnCours)return;
+          const parcours=ouvrirParcoursCompte("dialogue-invitant-compte",libelle+" ce membre");if(!parcours)return;
+          operationEnCours=true;let modifie=false;
+          try{
+            const messages={bloquer:"Les invitations à venir de ce membre sont annulées et ses nouvelles invitations ne vous parviennent plus.",debloquer:"Ce membre peut de nouveau vous inviter. Les anciennes invitations restent annulées.",supprimer:"Ce membre disparaît de votre liste et ses invitations à venir sont annulées. Il peut de nouveau vous inviter."};
+            const confirme=await demanderSuppressionAlerte("",{profil:"choix",titre:libelle+" ce membre ?",message:identite+". "+messages[action],annuler:"Non",confirmer:"Oui"},parcours.contenu);
+            if(!confirme)return;
+            const rep=await fetch(base,{method:"POST",credentials:"include",cache:"no-store",headers:{Accept:"application/json","Content-Type":"application/json"},body:JSON.stringify({idmembre_invitant:id,action})});
+            if(rep.status===401){redirigerConnexionMembre("inactive");return;}
+            const resultat=await rep.json().catch(()=>null);
+            if(!rep.ok||resultat?.ok!==true)throw Error(resultat?.message||"Action non confirmée.");
+            modifie=true;
+            await afficherInformationMembre(resultat.message,"Confirmation",null,"Fermer",parcours.contenu);
+          }catch(e){await afficherAlerte(e?.message||"Action non confirmée.",parcours.contenu);}
+          finally{
+            parcours.fermer();operationEnCours=false;
+            if(modifie){try{await chargerInvitantsDepuisPlanningCompte(conteneur,compteur);}catch(e){conteneur.textContent="Impossible de recharger les invitants.";compteur.textContent="–";}}
+          }
+        });actions.append(bouton);
+      };
+      ajouter(p.bloque?"debloquer":"bloquer",p.bloque?"Débloquer":"Bloquer");
+      if(!p.bloque)ajouter("supprimer","Supprimer");
+      carte.append(photo,texte,actions);ligne.append(carte);liste.append(ligne);
+    }
+    conteneur.append(liste);
+  }
+
+  async function chargerInvitantsHistoriqueCompte(conteneur, compteur) {
     if (!ENDPOINT_PLANNING_COMPTE) throw new Error("Service de planning non configuré.");
     const reponse = await fetch(ENDPOINT_PLANNING_COMPTE + "/mes-reservations", {
       credentials: "include", cache: "no-store",
