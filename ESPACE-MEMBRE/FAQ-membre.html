@@ -27,14 +27,14 @@
       window.LCDP_urlMembre = path => typeof cfg.membreUrl === 'function' ? cfg.membreUrl(path) : join(memberBase, path);
       window.LCDP_urlPublic = path => typeof cfg.publicUrl === 'function' ? cfg.publicUrl(path) : join(publicBase, path);
       window.LCDP_urlObjet = path => typeof cfg.objetUrl === 'function' ? cfg.objetUrl(path) : join(objetBase, path);
-      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css') + '">');
+      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css?v=20261125-c024-v2') + '">');
       window.LCDP_FAQ_PAGE = {
         membre: true,
         publicUrl: window.LCDP_urlPublic,
         objetUrl: window.LCDP_urlObjet,
         stylesPrets: Promise.resolve()
       };
-      document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.js?v=20261124-compact') + '"><\/script>');
+      document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.js?v=20261125-c024-v2') + '"><\/script>');
       document.write('<script defer src="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq.js?v=20261120-sans-ancrage') + '"><\/script>');
     })();
   </script>
