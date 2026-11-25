@@ -220,6 +220,7 @@
   }
 
   function fermerWorkflowDa() {
+    desactiverGabaritLegalDa();
     const vue = vueDaInitiale;
     vueDaInitiale = null;
     if (vue) {
@@ -555,28 +556,81 @@
     return { slot, contenu };
   }
 
+  let etatGabaritLegalDa = null;
+
+  function activerGabaritLegalDa() {
+    if (etatGabaritLegalDa) return;
+    const racine = document.documentElement;
+    const modules = new Set((racine.getAttribute("data-lcdp-css") || "").split(/\s+/).filter(Boolean));
+    const ajoutes = ["c085", "c032", "c083"].filter(code => !modules.has(code));
+    ajoutes.forEach(code => modules.add(code));
+    racine.setAttribute("data-lcdp-css", [...modules].join(" "));
+    const classeAjoutee = !document.body.classList.contains("lcdp-page-document-legal");
+    document.body.classList.add("lcdp-page-document-legal");
+    etatGabaritLegalDa = { ajoutes, classeAjoutee };
+  }
+
+  function desactiverGabaritLegalDa() {
+    if (!etatGabaritLegalDa) return;
+    const { ajoutes, classeAjoutee } = etatGabaritLegalDa;
+    const racine = document.documentElement;
+    const modules = (racine.getAttribute("data-lcdp-css") || "").split(/\s+/).filter(code => code && !ajoutes.includes(code));
+    racine.setAttribute("data-lcdp-css", modules.join(" "));
+    if (classeAjoutee) document.body.classList.remove("lcdp-page-document-legal");
+    etatGabaritLegalDa = null;
+  }
+
   async function afficherIntroductionDa(membre, parrain, options) {
-    const { contenu } = await ouvrirWorkflowDa();
-    contenu.innerHTML = "";
-
-    const bloc = document.createElement("div");
-    bloc.className = "lcdp-stack";
-
-    const titre = document.createElement("h2");
-    titre.className = "lcdp-title-page-center";
-    titre.textContent = "Demande de droit d’abonnement (DA)";
-    bloc.appendChild(titre);
-
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-central-mobile-first.css");
+    if (typeof window.LCDP_DOCUMENTS_LEGAUX?.nettoyerHtml !== "function") {
+      await chargerScriptObjetUneFois("/JSBASE/documents-legaux.js");
+    }
+    const normaliser = window.LCDP_DOCUMENTS_LEGAUX?.nettoyerHtml;
+    if (typeof normaliser !== "function") throw new Error("Normaliseur des documents indisponible.");
     const sections = await chargerSectionsDaPubliees();
-    sections.forEach(({ titre, texte }) => ajouterBlocInfoDa(bloc, titre, texte));
+    const bloc = document.createElement("div");
+    bloc.className = "lcdp-document-legal lcdp-stack-large";
 
+    const entete = document.createElement("div");
+    entete.className = "lcdp-editorial-page-heading";
+    const titre = document.createElement("h1");
+    titre.className = "lcdp-title-page-center lcdp-document-legal__title";
+    titre.textContent = "Demande de droit d’abonnement (DA)";
+    entete.appendChild(titre);
+    bloc.appendChild(entete);
+
+    const documentDa = document.createElement("div");
+    documentDa.className = "lcdp-document-legal__content";
+    for (const section of sections) {
+      const enveloppe = document.createElement("div");
+      enveloppe.appendChild(await chargerFragmentObjet("/HTMLBASE/01-text.html"));
+      const box = enveloppe.querySelector("[data-lcdp-boxtext]");
+      if (!box) throw new Error("Objet BoxText incomplet.");
+      box.querySelector("[data-lcdp-boxtext-title]").textContent = section.titre;
+      if (!/^\s*(?:(?:article|section|chapitre)\s*)?\d+(?=\s|[.):\-])/i.test(section.titre)) {
+        enveloppe.classList.add("lcdp-legal-section--numerotation-auto");
+      }
+      const contenu = box.querySelector("[data-lcdp-boxtext-content]");
+      if (typeof section.html === "string") {
+        contenu.innerHTML = normaliser(section.html);
+        contenu.querySelectorAll("[data-site-href]").forEach(lien => {
+          lien.href = construireUrlPublic(lien.dataset.siteHref);
+        });
+      } else {
+        const p = document.createElement("p");
+        p.textContent = section.texte;
+        contenu.appendChild(p);
+      }
+      documentDa.appendChild(enveloppe);
+    }
+    bloc.appendChild(documentDa);
 
     const actions = document.createElement("div");
-    actions.className = "lcdp-box-formulaire__actions lcdp-workflow-abonnement__actions-full";
+    actions.className = "lcdp-actions-centrees lcdp-editorial-cta";
 
     const bouton = document.createElement("button");
     bouton.type = "button";
-    bouton.className = "lcdp-button lcdp-button-primary";
+    bouton.className = "lcdp-button lcdp-button--haut-etroit lcdp-button-primary";
     bouton.textContent = "Faire ma demande de DA";
     bouton.addEventListener("click", async () => {
       if (bouton.disabled) return;
@@ -596,8 +650,17 @@
     });
 
     actions.appendChild(bouton);
+    const retour = document.createElement("button");
+    retour.type = "button";
+    retour.className = "lcdp-button lcdp-button-secondary lcdp-button--haut-etroit";
+    retour.textContent = "Retour";
+    retour.addEventListener("click", () => fermerWorkflowDa());
+    actions.appendChild(retour);
     bloc.appendChild(actions);
-    contenu.appendChild(bloc);
+
+    const slot = obtenirLightboxSlotDa();
+    activerGabaritLegalDa();
+    slot.replaceChildren(bloc);
   }
 
   // Contenu éditorial publié depuis Admin > Formulaire DA.
@@ -619,10 +682,8 @@
         const data = await response.json().catch(() => null);
         if (!response.ok || data?.success !== true || !Array.isArray(data.blocs)) continue;
         const sections = data.blocs.map(bloc => {
-          const doc = new DOMParser().parseFromString(String(bloc?.html || ""), "text/html");
-          doc.querySelectorAll("script,style,iframe,object,svg,form").forEach(element => element.remove());
-          return { titre: String(bloc?.titre || "").trim(), texte: String(doc.body.textContent || "").trim() };
-        }).filter(bloc => bloc.titre && bloc.texte);
+          return { titre: String(bloc?.titre || "").trim(), html: String(bloc?.html || "") };
+        }).filter(bloc => bloc.titre && bloc.html.trim());
         if (sections.length) return sections;
       } catch (error) {
         console.warn("Contenu DA publié indisponible :", error?.name || "Erreur");
@@ -645,20 +706,6 @@
     ];
   }
 
-  function ajouterBlocInfoDa(parent, titre, texte) {
-    const section = document.createElement("section");
-
-    const h3 = document.createElement("h3");
-    h3.textContent = titre;
-    section.appendChild(h3);
-
-    const p = document.createElement("p");
-    p.textContent = texte;
-    section.appendChild(p);
-
-    parent.appendChild(section);
-  }
-
   function creerLienReglement(label, href) {
     const lien = document.createElement("a");
     lien.className = "lcdp-link-secondary";
@@ -672,12 +719,10 @@
   async function afficherFormulaireDa(membre, parrain, options) {
     await chargerDependancesFormulaireDa();
 
+    desactiverGabaritLegalDa();
     const slot = obtenirLightboxSlotDa();
-    const contenu = slot.querySelector("[data-lcdp-workflow-abonnement-content]");
-
-    if (!contenu) {
-      throw new Error("Zone formulaire DA introuvable.");
-    }
+    let contenu = slot.querySelector("[data-lcdp-workflow-abonnement-content]");
+    if (!contenu) ({ contenu } = await ouvrirWorkflowDa());
 
     contenu.innerHTML = "";
     const formSlot = document.createElement("div");
