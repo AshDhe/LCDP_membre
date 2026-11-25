@@ -26,14 +26,8 @@
     try {
       await Promise.all([initialiserBandeau(), initialiserFooter()]);
 
-      const controleurOnglets = await initialiserOngletsFactures();
-      await initialiserOngletsBoutique();
-      const tables = await initialiserTables(controleurOnglets.zones);
-
-      await Promise.all([
-        chargerFacturesEtPaiements(tables.factures, tables.paiements),
-        chargerRemboursements(tables.remboursements)
-      ]);
+      // Structure visuelle uniquement : les quatre panneaux restent vides.
+      await Promise.all([initialiserOngletsFactures(), initialiserOngletsBoutique()]);
     } catch (error) {
       console.error("Erreur Mes factures membre :", error);
       window.LCDP_terminerAttentePageMembre?.();
@@ -50,21 +44,9 @@
   }
 
   async function initialiserOngletsBoutique() {
-    const controleur = await initialiserNavigationDocuments(
+    return initialiserNavigationDocuments(
       "lcdp-mes-factures-boutique-slot", "lcdp-mes-factures-boutique", "Boutique"
     );
-
-    // Présentation uniquement : aucune source de données boutique ajoutée.
-    for (const [cle, texte] of [
-      ["factures", "Aucun document affiché."],
-      ["paiements", "Aucun paiement ou remboursement affiché."]
-    ]) {
-      const message = document.createElement("p");
-      message.className = "lcdp-table-lecture__status";
-      message.textContent = texte;
-      controleur.zones[cle].appendChild(message);
-    }
-    return controleur;
   }
 
   async function initialiserNavigationDocuments(slotId, idPrefix, rubrique) {
@@ -110,76 +92,8 @@
     return controleur;
   }
 
-  async function initialiserTables(zones) {
-    const factures = await initialiserTable(zones.factures, {
-      ariaLabel: "Liste chronologique des factures et avoirs du membre",
-      emptyMessage: "Aucun document archivé.",
-      columns: [
-        { key: "commande", label: "Commande" },
-        { key: "nature", label: "Type" },
-        { key: "document", label: "Document" },
-        { key: "dateDocument", label: "Date", type: "date" },
-        { key: "montant", label: "TTC" }
-      ],
-      renderCell: ({ column, value }) => {
-        if (column.key !== "document") return null;
-        return creerLienDocumentArchive(value);
-      }
-    });
-
-    // Les deux tableaux existants restent indépendants dans un même panneau.
-    const zoneOperations = zones.paiements;
-    zoneOperations.classList.add("lcdp-stack");
-    const creerSousRubrique = (libelle) => {
-      const section = document.createElement("section");
-      section.className = "lcdp-stack-small";
-      const titre = document.createElement("h3");
-      titre.className = "lcdp-text-strong-left";
-      titre.textContent = libelle;
-      const zone = document.createElement("div");
-      section.append(titre, zone);
-      zoneOperations.appendChild(section);
-      return zone;
-    };
-    const zonePaiements = creerSousRubrique("Paiement");
-    const zoneRemboursements = creerSousRubrique("Remboursement");
-
-    const paiements = await initialiserTable(zonePaiements, {
-      ariaLabel: "Liste des paiements du membre",
-      emptyMessage: "Aucun paiement.",
-      columns: [
-        { key: "facture", label: "Facture" },
-        { key: "paiement1", label: "Paiement 1" },
-        { key: "paiement2", label: "Paiement 2" },
-        { key: "paiement3", label: "Paiement 3" }
-      ],
-      renderCell: ({ column, value }) => {
-        if (column.key === "facture") return creerLienFacture(value);
-        if (["paiement1", "paiement2", "paiement3"].includes(column.key)) {
-          return creerAffichagePaiement(value);
-        }
-        return null;
-      }
-    });
-
-    const remboursements = await initialiserTable(zoneRemboursements, {
-      ariaLabel: "Liste des remboursements du membre",
-      emptyMessage: "Aucun remboursement.",
-      columns: [
-        { key: "facture", label: "Facture" },
-        { key: "avoir", label: "Avoir dû" },
-        { key: "date", label: "Date", type: "date" },
-        { key: "paiement", label: "Paiement" }
-      ],
-      renderCell: ({ column, value }) => {
-        if (column.key === "facture") return creerLienFacture(value);
-        if (column.key === "avoir") return creerLienAvoir(value);
-        return null;
-      }
-    });
-
-    return { factures, paiements, remboursements };
-  }
+  // Les fonctions de facturation existantes restent conservées, sans activation
+  // dans cette version de présentation. Aucune liste ni tableau n'est monté.
 
   async function initialiserTable(zone, options) {
     if (!zone) throw new Error("Zone de tableau introuvable.");
