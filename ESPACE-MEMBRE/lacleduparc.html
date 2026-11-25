@@ -96,7 +96,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="./lcdp-ma-cle.css?v=20261123-codr-secours-v1">
+  <link rel="stylesheet" href="./lcdp-ma-cle.css?v=20261125-alerte-parc-v1">
 </head>
 
 <body data-lcdp-suivi-cle="cle-lacleduparc" class="lcdp-app-page lcdp-page-cle-du-parc">
@@ -214,12 +214,12 @@
                       INVITÉS
                     </button>
 
-                    <button class="lcdp-button lcdp-cle-action" type="button" disabled>
-                      ALERT PARK
-                    </button>
-
                     <button class="lcdp-button lcdp-cle-action lcdp-cle-action--checkout" type="button" data-lcdp-cle-checkout>
                       CHECKOUT
+                    </button>
+
+                    <button class="lcdp-cle-alerte-bouton" type="button" data-lcdp-cle-park-alert aria-haspopup="dialog" aria-controls="lcdp-cle-park-alert-dialog">
+                      ALERTE
                     </button>
                   </div>
 
@@ -239,8 +239,20 @@
 
   </div>
 
-  <script src="./controle-acces-ui.js?v=20261123-codr-secours-v1"></script>
+  <dialog id="lcdp-cle-park-alert-dialog" class="lcdp-cle-alerte-dialogue" aria-labelledby="lcdp-cle-park-alert-title">
+    <h2 id="lcdp-cle-park-alert-title">ALERTE PARC</h2>
+    <p>De quelle assistance avez-vous besoin ?</p>
+    <a class="lcdp-cle-alerte-urgence" href="tel:112">Urgence — Appeler le 112</a>
+    <button class="lcdp-cle-alerte-option" type="button" disabled>Demander une assistance au club</button>
+    <button class="lcdp-cle-alerte-option" type="button" disabled>Signaler un incident</button>
+    <p class="lcdp-cle-alerte-note">Les deux services du club sont momentanément indisponibles.</p>
+    <form method="dialog">
+      <button class="lcdp-cle-alerte-fermer" type="submit" autofocus>Annuler</button>
+    </form>
+  </dialog>
+
+  <script src="./controle-acces-ui.js?v=20261125-alerte-parc-v1"></script>
   <script src="./ma-cle-parcours.js?v=20261123-codr-etape-v1"></script>
-  <script src="./lacleduparc.js?v=20261125-checkout-coda-v1"></script>
+  <script src="./lacleduparc.js?v=20261125-alerte-parc-v1"></script>
 </body>
 </html>

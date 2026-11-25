@@ -3,12 +3,18 @@
   "use strict";
   function element(tag,className,texte){const e=document.createElement(tag);if(className)e.className=className;if(texte!==undefined)e.textContent=texte;return e;}
   function bouton(texte,action){const b=element("button","lcdp-button",texte);b.type="button";if(action)b.addEventListener("click",action);return b;}
+  function ajouterAlerteParc(root,actions){
+    if(typeof actions.onParkAlert!=="function")return;
+    const b=element("button","lcdp-cle-alerte-bouton","ALERTE");
+    b.type="button";b.setAttribute("aria-haspopup","dialog");b.setAttribute("aria-controls","lcdp-cle-park-alert-dialog");
+    b.addEventListener("click",actions.onParkAlert);root.appendChild(b);
+  }
   function render(root,etat,actions={}){
     root.replaceChildren();root.className="lcdp-acces";root.dataset.screen=etat.screen;
     const titre=element("h1","lcdp-acces-titre",etat.action==="checkout"?"CONTRÔLE DE SORTIE":etat.screen==="presence"?"CONTRÔLE DE PRÉSENCE":"CONTRÔLE D’ACCÈS");root.appendChild(titre);
     if(etat.screen==="expired"){
       root.appendChild(element("p","lcdp-acces-message",etat.message || "Votre réservation est terminée. Effectuez votre check-out."));
-      root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));return;
+      root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));ajouterAlerteParc(root,actions);return;
     }
     if(etat.screen==="checkout_done" || etat.screen==="key_closed"){
       root.appendChild(element("p","lcdp-acces-message",etat.screen==="checkout_done"?"Check-out validé.":"Le processus Ma clé est terminé."));
@@ -67,6 +73,7 @@
       const imageInvites=element("img","lcdp-acces-camera-image");imageInvites.alt="";imageInvites.setAttribute("aria-hidden","true");imageInvites.src=typeof global.LCDP_urlObjet==="function"?global.LCDP_urlObjet("/IMAG/BOUTON/controle-invites.webp"):String(global.SITE_CONFIG?.objetBaseUrl || "/OBJET").replace(/\/+$/,"")+"/IMAG/BOUTON/controle-invites.webp";ouvrirInvites.appendChild(imageInvites);root.appendChild(ouvrirInvites);}
       else root.appendChild(bouton("OK",()=>sortie?actions.onGuestConfirm?.([]):actions.onConfirmed?.()));
       if(etat.checkoutEnabled)root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));
+      if(!sortie && etat.presence)ajouterAlerteParc(root,actions);
       return;
     }
     // Secours CODR : exactement les quatre groupes de quatre lettres utilisés dans Mon compte.
@@ -170,7 +177,7 @@
     }
     if(etat.screen==="presence" && etat.presence?.image){ajouterImagePresence(root,etat.presence);
       if(etat.role==="abonne")root.appendChild(bouton("Invités",()=>actions.onGuests?.()));
-      root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));return;}
+      root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));ajouterAlerteParc(root,actions);return;}
     if(etat.screen==="presence"){
       const indicateur=etat.indicator;
       if(!indicateur || !["active","overstay"].includes(indicateur.state))throw new Error("Indicateur de présence non autorisé.");
@@ -186,6 +193,7 @@
       zone.setAttribute("role","status");root.appendChild(zone);
       if(etat.role==="abonne")root.appendChild(bouton("Invités",()=>actions.onGuests?.()));
       root.appendChild(bouton("Faire mon check-out",()=>actions.onCheckout?.()));
+      ajouterAlerteParc(root,actions);
       return;
     }
     if(etat.screen==="denied"){

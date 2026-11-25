@@ -129,10 +129,17 @@
     boutonValider?.addEventListener("click", validerCle);
     boutonAnnuler?.addEventListener("click", gererAnnulationSaisie);
     boutonCheckout?.addEventListener("click", gererCheckout);
+    document.querySelector("[data-lcdp-cle-park-alert]")?.addEventListener("click", ouvrirAlerteParc);
     boutonInvites?.addEventListener("click", () => { void ouvrirAppelInvites(); });
 
     window.addEventListener("popstate", gererRetourNavigateur);
     window.addEventListener("beforeunload", gererFermeturePage);
+  }
+
+  // Menu local : aucun changement de présence ni appel API.
+  function ouvrirAlerteParc() {
+    const dialogue = document.getElementById("lcdp-cle-park-alert-dialog");
+    if (dialogue && !dialogue.open) dialogue.showModal();
   }
 
   async function saisirCode(numero) {
@@ -1330,7 +1337,8 @@
             codrRemaining:restants,message:error.message||"Le code de récupération n’a pas été confirmé."});
         }
       },
-      onCheckout:async()=>{const resultat=await confirmerOuvertureCheckout();if(resultat)afficherControleAcces(resultat);},
+      onParkAlert:ouvrirAlerteParc,
+       onCheckout:async()=>{const resultat=await confirmerOuvertureCheckout();if(resultat)afficherControleAcces(resultat);},
       onClosed:()=>{if(!controleAccesEtat?.unlocked)return;exclusiviteCle=false;window.clearInterval(suiviVideoTimer);window.clearInterval(controleAccesTimer);window.location.href=PAGE_ACCUEIL_MEMBRE;},
       onRetry:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:controleAccesEtat?.action || "checkin"}}));}catch(error){afficherControleAcces({screen:"capture_error",message:error.message});}},
       onGuests:()=>{

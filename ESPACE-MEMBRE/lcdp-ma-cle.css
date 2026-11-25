@@ -773,3 +773,39 @@ body.lcdp-page-cle-du-parc .lcdp-acces[data-screen^="codr_"] .lcdp-box-formulair
   line-height: 1.45;
   text-align: center;
 }
+
+/* ALERTE PARC : commande compacte et dialogue natif au-dessus de la présence. */
+.lcdp-page-cle-du-parc .lcdp-cle-alerte-bouton {
+  align-self: center; width: auto; min-height: 44px; padding: 8px 18px;
+  margin: 6px 0 0; border: 1px solid #a52222; border-radius: 8px;
+  background: #fff; color: #a52222; font: inherit; font-size: .85rem;
+  font-weight: 700; cursor: pointer;
+}
+.lcdp-page-cle-du-parc .lcdp-cle-alerte-dialogue {
+  box-sizing: border-box; width: min(360px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px); overflow: auto; padding: 20px;
+  border: 0; border-radius: 12px; background: #fff; color: #242424;
+  text-align: center; box-shadow: 0 8px 36px #0003;
+}
+.lcdp-cle-alerte-dialogue::backdrop { background: rgba(0,0,0,.55); }
+.lcdp-cle-alerte-dialogue h2 { margin: 0 0 8px; font-size: 1.2rem; font-weight: 700; }
+.lcdp-cle-alerte-dialogue p { margin: 0 0 14px; }
+.lcdp-cle-alerte-dialogue .lcdp-cle-alerte-urgence,
+.lcdp-cle-alerte-dialogue .lcdp-cle-alerte-option {
+  box-sizing: border-box; display: flex; align-items: center; justify-content: center;
+  width: 100%; min-height: 48px; margin: 0 0 9px; padding: 10px 12px;
+  border-radius: 8px; border: 1px solid transparent; font: inherit; font-weight: 600;
+  line-height: 1.3; text-align: center; text-decoration: none;
+}
+.lcdp-cle-alerte-dialogue .lcdp-cle-alerte-urgence { background: #a52222; color: #fff; }
+.lcdp-cle-alerte-dialogue .lcdp-cle-alerte-option:disabled {
+  background: #eee; border-color: #ddd; color: #666; opacity: 1; cursor: default;
+}
+.lcdp-cle-alerte-dialogue .lcdp-cle-alerte-note { color: #555; font-size: .8rem; margin: 4px 0 12px; }
+.lcdp-cle-alerte-dialogue .lcdp-cle-alerte-fermer {
+  min-height: 44px; padding: 8px 20px; border: 1px solid #999; border-radius: 8px;
+  background: #fff; color: #242424; font: inherit; cursor: pointer;
+}
+.lcdp-cle-alerte-bouton:focus-visible,.lcdp-cle-alerte-dialogue :focus-visible {
+  outline: 2px solid #222; outline-offset: 3px;
+}
