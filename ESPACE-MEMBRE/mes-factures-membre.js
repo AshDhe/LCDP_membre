@@ -44,41 +44,58 @@
   }
 
   async function initialiserOngletsFactures() {
-    const slot = document.getElementById("lcdp-mes-factures-membre-slot");
+    return initialiserNavigationDocuments(
+      "lcdp-mes-factures-membre-slot", "lcdp-mes-factures", "Abonnement"
+    );
+  }
 
-    if (!slot) throw new Error("Slot Mes factures introuvable.");
+  async function initialiserOngletsBoutique() {
+    const controleur = await initialiserNavigationDocuments(
+      "lcdp-mes-factures-boutique-slot", "lcdp-mes-factures-boutique", "Boutique"
+    );
+
+    // Présentation uniquement : aucune source de données boutique ajoutée.
+    for (const [cle, texte] of [
+      ["factures", "Aucun document affiché."],
+      ["paiements", "Aucun paiement ou remboursement affiché."]
+    ]) {
+      const message = document.createElement("p");
+      message.className = "lcdp-table-lecture__status";
+      message.textContent = texte;
+      controleur.zones[cle].appendChild(message);
+    }
+    return controleur;
+  }
+
+  async function initialiserNavigationDocuments(slotId, idPrefix, rubrique) {
+    const slot = document.getElementById(slotId);
+    if (!slot) throw new Error("Slot " + rubrique + " introuvable.");
     if (!window.LCDP_WRAPER_ONGLETS) {
       throw new Error("Objet générique onglets indisponible.");
     }
 
-    slot.innerHTML = "";
-    slot.appendChild(
-      await chargerFragmentObjet("/HTMLBASE/05-wraper-onglets.html")
-    );
-
+    slot.replaceChildren(await chargerFragmentObjet("/HTMLBASE/05-wraper-onglets.html"));
     const racine = slot.querySelector("[data-lcdp-wraper-onglets]");
     if (!racine) throw new Error("Objet onglets introuvable.");
 
     const controleur = window.LCDP_WRAPER_ONGLETS.initialiser({
       racine,
-      idPrefix: "lcdp-mes-factures",
-      ariaLabel: "Navigation des factures du membre",
-      navigationAriaLabel: "Sections Mes factures",
+      idPrefix,
+      ariaLabel: "Navigation " + rubrique,
+      navigationAriaLabel: "Documents " + rubrique,
       actif: "factures",
       onglets: [
-        { key: "factures", label: "Factures et avoirs" },
-        { key: "paiements", label: "Paiements" },
-        { key: "remboursements", label: "Remboursements" }
+        { key: "factures", label: "Facture / Avoir" },
+        { key: "paiements", label: "Paiement / Remboursement" }
       ]
     });
 
-    // Présentation : même navigation soulignée que Mes accès.
-    // Le contrôleur officiel conserve le comportement des onglets et du clavier.
-    racine.className = "lcdp-stack";
+    // Navigation soulignée de Mes accès + grille officielle à deux colonnes (c081).
+    racine.className = "lcdp-stack lcdp-wraper-onglets--2";
     racine.querySelector("[data-lcdp-wraper-onglets-navigation]").className =
-      "lcdp-navigation-onglets";
-    racine.querySelector(".lcdp-wraper-onglets__contenu").className =
-      "lcdp-stack";
+      "lcdp-navigation-onglets lcdp-wraper-onglets__navigation";
+    racine.querySelector(".lcdp-wraper-onglets__contenu").className = "lcdp-stack";
+
     const synchroniser = () => {
       controleur.boutons.forEach(bouton => {
         bouton.setAttribute("aria-pressed", bouton.getAttribute("aria-selected"));
@@ -91,20 +108,6 @@
     });
     synchroniser();
     return controleur;
-  }
-
-  async function initialiserOngletsBoutique() {
-    const slot = document.getElementById("lcdp-mes-factures-boutique-slot");
-    if (!slot) throw new Error("Slot Boutique introuvable.");
-
-    // Aucun onglet pour une rubrique à vue unique ; aucune source de données ajoutée.
-    const zone = document.createElement("div");
-    zone.dataset.lcdpContenuOnglet = "factures";
-    const message = document.createElement("p");
-    message.className = "lcdp-table-lecture__status";
-    message.textContent = "Aucun document affiché.";
-    zone.appendChild(message);
-    slot.replaceChildren(zone);
   }
 
   async function initialiserTables(zones) {
@@ -124,7 +127,24 @@
       }
     });
 
-    const paiements = await initialiserTable(zones.paiements, {
+    // Les deux tableaux existants restent indépendants dans un même panneau.
+    const zoneOperations = zones.paiements;
+    zoneOperations.classList.add("lcdp-stack");
+    const creerSousRubrique = (libelle) => {
+      const section = document.createElement("section");
+      section.className = "lcdp-stack-small";
+      const titre = document.createElement("h3");
+      titre.className = "lcdp-text-strong-left";
+      titre.textContent = libelle;
+      const zone = document.createElement("div");
+      section.append(titre, zone);
+      zoneOperations.appendChild(section);
+      return zone;
+    };
+    const zonePaiements = creerSousRubrique("Paiement");
+    const zoneRemboursements = creerSousRubrique("Remboursement");
+
+    const paiements = await initialiserTable(zonePaiements, {
       ariaLabel: "Liste des paiements du membre",
       emptyMessage: "Aucun paiement.",
       columns: [
@@ -142,7 +162,7 @@
       }
     });
 
-    const remboursements = await initialiserTable(zones.remboursements, {
+    const remboursements = await initialiserTable(zoneRemboursements, {
       ariaLabel: "Liste des remboursements du membre",
       emptyMessage: "Aucun remboursement.",
       columns: [
