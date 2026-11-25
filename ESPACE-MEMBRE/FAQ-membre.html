@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" data-lcdp-css="c085 c034 c038 c032 c083 c036 c033 c037 c041 c040">
+<html lang="fr" data-lcdp-css="c024 c085 c034 c038 c032 c083 c036 c033 c037 c041 c040">
 <head>
   <style>
     #lcdp-attente-arrivee { position:fixed; inset:0; z-index:2147483646; display:flex; align-items:center; justify-content:center; background:#fff; }
@@ -28,7 +28,6 @@
       window.LCDP_urlPublic = path => typeof cfg.publicUrl === 'function' ? cfg.publicUrl(path) : join(publicBase, path);
       window.LCDP_urlObjet = path => typeof cfg.objetUrl === 'function' ? cfg.objetUrl(path) : join(objetBase, path);
       document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css') + '">');
-      document.write('<link rel="stylesheet" href="' + window.LCDP_urlPublic('/ESPACE-PUBLIC/faq-accordeon.css?v=20261124-compact') + '">');
       window.LCDP_FAQ_PAGE = {
         membre: true,
         publicUrl: window.LCDP_urlPublic,
