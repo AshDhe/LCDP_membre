@@ -417,6 +417,10 @@
     return data;
   }
 
+  async function ouvrirPresentationDaMembre(options = {}) {
+    await afficherIntroductionDa(null, null, { ...options, presentationSeule: true });
+  }
+
   async function ouvrirPremiereDaMembre(options = {}) {
     const contexte = options.contexte || {};
 
@@ -455,7 +459,11 @@
           return;
         }
 
-        await afficherIntroductionDa(membre, parrain, options);
+        if (options.depuisPresentation === true) {
+          await afficherFormulaireDa(membre, parrain, options);
+        } else {
+          await afficherIntroductionDa(membre, parrain, options);
+        }
         return;
       }
 
@@ -474,7 +482,11 @@
         return;
       }
 
-      await afficherIntroductionDa(membre, parrain, options);
+      if (options.depuisPresentation === true) {
+          await afficherFormulaireDa(membre, parrain, options);
+        } else {
+          await afficherIntroductionDa(membre, parrain, options);
+        }
     } catch (error) {
       console.error("Erreur DA membre :", error);
       await afficherAlerteDa(error.message || "Erreur technique. Merci de réessayer.");
@@ -566,7 +578,22 @@
     bouton.type = "button";
     bouton.className = "lcdp-button lcdp-button-primary";
     bouton.textContent = "Faire ma demande de DA";
-    bouton.addEventListener("click", () => afficherFormulaireDa(membre, parrain, options).catch(console.error));
+    bouton.addEventListener("click", async () => {
+      if (bouton.disabled) return;
+      bouton.disabled = true;
+      try {
+        if (options?.presentationSeule === true) {
+          await ouvrirPremiereDaMembre({ ...options, depuisPresentation: true });
+        } else {
+          await afficherFormulaireDa(membre, parrain, options);
+        }
+      } catch (error) {
+        console.error(error);
+        await afficherAlerteDa(error.message || "Erreur technique. Merci de réessayer.");
+      } finally {
+        bouton.disabled = false;
+      }
+    });
 
     actions.appendChild(bouton);
     bloc.appendChild(actions);
@@ -1365,4 +1392,5 @@ form.dataset.lcdpTransmissionDaEnCours =
   }
 
   window.LCDP_ouvrirPremiereDaMembre = ouvrirPremiereDaMembre;
+  window.LCDP_ouvrirPresentationDaMembre = ouvrirPresentationDaMembre;
 })();
