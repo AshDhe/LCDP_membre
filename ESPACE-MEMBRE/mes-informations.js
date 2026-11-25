@@ -2084,11 +2084,11 @@
       const id=String(p.idmembre_invitant||"");
       if(!/^[0-9a-f-]{36}$/i.test(id))throw Error("Identifiant invitant invalide.");
       const ligne=document.createElement("li");
-      const carte=document.createElement("div");carte.className="lcdp-editorial-card flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 p-3";
-      const photo=document.createElement("div");photo.className="h-14 w-14 shrink-0 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-xs text-gray-600";
+      const carte=document.createElement("div");carte.className="lcdp-editorial-card lcdp-compte-invitant";
+      const photo=document.createElement("div");photo.className="lcdp-compte-invitant__photo";
       photo.textContent="Sans selfie";
       if(p.selfie){
-        const img=document.createElement("img");img.className="h-full w-full object-cover";img.alt="Selfie de l’invitant";
+        const img=document.createElement("img");img.width=56;img.height=56;img.alt="Selfie de l’invitant";
         void (async()=>{try{
           const reponse=await fetch(base+"/"+encodeURIComponent(id)+"/selfie",{credentials:"include",cache:"no-store"});
           if(!reponse.ok||reponse.headers.get("Content-Type")?.split(";")[0]!=="image/jpeg")return;
@@ -2098,11 +2098,11 @@
           img.src=url;photo.replaceChildren(img);
         }catch{/* Le nom et les actions restent disponibles. */}})();
       }
-      const texte=document.createElement("div");texte.className="min-w-0 flex-1";
-      const nom=document.createElement("span");nom.className="lcdp-compte-relations__nom break-words";
+      const texte=document.createElement("div");texte.className="lcdp-compte-invitant__identite";
+      const nom=document.createElement("span");nom.className="lcdp-compte-relations__nom";
       const identite=[p.nom,p.prenom].filter(Boolean).join(" ")||"Membre";nom.textContent=identite;texte.append(nom);
       if(p.bloque){const etat=document.createElement("span");etat.className="lcdp-compte-relations__detail";etat.textContent="Bloqué";texte.append(etat);}
-      const actions=document.createElement("div");actions.className="flex flex-wrap gap-2 w-full";
+      const actions=document.createElement("div");actions.className="lcdp-compte-invitant__actions";
       const ajouter=(action,libelle)=>{
         const bouton=document.createElement("button");bouton.type="button";bouton.className="lcdp-button lcdp-button-secondary";bouton.textContent=libelle;
         bouton.setAttribute("aria-label",libelle+" : "+identite);
