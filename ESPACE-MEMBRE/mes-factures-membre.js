@@ -59,46 +59,52 @@
     const racine = slot.querySelector("[data-lcdp-wraper-onglets]");
     if (!racine) throw new Error("Objet onglets introuvable.");
 
-    return window.LCDP_WRAPER_ONGLETS.initialiser({
+    const controleur = window.LCDP_WRAPER_ONGLETS.initialiser({
       racine,
       idPrefix: "lcdp-mes-factures",
       ariaLabel: "Navigation des factures du membre",
       navigationAriaLabel: "Sections Mes factures",
       actif: "factures",
       onglets: [
-        { key: "factures", label: "Mes factures et avoirs" },
-        { key: "paiements", label: "Mes paiements" },
-        { key: "remboursements", label: "Mes remboursements" }
+        { key: "factures", label: "Factures et avoirs" },
+        { key: "paiements", label: "Paiements" },
+        { key: "remboursements", label: "Remboursements" }
       ]
     });
+
+    // Présentation : même navigation soulignée que Mes accès.
+    // Le contrôleur officiel conserve le comportement des onglets et du clavier.
+    racine.className = "lcdp-stack";
+    racine.querySelector("[data-lcdp-wraper-onglets-navigation]").className =
+      "lcdp-navigation-onglets";
+    racine.querySelector(".lcdp-wraper-onglets__contenu").className =
+      "lcdp-stack";
+    const synchroniser = () => {
+      controleur.boutons.forEach(bouton => {
+        bouton.setAttribute("aria-pressed", bouton.getAttribute("aria-selected"));
+      });
+    };
+    controleur.boutons.forEach(bouton => {
+      bouton.className = "lcdp-navigation-onglets__onglet";
+      bouton.addEventListener("click", synchroniser);
+      bouton.addEventListener("keydown", synchroniser);
+    });
+    synchroniser();
+    return controleur;
   }
 
   async function initialiserOngletsBoutique() {
     const slot = document.getElementById("lcdp-mes-factures-boutique-slot");
-
     if (!slot) throw new Error("Slot Boutique introuvable.");
-    if (!window.LCDP_WRAPER_ONGLETS) {
-      throw new Error("Objet générique onglets indisponible.");
-    }
 
-    slot.innerHTML = "";
-    slot.appendChild(
-      await chargerFragmentObjet("/HTMLBASE/05-wraper-onglets.html")
-    );
-
-    const racine = slot.querySelector("[data-lcdp-wraper-onglets]");
-    if (!racine) throw new Error("Objet onglets Boutique introuvable.");
-
-    return window.LCDP_WRAPER_ONGLETS.initialiser({
-      racine,
-      idPrefix: "lcdp-mes-factures-boutique",
-      ariaLabel: "Navigation des factures de la boutique",
-      navigationAriaLabel: "Sections Boutique",
-      actif: "factures",
-      onglets: [
-        { key: "factures", label: "Mes factures" }
-      ]
-    });
+    // Aucun onglet pour une rubrique à vue unique ; aucune source de données ajoutée.
+    const zone = document.createElement("div");
+    zone.dataset.lcdpContenuOnglet = "factures";
+    const message = document.createElement("p");
+    message.className = "lcdp-table-lecture__status";
+    message.textContent = "Aucun document affiché.";
+    zone.appendChild(message);
+    slot.replaceChildren(zone);
   }
 
   async function initialiserTables(zones) {
