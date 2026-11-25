@@ -66,9 +66,9 @@
       navigationAriaLabel: "Sections Mes factures",
       actif: "factures",
       onglets: [
-        { key: "factures", label: "Mes factures" },
+        { key: "factures", label: "Mes factures et avoirs" },
         { key: "paiements", label: "Mes paiements" },
-        { key: "remboursements", label: "Mes avoirs" }
+        { key: "remboursements", label: "Mes remboursements" }
       ]
     });
   }
@@ -103,17 +103,18 @@
 
   async function initialiserTables(zones) {
     const factures = await initialiserTable(zones.factures, {
-      ariaLabel: "Liste des factures du membre",
-      emptyMessage: "Aucune facture.",
+      ariaLabel: "Liste chronologique des factures et avoirs du membre",
+      emptyMessage: "Aucun document archivé.",
       columns: [
         { key: "commande", label: "Commande" },
-        { key: "dateCommande", label: "Date", type: "date" },
-        { key: "facture", label: "Facture" },
-        { key: "dateFacture", label: "Date", type: "date" }
+        { key: "nature", label: "Type" },
+        { key: "document", label: "Document" },
+        { key: "dateDocument", label: "Date", type: "date" },
+        { key: "montant", label: "TTC" }
       ],
       renderCell: ({ column, value }) => {
-        if (column.key !== "facture") return null;
-        return creerLienFacture(value);
+        if (column.key !== "document") return null;
+        return creerLienDocumentArchive(value);
       }
     });
 
@@ -184,12 +185,7 @@
     try {
       const data = await lireApi(ENDPOINT_FACTUPAIEMENT + "/mes-factures");
 
-      const factures = (Array.isArray(data.factures) ? data.factures : []).map((ligne) => ({
-        commande: ligne.orderid || "—",
-        dateCommande: ligne.orderdate || "",
-        facture: ligne.orderid || "—",
-        dateFacture: ligne.datefacture || ligne.orderdate || ""
-      }));
+      const factures = construireLignesDocuments(data);
 
       const paiements = (Array.isArray(data.paiements) ? data.paiements : []).map((ligne) => ({
         facture: ligne.orderid || "—",
@@ -225,6 +221,32 @@
     } catch (error) {
       tableRemboursements.afficherErreur(String(error?.message || error));
     }
+  }
+
+  function construireLignesDocuments(data) {
+    // Compatibilité durant l'import du worker : seules les factures archivées
+    // sont visibles jusqu'à la disponibilité du journal commun.
+    const docs = Array.isArray(data.documents) ? data.documents :
+      (Array.isArray(data.factures) ? data.factures : []).map(f=>({...f,typeDocument:"facture",numeroDocument:f.numeroFacture,dateDocument:f.datefacture}));
+    return docs.slice().sort((a,b)=>Date.parse(b.dateDocument)-Date.parse(a.dateDocument))
+      .map(d=>({
+        commande:d.orderid||"—", nature:(d.typeDocument==="avoir"?"Avoir":"Facture")+(d.etat==="test"?" — Test":""),
+        document:{typeDocument:d.typeDocument,orderid:d.orderid,idavoir:d.idavoir,numeroDocument:d.numeroDocument,etat:d.etat,documentDisponible:d.documentDisponible},
+        dateDocument:d.dateDocument||"",montant:formaterMontant(d.montantTtc)
+      }));
+  }
+
+  function creerLienDocumentArchive(d) {
+    if (!d || d.documentDisponible !== true) return document.createTextNode("Non archivé");
+    const avoir=d.typeDocument==="avoir";
+    const id=avoir?d.idavoir:d.orderid;
+    if (!id) return document.createTextNode("Non archivé");
+    const lien=document.createElement("a");
+    lien.href=ENDPOINT_FACTUPAIEMENT+(avoir?"/avoir-document?idavoir=":"/facture-document?orderid=")+encodeURIComponent(id);
+    lien.target="_blank";
+    lien.rel="noopener noreferrer";
+    lien.textContent=d.numeroDocument||(d.etat==="test"?"Document test":id);
+    return lien;
   }
 
   function libellePaiement(ligne, numero) {
