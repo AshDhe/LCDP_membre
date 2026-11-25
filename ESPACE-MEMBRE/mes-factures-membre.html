@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-lcdp-css="c085 c034 c038 c037 c081 c080 c032 c036 c083 c041 c040">
 <head>
   <style>
     /* Début du document : le spinner est centré avant les CSS externes. */
@@ -105,7 +105,7 @@
     })();
   </script>
 </head>
-<body data-lcdp-suivi-compte="compte-mes-factures">
+<body class="lcdp-app-page" data-lcdp-suivi-compte="compte-mes-factures">
   <div id="lcdp-attente-page-membre" class="lcdp-attente-plein-ecran" role="status" aria-label="Chargement de la page">
     <div class="lcdp-loading-spinner" aria-hidden="true">
       <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
@@ -122,25 +122,25 @@
     })();
   </script>
 
-  <div class="lcdp-site-page">
+  <div class="lcdp-site-page lcdp-app-wrapper">
     <div id="lcdp-bandeau-slot"></div>
 
     <main class="lcdp-site-main">
       <section class="lcdp-page-section" aria-label="Mes factures">
         <div class="lcdp-page-container">
-          <div class="lcdp-page-content lcdp-page-content--avec-entete lcdp-stack-large">
-            <header class="lcdp-page-header">
+          <div class="lcdp-page-content lcdp-stack-large">
+            <header class="lcdp-editorial-page-heading lcdp-page-header">
               <h1 class="lcdp-title-page-center">Mes factures</h1>
               <p class="lcdp-mention-connexion">[Espace membre de l'application]</p>
             </header>
 
             <section
-              class="lcdp-stack-small"
+              class="lcdp-component lcdp-box-carousel lcdp-editorial-card"
               aria-labelledby="lcdp-titre-abonnement-factures"
             >
               <h2
                 id="lcdp-titre-abonnement-factures"
-                class="lcdp-text-strong-left"
+                class="lcdp-box-carousel__title"
               >
                 Abonnement
               </h2>
@@ -152,12 +152,12 @@
             </section>
 
             <section
-              class="lcdp-stack-small"
+              class="lcdp-component lcdp-box-carousel lcdp-editorial-card"
               aria-labelledby="lcdp-titre-boutique-factures"
             >
               <h2
                 id="lcdp-titre-boutique-factures"
-                class="lcdp-text-strong-left"
+                class="lcdp-box-carousel__title"
               >
                 Boutique
               </h2>
