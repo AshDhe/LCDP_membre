@@ -41,6 +41,7 @@
   let controleAccesRequete = null;
   let contexteAvantAppel = null;
   let appelInvitesCharge = false;
+  let checkoutCodaEnCours = false;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -276,8 +277,35 @@
     }
   }
 
+  // Le CODA est vérifié côté Worker avant toute ouverture du checkout.
+  async function confirmerOuvertureCheckout() {
+    if (checkoutCodaEnCours) return null;
+    checkoutCodaEnCours = true;
+    try {
+      for (;;) {
+        const coda = await ouvrirDialogueChamp({
+          titre: "CHECKOUT", description: "Saisissez votre CODA pour ouvrir le checkout.",
+          longueur: 4, label: "CODA", secret: true, annulable: true,
+          boutonValider: "Valider"
+        });
+        if (coda === null) return null;
+        try {
+          const resultat = await appelerApi("/checkout/open", {method:"POST",body:{coda}});
+          if (resultat?.success !== true) throw creerErreurApi(resultat,"Impossible d’ouvrir le checkout.");
+          return resultat;
+        } catch (error) {
+          if (error?.reason === "key_in_use" || error?.sessionRemplaceeTraitee) return null;
+          await afficherAlerte(error?.message || "Impossible d’ouvrir le checkout.");
+          if (error?.reason !== "coda_incorrect") return null;
+        }
+      }
+    } finally {
+      checkoutCodaEnCours = false;
+    }
+  }
+
   async function gererCheckout() {
-    if (!cleActive) return;
+    if (!cleActive || checkoutCodaEnCours) return;
 
     definirBoutonEnCours(boutonCheckout, true);
 
@@ -311,6 +339,9 @@
         return;
       }
 
+      const confirmation = await confirmerOuvertureCheckout();
+      if (!confirmation) return;
+      if (confirmation.screen) { afficherControleAcces(confirmation); return; }
       reinitialiserCodes();
       modeSaisie = "checkout";
       ecranActif.hidden = true;
@@ -551,8 +582,8 @@
     boutonSoumettre.textContent = options.boutonValider || "Valider";
     contenu.innerHTML = "";
     const saisieQuatreCases = options.secret === true;
-    boutonAnnuler.hidden = saisieQuatreCases;
-    boutonFermer.hidden = saisieQuatreCases;
+    boutonAnnuler.hidden = saisieQuatreCases && options.annulable !== true;
+    boutonFermer.hidden = saisieQuatreCases && options.annulable !== true;
     if (options.description) {
       const description=document.createElement("p");
       description.className="lcdp-cle-dialogue-description";
@@ -1299,7 +1330,7 @@
             codrRemaining:restants,message:error.message||"Le code de récupération n’a pas été confirmé."});
         }
       },
-      onCheckout:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:"checkout"}}));}catch(e){afficherControleAcces({screen:"capture_error",action:"checkout",message:e.message});}},
+      onCheckout:async()=>{const resultat=await confirmerOuvertureCheckout();if(resultat)afficherControleAcces(resultat);},
       onClosed:()=>{if(!controleAccesEtat?.unlocked)return;exclusiviteCle=false;window.clearInterval(suiviVideoTimer);window.clearInterval(controleAccesTimer);window.location.href=PAGE_ACCUEIL_MEMBRE;},
       onRetry:async()=>{try{afficherControleAcces(await appelerApi("/video/retry",{method:"POST",body:{action:controleAccesEtat?.action || "checkin"}}));}catch(error){afficherControleAcces({screen:"capture_error",message:error.message});}},
       onGuests:()=>{
