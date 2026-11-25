@@ -213,6 +213,9 @@
   let navigationParcs = null;
   // Résultats d'alerte : conservés uniquement tant que ce tunnel reste ouvert.
   let resultatsAlerteActifs = null;
+  let resultatsExpressActifs = null;
+  let scrollResultatsExpress = 0;
+  let ouvertureExpressEnCours = false;
   // Un seul calendrier mensuel persistant pour tout le tunnel PLANIFIER.
   let selectionnerParcPlanningPrincipal = null;
 
@@ -266,6 +269,18 @@
           });
         }
       }
+      // RECHERCHE EXPRESS : même wrapper et mêmes fiches, liste conservée.
+      if(new URL(window.location.href).searchParams.get("mode")==="express"){
+        resultatsExpressActifs=window.LCDP_alerteNavigation?.lireExpress?.()||null;
+        if(resultatsExpressActifs){
+          resultatsAlerteActifs=resultatsExpressActifs.parcs;
+          document.body.classList.add("lcdp-planifier-origine-alerte","lcdp-planifier-origine-express");
+          await ouvrirFiltreParcPlanifier();
+        }else{
+          await afficherDialogueInformationPlanifier({titre:"Recherche express",message:"Les résultats ne sont plus disponibles. Relancez une recherche depuis PLANIFIER."});
+          window.location.replace(construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html"));return;
+        }
+      }
       // ALERTE PLANIFIER réutilise le diaporama des parcs déjà présent.
       if(new URL(window.location.href).searchParams.get("mode")==="alerte"){
         const urlSansMode=new URL(window.location.href);
@@ -308,7 +323,7 @@
       // Préparer les parcs en arrière-plan, sans retarder le planning général.
       if(!resultatsAlerteActifs)prechargerListeParcsPlanifier();
       const contexteAReprendre = lireReprisePlanifier();
-      if (contexteAReprendre) {
+      if (contexteAReprendre && !resultatsExpressActifs) {
         reprendreContextePlanifier(contexteAReprendre).catch(error => {
           console.warn("Reprise du parc indisponible ; calendrier conservé.", error);
         });
@@ -621,7 +636,8 @@
       navigationParcs.fermer = fermer;
       close.addEventListener("click", ()=>{
         if(resultatsAlerteActifs){
-          resultatsAlerteActifs=null;
+          if(resultatsExpressActifs)window.LCDP_alerteNavigation?.fermerExpress?.();
+          resultatsExpressActifs=null;resultatsAlerteActifs=null;
           window.location.assign(construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html"));
         }else fermer();
       });
@@ -643,10 +659,10 @@
             etatPage.parcs=await completerParcsResultatAlerte(resultatsAlerteActifs);
             etatPage.departement="";
             etatPage.nomDepartement="";
-            navigationParcs.mode="diaporama";
+            navigationParcs.mode=resultatsExpressActifs?"liste":"diaporama";
             // Badge générique identique à celui du parc sélectionné dans PLANIFIER.
             titre.className="lcdp-ui-badge lcdp-ui-badge--green lcdp-ui-badge--context";
-            titre.textContent="RÉSULTAT DE L’ALERTE";
+            titre.textContent=resultatsExpressActifs?"RECHERCHE EXPRESS — "+formaterDateFr(resultatsExpressActifs.criteres.date):"RÉSULTAT DE LA RECHERCHE";
             publierListeParcs(construireListeParcsPreparee(etatPage.parcs,""));
             // Résultat ALERTE : conserver la carte commune, sans le changement de département.
             const changerDepartement = document.getElementById("bouton-changer-departement");
@@ -2098,7 +2114,7 @@
     boutonCarte.setAttribute("aria-expanded", "false");
     boutonCarte.addEventListener("click", () => {
       if (!navigationParcs) return;
-      if (navigationParcs.mode === "carte") basculerVueParcs("diaporama");
+      if (navigationParcs.mode === "carte") basculerVueParcs(resultatsExpressActifs?"liste":"diaporama");
       else basculerVueParcs("carte");
     });
 
@@ -2126,8 +2142,8 @@
     const boutonCarte = document.getElementById("bouton-voir-carte");
     if (boutonCarte) ajouterPictoCommandeBar(boutonCarte,
       navigation.mode === "carte" ? "/IMAG/PICTO/picto-galerie-cadre.svg" : "/IMAG/PICTO/picto-localiser.svg",
-      navigation.mode === "carte" ? "DIAPORAMA" : "CARTE");
-    if (boutonCarte) boutonCarte.setAttribute("aria-label", navigation.mode === "carte" ? "Voir le diaporama" : "Voir la carte");
+      navigation.mode === "carte" ? (resultatsExpressActifs?"LISTE":"DIAPORAMA") : "CARTE");
+    if (boutonCarte) boutonCarte.setAttribute("aria-label", navigation.mode === "carte" ? (resultatsExpressActifs?"Voir la liste":"Voir le diaporama") : "Voir la carte");
     if (navigation.mode === "diaporama") afficherDiaporamaParcs();
   }
 
@@ -2141,7 +2157,7 @@
     if (!etatPage.parcs.length) {
       const message = document.createElement("p");
       message.setAttribute("role", "status");
-      message.textContent = resultatsAlerteActifs ? "Aucun parc ne correspond aux critères de cette alerte." : "Il n’y a pas encore de parc dans ce département.";
+      message.textContent = resultatsAlerteActifs ? "Aucun parc ne correspond aux critères de cette recherche." : "Il n’y a pas encore de parc dans ce département.";
       message.style.cssText = "box-sizing:border-box;width:100%;margin:12px auto;padding:16px 12px;border:1px solid #dce4da;border-radius:14px;background:#fff;box-shadow:0 3px 12px rgba(35,55,35,.08);color:#263e2f;font-weight:600;text-align:center;line-height:1.5";
       zone.appendChild(message);
     }
@@ -3549,7 +3565,7 @@
     if (!Array.isArray(parcs) || parcs.length < 1) {
       zoneMessage.hidden = false;
       zoneMessage.textContent =
-        (resultatsAlerteActifs ? "Aucun parc ne correspond aux critères de cette alerte." : "Aucun parc trouvé pour ce département");
+        (resultatsAlerteActifs ? "Aucun parc ne correspond aux critères de cette recherche." : "Aucun parc trouvé pour ce département");
       zoneMessage.dataset.lcdpMessageType = "information";
       return listeCard;
     }
@@ -3871,8 +3887,8 @@
     }
 
     if (meta) {
-      meta.textContent = "";
-      meta.hidden = true;
+      meta.textContent = resultatsExpressActifs&&parc.date?formaterDateFr(parc.date):"";
+      meta.hidden = !meta.textContent;
     }
 
     if (texte) {
@@ -3902,8 +3918,8 @@
         }),
         creerBoutonActionCardParc({
           action: "voir-planning-parc",
-          libelle: "Planning",
-          ariaLabel: "Afficher le planning du parc " + nom,
+          libelle: resultatsExpressActifs?"Planning jour":"Planning",
+          ariaLabel: "Afficher le planning "+(resultatsExpressActifs?"jour ":"")+"du parc " + nom,
           icone: "planning",
           variante: "orange-plein",
           idparc
@@ -4097,7 +4113,8 @@
         await informerParcProjet();
         return;
       }
-      await ouvrirPlanningMoisParc(parc);
+      if(resultatsExpressActifs)await ouvrirJourResultatExpress(parc);
+      else await ouvrirPlanningMoisParc(parc);
       return;
     }
 
@@ -4569,6 +4586,46 @@
     const id = String(idparc || "");
 
     return etatPage.parcs.find((parc) => String(parc.idparc || parc.id || "") === id) || null;
+  }
+
+  function retournerResultatsExpress(){
+    if(!resultatsExpressActifs||!navigationParcs)return;
+    const vue=document.getElementById("lcdp-planifier-parcs-vue");
+    if(vue)vue.hidden=false;
+    document.body.classList.add("lcdp-planifier-vue-parcs-active");
+    requestAnimationFrame(()=>document.querySelector(".lcdp-planifier-wrapper .lcdp-site-main")?.scrollTo?.(0,scrollResultatsExpress));
+  }
+
+  async function ouvrirJourResultatExpress(parc){
+    if(ouvertureExpressEnCours||!resultatsExpressActifs)return;
+    ouvertureExpressEnCours=true;
+    scrollResultatsExpress=document.querySelector(".lcdp-planifier-wrapper .lcdp-site-main")?.scrollTop||0;
+    document.body.classList.add("lcdp-express-ouverture-jour");
+    try{
+      // Réutiliser la sélection du parc, puis EXACTEMENT le clic jour normal.
+      await selectionnerParcPlanningPrincipal(parc);
+      const date=resultatsExpressActifs.criteres.date;
+      const contexte=etatPage.calendrierMoisActif;
+      const jour=[...document.querySelectorAll("#lcdp-planifier-calendrier-slot [data-lcdp-card-jour-mois]")]
+        .find(card=>card.dataset.date===date);
+      if(String(contexte?.parc?.idparc||contexte?.parc?.id||"")!==String(parc.idparc||parc.id||"")||!jour||jour.disabled){
+        retournerResultatsExpress();
+        await afficherDialogueInformationPlanifier({titre:"Planning jour",message:"Cette journée n’est pas accessible avec vos droits actuels ou son planning n’est plus disponible."});
+        return;
+      }
+      await gererClicDocument({target:jour,preventDefault(){}});
+      const slot=document.getElementById("lcdp-planifier-jour-overlay-slot");
+      if(!slot||slot.hidden){
+        // Si RÉZABO / ABO-RÉZA ouvre son parcours, ne pas le recouvrir.
+        if(!window.LCDP_ABOREZA?.actif())retournerResultatsExpress();
+      }
+    }catch(error){
+      retournerResultatsExpress();
+      await afficherAlerte(error.message||"Impossible d’ouvrir le planning jour.");
+    }finally{
+      ouvertureExpressEnCours=false;
+      document.body.classList.remove("lcdp-express-ouverture-jour");
+    }
   }
 
   async function ouvrirPlanningMoisParc(parc) {
@@ -5394,6 +5451,7 @@
   // Le slot est permanent dans le wrapper ; seul son contenu est vidé.
   function fermerVueChoixPlagePlanifier() {
     const slot = document.getElementById("lcdp-planifier-jour-overlay-slot");
+    const retourExpress=Boolean(resultatsExpressActifs&&slot&&!slot.hidden&&!window.LCDP_ABOREZA?.actif());
     if (slot) {
       slot.replaceChildren();
       slot.hidden = true;
@@ -5401,6 +5459,7 @@
       slot.classList.remove("lcdp-aboreza-choix-jour");
     }
     document.body.classList.remove("lcdp-planifier-vue-jour-active");
+    if(retourExpress)retournerResultatsExpress();
   }
 
   async function ouvrirCalendrierJourParc(contexte) {

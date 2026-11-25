@@ -3,10 +3,11 @@
   const config=window.SITE_CONFIG||{};
   const endpoint=String(config.workerAlertePlanifierUrl||config.WORKER_ALERTE_PLANIFIER_URL||"").replace(/\/$/,"");
   const cle="lcdp-alerte-planifier-resultats-v1";
+  const cleExpress="lcdp-recherche-express-v1";
   const urlObjet=path=>window.LCDP_urlObjet(path);
-  async function api(route,method="GET"){
-    if(!endpoint)throw new Error("Service ALERTE PLANIFIER non configuré.");
-    const rep=await fetch(endpoint+route,{method,credentials:"include",cache:"no-store",headers:{"Accept":"application/json"}});
+  async function api(route,method="GET",payload){
+    if(!endpoint)throw new Error("Service RECHERCHE ENREGISTRÉE non configuré.");
+    const rep=await fetch(endpoint+route,{method,credentials:"include",cache:"no-store",headers:{"Accept":"application/json",...(payload?{"Content-Type":"application/json"}:{})},...(payload?{body:JSON.stringify(payload)}:{})});
     const data=await rep.json().catch(()=>null);
     if(!rep.ok||data?.ok!==true)throw new Error(data?.message||"Service d'alerte indisponible.");
     return data;
@@ -21,7 +22,7 @@
     slot.replaceChildren(t.content.cloneNode(true));
     const dialog=slot.querySelector('[data-lcdp-dialogue-reference="choix"]');
     if(!dialog)throw new Error("Dialogue CHOIX incomplet.");
-    dialog.querySelector("[data-lcdp-dialogue-titre]").textContent="ALERTE PLANIFIER";
+    dialog.querySelector("[data-lcdp-dialogue-titre]").textContent="RECHERCHE ENREGISTRÉE";
     dialog.querySelector("[data-lcdp-dialogue-message]").textContent=message;
     const actions=dialog.querySelector(".lcdp-dialogue-ref__actions");
     actions.replaceChildren();
@@ -70,15 +71,15 @@
     const quotaJournalierAtteint = quota && Number(quota.restants) === 0;
     if(quotaJournalierAtteint){
       await choix([{label:"Annuler",value:null}],
-        "Vous ne pouvez plus lancer d'alerte aujourd'hui. Modifiez votre alerte depuis MON COMPTE, si besoin.");
+        "Vous ne pouvez plus lancer de recherche enregistrée aujourd'hui. Modifiez vos critères depuis MON COMPTE, si besoin.");
       return;
     }
     const options=alertes.map(a=>({label:"Lancer : "+a.titre,value:a.idalerte,primary:true}));
-    if(alertes.length<(permanent?2:1))options.push({label:"Créer une nouvelle alerte",value:"creer"});
+    if(alertes.length<(permanent?2:1))options.push({label:"Créer une nouvelle recherche",value:"creer"});
     options.push({label:"Annuler",value:null});
     const sel=await choix(options,alertes.length<(permanent?2:1)?
-      "Lancez une alerte existante ou créez-en une nouvelle. Modifiez votre alerte depuis MON COMPTE, si besoin.":
-      "Modifiez votre alerte depuis MON COMPTE, si besoin.");
+      "Lancez une recherche existante ou créez-en une nouvelle. Modifiez vos critères depuis MON COMPTE, si besoin.":
+      "Modifiez vos critères depuis MON COMPTE, si besoin.");
     if(sel==="creer")await creer();
     else if(sel){const a=alertes.find(a=>a.idalerte===sel);if(a)await lancer(a);}
   }
@@ -92,5 +93,25 @@
       return item.parcs;
     }catch{return null;}
   }
-  window.LCDP_alerteNavigation={accueil,lancer,consommerResultats};
+  async function rechercherExpress(criteres){
+    const data=await api("/recherche-express","POST",criteres);
+    if(data.date!==criteres.date||!Array.isArray(data.resultats))throw new Error("Résultats de recherche indisponibles.");
+    const uniques=new Map();
+    for(const r of data.resultats){
+      const id=String(r.idparc||"");
+      if(!id||r.date!==criteres.date)continue;
+      uniques.set(id,{idparc:id,nom:String(r.parc||"Parc"),dptmt:String(r.dptmt||""),date:r.date,statut:String(r.statut||"").toLowerCase()});
+    }
+    const parcs=[...uniques.values()].sort((a,b)=>a.nom.localeCompare(b.nom,"fr",{sensitivity:"base"})||a.idparc.localeCompare(b.idparc));
+    sessionStorage.setItem(cleExpress,JSON.stringify({version:1,criteres,parcs}));
+    window.location.assign(window.LCDP_urlMembre("/ESPACE-MEMBRE/reserver-membre.html")+"?mode=express");
+  }
+  function lireExpress(){
+    try{
+      const item=JSON.parse(sessionStorage.getItem(cleExpress)||"null");
+      return item?.version===1&&/^\d{4}-\d{2}-\d{2}$/.test(item.criteres?.date||"")&&Array.isArray(item.parcs)?item:null;
+    }catch{return null;}
+  }
+  function fermerExpress(){sessionStorage.removeItem(cleExpress);}
+  window.LCDP_alerteNavigation={accueil,lancer,consommerResultats,rechercherExpress,lireExpress,fermerExpress};
 })();

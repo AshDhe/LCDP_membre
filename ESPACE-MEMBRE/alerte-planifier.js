@@ -13,7 +13,7 @@
   function bouton(texte,classe,action){const el=node("button","lcdp-button "+classe,texte);el.type="button";el.addEventListener("click",action);return el;}
   function message(txt){const cible=root.querySelector("[data-alerte-message]");if(cible){cible.textContent=txt;cible.setAttribute("role","status");}}
   async function api(path,method="GET",payload){
-    if(!endpoint)throw new Error("Worker ALERTE PLANIFIER non configuré.");
+    if(!endpoint)throw new Error("Worker RECHERCHE ENREGISTRÉE non configuré.");
     const r=await fetch(endpoint+path,{method,credentials:"include",cache:"no-store",signal:AbortSignal.timeout(12000),headers:{"Accept":"application/json",...(payload?{"Content-Type":"application/json"}:{})},...(payload?{body:JSON.stringify(payload)}:{})});
     const data=await r.json().catch(()=>({}));
     if(r.status===401)throw new Error("Votre session membre doit être renouvelée.");
@@ -89,10 +89,10 @@
   }
   function formulaire(){
     const form=node("form","lcdp-planning-filtres lcdp-alerte-filtres");
-    form.setAttribute("aria-label","Créer une recherche ALERTE PLANIFIER");
+    form.setAttribute("aria-label","Créer une recherche RECHERCHE ENREGISTRÉE");
     form.addEventListener("submit",async event=>{event.preventDefault();await enregistrer();});
-    const titre=node("h2","lcdp-title-section","ALERTE PLANIFIER");
-    const description=node("p","lcdp-alerte-filtres__intro","Enregistrez jusqu'à 5 recherches. Elles sont relancées uniquement à votre demande.");
+    const titre=node("h2","lcdp-title-section","RECHERCHE ENREGISTRÉE");
+    const description=node("p","lcdp-alerte-filtres__intro","Enregistrez une recherche, ou deux avec un abonnement permanent. Elles sont relancées uniquement à votre demande.");
     form.append(titre,description);
     const champs=node("div","lcdp-planning-filtres__champs");
     const nom=node("input","lcdp-planning-filtres__select");nom.id="lcdp-alerte-titre";nom.maxLength=80;nom.required=true;nom.placeholder="Ex. Week-ends dans le Loiret";

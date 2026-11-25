@@ -1080,7 +1080,7 @@
     if(typeof window.LCDP_ouvrirFormulaireAlertePlanifier!=="function")throw Error("Formulaire ALERTE PLANIFIER indisponible.");
     await window.LCDP_ouvrirFormulaireAlertePlanifier({permanent:abonnementPermanentCompte,onEnregistre:async()=>{
       await chargerAlertesCompte();
-      await afficherInformationMembre("L’alerte a été enregistrée.","SERVICE");
+      await afficherInformationMembre("La recherche a été enregistrée.","SERVICE");
     }});
   }
 
@@ -1173,7 +1173,7 @@
     listeDuoActif.className="lcdp-compte-alertes-liste";
     listeDuoActif.setAttribute("aria-live","polite");
     afficherSlotService(listeDuoActif,"Chargement des demandes Duo Actif…");
-    services.append(creerCarteService("Service d’alerte planifiée",listeAlertes),creerCarteService("Demande DUO ACTIF",listeDuoActif));
+    services.append(creerCarteService("Recherches enregistrées",listeAlertes),creerCarteService("Demande DUO ACTIF",listeDuoActif));
     const statutMembre=fields.querySelector('[data-lcdp-compte-section="participation"]');
     if(statutMembre) {
       const abonnement = statutMembre.querySelector("#lcdp-compte-abonnement");
@@ -2358,7 +2358,7 @@
     const data=await apiAlertesCompte("/alertes");
     liste.replaceChildren();
     if(!Array.isArray(data.alertes)||!data.alertes.length){
-      afficherServiceVideAvecAction(liste,"Aucune alerte planifiée","Créer une alerte",creerAlerteDepuisCompte);
+      afficherServiceVideAvecAction(liste,"Aucune recherche enregistrée","Créer une recherche",creerAlerteDepuisCompte);
       return;
     }
     for(const alerte of data.alertes){
@@ -2368,18 +2368,18 @@
       ouvrir.type="button";
       ouvrir.className="lcdp-compte-alerte__nom";
       ouvrir.textContent=alerte.titre;
-      ouvrir.setAttribute("aria-label","Modifier l’alerte "+alerte.titre);
+      ouvrir.setAttribute("aria-label","Modifier la recherche "+alerte.titre);
       const modifier=document.createElement("button");
       modifier.type="button";
       modifier.className="lcdp-compte-alerte__action lcdp-compte-alerte__modifier";
-      modifier.title="Modifier l’alerte";
-      modifier.setAttribute("aria-label","Modifier l’alerte "+alerte.titre);
+      modifier.title="Modifier la recherche";
+      modifier.setAttribute("aria-label","Modifier la recherche "+alerte.titre);
       modifier.innerHTML='<svg class="lcdp-box-champ-formulaire__action-edit-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M4 16.8V20h3.2L17.9 9.3l-3.2-3.2L4 16.8Z"></path><path d="M19.2 8 16 4.8l1.1-1.1a1.7 1.7 0 0 1 2.4 0l.8.8a1.7 1.7 0 0 1 0 2.4L19.2 8Z"></path></svg>';
       const supprimer=document.createElement("button");
       supprimer.type="button";
       supprimer.className="lcdp-compte-alerte__action lcdp-compte-alerte__supprimer";
-      supprimer.title="Supprimer l’alerte";
-      supprimer.setAttribute("aria-label","Supprimer l’alerte "+alerte.titre);
+      supprimer.title="Supprimer la recherche";
+      supprimer.setAttribute("aria-label","Supprimer la recherche "+alerte.titre);
       supprimer.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7"/></svg>';
       const edit=async()=>{
         if(typeof window.LCDP_ouvrirFormulaireAlertePlanifier!=="function"){
@@ -2389,7 +2389,7 @@
         await window.LCDP_ouvrirFormulaireAlertePlanifier({
           alerte,onEnregistre:async()=>{
             await chargerAlertesCompte();
-            await afficherInformationMembre("L’alerte a été modifiée et enregistrée. Pour utiliser cette alerte, ouvrez PLANIFIER depuis l’accueil membre, puis choisissez ALERTE PLANIFIER.","SERVICE");
+            await afficherInformationMembre("La recherche a été modifiée et enregistrée. Pour la relancer, ouvrez PLANIFIER depuis l’accueil membre, puis choisissez RECHERCHE ENREGISTRÉE.","SERVICE");
           }
         });
       };
