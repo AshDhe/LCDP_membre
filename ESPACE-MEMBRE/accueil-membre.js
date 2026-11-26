@@ -32,7 +32,6 @@
   const ENDPOINT_OPTIN_MEMBRE = construireEndpointApi("workerMonCompteMembreUrl","WORKER_MON_COMPTE_MEMBRE_URL","","mon-compte-membre-api");
   const ENDPOINT_REGLEMENT_PUBLICATION = construireEndpointApi("workerFormInscriptionMembreUrl","WORKER_FORM_INSCRIPTION_MEMBRE_URL","","form-inscription-membre-api");
 
-  const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
 
   let pageInitialisee = false;
   let actionAccueilEnCours = false;
@@ -392,89 +391,119 @@
     );
   }
 
+  // Parcours intégré dans la zone principale de l'accueil : bandeau et footer restent visibles.
+  function ouvrirParcoursCompte(id,libelle) {
+    const main = document.querySelector(".lcdp-app-wrapper > #lcdp-accueil-contenu");
+    if (!main || main.querySelector("[data-lcdp-compte-parcours]")) return null;
+    masquerAttenteNavigationAccueil();
+    document.getElementById("lcdp-lightbox-slot")?.replaceChildren();
+    const retourFocus = document.activeElement;
+    const anciens = Array.from(main.children).map(element => ({element,hidden:element.hidden}));
+    const ancienScroll = main.scrollTop;
+    const section = document.createElement("section");
+    section.className = "lcdp-page-section";
+    section.setAttribute("data-lcdp-compte-parcours","");
+    section.setAttribute("aria-label",libelle);
+    const conteneur = document.createElement("div");
+    conteneur.className = "lcdp-page-container";
+    const contenu = document.createElement("div");
+    contenu.id = id;
+    contenu.setAttribute("data-lcdp-compte-parcours-contenu","");
+    conteneur.appendChild(contenu);
+    section.appendChild(conteneur);
+    anciens.forEach(({element}) => {element.hidden = true;});
+    main.appendChild(section);
+    main.scrollTop = 0;
+    let ferme = false;
+    return {contenu,fermer() {
+      if (ferme) return;
+      ferme = true;
+      section.remove();
+      anciens.forEach(({element,hidden}) => {if (element.isConnected) element.hidden = hidden;});
+      main.scrollTop = ancienScroll;
+      if (retourFocus?.isConnected) retourFocus.focus();
+    }};
+  }
+
+  function afficherAlertePaiementAccueil(message,slot) {
+    return afficherAlerte(message,{profil:"erreur",slotParcours:slot});
+  }
+  function afficherInformationPaiementAccueil(message,titre,slot) {
+    return afficherAlerte(message,{profil:"information",titre,slotParcours:slot});
+  }
+  function afficherChoixPaiementAccueil(message,options,slot) {
+    return afficherAlerte(message,{...options,mode:"confirmation",slotParcours:slot});
+  }
+
   async function afficherEcheancesPaiementSuspension(etat) {
-    const paiement = etat && etat.paiementSuspension ? etat.paiementSuspension : null;
+    const parcours = ouvrirParcoursCompte("dialogue-paiement-impaye","Régulariser mon abonnement");
+    if (!parcours) return;
+    const slot = parcours.contenu;
+    const paiement = etat?.paiementSuspension || null;
     const orderid = String(paiement?.orderid || "").trim();
     const echeances = echeancesPaiementSuspension(paiement);
-
-    if (paiementSuspensionDelaiDepasse(paiement)) {
-      await afficherAlerte(messageDelaiPaiementDepasse());
-      return;
-    }
-
-    if (!orderid) {
-      await afficherAlerte("Paiement introuvable.");
-      return;
-    }
-
-    if (!echeances.length) {
-      await afficherAlerte("Aucune échéance non payée.", { profil: "information", titre: "Échéances de paiement" });
-      return;
-    }
-
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return;
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
-    slot.appendChild(fragment);
-
-    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
-    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
-    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
-    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
-    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
-
-    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
-      slot.innerHTML = "";
-      throw new Error("Structure dialogue bouton incomplète.");
-    }
-
-    titre.textContent = "Paiement en attente";
-    texte.textContent = "";
-    texte.hidden = true;
-    actions.innerHTML = "";
-    actions.classList.add("lcdp-dialogue-echeances-impayees");
-
-    echeances.forEach((echeance) => {
-      const ligne = document.createElement("div");
-      ligne.className = "lcdp-dialogue-echeances-impayees__row";
-
-      const description = document.createElement("p");
-      description.className = "lcdp-dialogue-echeances-impayees__text";
-      description.textContent = "Échéance " + String(echeance.numero) + " du " + formaterDatePaiementSuspension(echeance.date) + " : " + formaterMontantPaiementSuspension(echeance.montant) + " TTC\nNon payée";
-
-      const boutonPayer = creerBoutonPaiementSuspension("Payer", "lcdp-button-secondary lcdp-workflow-micro-action lcdp-workflow-micro-action--alerte-paiement", () => {
-        ouvrirPagePaiementSuspension(paiement, echeance.numero).catch(async (error) => {
-          console.error("Ouverture du paiement :", error);
-          await afficherAlerte("Impossible d’ouvrir le paiement. Merci de réessayer.", { profil: "erreur" });
+    async function afficherListe() {
+      if (!slot.isConnected) return;
+      const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
+      if (!slot.isConnected) return;
+      const dialogue = fragment.querySelector('[data-lcdp-dialogue-reference="information"]');
+      const titre = dialogue?.querySelector("[data-lcdp-dialogue-titre]");
+      const texte = dialogue?.querySelector("[data-lcdp-dialogue-message]");
+      const actions = dialogue?.querySelector(".lcdp-dialogue-ref__actions");
+      const fermer = dialogue?.querySelector('[data-lcdp-dialogue-action="compris"]');
+      if (!dialogue || !titre || !texte || !actions || !fermer) throw Error("Boîte d’échéances incomplète.");
+      dialogue.setAttribute("role","region");
+      dialogue.removeAttribute("aria-modal");
+      titre.textContent = "Paiement en attente";
+      texte.textContent = "Sélectionnez l’échéance à régulariser.";
+      fermer.textContent = "Fermer";
+      fermer.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--secondaire";
+      fermer.addEventListener("click",() => parcours.fermer(),{once:true});
+      for (const echeance of echeances) {
+        const description = document.createElement("p");
+        description.className = "lcdp-dialogue-ref__message";
+        description.textContent = "Échéance " + echeance.numero + " du " + formaterDatePaiementSuspension(echeance.date) + "\n" + formaterMontantPaiementSuspension(echeance.montant) + " TTC — Non payée";
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--principal";
+        bouton.textContent = "Payer";
+        bouton.setAttribute("aria-label","Payer l’échéance " + echeance.numero);
+        bouton.addEventListener("click",async () => {
+          if (bouton.disabled) return;
+          actions.querySelectorAll("button").forEach(b => b.disabled = true);
+          try {
+            await ouvrirPagePaiementSuspension(paiement,echeance.numero,slot,afficherListe);
+          } catch (erreur) {
+            console.error("Régularisation indisponible :",erreur);
+            if (slot.isConnected) {
+              try { await afficherAlertePaiementAccueil("Impossible de charger le paiement. Veuillez réessayer.",slot); await afficherListe(); }
+              catch { parcours.fermer(); }
+            }
+          }
         });
-      });
-
-      ligne.appendChild(description);
-      ligne.appendChild(boutonPayer);
-      actions.appendChild(ligne);
-    });
-
-
-    function fermer() {
-      slot.innerHTML = "";
+        actions.insertBefore(description,fermer);
+        actions.insertBefore(bouton,fermer);
+      }
+      slot.replaceChildren(fragment);
+      actions.querySelector("button")?.focus();
     }
-
-    boutonFermer.addEventListener("click", fermer);
-    dialogue.addEventListener("click", (event) => {
-      if (event.target === dialogue) fermer();
-    });
-
-    document.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.key === "Escape") fermer();
-      },
-      { once: true }
-    );
+    try {
+      if (paiementSuspensionDelaiDepasse(paiement)) {
+        await afficherAlertePaiementAccueil(messageDelaiPaiementDepasse(),slot);
+        parcours.fermer();
+      } else if (!orderid) {
+        await afficherAlertePaiementAccueil("Paiement introuvable.",slot);
+        parcours.fermer();
+      } else if (!echeances.length) {
+        await afficherInformationPaiementAccueil("Aucune échéance non payée.","Échéances de paiement",slot);
+        parcours.fermer();
+      } else {
+        await afficherListe();
+      }
+    } catch (erreur) {
+      parcours.fermer();
+      throw erreur;
+    }
   }
 
   function echeancesPaiementSuspension(paiement) {
@@ -498,35 +527,26 @@
     return echeances;
   }
 
-  function creerBoutonPaiementSuspension(label, style, action) {
-    const bouton = document.createElement("button");
-    bouton.type = "button";
-    bouton.className = "lcdp-button " + (style || "lcdp-button-primary");
-    bouton.textContent = label || "OK";
-    bouton.addEventListener("click", action);
-    return bouton;
-  }
-
-  async function ouvrirPagePaiementSuspension(paiement, numeroEcheance) {
+  async function ouvrirPagePaiementSuspension(paiement,numeroEcheance,slot,retourListe) {
+    if (!slot?.hasAttribute("data-lcdp-compte-parcours-contenu")) throw Error("Wrapper de Mon compte introuvable.");
     const orderid = String(paiement?.orderid || "").trim();
-
-    if (!orderid) {
-      await afficherAlerte("Commande non renseignée.");
+    if (!orderid || paiementSuspensionDelaiDepasse(paiement)) {
+      await afficherAlertePaiementAccueil(!orderid ? "Commande non renseignée." : messageDelaiPaiementDepasse(),slot);
+      await retourListe();
       return;
     }
-
-    if (paiementSuspensionDelaiDepasse(paiement)) {
-      await afficherAlerte(messageDelaiPaiementDepasse());
-      return;
-    }
-
-    const ok = await afficherAlerte("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.", { mode: "confirmation" });
-    if (!ok) return;
-
-    const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
-    window.location.href = PAGE_PAIEMENT_CB + separateur + "orderid=" + encodeURIComponent(orderid) + "&echeance=" + encodeURIComponent(String(numeroEcheance || 1)) + "&source=suspension";
+    const ok = await afficherChoixPaiementAccueil(
+      "La régularisation de votre abonnement se fait par carte bancaire uniquement.",
+      {titre:"Régulariser l’abonnement",libelleConfirmer:"Continuer vers le paiement",libelleAnnuler:"Retour"},slot
+    );
+    if (!ok) { await retourListe(); return; }
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-impayes-wrapper-v1");
+    if (typeof window.LCDP_monterPaiementCB !== "function") throw Error("Service de paiement indisponible.");
+    await window.LCDP_monterPaiementCB(slot,{
+      orderid,echeance:numeroEcheance || 1,source:"suspension",retour:"",
+      integre:true,quitter:() => retourListe().catch(console.error)
+    });
   }
-
 
   function messageDelaiPaiementDepasse() {
     return "Le règlement de cette échéance est indisponible.";
@@ -1015,9 +1035,12 @@
   }
 
   async function afficherAlerte(message, options = {}) {
-    const slot = document.getElementById("lcdp-lightbox-slot");
+    const slot = options.slotParcours || document.getElementById("lcdp-lightbox-slot");
     if (!slot) return false;
-    slot.innerHTML = "";
+    slot.replaceChildren();
+    const integrer = dialogue => {
+      if (options.slotParcours) { dialogue.setAttribute("role","region"); dialogue.removeAttribute("aria-modal"); }
+    };
 
     // Les profils INFORMATION et CHOIX partagent les dialogues de référence.
     if (options.mode !== "confirmation" && options.profil === "information") {
@@ -1031,6 +1054,7 @@
         slot.replaceChildren();
         throw new Error("Structure du dialogue INFORMATION incomplète.");
       }
+      integrer(dialogue);
       titre.textContent = options.titre || "Information";
       texte.textContent = normaliserPonctuationAlerte(message);
       fermer.textContent = "Fermer";
@@ -1056,6 +1080,7 @@
         const annuler = slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
         const confirmer = slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
         if (!dialogue || !titre || !texte || !annuler || !confirmer) throw new Error("Structure CHOIX incomplète.");
+        integrer(dialogue);
         titre.textContent = options.titre || "Confirmation";
         texte.textContent = normaliserPonctuationAlerte(message);
         annuler.textContent = options.libelleAnnuler || "Annuler";
@@ -1072,7 +1097,7 @@
           confirmer.addEventListener("click", () => fermer(true), { once: true });
           if (options.sansCroix !== true) {
             dialogue.addEventListener("click", event => {
-              if (event.target === dialogue) fermer(false);
+              if (!options.slotParcours && event.target === dialogue) fermer(false);
             });
           }
           confirmer.focus();
@@ -1094,6 +1119,7 @@
       throw new Error("Structure du dialogue ERREUR incomplète.");
     }
     const focusInitial = document.activeElement;
+    integrer(dialogue);
     titre.textContent = options.titre || "Erreur";
     texte.textContent = normaliserPonctuationAlerte(message);
     bouton.textContent = "Fermer";
@@ -1117,7 +1143,7 @@
       };
       bouton.addEventListener("click", () => fermer(true), { once: true });
       dialogue.addEventListener("click", event => {
-        if (event.target === dialogue) fermer(false);
+        if (!options.slotParcours && event.target === dialogue) fermer(false);
       });
       document.addEventListener("keydown", gererClavier);
       bouton.focus();
