@@ -48,6 +48,8 @@
     .lcdp-stripe__reprendre{display:block;width:100%;margin:12px 0 0;padding:13px 15px;border:0;border-radius:12px;background:#4b6333;color:white;font:inherit;font-weight:750;cursor:pointer}
     .lcdp-stripe__reprendre:disabled{opacity:.55;cursor:wait}
     .lcdp-stripe__reprendre[hidden]{display:none!important}
+    body.lcdp-stripe-page #paiement-formulaire > h2 {margin-bottom:6px;}
+    body.lcdp-stripe-page #paiement-formulaire > .lcdp-stripe__aide {margin:0 0 15px;text-align:left;}
   </style>
   <script defer src="./paiement-dfa.js?v=20261126-dfa-email-v3"></script>
 </head>
@@ -71,6 +73,7 @@
       </div>
       <form id="paiement-formulaire" novalidate>
         <h2>Payer par carte bancaire</h2>
+        <p class="lcdp-stripe__aide">Vos informations bancaires sont saisies directement dans le composant sécurisé Stripe.</p>
         <label class="lcdp-stripe__label" for="email-paiement" hidden>Adresse e-mail</label>
         <input class="lcdp-stripe__email" hidden id="email-paiement" name="email" type="email" autocomplete="email" inputmode="email" placeholder="email@exemple.com" required>
         <div id="stripe-payment-element" aria-label="Formulaire bancaire sécurisé Stripe"></div>
@@ -78,7 +81,6 @@
         <button class="lcdp-stripe__payer" id="bouton-payer" type="submit" disabled>Payer</button>
       </form>
       <button type="button" class="lcdp-stripe__reprendre" id="dfa-abandon">Quitter le paiement</button>
-      <p class="lcdp-stripe__aide">Vos informations bancaires sont saisies directement dans le composant sécurisé Stripe.</p>
     </section>
     <footer class="lcdp-stripe__pied">Paiement traité par Stripe</footer>
   </main>
