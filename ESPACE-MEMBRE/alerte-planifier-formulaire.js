@@ -18,7 +18,7 @@
     const fragment=await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
     slot.replaceChildren(fragment);
     const dlg=slot.querySelector('[data-lcdp-dialogue-reference="information"]');
-    dlg.querySelector("[data-lcdp-dialogue-titre]").textContent="ALERTE PLANIFIER";
+    dlg.querySelector("[data-lcdp-dialogue-titre]").textContent="RECHERCHE ENREGISTRÉE";
     dlg.querySelector("[data-lcdp-dialogue-message]").textContent=message;
     const action=dlg.querySelector('[data-lcdp-dialogue-action="compris"]');
     action.textContent="Voir MON COMPTE";
@@ -26,7 +26,7 @@
     slot.replaceChildren();
     window.location.assign((window.LCDP_urlMembre||CONFIG_PAGE.membreUrl)("/ESPACE-MEMBRE/mes-informations.html"));
   };
-  const afficherAlerte=async (message, titreDialogue="ALERTE PLANIFIER")=>{
+  const afficherAlerte=async (message, titreDialogue="RECHERCHE ENREGISTRÉE")=>{
     const slot=document.getElementById("lcdp-lightbox-slot");
     const fragment=await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
     slot.replaceChildren(fragment);
@@ -44,18 +44,19 @@
     // identiques à ceux utilisés dans PLANIFIER, sans navigateur de dates natif.
     const slot=document.getElementById("lcdp-lightbox-slot");
     if(!slot)throw new Error("Emplacement de lightbox introuvable.");
-    const source=options.alerte||null;
+    const express=options.express===true;
+    const source=express?null:(options.alerte||null);
     // Le contrôle du quota et le montage précèdent l’affichage.
     const endpoint=String(CONFIG_PAGE.workerAlertePlanifierUrl||CONFIG_PAGE.WORKER_ALERTE_PLANIFIER_URL||"").replace(/\/+$/,"");
-    if(!source){
-      if(!endpoint)throw new Error("Le Worker ALERTE PLANIFIER n'est pas configuré.");
+    if(!source&&!express){
+      if(!endpoint)throw new Error("Le Worker RECHERCHE ENREGISTRÉE n'est pas configuré.");
       const response=await fetch(endpoint+"/alertes",{method:"GET",credentials:"include",cache:"no-store",headers:{"Accept":"application/json"}});
       const data=await response.json().catch(()=>null);
       if(!response.ok||data?.ok!==true)throw new Error(data?.message||"Vérification des alertes indisponible.");
       // Le contrôle côté Worker reste obligatoire : cette vérification UX ne le remplace pas.
       const maximum=options.permanent===true?2:1;
       if((data.alertes||[]).length>=maximum){
-        await afficherInformationLimite("Une alerte planifiée est déjà en cours, modifiez-la depuis MON COMPTE.");
+        await afficherInformationLimite("Le quota de recherches enregistrées est atteint. Modifiez-les depuis MON COMPTE.");
         return;
       }
     }
@@ -69,11 +70,12 @@
     const croix=preparation.querySelector("[data-lcdp-dialogue-close]");
     if(!dialogue||!titre||!texte||!actions||!croix)throw new Error("Structure du dialogue incomplète.");
     dialogue.classList.add("lcdp-alerte-planning-dialogue");
-    titre.textContent="ALERTE PLANIFIER";
-    texte.textContent="Définissez vos critères de recherche.";
+    titre.textContent=express?"RECHERCHE EXPRESS":"RECHERCHE ENREGISTRÉE";
+    texte.textContent=express?"Quand souhaitez-vous profiter d’un parc ?":"Définissez vos critères de recherche.";
+    if(express)dialogue.classList.add("lcdp-recherche-express-dialogue");
     const initial=source?.criteres||{};
     const etat={departements:[...(initial.departements||[])],periodes:(initial.periodes||[]).map(p=>({...p})),plages:[...(initial.plages||[])],categories:[...(initial.categories||["duo"])]};
-    const limites={departements:2,periodes:2,plages:2};
+    const limites={departements:2,periodes:express?1:2,plages:2};
     // Horizon de saisie ALERTE : du jour courant jusqu'au dernier jour de M+6,
     // indépendamment du droit de consultation du planning du membre.
     const horizonRecherche=()=>{
@@ -100,7 +102,7 @@
       n.type="button";n.addEventListener("click",action,{signal:controller.signal});return n;
     };
     const formulaire=noeud("form","lcdp-planning-filtres lcdp-alerte-formulaire");
-    formulaire.setAttribute("aria-label","Filtres ALERTE PLANIFIER");
+    formulaire.setAttribute("aria-label","Filtres RECHERCHE ENREGISTRÉE");
     const champs=noeud("div","lcdp-planning-filtres__champs");
     const etiquette=(texte,id)=>{
       const label=noeud("label","lcdp-planning-filtres__label",texte);
@@ -111,11 +113,11 @@
     champNom.classList.add("lcdp-alerte-champ-complet");
     const nom=noeud("input","lcdp-planning-filtres__select");
     nom.id="lcdp-alerte-nom";nom.required=true;nom.maxLength=80;
-    nom.placeholder="Nom de cette alerte";
+    nom.placeholder="Nom de cette recherche";
     nom.value=source?.titre||"";
-    nom.setAttribute("aria-label","Nom de l'alerte");
+    nom.setAttribute("aria-label","Nom de la recherche");
     champNom.append(nom);
-    champs.append(champNom);
+    if(!express)champs.append(champNom);
     const groupe=(libelle,maximum,classe="")=>{
       const n=noeud("section","lcdp-alerte-critere"+(classe?" "+classe:""));
       const titreGroupe=noeud("div","lcdp-alerte-critere__titre",libelle);
@@ -126,7 +128,8 @@
       return {n,liste};
     };
     const departements=groupe("Département",limites.departements,"lcdp-alerte-critere--departement");
-    const periodes=groupe("Période",limites.periodes,"lcdp-alerte-critere--periode");
+    const periodes=groupe(express?"Date":"Période",express?0:limites.periodes,"lcdp-alerte-critere--periode");
+    if(express){periodes.n.classList.add("lcdp-alerte-champ-complet");champs.prepend(periodes.n);}
     const horaires=groupe("Horaire",limites.plages,"lcdp-alerte-critere--horaire");
     const invites=groupe("Filtre invités (accès parc)",0,"lcdp-alerte-critere--invites");
     const msg=noeud("p","lcdp-alerte-etat");msg.setAttribute("role","status");
@@ -144,7 +147,7 @@
     const actualiser=()=>{
       for(const [container,values,format,remove] of [
         [departements.liste,etat.departements,v=>v,code=>{etat.departements=etat.departements.filter(v=>v!==code);}],
-        [periodes.liste,etat.periodes,v=>new Date(v.debut+"T12:00:00Z").toLocaleDateString("fr-FR")+" – "+new Date(v.fin+"T12:00:00Z").toLocaleDateString("fr-FR"),p=>{etat.periodes=etat.periodes.filter(v=>v!==p);}],
+        [periodes.liste,etat.periodes,v=>express?new Date(v.debut+"T12:00:00Z").toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"Europe/Paris"}):new Date(v.debut+"T12:00:00Z").toLocaleDateString("fr-FR")+" – "+new Date(v.fin+"T12:00:00Z").toLocaleDateString("fr-FR"),p=>{etat.periodes=etat.periodes.filter(v=>v!==p);}],
         [horaires.liste,etat.plages,v=>plagesReference.find(p=>p[0]===v)?.[1]||v,code=>{etat.plages=etat.plages.filter(v=>v!==code);}]
       ]){
         container.replaceChildren();
@@ -157,7 +160,8 @@
         });
       }
       departements.ajouter.disabled=etat.departements.length>=limites.departements;
-      periodes.ajouter.disabled=etat.periodes.length>=limites.periodes;
+      periodes.ajouter.disabled=!express&&etat.periodes.length>=limites.periodes;
+      if(express)periodes.n.querySelectorAll("[data-lcdp-date-express]").forEach(b=>b.setAttribute("aria-pressed",String(etat.periodes[0]?.debut===b.dataset.lcdpDateExpress)));
       horaires.ajouter.disabled=etat.plages.length>=limites.plages;
     };
     const plagesReference=[
@@ -201,7 +205,7 @@
     departements.n.append(departements.ajouter);
     const ouvrirCalendrier=async()=>{
       try{
-        if(etat.periodes.length>=limites.periodes)return;
+        if(!express&&etat.periodes.length>=limites.periodes)return;
         const [fragmentCalendrier,fragmentJour]=await Promise.all([
           chargerFragmentObjet("/HTMLBASE/04-calendrier-mois.html"),
           chargerFragmentObjet("/HTMLBASE/04-card-jour-in-calendrier-mois.html")
@@ -228,8 +232,8 @@
         fermerCal.addEventListener("click",retour,{signal:controller.signal});
         const dessin=()=>{
           current.textContent=new Intl.DateTimeFormat("fr-FR",{month:"long",year:"numeric"}).format(month);
-          titreCal.textContent=dateDebut?"Choisir la date de fin":"Choisir la date de début";
-          meta.textContent=dateDebut?"À partir du "+new Date(dateDebut+"T12:00:00Z").toLocaleDateString("fr-FR"):"Sélectionnez un premier jour.";
+          titreCal.textContent=express?"Choisir une date":dateDebut?"Choisir la date de fin":"Choisir la date de début";
+          meta.textContent=express?"Sélectionnez le jour de votre visite.":dateDebut?"À partir du "+new Date(dateDebut+"T12:00:00Z").toLocaleDateString("fr-FR"):"Sélectionnez un premier jour.";
           grille.replaceChildren();
           const morceauxDate=new Intl.DateTimeFormat("fr-CA",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
           const today=["year","month","day"].map(c=>morceauxDate.find(p=>p.type===c)?.value).join("-");
@@ -246,7 +250,8 @@
             jour.disabled=iso<today||iso>horizonRecherche().fin||(dateDebut&&iso<dateDebut);
             if(jour.disabled)jour.classList.add("lcdp-box-card-jour-in-calendrier-mois--past");
             jour.addEventListener("click",()=>{
-              if(!dateDebut){dateDebut=iso;dessin();}
+              if(express){etat.periodes=[{debut:iso,fin:iso}];retour();actualiser();}
+              else if(!dateDebut){dateDebut=iso;dessin();}
               else{
                 etat.periodes.push({debut:dateDebut,fin:iso});
                 retour();actualiser();
@@ -263,8 +268,22 @@
         dessin();
       }catch(e){msg.textContent=e.message;if(modeCalendrier){modeCalendrier=false;slot.replaceChildren(dialogue);}}
     };
-    periodes.ajouter=bouton("+ Ajouter",ouvrirCalendrier);
-    periodes.n.append(periodes.ajouter);
+    periodes.ajouter=bouton(express?"Autre date":"+ Ajouter",ouvrirCalendrier);
+    if(express){
+      const rapides=noeud("div","lcdp-express-dates");
+      const today=horizonRecherche().today;
+      for(let i=0;i<7;i++){
+        const d=new Date(today+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+i);
+        const iso=d.toISOString().slice(0,10);
+        const jour=new Intl.DateTimeFormat("fr-FR",{weekday:"long",timeZone:"Europe/Paris"}).format(d);
+        const lib=i===0?"Aujourd’hui":i===1?"Demain":i===2?"Après-demain":jour.charAt(0).toUpperCase()+jour.slice(1);
+        const b=bouton(lib,()=>{etat.periodes=[{debut:iso,fin:iso}];actualiser();msg.textContent="";});
+        b.dataset.lcdpDateExpress=iso;b.setAttribute("aria-pressed","false");
+        b.title=new Intl.DateTimeFormat("fr-FR",{dateStyle:"full",timeZone:"Europe/Paris"}).format(d);
+        rapides.append(b);
+      }
+      rapides.append(periodes.ajouter);periodes.n.append(rapides);
+    }else periodes.n.append(periodes.ajouter);
     const choixPlage=document.createElement("select");
     choixPlage.className="lcdp-planning-filtres__select";
     choixPlage.setAttribute("aria-label","Choisir une plage horaire");
@@ -321,7 +340,7 @@
       nom.value="";syncInvites();
       msg.textContent="";actualiser();
     });
-    const enregistrer=noeud("button","lcdp-button lcdp-button-primary","Enregistrer l’alerte");
+    const enregistrer=noeud("button","lcdp-button lcdp-button-primary",express?"Voir les résultats":"Enregistrer la recherche");
     enregistrer.type="submit";
     barre.append(effacer,enregistrer);formulaire.append(barre,msg);
     actions.replaceChildren(formulaire);
@@ -335,24 +354,29 @@
     document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(modeCalendrier){modeCalendrier=false;slot.replaceChildren(dialogue);}else fermer();}},{signal:controller.signal});
     formulaire.addEventListener("submit",async e=>{
       e.preventDefault();
-      if(!nom.value.trim()){msg.textContent="Donnez un nom à l'alerte.";return;}
+      if(!express&&!nom.value.trim()){msg.textContent="Donnez un nom à la recherche.";return;}
       if(!etat.departements.length){msg.textContent="Ajoutez au moins un département.";return;}
-      if(!etat.periodes.length){msg.textContent="Ajoutez au moins une période.";return;}
+      if(!etat.periodes.length){msg.textContent=express?"Sélectionnez une date.":"Ajoutez au moins une période.";return;}
+      if(express&&!etat.plages.length){msg.textContent="Sélectionnez au moins une plage horaire.";return;}
       const horizon=horizonRecherche();
       if(etat.periodes.some(p=>p.debut<horizon.today||p.fin>horizon.fin||p.fin<p.debut)){
         msg.textContent="Les périodes doivent être comprises entre aujourd'hui et la fin du mois M+6.";
         return;
       }
       if(!etat.categories.length){msg.textContent="Cochez au moins une catégorie d'invités.";return;}
-      if(!endpoint){msg.textContent="Le Worker ALERTE PLANIFIER n'est pas configuré.";return;}
-      enregistrer.disabled=true;msg.textContent="Enregistrement…";
+      if(!endpoint){msg.textContent="Le Worker RECHERCHE ENREGISTRÉE n'est pas configuré.";return;}
+      enregistrer.disabled=true;msg.textContent=express?"Recherche en cours…":"Enregistrement…";
       try{
+        if(express){
+          await window.LCDP_alerteNavigation.rechercherExpress({date:etat.periodes[0].debut,departements:etat.departements,plages:etat.plages,categories:etat.categories});
+          fermer();return;
+        }
         const reponse=await fetch(endpoint+"/alertes"+(source?"/"+encodeURIComponent(source.idalerte):""),{
           method:source?"PATCH":"POST",credentials:"include",cache:"no-store",
           headers:{"Accept":"application/json","Content-Type":"application/json"},
           body:JSON.stringify({titre:nom.value.trim(),criteres:{
             departements:etat.departements,periodes:etat.periodes,
-            plages:etat.plages,categories:etat.categories,parcs:[],mois:[],jours:[],dates:[]
+            plages:etat.plages,categories:etat.categories,parcs:initial.parcs||[],mois:initial.mois||[],jours:initial.jours||[],dates:initial.dates||[]
           }})
         });
         const data=await reponse.json().catch(()=>null);
@@ -360,7 +384,7 @@
         fermer();
         if(typeof options.onEnregistre==="function")await options.onEnregistre(data);
         else {
-          await afficherAlerte("Retrouvez votre alerte dans MON COMPTE → SERVICE.", "Alerte enregistrée");
+          await afficherAlerte("Retrouvez votre recherche dans MON COMPTE → SERVICE.", "Recherche enregistrée");
           // Uniquement après l'accusé de réception de création : lancer la recherche.
           if(!source && data?.alerte?.idalerte && window.LCDP_alerteNavigation?.lancer){
             await window.LCDP_alerteNavigation.lancer(data.alerte);
@@ -371,7 +395,7 @@
         // TLS ou CORS). Ne pas l'attribuer à tort à la session membre.
         if(err instanceof TypeError){
           msg.textContent="Connexion à l'API impossible. Vérifier le domaine Cloudflare et l'autorisation CORS de l'origine membre.";
-          console.error("ALERTE PLANIFIER : requête inaboutie vers",endpoint+"/alertes",err);
+          console.error("RECHERCHE ENREGISTRÉE : requête inaboutie vers",endpoint+"/alertes",err);
         }else{
           msg.textContent=err?.message||"Enregistrement indisponible.";
         }

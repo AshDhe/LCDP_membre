@@ -700,13 +700,21 @@
         ["1A", "11M", "10M"].includes(String(etatMembre.typeabo || "").trim().toUpperCase());
       const choix = await ouvrirChoixPlanifier(permanent);
       if (!choix) return "annule";
+      if (choix === "express") {
+        try {
+          await window.LCDP_ouvrirFormulaireAlertePlanifier({express:true});
+        } catch(err) {
+          await afficherAlerte(err.message||"Recherche express indisponible.");
+        }
+        return "dialogue";
+      }
       if (choix === "alerte") {
         try {
           await window.LCDP_alerteNavigation.accueil({
             permanent,creer:()=>ouvrirFormulaireAlertePlanning()
           });
         } catch(err) {
-          await afficherAlerte(err.message||"Recherche d'alerte indisponible.");
+          await afficherAlerte(err.message||"Recherche enregistrée indisponible.");
         }
         return "dialogue";
       }

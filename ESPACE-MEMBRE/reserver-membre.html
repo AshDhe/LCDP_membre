@@ -38,6 +38,7 @@
     .lcdp-planifier-partage-attente .lcdp-loading-spinner__dot {
       width: 8px; height: 8px; border-radius: 50%; background: #4e6838;
     }
+    body.lcdp-express-ouverture-jour:not(.lcdp-planifier-vue-jour-active) #lcdp-planifier-calendrier-slot { visibility:hidden; }
     /* Résultats ALERTE : commande CARTE seule, centrée et sans cadre.
        Le diaporama départemental conserve la barre générique inchangée. */
     body.lcdp-planifier-origine-alerte #lcdp-commande-bar-reserver-slot {
@@ -847,8 +848,8 @@
   </div>
 
   <script src="./attente-planifier.js"></script>
-  <script src="./alerte-planifier-navigation.js"></script>
-  <script src="./reserver-membre.js?v=20261124-duoactif-v2"></script>
+  <script src="./alerte-planifier-navigation.js?v=20261126-ig-express-v1"></script>
+  <script src="./reserver-membre.js?v=20261126-ig-express-v1"></script>
   <script src="./paiement-membre.js?v=20261121-retractation-v1"></script>
   <script src="./aboreza-membre.js?v=20261113-reprise-encadree-v11"></script>
 </body>

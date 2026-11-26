@@ -213,6 +213,9 @@
   let navigationParcs = null;
   // Résultats d'alerte : conservés uniquement tant que ce tunnel reste ouvert.
   let resultatsAlerteActifs = null;
+  let resultatsExpressActifs = null;
+  let scrollResultatsExpress = 0;
+  let ouvertureExpressEnCours = false;
   // Un seul calendrier mensuel persistant pour tout le tunnel PLANIFIER.
   let selectionnerParcPlanningPrincipal = null;
 
@@ -266,6 +269,18 @@
           });
         }
       }
+      // RECHERCHE EXPRESS : même wrapper et mêmes fiches, liste conservée.
+      if(new URL(window.location.href).searchParams.get("mode")==="express"){
+        resultatsExpressActifs=window.LCDP_alerteNavigation?.lireExpress?.()||null;
+        if(resultatsExpressActifs){
+          resultatsAlerteActifs=resultatsExpressActifs.parcs;
+          document.body.classList.add("lcdp-planifier-origine-alerte","lcdp-planifier-origine-express");
+          await ouvrirFiltreParcPlanifier();
+        }else{
+          await afficherDialogueInformationPlanifier({titre:"Recherche express",message:"Les résultats ne sont plus disponibles. Relancez une recherche depuis PLANIFIER."});
+          window.location.replace(construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html"));return;
+        }
+      }
       // ALERTE PLANIFIER réutilise le diaporama des parcs déjà présent.
       if(new URL(window.location.href).searchParams.get("mode")==="alerte"){
         const urlSansMode=new URL(window.location.href);
@@ -308,7 +323,7 @@
       // Préparer les parcs en arrière-plan, sans retarder le planning général.
       if(!resultatsAlerteActifs)prechargerListeParcsPlanifier();
       const contexteAReprendre = lireReprisePlanifier();
-      if (contexteAReprendre) {
+      if (contexteAReprendre && !resultatsExpressActifs) {
         reprendreContextePlanifier(contexteAReprendre).catch(error => {
           console.warn("Reprise du parc indisponible ; calendrier conservé.", error);
         });
@@ -621,7 +636,8 @@
       navigationParcs.fermer = fermer;
       close.addEventListener("click", ()=>{
         if(resultatsAlerteActifs){
-          resultatsAlerteActifs=null;
+          if(resultatsExpressActifs)window.LCDP_alerteNavigation?.fermerExpress?.();
+          resultatsExpressActifs=null;resultatsAlerteActifs=null;
           window.location.assign(construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html"));
         }else fermer();
       });
@@ -643,10 +659,10 @@
             etatPage.parcs=await completerParcsResultatAlerte(resultatsAlerteActifs);
             etatPage.departement="";
             etatPage.nomDepartement="";
-            navigationParcs.mode="diaporama";
+            navigationParcs.mode=resultatsExpressActifs?"liste":"diaporama";
             // Badge générique identique à celui du parc sélectionné dans PLANIFIER.
             titre.className="lcdp-ui-badge lcdp-ui-badge--green lcdp-ui-badge--context";
-            titre.textContent="RÉSULTAT DE L’ALERTE";
+            titre.textContent=resultatsExpressActifs?"RECHERCHE EXPRESS — "+formaterDateFr(resultatsExpressActifs.criteres.date):"RÉSULTAT DE LA RECHERCHE";
             publierListeParcs(construireListeParcsPreparee(etatPage.parcs,""));
             // Résultat ALERTE : conserver la carte commune, sans le changement de département.
             const changerDepartement = document.getElementById("bouton-changer-departement");
@@ -852,6 +868,186 @@
 
   let modeCoachPlanifierActif = false;
 
+  // IG : même calendrier mensuel, mêmes cartes et mêmes dialogues que PLANIFIER.
+  // Aucune autre grille, aucun fichier CSS/HTML, aucune présence COACH simulée.
+  let igCoachsDuMois = [];
+  let igCleLue = "";
+  let igGeneration = 0;
+  let igOperationEnCours = false;
+
+  function igContexteCalendrier() {
+    const grille = document.querySelector("#lcdp-planifier-calendrier-slot [data-lcdp-calendrier-mois-grid]");
+    const card = grille?.querySelector('[data-lcdp-card-jour-mois][data-idparc][data-date]');
+    const idparc = String(card?.dataset.idparc || "").trim();
+    const mois = String(card?.dataset.date || "").slice(0, 7);
+    return idparc && /^\d{4}-(0[1-9]|1[0-2])$/.test(mois) ? {idparc, mois} : null;
+  }
+
+  function igCategorieCoach(entree) {
+    const libelle = String(entree?.metiercoach || "").trim().toLowerCase();
+    if (libelle.includes("sport")) return "sport";
+    if (libelle.includes("culture")) return "culture";
+    if (libelle.includes("récré") || libelle.includes("recre")) return "recre";
+    if (libelle === "art" || libelle === "arts" || libelle.includes("artist")) return "art";
+    return "";
+  }
+
+  function igCoachsFiltres() {
+    const cases = document.querySelectorAll("#lcdp-planifier-calendrier-slot [data-lcdp-filtres-coach] input[type=checkbox]");
+    return new Set([...cases].filter(c => c.checked).map(c => c.value));
+  }
+
+  function igPlacesVisibles() {
+    const filtres = igCoachsFiltres();
+    return igCoachsDuMois.filter(c => {
+      const categorie = igCategorieCoach(c);
+      return !categorie || filtres.has(categorie);
+    });
+  }
+
+  function igRendreSurCalendrier() {
+    if (!modeCoachPlanifierActif) return;
+    const grille = document.querySelector("#lcdp-planifier-calendrier-slot [data-lcdp-calendrier-mois-grid]");
+    const info = document.querySelector("#lcdp-planifier-calendrier-slot [data-lcdp-information-coach]");
+    if (!grille) return;
+    const parJour = new Map();
+    for (const c of igPlacesVisibles()) {
+      const entree = parJour.get(c.date) || [];
+      entree.push(c);
+      parJour.set(c.date,entree);
+    }
+    for (const card of grille.querySelectorAll('[data-lcdp-card-jour-mois][data-date]')) {
+      const date = String(card.dataset.date || "");
+      const parPlage = new Map();
+      for (const c of parJour.get(date) || []) {
+        parPlage.set(c.plagebookd, (parPlage.get(c.plagebookd) || 0) + 1);
+      }
+      const total = (parJour.get(date) || []).length;
+      // Les traits d'engagement sont exclusivement ceux de la fonction canonique :
+      // on complète leur titre sans remplacer la barre rouge existante.
+      for (const plage of CLES_PLAGES_AFFICHAGE) {
+        const slot = card.querySelector('[data-lcdp-card-jour-mois-slot="' + plage + '"]');
+        if (!slot) continue;
+        const nombre = parPlage.get(plage) || 0;
+        if (nombre > 0) {
+          const libelle = nombre + (nombre > 1 ? " coachs avec IG disponibles" : " coach avec IG disponible");
+          slot.title = (slot.title ? slot.title + " · " : "") + libelle;
+        }
+      }
+      if (total > 0 && !card.disabled) {
+        card.title = total + (total > 1 ? " coachs disponibles en IG ce jour" : " coach disponible en IG ce jour");
+        card.setAttribute("aria-label", date + " · " + card.title);
+      }
+    }
+    if (info) {
+      const total = igPlacesVisibles().length;
+      info.textContent = total
+        ? "Choisissez un jour sur le calendrier pour consulter les coachs et leurs places IG disponibles."
+        : "Aucune place IG disponible sur ce parc pour le mois affiché.";
+    }
+  }
+
+  async function igChargerMois(force = false) {
+    if (!modeCoachPlanifierActif) return;
+    const contexte = igContexteCalendrier();
+    const info = document.querySelector("#lcdp-planifier-calendrier-slot [data-lcdp-information-coach]");
+    if (!contexte) {
+      igCoachsDuMois = [];
+      igCleLue = "";
+      if (info) info.textContent = "Choisissez un parc pour consulter les coachs.";
+      return;
+    }
+    const cle = contexte.idparc + "|" + contexte.mois;
+    if (!force && cle === igCleLue) { igRendreSurCalendrier(); return; }
+    const generation = ++igGeneration;
+    igCleLue = cle;
+    igCoachsDuMois = [];
+    if (info) info.textContent = "Recherche des coachs disponibles…";
+    try {
+      const url = ENDPOINT_PLANNING_MEMBRE + "/ig-coachs?idparc=" +
+        encodeURIComponent(contexte.idparc) + "&mois=" + encodeURIComponent(contexte.mois);
+      const reponse = await fetch(url, {method:"GET",credentials:"include",cache:"no-store",headers:{"Accept":"application/json"}});
+      const resultat = await reponse.json().catch(() => null);
+      if (!reponse.ok || !reponseApiOk(resultat)) throw new Error(messageErreurApi(resultat,"Lecture des coachs indisponible."));
+      if (!modeCoachPlanifierActif || generation !== igGeneration || igCleLue !== cle) return;
+      igCoachsDuMois = Array.isArray(resultat.acces) ? resultat.acces : [];
+      igRendreSurCalendrier();
+    } catch (erreur) {
+      if (generation !== igGeneration) return;
+      igCleLue = "";
+      if (info) info.textContent = erreur?.message || "Lecture des coachs indisponible.";
+    }
+  }
+
+  async function igChoisirJour(dateIso) {
+    if (!modeCoachPlanifierActif || igOperationEnCours) return;
+    const contexte = igContexteCalendrier();
+    if (!contexte) {
+      const choix = await ouvrirDialogueBoutonsSuperpose({
+        titre:"Choisir un parc",texte:"Vous n'avez pas de parc sélectionné.",
+        boutons:[{label:"Choisir un parc",valeur:"parc",style:"lcdp-button-primary"}]
+      });
+      if (choix === "parc") await ouvrirFiltreParcPlanifier();
+      return;
+    }
+    // La lecture serveur peut changer entre le chargement du mois et le clic.
+    await igChargerMois(true);
+    const engagements = (Array.isArray(etatPage.reservationsMembre) ? etatPage.reservationsMembre : [])
+      .filter(r => r && ["bookd","chekd","full","commande"].includes(String(r.statut || "").toLowerCase()) &&
+        extraireDateFranceReservation(r.datebookd) === dateIso)
+      .map(r => String(r.plagebookd || ""));
+    const candidats = igPlacesVisibles().filter(c => c.date === dateIso && !engagements.includes(c.plagebookd));
+    if (!candidats.length) {
+      await afficherDialogueInformationPlanifier({titre:"COACH",message:"Aucune inscription garantie disponible pour cette journée."});
+      return;
+    }
+    const horaires = {plage1:"06h–10h",plage2:"10h–13h",plage3:"13h–17h",plage4:"17h–21h",plage5:"21h–02h"};
+    const boutons = candidats.map((c,i) => ({
+      label:[String(c.prenomcoach || "").trim(),String(c.nomcoach || "").trim()].filter(Boolean).join(" ") +
+        " · " + (horaires[c.plagebookd] || c.plagebookd) +
+        " · " + c.placesRestantes + (Number(c.placesRestantes)>1 ? " places IG" : " place IG"),
+      valeur:"ig-" + i,
+      style:"lcdp-button-primary"
+    }));
+    const choix = await ouvrirDialogueBoutonsSuperpose({
+      titre:"Coachs présents",texte:"Sélectionnez un accès bénéficiant d'une inscription garantie.",
+      boutons
+    });
+    const index = /^ig-\d+$/.test(String(choix)) ? Number(String(choix).slice(3)) : -1;
+    if (!Number.isInteger(index) || index < 0 || index >= candidats.length) return;
+    const confirmer = await afficherChoixPlanifier("",{
+      titre:"Inscription garantie sur cet accès ?",
+      libelleAnnuler:"Non",
+      libelleConfirmer:"Oui"
+    });
+    if (!confirmer) return;
+    igOperationEnCours = true;
+    try {
+      const reponse = await fetch(ENDPOINT_PLANNING_MEMBRE + "/ig-inscrire",{
+        method:"POST",credentials:"include",cache:"no-store",
+        headers:{"Accept":"application/json","Content-Type":"application/json"},
+        body:JSON.stringify({idfluxcoach:candidats[index].idfluxcoach})
+      });
+      const resultat = await reponse.json().catch(() => null);
+      if (!reponse.ok || !reponseApiOk(resultat) || !resultat.reservation?.idflux) {
+        throw new Error(messageErreurApi(resultat,"Inscription garantie non confirmée."));
+      }
+      await chargerReservationsMembrePourBlocages();
+      cachePlanningParcLecture.clear();
+      await etatPage.actualiserPlanningPrincipal?.();
+      await igChargerMois(true);
+      await afficherDialogueInformationPlanifier({
+        titre:"Information",
+        message:"Votre inscription garantie est confirmée."
+      });
+    } catch (erreur) {
+      await afficherAlerteSuperposee(erreur.message || "Inscription garantie non confirmée.");
+    } finally {
+      igOperationEnCours = false;
+    }
+  }
+
+
   function abonnementPermanentActifCoach(etat, droits = etatPage.droitsPlanningParcActifs) {
     const typesPermanents = ["1A", "11M", "10M"];
     const typeMembre = String(etat?.typeabo || "").trim().toUpperCase();
@@ -904,13 +1100,12 @@
       informationCoach.hidden = !modeCoachPlanifierActif;
       informationCoach.style.display = modeCoachPlanifierActif ? "" : "none";
     }
-    // Aucun créneau Coach n'est actuellement renseigné dans FluxM :
-    // ne jamais présenter les accès membres comme des présences de coachs.
-    // hidden prévaut aussi sur les règles display:grid!important du calendrier.
+    // Conserver la grille mensuelle permanente dans les deux modes.
     if (grille) {
-      grille.hidden = modeCoachPlanifierActif;
-      grille.style.display = modeCoachPlanifierActif ? "none" : "";
+      grille.hidden = false;
+      grille.style.display = "";
     }
+    if (modeCoachPlanifierActif) void igChargerMois();
     document.querySelectorAll(".lcdp-planifier-filtre--coach").forEach(bouton => {
       bouton.setAttribute("aria-pressed", String(modeCoachPlanifierActif));
     });
@@ -939,7 +1134,9 @@
         fermerVueChoixPlagePlanifier();
       }
       modeCoachPlanifierActif = !modeCoachPlanifierActif;
+      if (!modeCoachPlanifierActif) { ++igGeneration; igCleLue = ""; igCoachsDuMois = []; }
       afficherModeCoachPlanifier();
+      if (modeCoachPlanifierActif) await igChargerMois(true);
       return;
     }
     // Réutiliser l'alerte et le paiement des échéances déjà prévus
@@ -1177,6 +1374,7 @@
     ligneCoach.dataset.lcdpFiltresCoach = "true";
     ligneCoach.hidden = true;
     ligneCoach.style.display = "none";
+    ligneCoach.addEventListener("change", () => igRendreSurCalendrier());
     for (const [categorie, picto] of [["sport","🏃"],["art","🎨"],["culture","🎭"],["recre","🎲"]]) {
       const etiquette = document.createElement("label");
       etiquette.className = "lcdp-box-legende__item lcdp-planifier-filtre-categorie";
@@ -1538,6 +1736,7 @@
       precedent.disabled = modeGuide || etat.annee * 12 + etat.mois <= borne;
       // ABO-RÉZA commande automatiquement le mois après 2 accès.
       suivant.disabled = modeGuide;
+      if (modeCoachPlanifierActif) void igChargerMois();
     }
     precedent.addEventListener("click", () => {
       if (window.LCDP_ABOREZA?.actif()) return;
@@ -2098,7 +2297,7 @@
     boutonCarte.setAttribute("aria-expanded", "false");
     boutonCarte.addEventListener("click", () => {
       if (!navigationParcs) return;
-      if (navigationParcs.mode === "carte") basculerVueParcs("diaporama");
+      if (navigationParcs.mode === "carte") basculerVueParcs(resultatsExpressActifs?"liste":"diaporama");
       else basculerVueParcs("carte");
     });
 
@@ -2126,8 +2325,8 @@
     const boutonCarte = document.getElementById("bouton-voir-carte");
     if (boutonCarte) ajouterPictoCommandeBar(boutonCarte,
       navigation.mode === "carte" ? "/IMAG/PICTO/picto-galerie-cadre.svg" : "/IMAG/PICTO/picto-localiser.svg",
-      navigation.mode === "carte" ? "DIAPORAMA" : "CARTE");
-    if (boutonCarte) boutonCarte.setAttribute("aria-label", navigation.mode === "carte" ? "Voir le diaporama" : "Voir la carte");
+      navigation.mode === "carte" ? (resultatsExpressActifs?"LISTE":"DIAPORAMA") : "CARTE");
+    if (boutonCarte) boutonCarte.setAttribute("aria-label", navigation.mode === "carte" ? (resultatsExpressActifs?"Voir la liste":"Voir le diaporama") : "Voir la carte");
     if (navigation.mode === "diaporama") afficherDiaporamaParcs();
   }
 
@@ -2141,7 +2340,7 @@
     if (!etatPage.parcs.length) {
       const message = document.createElement("p");
       message.setAttribute("role", "status");
-      message.textContent = resultatsAlerteActifs ? "Aucun parc ne correspond aux critères de cette alerte." : "Il n’y a pas encore de parc dans ce département.";
+      message.textContent = resultatsAlerteActifs ? "Aucun parc ne correspond aux critères de cette recherche." : "Il n’y a pas encore de parc dans ce département.";
       message.style.cssText = "box-sizing:border-box;width:100%;margin:12px auto;padding:16px 12px;border:1px solid #dce4da;border-radius:14px;background:#fff;box-shadow:0 3px 12px rgba(35,55,35,.08);color:#263e2f;font-weight:600;text-align:center;line-height:1.5";
       zone.appendChild(message);
     }
@@ -3549,7 +3748,7 @@
     if (!Array.isArray(parcs) || parcs.length < 1) {
       zoneMessage.hidden = false;
       zoneMessage.textContent =
-        (resultatsAlerteActifs ? "Aucun parc ne correspond aux critères de cette alerte." : "Aucun parc trouvé pour ce département");
+        (resultatsAlerteActifs ? "Aucun parc ne correspond aux critères de cette recherche." : "Aucun parc trouvé pour ce département");
       zoneMessage.dataset.lcdpMessageType = "information";
       return listeCard;
     }
@@ -3871,8 +4070,8 @@
     }
 
     if (meta) {
-      meta.textContent = "";
-      meta.hidden = true;
+      meta.textContent = resultatsExpressActifs&&parc.date?formaterDateFr(parc.date):"";
+      meta.hidden = !meta.textContent;
     }
 
     if (texte) {
@@ -3902,8 +4101,8 @@
         }),
         creerBoutonActionCardParc({
           action: "voir-planning-parc",
-          libelle: "Planning",
-          ariaLabel: "Afficher le planning du parc " + nom,
+          libelle: resultatsExpressActifs?"Planning jour":"Planning",
+          ariaLabel: "Afficher le planning "+(resultatsExpressActifs?"jour ":"")+"du parc " + nom,
           icone: "planning",
           variante: "orange-plein",
           idparc
@@ -4097,7 +4296,8 @@
         await informerParcProjet();
         return;
       }
-      await ouvrirPlanningMoisParc(parc);
+      if(resultatsExpressActifs)await ouvrirJourResultatExpress(parc);
+      else await ouvrirPlanningMoisParc(parc);
       return;
     }
 
@@ -4142,6 +4342,12 @@
           // L'attente disparaît uniquement une fois le dialogue effectivement monté.
           await afficherDialogueAbonnementPlanning("jour", etatPage.droitsPlanningParcActifs,
             {dateIso:String(jourCalendrier.dataset.date || ""), onAffiche: masquerAttente});
+          return;
+        }
+        // IG : les droits et la reprise ABO-RÉZA restent prioritaires.
+        if (modeCoachPlanifierActif && !window.LCDP_ABOREZA?.actif() && !preparationAbonnementPlanifier) {
+          await masquerAttente();
+          await igChoisirJour(String(jourCalendrier.dataset.date || ""));
           return;
         }
         await ouvrirCalendrierJourDepuisCard(jourCalendrier);
@@ -4569,6 +4775,46 @@
     const id = String(idparc || "");
 
     return etatPage.parcs.find((parc) => String(parc.idparc || parc.id || "") === id) || null;
+  }
+
+  function retournerResultatsExpress(){
+    if(!resultatsExpressActifs||!navigationParcs)return;
+    const vue=document.getElementById("lcdp-planifier-parcs-vue");
+    if(vue)vue.hidden=false;
+    document.body.classList.add("lcdp-planifier-vue-parcs-active");
+    requestAnimationFrame(()=>document.querySelector(".lcdp-planifier-wrapper .lcdp-site-main")?.scrollTo?.(0,scrollResultatsExpress));
+  }
+
+  async function ouvrirJourResultatExpress(parc){
+    if(ouvertureExpressEnCours||!resultatsExpressActifs)return;
+    ouvertureExpressEnCours=true;
+    scrollResultatsExpress=document.querySelector(".lcdp-planifier-wrapper .lcdp-site-main")?.scrollTop||0;
+    document.body.classList.add("lcdp-express-ouverture-jour");
+    try{
+      // Réutiliser la sélection du parc, puis EXACTEMENT le clic jour normal.
+      await selectionnerParcPlanningPrincipal(parc);
+      const date=resultatsExpressActifs.criteres.date;
+      const contexte=etatPage.calendrierMoisActif;
+      const jour=[...document.querySelectorAll("#lcdp-planifier-calendrier-slot [data-lcdp-card-jour-mois]")]
+        .find(card=>card.dataset.date===date);
+      if(String(contexte?.parc?.idparc||contexte?.parc?.id||"")!==String(parc.idparc||parc.id||"")||!jour||jour.disabled){
+        retournerResultatsExpress();
+        await afficherDialogueInformationPlanifier({titre:"Planning jour",message:"Cette journée n’est pas accessible avec vos droits actuels ou son planning n’est plus disponible."});
+        return;
+      }
+      await gererClicDocument({target:jour,preventDefault(){}});
+      const slot=document.getElementById("lcdp-planifier-jour-overlay-slot");
+      if(!slot||slot.hidden){
+        // Si RÉZABO / ABO-RÉZA ouvre son parcours, ne pas le recouvrir.
+        if(!window.LCDP_ABOREZA?.actif())retournerResultatsExpress();
+      }
+    }catch(error){
+      retournerResultatsExpress();
+      await afficherAlerte(error.message||"Impossible d’ouvrir le planning jour.");
+    }finally{
+      ouvertureExpressEnCours=false;
+      document.body.classList.remove("lcdp-express-ouverture-jour");
+    }
   }
 
   async function ouvrirPlanningMoisParc(parc) {
@@ -5394,6 +5640,7 @@
   // Le slot est permanent dans le wrapper ; seul son contenu est vidé.
   function fermerVueChoixPlagePlanifier() {
     const slot = document.getElementById("lcdp-planifier-jour-overlay-slot");
+    const retourExpress=Boolean(resultatsExpressActifs&&slot&&!slot.hidden&&!window.LCDP_ABOREZA?.actif());
     if (slot) {
       slot.replaceChildren();
       slot.hidden = true;
@@ -5401,6 +5648,7 @@
       slot.classList.remove("lcdp-aboreza-choix-jour");
     }
     document.body.classList.remove("lcdp-planifier-vue-jour-active");
+    if(retourExpress)retournerResultatsExpress();
   }
 
   async function ouvrirCalendrierJourParc(contexte) {
@@ -5722,10 +5970,11 @@
       );
       if (!correspondantes.length) continue;
 
-      const acces = correspondantes.some(reservation => reservation.invitation !== true);
-      const invitation = correspondantes.some(reservation => reservation.invitation === true);
+      const acces = correspondantes.some(reservation => reservation.invitation !== true || reservation.origine_ig === true);
+      const invitation = correspondantes.some(reservation => reservation.invitation === true && reservation.origine_ig !== true);
+      const inscriptionGarantie = correspondantes.some(reservation => reservation.origine_ig === true);
       const libelles = [];
-      if (acces) libelles.push("Accès planifié");
+      if (acces) libelles.push(inscriptionGarantie ? "Inscription garantie (IG)" : "Accès planifié");
       if (invitation) libelles.push("Invitation reçue");
 
       // Rendre visible la plage réservée même lorsque le parc affiché

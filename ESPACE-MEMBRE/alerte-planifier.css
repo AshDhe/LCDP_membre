@@ -537,3 +537,7 @@ body.lcdp-mes-acces-page .lcdp-mes-acces-entree__photo {
   object-fit:contain;
   border-radius:var(--lcdp-radius-small, 8px);
 }
+
+/* Recherche express : mêmes composants et mêmes états de bouton que le formulaire partagé. */
+#lcdp-lightbox-slot .lcdp-recherche-express-dialogue .lcdp-express-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+#lcdp-lightbox-slot .lcdp-recherche-express-dialogue .lcdp-express-dates button[aria-pressed="true"]{background:#35583c;color:#fff;border-color:#35583c}

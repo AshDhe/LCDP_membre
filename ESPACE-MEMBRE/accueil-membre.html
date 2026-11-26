@@ -127,7 +127,7 @@
   </script>
   <link rel="stylesheet" href="./planifier-choix.css">
   <link rel="stylesheet" href="./grille-filtrage-acces.css?v=20261126-commun">
-  <link rel="stylesheet" href="./alerte-planifier.css?v=20261126-commun">
+  <link rel="stylesheet" href="./alerte-planifier.css?v=20261126-ig-express-v1">
   <style>
     /* Uniquement l'état hidden et le formulaire sécurité conservé du membre. */
     #lcdp-accueil-contenu[hidden], #lcdp-accueil-erreur[hidden], #lcdp-navigation-attente[hidden] { display: none !important; }
@@ -247,8 +247,8 @@
     };
   </script>
   <script>document.write('<script src="' + window.LCDP_urlPublic("/ESPACE-PUBLIC/controle-acces-accueil.js") + '?v=20261124-ma-cle-souscrire"><\/script>');</script>
-  <script src="./alerte-planifier-navigation.js"></script>
-  <script src="./alerte-planifier-formulaire.js"></script>
+  <script src="./alerte-planifier-navigation.js?v=20261126-ig-express-v1"></script>
+  <script src="./alerte-planifier-formulaire.js?v=20261126-ig-express-v1"></script>
   <script>
     // Le chargement du compte ne doit jamais laisser le mobile sur un spinner infini.
     window.LCDP_delaiAccueilMembre = window.setTimeout(() => {
@@ -256,6 +256,6 @@
       if (contenu?.hidden) window.LCDP_echecAccueilMembre?.();
     }, 18000);
   </script>
-  <script src="./accueil-membre.js?v=20261126-paiement-origine-v1" onerror="window.LCDP_echecAccueilMembre()"></script>
+  <script src="./accueil-membre.js?v=20261126-ig-express-v1" onerror="window.LCDP_echecAccueilMembre()"></script>
 </body>
 </html>
