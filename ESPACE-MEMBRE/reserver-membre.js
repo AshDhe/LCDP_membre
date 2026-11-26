@@ -249,8 +249,22 @@
     let observerEntree = null;
     const revelerEntree = () => {
       observerEntree?.disconnect();
+      // Tant que l’écran n’est pas prêt, une relance conserve le mode ABO-RÉZA.
+      if (entreeAboReza) {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("mode") === "aboreza") {
+          url.searchParams.delete("mode");
+          if (url.searchParams.get("origine") === "boutique") url.searchParams.delete("origine");
+          url.searchParams.delete("vue");
+          window.history.replaceState(window.history.state,"",url.href);
+        }
+      }
       document.documentElement.classList.add("lcdp-planifier-pret");
       document.getElementById("lcdp-planifier-attente-initiale")?.remove();
+    };
+    const quitterEntreeAboReza = destination => {
+      window.LCDP_ATTENTE_PLANIFIER?.commencer("Chargement de la page");
+      window.location.replace(destination);
     };
     if (entreeAboReza) {
       document.getElementById("lcdp-planifier-attente-initiale")?.setAttribute("aria-label","Chargement des abonnements");
@@ -286,14 +300,10 @@
       } else masquerAttenteInitialePlanifier();
       // Ouverture directe du catalogue ABO-RÉZA depuis un droit membre vérifié.
       // La vue ABO-RÉZA reste intégrée au wrapper PLANIFIER, sans contourner ses APIs.
-      const urlOuverture = new URL(window.location.href);
-      if (urlOuverture.searchParams.get("mode") === "aboreza") {
+      const urlOuverture = urlEntree;
+      if (entreeAboReza) {
         const origineBoutique = urlOuverture.searchParams.get("origine") === "boutique";
         const vueRetour = urlOuverture.searchParams.get("vue") === "dfa" ? "dfa" : "abonnement";
-        urlOuverture.searchParams.delete("mode");
-        if (origineBoutique) urlOuverture.searchParams.delete("origine");
-        urlOuverture.searchParams.delete("vue");
-        window.history.replaceState(window.history.state, "", urlOuverture.href);
         const daValidee = etatMembre.statudaConnue === true &&
           normaliserStatudaReservation(etatMembre.statuda) === "oui";
         // Un impayé prime sur les autres motifs de blocage de la souscription.
@@ -306,7 +316,7 @@
             libelleAction:"Payer", valeurAction:"payer", profil:"abonnement-impaye", annulable:true
           });
           if (choix === "payer") {
-            window.location.replace(construireUrlMembre("/ESPACE-MEMBRE/paiements-en-attente.html?origine=" + (origineBoutique ? "boutique" : "planifier")));
+            quitterEntreeAboReza(construireUrlMembre("/ESPACE-MEMBRE/paiements-en-attente.html?origine=" + (origineBoutique ? "boutique" : "planifier")));
             return;
           }
         } else if (!etatMembre.statudaConnue) {
@@ -323,14 +333,14 @@
           const resultat = await ouvrirAbonnementDepuisPlanning({ origine: "sans_abonnement" });
           if (resultat === "navigation_paiement") return;
           if (origineBoutique && (resultat === "horaires_fermes" || !window.LCDP_ABOREZA?.actif())) {
-            window.location.replace(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#" + vueRetour));
+            quitterEntreeAboReza(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#" + vueRetour));
             return;
           }
         }
         // Une fermeture explicite hors boutique revient à PLANIFIER ; une
         // régularisation en cours de navigation ne doit pas dévoiler la grille.
         if (origineBoutique && restaurerPlanningEntreeAboReza) {
-          window.location.replace(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#" + vueRetour));
+          quitterEntreeAboReza(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#" + vueRetour));
           return;
         }
         restaurerPlanningEntreeAboReza?.();
@@ -400,7 +410,7 @@
       if (entreeAboReza) {
         await afficherAlerteSuperposee(erreur.message || "Impossible d’ouvrir les abonnements.", "orange", {onAffiche:revelerEntree});
         if (urlEntree.searchParams.get("origine")==="boutique") {
-          window.location.replace(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#" + (urlEntree.searchParams.get("vue")==="dfa"?"dfa":"abonnement")));
+          quitterEntreeAboReza(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#" + (urlEntree.searchParams.get("vue")==="dfa"?"dfa":"abonnement")));
           return;
         }
         restaurerPlanningEntreeAboReza?.();
