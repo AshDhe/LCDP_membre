@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr" data-lcdp-css="c085 c034 c038 c032 c083 c036 c033 c037 c041 c040">
+<head>
+  <meta charset="utf-8">
+
+  <title>Page en cours de mise à jour - La Clé du Parc</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Cette page est en cours de mise à jour.">
+
+  <script src="../config.js"></script>
+  <script>
+    (() => {
+      const cfg = window.SITE_CONFIG || {};
+      const joindre = (base, chemin) => String(base || "").replace(/\/+$/, "") + "/" + String(chemin).replace(/^\/+/, "");
+      const publicBase = cfg.publicBaseUrl || cfg.PUBLIC_BASE || "";
+      const membreBase = cfg.membreBaseUrl || cfg.MEMBRE_BASE || cfg.siteBase || "";
+      const objetBase = cfg.objetBaseUrl || cfg.OBJET_BASE || joindre(publicBase, "/OBJET");
+      window.SITE_BASE = membreBase;
+      window.LCDP_urlPublic = path => typeof cfg.publicUrl === "function" ? cfg.publicUrl(path) : joindre(publicBase, path);
+      window.LCDP_urlMembre = path => typeof cfg.membreUrl === "function" ? cfg.membreUrl(path) : joindre(membreBase, path);
+      window.LCDP_urlObjet = path => typeof cfg.objetUrl === "function" ? cfg.objetUrl(path) : joindre(objetBase, path);
+      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css') + '">');
+    })();
+  </script>
+  <script src="./boutique-accessoires-cadre.js?v=20261126" defer></script>
+</head>
+
+<body class="lcdp-page-document-legal lcdp-app-page">
+  <div class="lcdp-site-page lcdp-app-wrapper">
+
+    <div id="lcdp-bandeau-slot"></div>
+
+    <main class="lcdp-site-main">
+      <section class="lcdp-page-section" aria-label="Page en cours de mise à jour">
+        <div class="lcdp-page-container">
+          <div class="lcdp-mise-a-jour">
+            <div class="lcdp-loading-spinner" aria-hidden="true">
+        <svg viewBox="0 0 36 36" class="lcdp-loading-spinner__track"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+        <svg viewBox="0 0 36 36" class="lcdp-loading-spinner__arc"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75" /></svg>
+        <span class="lcdp-loading-spinner__dot"></span>
+      </div>
+            <h1 class="lcdp-title-page-center">La page n'est pas rendue publique actuellement.</h1>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="lcdp-footer-slot"></div>
+    <div id="lcdp-lightbox-slot"></div>
+
+  </div>
+
+</body>
+</html>
