@@ -874,6 +874,8 @@
   let igCleLue = "";
   let igGeneration = 0;
   let igOperationEnCours = false;
+  let igLectureEnCours = null;
+  const igLibellesTemporaires = new Map();
 
   function igContexteCalendrier() {
     const grille = document.querySelector("#lcdp-planifier-calendrier-slot [data-lcdp-calendrier-mois-grid]");
@@ -905,8 +907,44 @@
     });
   }
 
+  function igCleContexte() {
+    const contexte = igContexteCalendrier();
+    return contexte ? contexte.idparc + "|" + contexte.mois : "";
+  }
+
+  // Restaurer seulement les attributs ajoutés par IG, sans effacer une
+  // actualisation plus récente du calendrier ou des engagements existants.
+  function igRestaurerLibelles() {
+    for (const [element, attributs] of igLibellesTemporaires) {
+      for (const [nom, {avant, ajoute}] of attributs) {
+        if (element.getAttribute(nom) !== ajoute) continue;
+        if (avant === null) element.removeAttribute(nom);
+        else element.setAttribute(nom, avant);
+      }
+    }
+    igLibellesTemporaires.clear();
+  }
+
+  function igCompleterLibelle(element, nom, libelle) {
+    const avant = element.getAttribute(nom);
+    const ajoute = avant ? avant + " · " + libelle : libelle;
+    if (!igLibellesTemporaires.has(element)) igLibellesTemporaires.set(element, new Map());
+    igLibellesTemporaires.get(element).set(nom, {avant, ajoute});
+    element.setAttribute(nom, ajoute);
+  }
+
+  function igInvaliderLecture() {
+    ++igGeneration;
+    igLectureEnCours?.controleur.abort();
+    igLectureEnCours = null;
+    igCleLue = "";
+    igCoachsDuMois = [];
+    igRestaurerLibelles();
+  }
+
   function igRendreSurCalendrier() {
-    if (!modeCoachPlanifierActif) return;
+    igRestaurerLibelles();
+    if (!modeCoachPlanifierActif || !igCleLue || igCleLue !== igCleContexte()) return;
     const grille = document.querySelector("#lcdp-planifier-calendrier-slot [data-lcdp-calendrier-mois-grid]");
     const info = document.querySelector("#lcdp-planifier-calendrier-slot [data-lcdp-information-coach]");
     if (!grille) return;
@@ -931,12 +969,13 @@
         const nombre = parPlage.get(plage) || 0;
         if (nombre > 0) {
           const libelle = nombre + (nombre > 1 ? " coachs avec IG disponibles" : " coach avec IG disponible");
-          slot.title = (slot.title ? slot.title + " · " : "") + libelle;
+          igCompleterLibelle(slot, "title", libelle);
         }
       }
       if (total > 0 && !card.disabled) {
-        card.title = total + (total > 1 ? " coachs disponibles en IG ce jour" : " coach disponible en IG ce jour");
-        card.setAttribute("aria-label", date + " · " + card.title);
+        const libelle = total + (total > 1 ? " coachs disponibles en IG ce jour" : " coach disponible en IG ce jour");
+        igCompleterLibelle(card, "title", libelle);
+        igCompleterLibelle(card, "aria-label", libelle);
       }
     }
     if (info) {
@@ -948,35 +987,52 @@
   }
 
   async function igChargerMois(force = false) {
-    if (!modeCoachPlanifierActif) return;
+    if (!modeCoachPlanifierActif) return false;
     const contexte = igContexteCalendrier();
     const info = document.querySelector("#lcdp-planifier-calendrier-slot [data-lcdp-information-coach]");
     if (!contexte) {
-      igCoachsDuMois = [];
-      igCleLue = "";
+      igInvaliderLecture();
       if (info) info.textContent = "Choisissez un parc pour consulter les coachs.";
-      return;
+      return false;
     }
     const cle = contexte.idparc + "|" + contexte.mois;
-    if (!force && cle === igCleLue) { igRendreSurCalendrier(); return; }
-    const generation = ++igGeneration;
-    igCleLue = cle;
-    igCoachsDuMois = [];
+    // Un seul appel en vol par contexte, même si le calendrier se redessine.
+    if (igLectureEnCours?.cle === cle) return igLectureEnCours.promesse;
+    if (!force && cle === igCleLue) { igRendreSurCalendrier(); return true; }
+    igInvaliderLecture();
+    const generation = igGeneration;
+    const controleur = new AbortController();
+    const lecture = {cle, controleur, promesse: null};
+    igLectureEnCours = lecture;
+    const contexteToujoursActif = () => modeCoachPlanifierActif &&
+      generation === igGeneration && igLectureEnCours === lecture && igCleContexte() === cle;
     if (info) info.textContent = "Recherche des coachs disponibles…";
-    try {
-      const url = ENDPOINT_PLANNING_MEMBRE + "/ig-coachs?idparc=" +
-        encodeURIComponent(contexte.idparc) + "&mois=" + encodeURIComponent(contexte.mois);
-      const reponse = await fetch(url, {method:"GET",credentials:"include",cache:"no-store",headers:{"Accept":"application/json"}});
-      const resultat = await reponse.json().catch(() => null);
-      if (!reponse.ok || !reponseApiOk(resultat)) throw new Error(messageErreurApi(resultat,"Lecture des coachs indisponible."));
-      if (!modeCoachPlanifierActif || generation !== igGeneration || igCleLue !== cle) return;
-      igCoachsDuMois = Array.isArray(resultat.acces) ? resultat.acces : [];
-      igRendreSurCalendrier();
-    } catch (erreur) {
-      if (generation !== igGeneration) return;
-      igCleLue = "";
-      if (info) info.textContent = erreur?.message || "Lecture des coachs indisponible.";
-    }
+    lecture.promesse = (async () => {
+      try {
+        const url = ENDPOINT_PLANNING_MEMBRE + "/ig-coachs?idparc=" +
+          encodeURIComponent(contexte.idparc) + "&mois=" + encodeURIComponent(contexte.mois);
+        const reponse = await fetch(url, {method:"GET",credentials:"include",cache:"no-store",
+          headers:{"Accept":"application/json"},signal:controleur.signal});
+        const resultat = await reponse.json().catch(() => null);
+        if (!reponse.ok || !reponseApiOk(resultat) || !Array.isArray(resultat.acces)) {
+          throw new Error(messageErreurApi(resultat,"Lecture des coachs indisponible."));
+        }
+        if (!contexteToujoursActif()) return false;
+        igCoachsDuMois = resultat.acces.filter(a =>
+          String(a?.idparc || "") === contexte.idparc &&
+          String(a?.date || "").slice(0,7) === contexte.mois);
+        igCleLue = cle;
+        igRendreSurCalendrier();
+        return true;
+      } catch (erreur) {
+        if (!contexteToujoursActif()) return false;
+        if (info) info.textContent = erreur?.message || "Lecture des coachs indisponible.";
+        return false;
+      } finally {
+        if (igLectureEnCours === lecture) igLectureEnCours = null;
+      }
+    })();
+    return lecture.promesse;
   }
 
   async function igChoisirJour(dateIso) {
@@ -991,7 +1047,8 @@
       return;
     }
     // La lecture serveur peut changer entre le chargement du mois et le clic.
-    await igChargerMois(true);
+    if (!await igChargerMois(true) || !modeCoachPlanifierActif ||
+        igCleContexte() !== contexte.idparc + "|" + contexte.mois) return;
     const engagements = (Array.isArray(etatPage.reservationsMembre) ? etatPage.reservationsMembre : [])
       .filter(r => r && ["bookd","chekd","full","commande"].includes(String(r.statut || "").toLowerCase()) &&
         extraireDateFranceReservation(r.datebookd) === dateIso)
@@ -1020,7 +1077,8 @@
       libelleAnnuler:"Non",
       libelleConfirmer:"Oui"
     });
-    if (!confirmer) return;
+    if (!confirmer || !modeCoachPlanifierActif ||
+        igCleContexte() !== contexte.idparc + "|" + contexte.mois) return;
     igOperationEnCours = true;
     try {
       const reponse = await fetch(ENDPOINT_PLANNING_MEMBRE + "/ig-inscrire",{
@@ -1105,7 +1163,6 @@
       grille.hidden = false;
       grille.style.display = "";
     }
-    if (modeCoachPlanifierActif) void igChargerMois();
     document.querySelectorAll(".lcdp-planifier-filtre--coach").forEach(bouton => {
       bouton.setAttribute("aria-pressed", String(modeCoachPlanifierActif));
     });
@@ -1134,7 +1191,7 @@
         fermerVueChoixPlagePlanifier();
       }
       modeCoachPlanifierActif = !modeCoachPlanifierActif;
-      if (!modeCoachPlanifierActif) { ++igGeneration; igCleLue = ""; igCoachsDuMois = []; }
+      if (!modeCoachPlanifierActif) igInvaliderLecture();
       afficherModeCoachPlanifier();
       if (modeCoachPlanifierActif) await igChargerMois(true);
       return;
@@ -1466,12 +1523,14 @@
     // Le calendrier général affiche les accès du membre, indépendamment du parc.
     // La récupération des réservations est déjà assurée par /mes-reservations.
     etatPage.actualiserIndicateursPlanningGeneral = () => {
+      igRestaurerLibelles();
       grille.querySelectorAll("[data-lcdp-card-jour-mois][data-date]").forEach(card => {
         afficherReservationsSurPlagesPlanifier(card, card.dataset.date);
         if (window.LCDP_ABOREZA?.actif()) {
           window.LCDP_ABOREZA.marquerAccesProvisoires(card, card.dataset.date);
         }
       });
+      if (modeCoachPlanifierActif) igRendreSurCalendrier();
     };
 
     function commencerAttenteCalendrierMois() {
