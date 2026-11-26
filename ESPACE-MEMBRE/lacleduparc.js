@@ -2,7 +2,6 @@
   "use strict";
 
   const CONFIG_PAGE = window.SITE_CONFIG || {};
-  const CHEMIN_PICTOWAIT = "/IMAG/PICTO/pictowait.gif";
 
   const ENDPOINT_LA_CLE_DU_PARC = construireEndpointApi(
     "workerLaCleDuParcUrl",
@@ -521,31 +520,10 @@
 
   function definirChargementBoutonLogo(enCours) {
     if (!boutonValider) return;
-
     boutonValider.disabled = enCours;
-    boutonValider.classList.toggle("is-loading", enCours);
-
-    const image = boutonValider.querySelector(".lcdp-button-logo__image, img");
-
-    if (!image) return;
-
-    if (enCours) {
-      if (!image.dataset.lcdpSrcInitial) {
-        image.dataset.lcdpSrcInitial = image.getAttribute("src") || "";
-      }
-
-      image.src = construireUrlObjet(CHEMIN_PICTOWAIT);
-      image.alt = "";
-      return;
-    }
-
-    const srcInitial = image.dataset.lcdpSrcInitial || "";
-
-    if (srcInitial) {
-      image.setAttribute("src", srcInitial);
-    }
-
-    delete image.dataset.lcdpSrcInitial;
+    boutonValider.classList.toggle("lcdp-action-attente", enCours);
+    if (enCours) boutonValider.setAttribute("aria-busy","true");
+    else boutonValider.removeAttribute("aria-busy");
   }
 
   function definirBoutonEnCours(bouton, enCours) {
