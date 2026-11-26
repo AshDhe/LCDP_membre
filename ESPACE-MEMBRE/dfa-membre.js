@@ -43,6 +43,7 @@
     const paye = d.statut === "paye";
     el("dfa-validation").hidden = !paye;
     el("dfa-accueil").hidden = !paye;
+    el("dfa-confirmation-mail").hidden = !paye;
     retour.hidden = paye;
     const montantOperation = euros(d.montantCentimes);
     if (d.statut === "paye") message("Votre versement de "+montantOperation+" est confirmé. Merci pour votre soutien aux parcs du réseau La Clé du Parc.");
