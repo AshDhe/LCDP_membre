@@ -379,15 +379,12 @@
     if (!bouton) return () => {};
     if (window.LCDP_PaiementImpaye?.attendreBouton) return window.LCDP_PaiementImpaye.attendreBouton(bouton);
     const disabled = bouton.disabled;
-    const spinner = document.createElement("span");
-    spinner.className = "lcdp-loading-spinner lcdp-loading-spinner--bouton";
-    spinner.setAttribute("aria-hidden","true");
-    spinner.innerHTML = "<svg class=\"lcdp-loading-spinner__track\" viewBox=\"0 0 36 36\" aria-hidden=\"true\"><circle cx=\"18\" cy=\"18\" r=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\"></circle></svg><svg class=\"lcdp-loading-spinner__arc\" viewBox=\"0 0 36 36\" aria-hidden=\"true\"><circle cx=\"18\" cy=\"18\" r=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-dasharray=\"100\" stroke-dashoffset=\"75\"></circle></svg><span class=\"lcdp-loading-spinner__dot\"></span>";
-    bouton.prepend(spinner);
+    const avaitClasse = bouton.classList.contains("lcdp-action-attente");
+    bouton.classList.add("lcdp-action-attente");
     bouton.disabled = true;
     bouton.setAttribute("aria-busy","true");
     return () => {
-      spinner.remove();
+      if (!avaitClasse) bouton.classList.remove("lcdp-action-attente");
       bouton.disabled = disabled;
       bouton.removeAttribute("aria-busy");
     };
@@ -482,7 +479,7 @@
     if(params.get("liste")==="1"){
       const section=slot.closest("[data-lcdp-compte-parcours]");
       const script=document.createElement("script");
-      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v7");
+      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v8");
       script.onload=()=>{
         section?.remove();
         window.LCDP_PaiementImpaye.ouvrir({}, {quitter:()=>{
