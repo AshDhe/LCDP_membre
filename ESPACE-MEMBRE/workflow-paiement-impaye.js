@@ -9,17 +9,15 @@
     const base = espace === "membre" ? cfg.membreBaseUrl || cfg.MEMBRE_BASE || cfg.siteBase : cfg.objetBaseUrl || cfg.OBJET_BASE || String(cfg.publicBaseUrl || cfg.PUBLIC_BASE || "").replace(/\/+$/,"")+"/OBJET";
     return String(base || "").replace(/\/+$/,"")+"/"+path.replace(/^\/+/,"");
   }
-  // Réutilise le pictogramme d'attente animé officiel sans style local.
+  // Réutilise le spinner officiel LCDP c085 (arc orange et point vert).
   function attendreBouton(bouton) {
     if (!bouton || bouton.tagName !== "BUTTON") return () => {};
     const dejaDesactive = bouton.disabled;
     const ancienBusy = bouton.getAttribute("aria-busy");
-    const spinner = document.createElement("img");
-    spinner.src = url("objet","/IMAG/PICTO/pictowait.svg");
-    spinner.alt = "";
-    spinner.width = 20;
-    spinner.height = 20;
+    const spinner = document.createElement("span");
+    spinner.className = "lcdp-loading-spinner lcdp-loading-spinner--bouton";
     spinner.setAttribute("aria-hidden","true");
+    spinner.innerHTML = "<svg class=\"lcdp-loading-spinner__track\" viewBox=\"0 0 36 36\" aria-hidden=\"true\"><circle cx=\"18\" cy=\"18\" r=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\"></circle></svg><svg class=\"lcdp-loading-spinner__arc\" viewBox=\"0 0 36 36\" aria-hidden=\"true\"><circle cx=\"18\" cy=\"18\" r=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-dasharray=\"100\" stroke-dashoffset=\"75\"></circle></svg><span class=\"lcdp-loading-spinner__dot\"></span>";
     bouton.prepend(spinner);
     bouton.disabled = true;
     bouton.setAttribute("aria-busy","true");
@@ -35,7 +33,7 @@
     if (!chargementCSS) chargementCSS = new Promise((resolve,reject) => {
       const lien = document.createElement("link");
       lien.rel = "stylesheet";
-      lien.href = url("objet","/CSSBASE/lcdp-lightbox-convergence.css?v=20261126-workflow-impaye-liste-v5");
+      lien.href = url("objet","/CSSBASE/lcdp-lightbox-convergence.css?v=20261126-spinner-v7");
       lien.onload = resolve;
       lien.onerror = () => {lien.remove();chargementCSS=null;reject(Error("CSS officiel indisponible."));};
       document.head.appendChild(lien);
@@ -264,7 +262,7 @@
       await retourListe();
       return;
     }
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-retour-liste-v3");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-spinner-v7");
     if (typeof window.LCDP_monterPaiementCB !== "function") throw Error("Service de paiement indisponible.");
     await window.LCDP_monterPaiementCB(slot,{
       orderid,echeance:numeroEcheance || 1,source:"suspension",retour:"",
