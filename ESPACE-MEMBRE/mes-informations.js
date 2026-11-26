@@ -530,11 +530,14 @@
     labelZone.className="lcdp-box-champ-formulaire__label-zone";
     const label=document.createElement("span");
     label.className="lcdp-box-champ-formulaire__label";
-    label.textContent="Témoin La Clé du Parc";
+    label.textContent="Accessoires d’accès";
+    label.style.whiteSpace="nowrap";
+    labelZone.style.flexWrap="nowrap";
     const acheter=document.createElement("a");
     acheter.className="lcdp-ui-badge lcdp-ui-badge--action lcdp-ui-badge--amber";
     acheter.textContent=aDesTemoins?"Ajouter":"Acheter";
-    acheter.href=construireUrlPublic("/ESPACE-PUBLIC/boutique.html#lcdp-boutique-temoins");
+    acheter.href=construireUrlMembre("/ESPACE-MEMBRE/accessoires-acces.html");
+    acheter.addEventListener("click", ouvrirAccessoiresDepuisCompte);
     labelZone.append(label,acheter);
     ligne.append(labelZone);
     if(!aDesTemoins){
@@ -551,6 +554,64 @@
     }
     liste.replaceChildren(ligne);
   }
+  // Navigation directe : ne jamais rendre la boutique publique intermédiaire.
+  let navigationAccessoiresEnCours = false;
+  function fermerAttenteAccessoiresCompte() {
+    navigationAccessoiresEnCours = false;
+    document.getElementById("lcdp-compte-attente-accessoires")?.remove();
+    document.querySelector(".lcdp-site-page")?.removeAttribute("inert");
+  }
+  window.addEventListener("pageshow", event => {
+    if (event.persisted && navigationAccessoiresEnCours) fermerAttenteAccessoiresCompte();
+  });
+
+  async function ouvrirAccessoiresDepuisCompte(event) {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (navigationAccessoiresEnCours) return;
+    navigationAccessoiresEnCours = true;
+    const lien = event.currentTarget;
+    const attente = document.createElement("div");
+    attente.id = "lcdp-compte-attente-accessoires";
+    attente.setAttribute("role", "status");
+    attente.setAttribute("aria-label", "Chargement des accessoires d’accès");
+    const spinner = document.createElement("img");
+    spinner.src = construireUrlObjet("/IMAG/PICTO/pictowait.svg");
+    spinner.alt = "";
+    spinner.width = 64;
+    spinner.height = 64;
+    attente.appendChild(spinner);
+    document.body.appendChild(attente);
+    document.querySelector(".lcdp-site-page")?.setAttribute("inert", "");
+    try {
+      const base = construireEndpointApi("workerIndexMembreUrl", "WORKER_INDEX_MEMBRE_URL", "index-membre-api")
+        || String(CONFIG_PAGE.W_INDEX_MEMBRE_URL || "").replace(/\/+$/, "");
+      if (!base) throw new Error("Service de session indisponible.");
+      const reponse = await fetch(base + "/index", {
+        method: "GET", credentials: "include", cache: "no-store",
+        signal: AbortSignal.timeout(20000), headers: { Accept: "application/json" }
+      });
+      if (reponse.status === 401) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+      const data = await reponse.json().catch(() => null);
+      if (reponse.ok && data?.success === true && data.connected === false) {
+        redirigerConnexionMembre("inactive");
+        return;
+      }
+      if (!reponse.ok || data?.success !== true || data.connected !== true) {
+        throw new Error("Session non vérifiable.");
+      }
+      window.location.assign(lien.href);
+    } catch (error) {
+      console.warn("Navigation accessoires :", error);
+      fermerAttenteAccessoiresCompte();
+      lien.focus({ preventScroll: true });
+      await afficherAlerte("Impossible de vérifier votre session pour le moment. Merci de réessayer.");
+    }
+  }
+
   async function chargerEquipementsPresence(){
     const liste=document.getElementById("lcdp-compte-equipements-temoins");
     if(!liste)return;

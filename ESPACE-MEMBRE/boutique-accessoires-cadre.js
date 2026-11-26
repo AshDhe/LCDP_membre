@@ -75,18 +75,46 @@
   }
 
 
+  const transitionAccessoires = document.body.hasAttribute("data-lcdp-accessoires-transition");
   window.LCDP_cadreAccessoiresPret = Promise.all([initialiserBandeau(), initialiserFooter()])
     .then(() => {
       const logo = document.querySelector("#lcdp-bandeau-slot img");
       return logo && typeof logo.decode === "function" ? logo.decode().catch(() => {}) : undefined;
     })
-    .catch(error => { console.error("Cadre accessoires :", error); });
+    .catch(error => {
+      console.error("Cadre accessoires :", error);
+      if (transitionAccessoires) throw error;
+    });
   window.LCDP_terminerAttenteAccessoires = () => {
     document.body.classList.remove("public-home--loading");
     document.getElementById("lcdp-attente-arrivee")?.remove();
   };
-  if (!document.querySelector("[data-lcdp-accessoires-reserves]")) {
-    window.LCDP_cadreAccessoiresPret.finally(window.LCDP_terminerAttenteAccessoires);
+  if (transitionAccessoires) {
+    let termine = false;
+    function afficherErreurChargement() {
+      if (termine) return;
+      termine = true;
+      window.clearTimeout(delai);
+      const attente = document.getElementById("lcdp-attente-arrivee");
+      attente?.removeAttribute("aria-label");
+      attente?.querySelector("img")?.setAttribute("hidden", "");
+      document.getElementById("lcdp-accessoires-erreur")?.removeAttribute("hidden");
+      const reessayer = document.getElementById("lcdp-accessoires-reessayer");
+      reessayer?.removeAttribute("hidden");
+      reessayer?.addEventListener("click", () => window.location.reload(), { once: true });
+    }
+    const delai = window.setTimeout(afficherErreurChargement, 25000);
+    window.LCDP_cadreAccessoiresPret.then(() => {
+      if (termine) return;
+      termine = true;
+      window.clearTimeout(delai);
+      document.documentElement.classList.add("lcdp-accessoires-prets");
+      window.LCDP_terminerAttenteAccessoires();
+    }, afficherErreurChargement);
+  } else {
+    if (!document.querySelector("[data-lcdp-accessoires-reserves]")) {
+      window.LCDP_cadreAccessoiresPret.finally(window.LCDP_terminerAttenteAccessoires);
+    }
+    window.setTimeout(window.LCDP_terminerAttenteAccessoires, 25000);
   }
-  window.setTimeout(window.LCDP_terminerAttenteAccessoires, 25000);
 })();

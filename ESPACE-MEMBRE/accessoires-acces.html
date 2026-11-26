@@ -8,6 +8,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Cette page est en cours de mise à jour.">
 
+  <link rel="preload" as="image" href="https://lacleduparc.fr/OBJET/IMAG/PICTO/pictowait.svg">
+  <style>
+    html:not(.lcdp-accessoires-prets) { background: #fff; }
+    html:not(.lcdp-accessoires-prets)::before {
+      content: ""; position: fixed; inset: 0; z-index: 2147483644; background: #fff;
+    }
+    html:not(.lcdp-accessoires-prets)::after {
+      content: ""; position: fixed; z-index: 2147483645; top: 50%; left: 50%;
+      width: 64px; height: 64px; transform: translate(-50%, -50%);
+      background: url("https://lacleduparc.fr/OBJET/IMAG/PICTO/pictowait.svg") center / contain no-repeat;
+    }
+    html:not(.lcdp-accessoires-prets) .lcdp-site-page { visibility: hidden; }
+    #lcdp-attente-arrivee {
+      position: fixed; inset: 0; z-index: 2147483646; background: #fff;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; padding: 24px; box-sizing: border-box; text-align: center;
+    }
+    #lcdp-attente-arrivee img { display: block; width: 64px; height: 64px; }
+    #lcdp-attente-arrivee button { font: inherit; padding: 10px 18px; cursor: pointer; }
+    #lcdp-attente-arrivee [hidden] { display: none; }
+  </style>
   <script src="../config.js"></script>
   <script>
     (() => {
@@ -23,10 +44,15 @@
       document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css?v=20261126-da27f214') + '">');
     })();
   </script>
-  <script src="./boutique-accessoires-cadre.js?v=20261126" defer></script>
+  <script src="./boutique-accessoires-cadre.js?v=20261126-accessoires-transition-v1" defer></script>
 </head>
 
-<body class="lcdp-page-document-legal lcdp-app-page">
+<body class="lcdp-page-document-legal lcdp-app-page" data-lcdp-accessoires-transition>
+  <div id="lcdp-attente-arrivee" role="status" aria-label="Chargement des accessoires d’accès">
+    <img src="https://lacleduparc.fr/OBJET/IMAG/PICTO/pictowait.svg" alt="" width="64" height="64">
+    <p id="lcdp-accessoires-erreur" hidden>Impossible de charger la page. Merci de réessayer.</p>
+    <button id="lcdp-accessoires-reessayer" type="button" hidden>Réessayer</button>
+  </div>
   <div class="lcdp-site-page lcdp-app-wrapper">
 
     <div id="lcdp-bandeau-slot"></div>
