@@ -887,6 +887,8 @@
     await bridge()?.allerMois?.(p.moisActif);
   }
   async function quitterTunnel(){
+    // Fermer depuis le calendrier de commande ne supprime pas le panier.
+    if (bridge()?.retourBoutique?.() === true) return;
     courant=null;bridge()?.changerMode?.(false);miseAJourBandeau();bridge()?.viderCache?.();
     const parts=new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit'}).formatToParts(new Date());
     const v=x=>parts.find(p=>p.type===x)?.value;

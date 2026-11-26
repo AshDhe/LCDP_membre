@@ -82,6 +82,17 @@
   const DUREE_MIN_ATTENTE_INITIALE_MS = 300;
   let pageInitialisee = false;
   let restaurerPlanningEntreeAboReza = null;
+  let retourBoutiqueAboReza = null;
+  function destinationRetourBoutiqueAboReza(vue) {
+    const retour = vue === "dfa" ? "bienfaiteur" : "abonnement";
+    return construireUrlPublic("/ESPACE-PUBLIC/boutique.html?retour=" + retour + "#" + (retour === "bienfaiteur" ? "dfa" : "abonnement"));
+  }
+  function quitterVersBoutiqueAboReza() {
+    if (!retourBoutiqueAboReza) return false;
+    window.LCDP_ATTENTE_PLANIFIER?.commencer("Retour à la boutique");
+    window.location.replace(destinationRetourBoutiqueAboReza(retourBoutiqueAboReza));
+    return true;
+  }
   let etatMembre = { abonne: false, abonnementSuspendu: false, abonnementAnnuleNonPaye: false, paiementSuspension: null, statudaConnue: false, statuda: null, datenext: null };
   let promessePrechargementConstructeurFicheParc = null;
 
@@ -203,6 +214,7 @@
     confirmerAnnulationPanier: () => afficherConfirmationSuppressionPanier(),
     viderCache: () => cachePlanningParcLecture.clear(),
     choisirParc: () => ouvrirFiltreParcPlanifier(),
+    retourBoutique: quitterVersBoutiqueAboReza,
     changerMode: actif => {
       if (actif) restaurerPlanningEntreeAboReza?.();
       preparationAbonnementPlanifier = Boolean(actif);
@@ -246,6 +258,9 @@
     });
     const urlEntree = new URL(window.location.href);
     const entreeAboReza = urlEntree.searchParams.get("mode") === "aboreza";
+    if (urlEntree.searchParams.get("origine") === "boutique") {
+      retourBoutiqueAboReza = urlEntree.searchParams.get("vue") === "dfa" ? "dfa" : "abonnement";
+    }
     let observerEntree = null;
     const revelerEntree = () => {
       observerEntree?.disconnect();
@@ -254,8 +269,8 @@
         const url = new URL(window.location.href);
         if (url.searchParams.get("mode") === "aboreza") {
           url.searchParams.delete("mode");
-          if (url.searchParams.get("origine") === "boutique") url.searchParams.delete("origine");
-          url.searchParams.delete("vue");
+          // Conserver l’origine de la boutique jusqu’à la fermeture du tunnel.
+          if (url.searchParams.get("origine") !== "boutique") url.searchParams.delete("vue");
           window.history.replaceState(window.history.state,"",url.href);
         }
       }
@@ -333,14 +348,14 @@
           const resultat = await ouvrirAbonnementDepuisPlanning({ origine: "sans_abonnement" });
           if (resultat === "navigation_paiement") return;
           if (origineBoutique && (resultat === "horaires_fermes" || !window.LCDP_ABOREZA?.actif())) {
-            quitterEntreeAboReza(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#" + vueRetour));
+            quitterEntreeAboReza(destinationRetourBoutiqueAboReza(vueRetour));
             return;
           }
         }
         // Une fermeture explicite hors boutique revient à PLANIFIER ; une
         // régularisation en cours de navigation ne doit pas dévoiler la grille.
         if (origineBoutique && restaurerPlanningEntreeAboReza) {
-          quitterEntreeAboReza(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#" + vueRetour));
+          quitterEntreeAboReza(destinationRetourBoutiqueAboReza(vueRetour));
           return;
         }
         restaurerPlanningEntreeAboReza?.();
@@ -410,7 +425,7 @@
       if (entreeAboReza) {
         await afficherAlerteSuperposee(erreur.message || "Impossible d’ouvrir les abonnements.", "orange", {onAffiche:revelerEntree});
         if (urlEntree.searchParams.get("origine")==="boutique") {
-          quitterEntreeAboReza(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#" + (urlEntree.searchParams.get("vue")==="dfa"?"dfa":"abonnement")));
+          quitterEntreeAboReza(destinationRetourBoutiqueAboReza(retourBoutiqueAboReza));
           return;
         }
         restaurerPlanningEntreeAboReza?.();
