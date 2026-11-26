@@ -345,7 +345,7 @@
             message: "Votre demande d'abonnement doit être validée pour souscrire un abonnement."
           });
         } else {
-          const resultat = await ouvrirAbonnementDepuisPlanning({ origine: "sans_abonnement" });
+          const resultat = await ouvrirAbonnementDepuisPlanning({ origine: origineBoutique && vueRetour === "dfa" ? "bienfaiteur" : "sans_abonnement" });
           if (resultat === "navigation_paiement") return;
           if (origineBoutique && (resultat === "horaires_fermes" || !window.LCDP_ABOREZA?.actif())) {
             quitterEntreeAboReza(destinationRetourBoutiqueAboReza(vueRetour));
@@ -6217,7 +6217,7 @@
   }
 
   // Dialogues CHOIX génériques, affichés exclusivement dans le wrapper PLANIFIER.
-  async function afficherChoixPrivilegesPlanifier({ options = [], confirmation = false } = {}) {
+  async function afficherChoixPrivilegesPlanifier({ options = [], confirmation = false, bienfaiteur = false, selection = [] } = {}) {
     preparerDialoguesPrivileges();
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
@@ -6232,8 +6232,8 @@
         throw new Error('Structure du dialogue CHOIX incomplète.');
       dialogue.dataset.lcdpDialogueContext = 'conteneur';
       dialogue.classList.add('lcdp-aboreza-options-choix', 'lcdp-aboreza-dialogue-transition');
-      titre.textContent = confirmation ? 'Ajouter les privilèges ?' : 'Ajouter des privilèges';
-      secondaire.textContent = confirmation ? 'Ne pas ajouter' : 'Plus tard';
+      titre.textContent = bienfaiteur ? 'Ajouter des extensions' : confirmation ? 'Ajouter les privilèges ?' : 'Ajouter des privilèges';
+      secondaire.textContent = bienfaiteur ? 'Annuler' : confirmation ? 'Ne pas ajouter' : 'Plus tard';
       principal.textContent = 'Ajouter';
       const cases = [];
       if (confirmation) {
@@ -6254,6 +6254,7 @@
           caseOption.type = 'checkbox';
           caseOption.value = option.code;
           caseOption.disabled = option.disponible === false;
+          if (bienfaiteur) caseOption.checked = !caseOption.disabled && selection.includes(option.code);
           const description = document.createElement('span');
           const texte = document.createElement('span');
           texte.textContent = titres[option.code] || option.code;
@@ -6269,15 +6270,16 @@
           cases.push(caseOption);
         }
         message.replaceWith(liste);
-        principal.disabled = true;
-        const actualiser = () => { principal.disabled = !cases.some(c => c.checked); };
+        principal.disabled = !bienfaiteur && !cases.some(c => c.checked);
+        const actualiser = () => { principal.disabled = !bienfaiteur && !cases.some(c => c.checked); };
         cases.forEach(c => c.addEventListener('change', actualiser));
       }
       return await new Promise(resolve => {
         const terminer = valeur => refermerDialoguePrivileges(enveloppe, dialogue, () => resolve(valeur));
-        secondaire.addEventListener('click', () => terminer(confirmation ? 'ne_pas_ajouter' : 'plus_tard'), { once: true });
+        secondaire.addEventListener('click', () => terminer(bienfaiteur ? null : confirmation ? 'ne_pas_ajouter' : 'plus_tard'), { once: true });
         principal.addEventListener('click', () => terminer(confirmation ? 'ajouter' : cases.filter(c => c.checked).map(c => c.value)), { once: true });
-        secondaire.focus();
+        if (bienfaiteur) { titre.tabIndex=-1; titre.focus({preventScroll:true}); }
+        else secondaire.focus();
       });
     } catch (erreur) {
       enveloppe.remove();

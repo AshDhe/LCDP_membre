@@ -988,7 +988,146 @@
       actions.append(reprendre, annuler);
     });
   }
+
+  // Branche bienfaiteur : trois étapes, sans panier de réservation standard.
+  // Les tarifs et la compatibilité sont lus dans les services existants.
+  const euroBienfaiteur = centimes => new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(centimes/100);
+  const centimesBienfaiteur = montant => {
+    const n=Number(montant);
+    if (!Number.isFinite(n)||n<0) throw Error('Tarif indisponible.');
+    return Math.round(n*100);
+  };
+  const nomsExtensionsBienfaiteur = {
+    '+5 DUOMAX': '+5 invités DUO différents',
+    '+5 DUO+': '+5 invités DUO+ par mois',
+    '+2 FAMILLE': '+2 invités FAMILLE'
+  };
+  function ligneBienfaiteur(liste, nom, valeur) {
+    const ligne=elem('div','lcdp-box-card-recaporder__row');
+    ligne.append(elem('dt','',nom),elem('dd','',valeur));
+    liste.append(ligne);
+  }
+  async function lireOffreBienfaiteur(){
+    const jour=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const an=Number(jour.slice(0,4))+1;
+    if(Number(jour.slice(5,7))<7) throw Error('La souscription membre bienfaiteur est ouverte du 1er juillet au 31 décembre.');
+    const dateDebut=an+'-01-01',dateFin=an+'-12-31';
+    const [catalogue,tarifs,extensions]=await Promise.all([
+      api('/catalogue?origine=sans_abonnement'),api('/offres-abonnements'),api('/options?formule=12M')
+    ]);
+    const offre=catalogue.offres?.find(o=>o.formule==='12M' && o.disponible!==false && o.debuts?.includes(dateDebut));
+    if(!offre) throw Error('L’abonnement PASSION d’un an n’est pas compatible avec votre situation actuelle.');
+    const verification=(await api('/verifier-debut','POST',{origine:'sans_abonnement',formule:'12M',dateDebut})).verification;
+    if(!verification?.compatible || verification.dateFin!==dateFin)
+      throw Error(verification?.message || 'Cet abonnement annuel est incompatible avec vos abonnements souscrits.');
+    const tarif=tarifs.offres?.find(o=>o.groupeabo==='1A');
+    if(!tarif || !Number(tarif.prixabottc)) throw Error('Le tarif PASSION est indisponible.');
+    if(!Array.isArray(extensions.options)) throw Error('Le catalogue des extensions est indisponible.');
+    return {dateDebut,dateFin,prix:centimesBienfaiteur(tarif.prixabottc),options:extensions.options.filter(o=>o.disponible!==false),
+      inclusions:verification.inclusions||[]};
+  }
+  function ecranBienfaiteur(etape, titre, description, installer){
+    return modalComposant('dialogue',titre,(objet,finir)=>{
+      const texte=objet.querySelector('[data-lcdp-dialogue-text]');
+      const actions=objet.querySelector('[data-lcdp-dialogue-actions]');
+      const entete=objet.querySelector('[data-lcdp-dialogue-title]');
+      if(!texte||!actions||!entete)throw Error('Écran bienfaiteur incomplet.');
+      entete.before(elem('p','lcdp-text-strong-lead','Étape '+etape+' / 3'));
+      texte.textContent=description;
+      actions.replaceChildren();
+      installer(actions,finir);
+    });
+  }
+  async function demarrerBienfaiteur(){
+    if(occupe)return;
+    occupe=true;
+    protegerRetourNavigateur();
+    try{
+      afficherAttenteFormules('Vérification de votre éligibilité');
+      if(!await verifierHorairesNouvelleCommande())return 'horaires_fermes';
+      await chargerTemplates();
+      const offre=await lireOffreBienfaiteur();
+      let selection=[];
+      let etape=1;
+      const dfa=15000;
+      const extensions=()=>offre.options.filter(o=>selection.includes(o.code));
+      const transition=(finir,valeur)=>{afficherAttenteFormules('Chargement de l’étape');finir(valeur);};
+      while(etape){
+        if(etape===1){
+          const suite=await ecranBienfaiteur(1,'Souscription PASSION un an','Du '+dateLibelle(offre.dateDebut)+' au '+dateLibelle(offre.dateFin),(actions,finir)=>{
+            const prix=elem('p','lcdp-text-strong-lead',euroBienfaiteur(offre.prix)+' TTC (TVA 10 %)');actions.append(prix);
+            // Les extensions offertes spécifiques sont à configurer ; ne pas
+            // inventer un avantage ni transformer une option payante en cadeau.
+            const offertes=elem('p','lcdp-box-dialogue-bouton__text','Extensions offertes : détail non configuré.');
+            actions.append(offertes);
+            actions.append(lienPrivilegesAbonnement('12M'));
+            const liste=elem('dl','lcdp-box-card-recaporder__list');
+            const afficherExtensions=()=>{
+              liste.replaceChildren();
+              for(const o of extensions())ligneBienfaiteur(liste,nomsExtensionsBienfaiteur[o.code]||o.code,euroBienfaiteur(centimesBienfaiteur(o.totalTtc))+' TTC');
+            };
+            const ajouter=bouton('Ajouter des extensions');
+            ajouter.addEventListener('click',async()=>{
+              ajouter.disabled=true;
+              try{
+                const choix=await bridge()?.choisirPrivileges?.({bienfaiteur:true,options:offre.options,selection});
+                if(Array.isArray(choix)){selection=choix.filter(code=>offre.options.some(o=>o.code===code));afficherExtensions();}
+              }catch(e){await bridge()?.informer?.(e.message||'Extensions indisponibles.',{titre:'Information',libelleBouton:'Fermer'});}
+              finally{ajouter.disabled=false;}
+            });
+            actions.append(ajouter,liste);afficherExtensions();
+            const suivant=bouton('Suivant',true),annuler=bouton('Annuler');
+            suivant.addEventListener('click',()=>transition(finir,'suivant'));
+            annuler.addEventListener('click',()=>finir(null));
+            actions.append(suivant,annuler);
+          });
+          etape=suite==='suivant'?2:0;
+        }else if(etape===2){
+          const suite=await ecranBienfaiteur(2,'Dotation financière annuelle','Contribution financière annuelle en faveur des parcs du réseau.',(actions,finir)=>{
+            actions.append(elem('p','lcdp-text-strong-lead',euroBienfaiteur(dfa)));
+            const suivant=bouton('Suivant',true),retour=bouton('Retour');
+            suivant.addEventListener('click',()=>transition(finir,'suivant'));
+            retour.addEventListener('click',()=>transition(finir,'retour'));
+            actions.append(suivant,retour);
+          });
+          etape=suite==='suivant'?3:suite==='retour'?1:0;
+        }else{
+          const marchand=offre.prix+extensions().reduce((s,o)=>s+centimesBienfaiteur(o.totalTtc),0);
+          const ht=Math.round(marchand*100/110),tva=marchand-ht,total=marchand+dfa;
+          const suite=await ecranBienfaiteur(3,'Récapitulatif de la souscription','',(actions,finir)=>{
+            const liste=elem('dl','lcdp-box-card-recaporder__list');
+            ligneBienfaiteur(liste,'Abonnement','PASSION un an');
+            ligneBienfaiteur(liste,'Tarif abonnement HT',euroBienfaiteur(Math.round(offre.prix*100/110)));
+            ligneBienfaiteur(liste,'Tarif abonnement TTC',euroBienfaiteur(offre.prix));
+            for(const o of extensions())ligneBienfaiteur(liste,nomsExtensionsBienfaiteur[o.code]||o.code,euroBienfaiteur(centimesBienfaiteur(o.totalTtc))+' TTC');
+            ligneBienfaiteur(liste,'Total marchand TTC',euroBienfaiteur(marchand));
+            ligneBienfaiteur(liste,'TVA (10 %)',euroBienfaiteur(tva));
+            ligneBienfaiteur(liste,'Total marchand HT',euroBienfaiteur(ht));
+            actions.append(liste);
+            const dotation=elem('dl','lcdp-box-card-recaporder__list');
+            ligneBienfaiteur(dotation,'Dotation financière annuelle',euroBienfaiteur(dfa));
+            ligneBienfaiteur(dotation,'Total à payer',euroBienfaiteur(total));
+            actions.append(dotation,elem('p','lcdp-text-strong-lead','Paiement en une fois'));
+            const cgv=elem('a','lcdp-link-secondary','CGV');
+            cgv.href=String(cfg.cgvUrl||cfg.CGV_URL||'').trim() || (typeof window.LCDP_urlMembre==='function'?window.LCDP_urlMembre('/ESPACE-MEMBRE/cgv-lcdp.html'):'./cgv-lcdp.html');
+            cgv.target='_blank';cgv.rel='noopener noreferrer';actions.append(cgv);
+            const payer=bouton('Payer '+euroBienfaiteur(total),true);
+            // Interdiction de créer une commande standard ou une DFA isolée.
+            // Le paiement unique nécessite la branche serveur bienfaiteur dédiée.
+            payer.disabled=true;
+            actions.append(payer,elem('p','lcdp-box-dialogue-bouton__text','Le paiement bienfaiteur n’est pas encore disponible.'));
+            const retour=bouton('Retour');retour.addEventListener('click',()=>transition(finir,'retour'));actions.append(retour);
+          });
+          etape=suite==='retour'?2:0;
+        }
+      }
+    }catch(e){
+      await bridge()?.informer?.(e.message||'Le parcours membre bienfaiteur est indisponible.',{titre:'Information',libelleBouton:'Fermer',onAffiche:masquerAttenteFormules});
+    }finally{masquerAttenteFormules();occupe=false;}
+  }
+
   async function demarrer(contexte={}){
+    if(contexte.origine==='bienfaiteur')return demarrerBienfaiteur();
     if(!['sans_abonnement','jour_hors_couverture','horizon'].includes(contexte.origine)){
       await bridge()?.alerter?.('Cette entrée ABO-RÉZA n’est pas encore raccordée.');return;
     }
