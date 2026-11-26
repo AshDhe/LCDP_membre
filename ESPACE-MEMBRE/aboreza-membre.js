@@ -1044,12 +1044,13 @@
       const parametres=new URLSearchParams({origine:contexte.origine});
       if(contexte.origine==='jour_hors_couverture')parametres.set('dateCible',contexte.date||'');
       if(contexte.origine==='horizon')parametres.set('moisCible',contexte.moisCible||'');
-      const offres=(await api('/catalogue?'+parametres.toString())).offres;
+      const catalogue=await api('/catalogue?'+parametres.toString());
+      const offres=catalogue.offres;
       optionsChoisies.clear();
       masquerAttenteFormules();
       let demande=null;
       let inclureExistants=false;
-      if(['jour_hors_couverture','horizon'].includes(contexte.origine)){
+      if(catalogue.controleCompatibilite===true || ['jour_hors_couverture','horizon'].includes(contexte.origine)){
         // K2/K3 : même catalogue et même écran de démarrage, filtrages distincts.
         while(!demande){
           const formule=await choisirFormuleCatalogue(offres);
