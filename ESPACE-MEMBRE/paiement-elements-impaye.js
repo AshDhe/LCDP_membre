@@ -20,7 +20,7 @@
   }
   function preparer() {
     if(!chargement)chargement=Promise.all([
-      ressource("link",objet("/CSSBASE/lcdp-paiement-elements.css?v=20261126-v1")),
+      ressource("link",objet("/CSSBASE/lcdp-paiement-elements.css?v=20261126-scroll-v2")),
       ressource("link",objet("/CSSBASE/lcdp-attente.css?v=20261126-v1")),
       typeof window.Stripe==="function"?Promise.resolve():ressource("script","https://js.stripe.com/endive/stripe.js")
     ]).catch(e=>{chargement=null;throw e;});
@@ -55,6 +55,9 @@
       options.quitter?.();
     });
     slot.replaceChildren(template.content);
+    // Le contenu principal est le seul conteneur défilant du formulaire.
+    const main=slot.closest("main, .lcdp-site-main");
+    if(main)main.scrollTop=0;
     try {
       if(typeof window.Stripe!=="function")throw Error("Le service sécurisé Stripe ne s’est pas chargé.");
       const stripe=window.Stripe(cle,{locale:"fr"});
