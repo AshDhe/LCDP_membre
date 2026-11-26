@@ -1204,6 +1204,7 @@
       remboursement.querySelector(":scope > .lcdp-title-section").textContent="IBAN de remboursement";
       remboursement.insertAdjacentElement("beforebegin",adresse);
     }
+    ajouterBlocDfaCompte(fields, adresse);
     // Sécurité du compte, puis fermeture volontaire en dernière rubrique.
     const securite = fields.querySelector('[data-lcdp-compte-section="securite"]');
     if (securite) fields.appendChild(securite);
@@ -1537,6 +1538,116 @@
       afficherFermetureCompte(compteMembreActuel);
       parcours.fermer();
       if (bouton?.isConnected && !bouton.hidden && !bouton.disabled) bouton.focus();
+    }
+  }
+
+  // Ma DFA : même présentation et compteur dépliable que l’historique des abonnements.
+  let versionChargementDfaCompte = 0;
+  function ajouterBlocDfaCompte(fields, adresse) {
+    if (fields.querySelector("#lcdp-compte-dfa")) return;
+    const section = document.createElement("section");
+    section.id = "lcdp-compte-dfa";
+    section.className = "lcdp-mon-compte-section";
+    section.dataset.lcdpCompteSection = "dfa";
+    section.setAttribute("aria-labelledby","lcdp-mon-compte-titre-dfa");
+    section.innerHTML =
+      '<h2 id="lcdp-mon-compte-titre-dfa" class="lcdp-title-section">Ma DFA</h2>' +
+      '<div class="lcdp-compte-relations">' +
+        '<div class="lcdp-compte-relations__ligne">' +
+          '<div class="lcdp-compte-relations__libelle"><span class="lcdp-box-champ-formulaire__label">Dernière DFA</span><span id="lcdp-compte-dfa-resume" class="lcdp-compte-placeholder-da">–</span></div>' +
+          '<button type="button" id="lcdp-compte-dfa-compteur" class="lcdp-compte-relations__nombre" aria-expanded="false" aria-controls="lcdp-compte-dfa-liste" aria-label="Afficher l’historique des DFA" disabled><span id="lcdp-compte-dfa-nombre">–</span></button>' +
+          '<a id="lcdp-compte-dfa-attestation" class="lcdp-ui-badge lcdp-ui-badge--action" target="_blank" rel="noopener noreferrer" hidden>Attestation</a>' +
+        '</div>' +
+        '<div id="lcdp-compte-dfa-liste" class="lcdp-compte-relations__liste" aria-live="polite" hidden></div>' +
+      '</div>';
+    if (adresse) fields.insertBefore(section, adresse);
+    else {
+      const club = fields.querySelector('[data-lcdp-compte-section="participation"]');
+      if (club) club.insertAdjacentElement("afterend",section);
+      else fields.appendChild(section);
+    }
+    const bouton=section.querySelector("#lcdp-compte-dfa-compteur");
+    const liste=section.querySelector("#lcdp-compte-dfa-liste");
+    bouton.addEventListener("click",()=>{
+      if(bouton.disabled)return;
+      liste.hidden=!liste.hidden;
+      bouton.setAttribute("aria-expanded",String(!liste.hidden));
+    });
+  }
+
+  function libelleDfaCompte(dfa) {
+    const date = new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",day:"2-digit",month:"2-digit",year:"numeric"}).format(new Date(dfa.datepaiement));
+    const montant = new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR"}).format(dfa.montantCentimes/100);
+    return date + " · " + montant + (dfa.modeTest ? " (test)" : "");
+  }
+
+  function raccorderAttestationDfaCompte(lien, dfa) {
+    lien.hidden = !dfa?.attestationDisponible || dfa.modeTest;
+    lien.removeAttribute("href");
+    if (!lien.hidden) {
+      lien.href = ENDPOINT_MON_COMPTE_MEMBRE + "/dfa/attestation?iddfa=" + encodeURIComponent(dfa.iddfa);
+      lien.setAttribute("aria-label","Consulter l’attestation de versement du " + libelleDfaCompte(dfa));
+    }
+  }
+
+  async function actualiserBlocDfaCompte() {
+    const section = document.getElementById("lcdp-compte-dfa");
+    if (!section) return;
+    const version = ++versionChargementDfaCompte;
+    const resume=section.querySelector("#lcdp-compte-dfa-resume");
+    const bouton=section.querySelector("#lcdp-compte-dfa-compteur");
+    const nombre=section.querySelector("#lcdp-compte-dfa-nombre");
+    const liste=section.querySelector("#lcdp-compte-dfa-liste");
+    const attestation=section.querySelector("#lcdp-compte-dfa-attestation");
+    resume.textContent="Chargement…";
+    resume.classList.add("lcdp-compte-placeholder-da");
+    nombre.textContent="–";
+    bouton.disabled=true;
+    bouton.setAttribute("aria-expanded","false");
+    liste.hidden=true;
+    liste.replaceChildren();
+    raccorderAttestationDfaCompte(attestation,null);
+    try {
+      if(!ENDPOINT_MON_COMPTE_MEMBRE)throw Error("Service DFA non configuré.");
+      const r=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/dfa",{credentials:"include",cache:"no-store",signal:AbortSignal.timeout(15000),headers:{Accept:"application/json"}});
+      if(r.status===401){redirigerConnexionMembre("inactive");return;}
+      const d=await r.json().catch(()=>null);
+      if(!r.ok||d?.ok!==true||!Array.isArray(d.dotations))throw Error(d?.message||"Historique DFA indisponible.");
+      if(version!==versionChargementDfaCompte)return;
+      const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if(d.dotations.some(x=>!uuid.test(x?.iddfa||"")||!Number.isFinite(Date.parse(x.datepaiement))||!Number.isSafeInteger(x.montantCentimes)||typeof x.modeTest!=="boolean"||typeof x.attestationDisponible!=="boolean"))throw Error("Historique DFA invalide.");
+      const dotations=d.dotations.slice().sort((a,b)=>Date.parse(b.datepaiement)-Date.parse(a.datepaiement)||b.iddfa.localeCompare(a.iddfa));
+      if(!dotations.length){resume.textContent="–";return;}
+      resume.classList.remove("lcdp-compte-placeholder-da");
+      resume.textContent=libelleDfaCompte(dotations[0]);
+      nombre.textContent=libelleCompteurCompte(dotations.length);
+      bouton.disabled=false;
+      raccorderAttestationDfaCompte(attestation,dotations[0]);
+      const ul=document.createElement("ul");
+      ul.className="lcdp-compte-relations__personnes";
+      for(const dfa of dotations){
+        const li=document.createElement("li"),ligne=document.createElement("div"),texte=document.createElement("span");
+        ligne.className="lcdp-compte-relations__ligne";
+        texte.className="lcdp-compte-relations__nom";
+        texte.textContent=libelleDfaCompte(dfa);
+        ligne.appendChild(texte);
+        const lien=document.createElement("a");
+        lien.className="lcdp-ui-badge lcdp-ui-badge--action";
+        lien.textContent="Attestation";lien.target="_blank";lien.rel="noopener noreferrer";
+        raccorderAttestationDfaCompte(lien,dfa);
+        if(!lien.hidden)ligne.appendChild(lien);
+        else if(!dfa.modeTest){
+          const detail=document.createElement("span");detail.className="lcdp-compte-relations__detail";detail.textContent="Attestation indisponible";ligne.appendChild(detail);
+        }
+        li.appendChild(ligne);ul.appendChild(li);
+      }
+      liste.replaceChildren(ul);
+    } catch (error) {
+      if(version!==versionChargementDfaCompte)return;
+      console.error("Historique DFA indisponible :",error);
+      resume.textContent="Impossible de charger les DFA.";
+      nombre.textContent="–";
+      bouton.disabled=true;
     }
   }
 
@@ -1880,7 +1991,7 @@
     const titreEquipement=document.createElement("h3");
     titreEquipement.id="lcdp-compte-equipements-titre";
     titreEquipement.className="lcdp-title-section lcdp-compte-equipements__titre";
-    titreEquipement.textContent="ÉQUIPEMENT DE PRÉSENCE";
+    titreEquipement.textContent="ÉQUIPEMENT D’ACCÈS";
     equipement.appendChild(titreEquipement);
     const telephone=document.getElementById("champ-telephone-membre")?.closest("[data-lcdp-box-champ-formulaire]");
     if(telephone)equipement.appendChild(telephone);
@@ -2810,6 +2921,7 @@
       chargerSelfie(),
       chargerSelfie("duoday"),
       chargerEquipementsPresence(),
+      actualiserBlocDfaCompte(),
       actualiserBurgerMembre(compteIndiqueAbonne(compte))
     ]);
   }
