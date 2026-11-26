@@ -1008,23 +1008,24 @@
     liste.append(ligne);
   }
   async function lireOffreBienfaiteur(){
-    const jour=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-    const an=Number(jour.slice(0,4))+1;
-    if(Number(jour.slice(5,7))<7) throw Error('La souscription membre bienfaiteur est ouverte du 1er juillet au 31 décembre.');
-    const dateDebut=an+'-01-01',dateFin=an+'-12-31';
-    const [catalogue,tarifs,extensions]=await Promise.all([
-      api('/catalogue?origine=sans_abonnement'),api('/offres-abonnements'),api('/options?formule=12M')
-    ]);
-    const offre=catalogue.offres?.find(o=>o.formule==='12M' && o.disponible!==false && o.debuts?.includes(dateDebut));
-    if(!offre) throw Error('L’abonnement PASSION d’un an n’est pas compatible avec votre situation actuelle.');
-    const verification=(await api('/verifier-debut','POST',{origine:'sans_abonnement',formule:'12M',dateDebut})).verification;
-    if(!verification?.compatible || verification.dateFin!==dateFin)
-      throw Error(verification?.message || 'Cet abonnement annuel est incompatible avec vos abonnements souscrits.');
-    const tarif=tarifs.offres?.find(o=>o.groupeabo==='1A');
-    if(!tarif || !Number(tarif.prixabottc)) throw Error('Le tarif PASSION est indisponible.');
-    if(!Array.isArray(extensions.options)) throw Error('Le catalogue des extensions est indisponible.');
-    return {dateDebut,dateFin,prix:centimesBienfaiteur(tarif.prixabottc),options:extensions.options.filter(o=>o.disponible!==false),
-      inclusions:verification.inclusions||[]};
+    const reponse=await api('/bienfaiteur');
+    const q=reponse.reprise||reponse.devis;
+    if(!q||q.dfaCentimes!==15000||q.tauxTva!==10||Number(q.prixAbonnementTtc)!==840||!Array.isArray(q.options)||!/^\d{4}-01-01$/.test(q.dateDebut)||q.dateFin!==q.dateDebut.slice(0,4)+'-12-31')
+      throw Error('L’offre bienfaiteur est indisponible.');
+    return {dateDebut:q.dateDebut,dateFin:q.dateFin,prix:centimesBienfaiteur(q.prixAbonnementTtc),options:q.options.filter(o=>o.disponible!==false),dfa:q.dfaCentimes,reprise:reponse.reprise||null};
+  }
+  async function payerBienfaiteur(demandeId,options,totalCentimes){
+    const endpoint=String(cfg.workerPaiementUrl||cfg.WORKER_PAIEMENT_URL||(typeof cfg.apiUrl==='function'?cfg.apiUrl('paiement-api'):'https://paiement-api.lacleduparc.fr')).replace(/\/+$/,'');
+    const r=await fetch(endpoint+'/bienfaiteur/valider',{method:'POST',credentials:'include',cache:'no-store',signal:AbortSignal.timeout(25000),headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify({demandeId,options,totalCentimes})});
+    const v=await r.json().catch(()=>null);
+    if(!r.ok||v?.ok!==true||v.commande?.idpanier!==demandeId)throw Error(v?.message||'Impossible de préparer le paiement bienfaiteur.');
+    if(v.termine&&v.commande?.statut==='paye'){
+      window.location.assign(window.LCDP_urlMembre('/ESPACE-MEMBRE/accueil-membre.html'));return;
+    }
+    const url=new URL(v.paymentPageUrl||'',window.location.href);
+    const attendue=new URL(window.LCDP_urlMembre('/ESPACE-MEMBRE/paiement-stripe-membre.html'),window.location.href);
+    if(url.origin!==attendue.origin||url.pathname!==attendue.pathname||url.searchParams.get('idpanier')!==demandeId)throw Error('Adresse de paiement inattendue.');
+    window.location.assign(url.href);
   }
   function ecranBienfaiteur(etape, titre, description, installer){
     return modalComposant('dialogue',titre,(objet,finir)=>{
@@ -1041,15 +1042,16 @@
   async function demarrerBienfaiteur(){
     if(occupe)return;
     occupe=true;
+    let navigation=false;
     protegerRetourNavigateur();
     try{
       afficherAttenteFormules('Vérification de votre éligibilité');
-      if(!await verifierHorairesNouvelleCommande())return 'horaires_fermes';
       await chargerTemplates();
       const offre=await lireOffreBienfaiteur();
-      let selection=[];
-      let etape=1;
-      const dfa=15000;
+      let selection=offre.reprise ? offre.options.map(o=>o.code) : [];
+      let etape=offre.reprise ? 3 : 1;
+      const demandeId=offre.reprise?.idpanier||crypto.randomUUID();
+      const dfa=offre.dfa;
       const extensions=()=>offre.options.filter(o=>selection.includes(o.code));
       const transition=(finir,valeur)=>{afficherAttenteFormules('Chargement de l’étape');finir(valeur);};
       while(etape){
@@ -1112,18 +1114,31 @@
             cgv.href=String(cfg.cgvUrl||cfg.CGV_URL||'').trim() || (typeof window.LCDP_urlMembre==='function'?window.LCDP_urlMembre('/ESPACE-MEMBRE/cgv-lcdp.html'):'./cgv-lcdp.html');
             cgv.target='_blank';cgv.rel='noopener noreferrer';actions.append(cgv);
             const payer=bouton('Payer '+euroBienfaiteur(total),true);
-            // Interdiction de créer une commande standard ou une DFA isolée.
-            // Le paiement unique nécessite la branche serveur bienfaiteur dédiée.
-            payer.disabled=true;
-            actions.append(payer,elem('p','lcdp-box-dialogue-bouton__text','Le paiement bienfaiteur n’est pas encore disponible.'));
-            const retour=bouton('Retour');retour.addEventListener('click',()=>transition(finir,'retour'));actions.append(retour);
+            const retour=bouton(offre.reprise?'Fermer':'Retour');
+            retour.addEventListener('click',()=>offre.reprise?finir(null):transition(finir,'retour'));
+            payer.addEventListener('click',async()=>{
+              if(payer.disabled)return;
+              payer.disabled=true;retour.disabled=true;
+              afficherAttenteFormules('Préparation du paiement sécurisé');
+              try{
+                if(offre.reprise && offre.reprise.totalCentimes!==total)throw Error('Montant de la commande à vérifier.');
+                await payerBienfaiteur(demandeId,selection,total);
+                navigation=true;finir('navigation');
+              }catch(e){
+                await bridge()?.informer?.(e.message||'Paiement indisponible.',{titre:'Information',libelleBouton:'Fermer',onAffiche:masquerAttenteFormules});
+              }finally{
+                if(!navigation){masquerAttenteFormules();payer.disabled=false;retour.disabled=false;}
+              }
+            });
+            actions.append(payer,retour);
           });
+          if(suite==='navigation')return 'navigation_paiement';
           etape=suite==='retour'?2:0;
         }
       }
     }catch(e){
       await bridge()?.informer?.(e.message||'Le parcours membre bienfaiteur est indisponible.',{titre:'Information',libelleBouton:'Fermer',onAffiche:masquerAttenteFormules});
-    }finally{masquerAttenteFormules();occupe=false;}
+    }finally{if(!navigation)masquerAttenteFormules();occupe=false;}
   }
 
   async function demarrer(contexte={}){
@@ -1140,6 +1155,10 @@
       await chargerTemplates();
       const enCours=(await api('/panier')).panier;
       if(enCours){
+        if(enCours.origine==='bienfaiteur'){
+          await bridge()?.informer?.('Une commande bienfaiteur est en cours. Reprenez-la depuis la rubrique Devenir membre bienfaiteur de la boutique.',{titre:'Commande en cours',libelleBouton:'Fermer',onAffiche:masquerAttenteFormules});
+          return;
+        }
         const decision=await reprendreOuRecommencer(enCours);
         if(decision==='reprendre'){
           if(enCours.statut==='transmis_paiement'){

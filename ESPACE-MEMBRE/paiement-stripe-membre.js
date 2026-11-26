@@ -135,6 +135,19 @@
     const prixAvantRemise = montantComptant !== null && remise > 0
       ? Math.round((montantComptant + remise)*100)/100
       : montantComptant;
+    if(Number(devis.dfaCentimes)===15000){
+      if(Number(commande.dfaCentimes)!==15000||Math.round((Number(devis.montantMarchandTtc)+150)*100)!==Math.round(Number(commande.premiereEcheanceTtc)*100))throw new Error('Ventilation bienfaiteur incohérente.');
+      ajouterLigneDetail('Abonnement','PASSION un an');
+      ajouterLigneDetail('Début',dateFr(panier.dateDebut));ajouterLigneDetail('Fin',dateFr(panier.dateFin));
+      ajouterLigneDetail('Prix abonnement TTC',euros(devis.prixAbonnementTtc));
+      for(const option of devis.options||[])ajouterLigneDetail('Extension '+String(option.code||''),euros(option.totalTtc));
+      ajouterLigneDetail('Total marchand TTC',euros(devis.montantMarchandTtc),true);
+      ajouterLigneDetail('Dotation financière annuelle',euros(150));
+      ajouterLigneDetail('Total à payer',euros(commande.premiereEcheanceTtc),true);
+      statutDetails.textContent='Paiement en une fois. La DFA est distincte du prix de l’abonnement.';
+      el('description-commande').textContent='Membre bienfaiteur · Conditions de paiement consultables ci-dessous.';
+      return {panier,devis,commande};
+    }
     ajouterLigneDetail('Abonnement', String(panier.formule || 'Non renseigné'));
     if (panier.dateDebut) ajouterLigneDetail('Début', dateFr(panier.dateDebut));
     if (panier.dateFin) ajouterLigneDetail('Fin', dateFr(panier.dateFin));
@@ -203,7 +216,7 @@
     el('environnement-test').hidden = !d.publishableKey.startsWith('pk_test_');
     el('reference-commande').textContent = d.orderid || '—';
     if (!el('description-commande').textContent.includes('Conditions de paiement'))
-      el('description-commande').textContent = d.formule ? 'Abonnement ' + d.formule + ' · Échéance à payer' : 'Échéance de votre commande';
+      el('description-commande').textContent = Number(d.dfaCentimes)===15000 ? 'Membre bienfaiteur · Paiement en une fois' : d.formule ? 'Abonnement ' + d.formule + ' · Échéance à payer' : 'Échéance de votre commande';
     const stripe = window.Stripe(d.publishableKey, {locale:'fr'});
     const checkout = stripe.initCheckoutElementsSdk({
       clientSecret:d.clientSecret,
