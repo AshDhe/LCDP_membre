@@ -1995,19 +1995,11 @@
   }
 
   async function ouvrirDialogueImpayePlanifier(message) {
-    if (!window.LCDP_DialogueImpaye) {
-      await new Promise((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = construireUrlObjet("/JSBASE/dialogue-impaye.js?v=20261126-v1");
-        script.onload = resolve;
-        script.onerror = () => { script.remove(); reject(Error("Objet de régularisation indisponible.")); };
-        document.head.appendChild(script);
-      });
-    }
-    return window.LCDP_DialogueImpaye.ouvrir({
-      hote: hoteDialoguesPlanifier(), message,
-      payer: () => gererPaiementSuspensionMembre(etatMembre)
+    const choix = await afficherDialogueInformationPlanifier({
+      titre: "Abonnement impayé", message, libelleAction: "Payer",
+      valeurAction: "payer", profil: "abonnement-impaye", annulable: true
     });
+    if (choix === "payer") await gererPaiementSuspensionMembre(etatMembre);
   }
 
   async function gererPaiementSuspensionMembre(etat) {
@@ -6207,14 +6199,14 @@
     }
   }
 
-  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null, classe = "", lignes = null, annulable = false, actions = null }) {
+  async function afficherDialogueInformationPlanifier({ titre: libelleTitre, message: contenu, fermetureLibre = false, libelleAction = "Fermer", valeurAction = "fermer", onAffiche = null, classe = "", lignes = null, annulable = false, actions = null, profil = "information" }) {
     const enveloppe = document.createElement('div');
     hoteDialoguesPlanifier().appendChild(enveloppe);
     try {
       enveloppe.appendChild(classe === 'lcdp-aboreza-privileges-information' || classe === 'lcdp-aboreza-confirmation-information'
         ? await modeleDialoguePrivileges('information')
-        : await chargerFragmentObjet('/HTMLBASE/02-dialogue-reference-information.html'));
-      const dialogue = enveloppe.querySelector('[data-lcdp-dialogue-reference="information"]');
+        : await chargerFragmentObjet('/HTMLBASE/02-dialogue-reference-' + profil + '.html'));
+      const dialogue = enveloppe.querySelector('[data-lcdp-dialogue-reference="' + profil + '"]');
       const titre = enveloppe.querySelector('[data-lcdp-dialogue-titre]');
       const message = enveloppe.querySelector('[data-lcdp-dialogue-message]');
       const fermer = enveloppe.querySelector('[data-lcdp-dialogue-action="compris"]');
