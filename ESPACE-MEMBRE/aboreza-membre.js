@@ -1032,7 +1032,7 @@
         if(decision!=='recommencer')return;
         masquerAttenteFormules();
         // Ne pas supprimer un panier existant si une nouvelle commande est interdite.
-        if (!await verifierHorairesNouvelleCommande()) return;
+        if (!await verifierHorairesNouvelleCommande()) return 'horaires_fermes';
         // La commande n'est annulée qu'après validation explicite du dialogue SUPPRESSION.
         const annulationConfirmee = await bridge()?.confirmerAnnulationPanier?.();
         if(annulationConfirmee !== true)return;
@@ -1040,7 +1040,7 @@
         await api('/annuler','POST',{idpanier:enCours.idpanier});
       }
       masquerAttenteFormules();
-      if (!await verifierHorairesNouvelleCommande()) return;
+      if (!await verifierHorairesNouvelleCommande()) return 'horaires_fermes';
       const parametres=new URLSearchParams({origine:contexte.origine});
       if(contexte.origine==='jour_hors_couverture')parametres.set('dateCible',contexte.date||'');
       if(contexte.origine==='horizon')parametres.set('moisCible',contexte.moisCible||'');
@@ -1056,7 +1056,7 @@
           const formule=await choisirFormuleCatalogue(offres);
           if(!formule)return;
           // Recontrôler au moment exact de confirmer l'abonnement.
-          if (!await verifierHorairesNouvelleCommande()) return;
+          if (!await verifierHorairesNouvelleCommande()) return 'horaires_fermes';
           const offre=offres.find(o=>o.formule===formule);
           while(!demande){
             const dateDebut=await choisirDateDemarrage(offre);
@@ -1077,7 +1077,7 @@
           const formule=await choisirFormuleCatalogue(offres);
           if(!formule)return;
           // Recontrôler au moment exact de confirmer l'abonnement.
-          if (!await verifierHorairesNouvelleCommande()) return;
+          if (!await verifierHorairesNouvelleCommande()) return 'horaires_fermes';
           const offre=offres.find(o=>o.formule===formule);
           const dateDebut=await choisirDateDemarrage(offre);
           if(!dateDebut)continue;
@@ -1085,7 +1085,7 @@
         }
       }
       // Pendant le POST, le planning ne doit jamais réapparaître entre deux étapes.
-      if (!await verifierHorairesNouvelleCommande()) return;
+      if (!await verifierHorairesNouvelleCommande()) return 'horaires_fermes';
       afficherAttenteFormules('Préparation de vos accès…');
       const nouveau=(await api('/panier','POST',{
         ...demande,origine:contexte.origine,inclureExistants,
