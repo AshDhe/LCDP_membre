@@ -37,8 +37,8 @@
         document.head.appendChild(lien);
       });
       chargementCSS = Promise.all([
-        charger("/CSSBASE/lcdp-lightbox-convergence.css?v=20261126-impayes-objet-v1"),
-        charger("/CSSBASE/lcdp-paiements-en-attente.css?v=20261126-v1")
+        charger("/CSSBASE/lcdp-lightbox-convergence.css?v=20261126-impayes-objet-v2"),
+        charger("/CSSBASE/lcdp-paiements-en-attente.css?v=20261126-v2")
       ]).catch(erreur=>{chargementCSS=null;throw erreur;});
     }
     return chargementCSS;
@@ -127,7 +127,7 @@
   const vraie=v=>v===true||v==="true"||v===1||v==="1";
   function paiementSuspensionDelaiDepasse(p){return vraie(p?.delaiPaiementDepasse)||vraie(p?.abonnementAnnuleNonPaye);}
   function messageDelaiPaiementDepasse(){return "Le règlement de cette échéance est indisponible.";}
-  function formaterDatePaiementSuspension(v){if(!v)return "Non renseignée";const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString("fr-FR",{timeZone:"Europe/Paris"});}
+  function formaterDatePaiementSuspension(v){if(!v)return "Non renseignée";const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString("fr-FR",{timeZone:"Europe/Paris",day:"numeric",month:"long",year:"numeric"});}
   function formaterMontantPaiementSuspension(v){if(v===null||v===undefined||v==="")return "Montant non renseigné";const n=Number(String(v).replace(",","."));return Number.isFinite(n)?n.toLocaleString("fr-FR",{style:"currency",currency:"EUR"}):"Montant non renseigné";}
   function dateParis(v) {
     if (!v) return "";
@@ -185,27 +185,33 @@
   }
 
   async function afficherEcheancesPaiementSuspension(groupes,options={}) {
-    const parcours=ouvrirParcours("dialogue-paiement-impaye","Paiements en attente",options);
+    const parcours=ouvrirParcours("dialogue-paiement-impaye","Paiement en attente",options);
     if(!parcours)return;
     const slot=parcours.contenu;
     function afficherListe(){
       if(!slot.isConnected)return;
       const liste=document.createElement("section");
       liste.setAttribute("data-lcdp-impaye-liste","");
-      liste.setAttribute("aria-label","Paiements en attente");
+      liste.setAttribute("aria-label","Paiement en attente");
       const titre=document.createElement("h1");
       titre.className="lcdp-impaye-titre";
-      titre.textContent="Paiements en attente";
+      titre.textContent="Paiement en attente";
       const texte=document.createElement("p");
       const nb=groupes.reduce((n,g)=>n+g.echeances.length,0);
       texte.className="lcdp-impaye-intro";
-      texte.textContent=nb===0?"Aucune échéance non payée.":nb+" échéance"+(nb>1?"s":"")+" à régulariser. Sélectionnez le paiement souhaité.";
+      texte.textContent=nb===0?"Aucune échéance non payée.":nb+" échéance"+(nb>1?"s":"")+" à régulariser.";
       liste.append(titre,texte);
       for(const paiement of groupes){
         const bloc=document.createElement("section");
         bloc.className="lcdp-impaye-groupe";
-        const entete=document.createElement("h2");
-        entete.textContent=[paiement.typabo||paiement.formule||"Abonnement",paiement.orderid?"Commande "+paiement.orderid:"Commande non renseignée"].join(" — ");
+        const entete=document.createElement("header");
+        entete.className="lcdp-impaye-entete";
+        const abo=document.createElement("h2");
+        abo.textContent=paiement.typabo||paiement.formule||"Abonnement";
+        const commande=document.createElement("p");
+        commande.className="lcdp-impaye-entete__commande";
+        commande.textContent=paiement.orderid?"Commande "+paiement.orderid:"Commande non renseignée";
+        entete.append(abo,commande);
         bloc.appendChild(entete);
         const lignes=document.createElement("ul");
         lignes.className="lcdp-impaye-lignes";
@@ -214,13 +220,13 @@
           ligne.className="lcdp-impaye-ligne";
           const infos=document.createElement("div");
           const nom=document.createElement("strong");
-          nom.textContent="Échéance "+echeance.numero+" du "+formaterDatePaiementSuspension(echeance.date);
+          nom.textContent=echeance.date?"Impayé dû le "+formaterDatePaiementSuspension(echeance.date):"Impayé — date non renseignée";
           const montant=document.createElement("span");
           montant.textContent=formaterMontantPaiementSuspension(echeance.montant)+(echeance.montant!==null&&echeance.montant!==undefined&&echeance.montant!==""?" TTC":"");
           infos.append(nom,montant);
           const bouton=document.createElement("button");
           bouton.type="button";
-          bouton.className="lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--principal";
+          bouton.className="lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--orange";
           bouton.textContent="Payer";
           bouton.disabled=!paiement.orderid||paiementSuspensionDelaiDepasse(paiement);
           if(bouton.disabled)bouton.textContent="Indisponible";
@@ -265,7 +271,7 @@
       await retourListe();
       return;
     }
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-main-v15");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-main-v16");
     if (typeof window.LCDP_monterPaiementCB !== "function") throw Error("Service de paiement indisponible.");
     await window.LCDP_monterPaiementCB(slot,{
       orderid,echeance:numeroEcheance || 1,source:"suspension",retour:"",
@@ -292,7 +298,7 @@
         return await afficherEcheancesPaiementSuspension(collecterEcheances(paiements,etat),options);
       }catch(erreur){
         await assurerCSS();
-        const parcours=ouvrirParcours("dialogue-paiement-impaye","Paiements en attente",options);
+        const parcours=ouvrirParcours("dialogue-paiement-impaye","Paiement en attente",options);
         if(!parcours)throw erreur;
         try{await alerte("Impossible de charger la liste complète des échéances. Veuillez réessayer.",parcours.contenu);}
         finally{parcours.fermer();}
