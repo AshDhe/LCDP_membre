@@ -574,11 +574,10 @@
     attente.id = "lcdp-compte-attente-accessoires";
     attente.setAttribute("role", "status");
     attente.setAttribute("aria-label", "Chargement des accessoires d’accès");
-    const spinner = document.createElement("img");
-    spinner.src = construireUrlObjet("/IMAG/PICTO/pictowait.svg");
-    spinner.alt = "";
-    spinner.width = 64;
-    spinner.height = 64;
+    const spinner = document.createElement("div");
+    spinner.className = "lcdp-loading-spinner";
+    spinner.setAttribute("aria-hidden","true");
+    spinner.innerHTML = "<svg class=\"lcdp-loading-spinner__track\" viewBox=\"0 0 36 36\" aria-hidden=\"true\"><circle cx=\"18\" cy=\"18\" r=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\"></circle></svg><svg class=\"lcdp-loading-spinner__arc\" viewBox=\"0 0 36 36\" aria-hidden=\"true\"><circle cx=\"18\" cy=\"18\" r=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-dasharray=\"100\" stroke-dashoffset=\"75\"></circle></svg><span class=\"lcdp-loading-spinner__dot\"></span>";
     attente.appendChild(spinner);
     document.body.appendChild(attente);
     document.querySelector(".lcdp-site-page")?.setAttribute("inert", "");
@@ -2925,7 +2924,7 @@
   }
 
   async function afficherEcheancesPaiementSuspension(etat) {
-    if (!window.LCDP_PaiementImpaye) await chargerScriptMembreUneFois("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v6");
+    if (!window.LCDP_PaiementImpaye) await chargerScriptMembreUneFois("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v7");
     if (!window.LCDP_PaiementImpaye) throw Error("Workflow de paiement indisponible.");
     return window.LCDP_PaiementImpaye.ouvrir(etat);
   }
@@ -4958,7 +4957,7 @@ function afficherResumePointsPassion(compte) {
     slot.appendChild(bandeau);
     appliquerRoutesSite(slot);
 
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261126-workflow-impaye-v6");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261126-workflow-impaye-v7");
 
     if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
       await window.LCDP_initialiserMenuBurgerMembre();
