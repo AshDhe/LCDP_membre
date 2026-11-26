@@ -4837,7 +4837,7 @@ function afficherResumePointsPassion(compte) {
     titre.textContent = "Résiliation de l’abonnement";
     message.textContent = [
       "Vous pouvez faire la demande de résiliation de votre abonnement. L’acceptation du club n’est pas garantie et dépend de la légitimité de votre demande.",
-      "Nous vous contactons rapidement à réception de votre demande de résiliation de contrat pour étudier les raisons de cette demande."
+      "Nous vous contactons rapidement à réception de votre demande pour en étudier le bien-fondé."
     ].join("\n\n") + "\n\nConsultez les ";
     const lien = document.createElement("a");
     lien.href = construireUrlMembre("/ESPACE-MEMBRE/cgv-lcdp.html");
