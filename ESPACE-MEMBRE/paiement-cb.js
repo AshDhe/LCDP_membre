@@ -152,7 +152,10 @@
 
     if (details) {
       details.hidden = false;
-      details.innerHTML = "Commande : " + escapeHtml(orderid) + "<br>Échéance " + escapeHtml(echeance) + " : " + escapeHtml(date) + " - " + escapeHtml(montant);
+      const libelleDate = sourcePaiement === "suspension"
+        ? (paiement.date ? "Impayé dû le " + date : "Impayé — date non renseignée")
+        : "Échéance " + echeance + " : " + date;
+      details.innerHTML = "Commande : " + escapeHtml(orderid) + "<br>" + escapeHtml(libelleDate) + " - " + escapeHtml(montant);
     }
 
     const etat = String(paiement.etat || "").trim().toLowerCase();
@@ -199,7 +202,7 @@
       return;
     }
 
-    afficherMessage("Cliquez sur le bouton ci-dessous pour accéder au paiement CB sécurisé.", "information");
+    afficherMessage("", "information");
     afficherPayer();
     afficherQuitter();
   }
@@ -293,6 +296,7 @@
     const element = racine.querySelector("[data-lcdp-paiement-cb-message]");
     if (!element) return;
     element.textContent = message || "";
+    element.hidden = !message;
     element.dataset.messageType = type || "information";
   }
 
@@ -388,7 +392,7 @@
     if (!value) return "Non renseigné";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return date.toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", year: "numeric" });
   }
 
   function escapeHtml(value) {
@@ -435,6 +439,7 @@
     const actions = dialogue?.querySelector(".lcdp-dialogue-ref__actions");
     if (!dialogue || !titre || !message || !actions) throw Error("Boîte de paiement incomplète.");
     dialogue.setAttribute("role","region");
+    dialogue.setAttribute("data-lcdp-paiement-cb-dialogue","");
     dialogue.removeAttribute("aria-modal");
     titre.textContent = "Paiement CB";
     message.textContent = "Chargement du paiement…";
@@ -447,20 +452,14 @@
     message.before(details);
     actions.replaceChildren();
     for (const [type,libelle,style] of [
-      ["payer","Accéder au paiement sécurisé","principal"],
+      ["payer","PAIEMENT SÉCURISÉ","principal"],
       ["recommencer","Recommencer","principal"],
       ["quitter",options.integre ? "Retour à la demande" : "Retour","secondaire"]
     ]) {
       const bouton = document.createElement("button");
       bouton.type = "button";
       bouton.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--"+style;
-      if (type === "payer") {
-        const lignes = document.createElement("span");
-        lignes.append("Accéder au paiement", document.createElement("br"), "sécurisé");
-        bouton.appendChild(lignes);
-      } else {
-        bouton.textContent = libelle;
-      }
+      bouton.textContent = libelle;
       bouton.setAttribute("data-lcdp-paiement-cb-"+type,"");
       bouton.hidden = true;
       actions.appendChild(bouton);
@@ -491,7 +490,7 @@
       charger("lcdp-bandeau-slot",window.LCDP_urlMembre("/ESPACE-MEMBRE/box-bandeau-nav-membre.html")).then(async ok => {
         if (!ok) return;
         const script = document.createElement("script");
-        script.src = window.LCDP_urlMembre("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261126-workflow-impaye-v15");
+        script.src = window.LCDP_urlMembre("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261126-workflow-impaye-v16");
         await new Promise((resolve,reject) => {script.onload=resolve;script.onerror=reject;document.body.appendChild(script);});
         await window.LCDP_initialiserMenuBurgerMembre?.();
       }),
@@ -506,7 +505,7 @@
     if(params.get("liste")==="1"){
       const section=slot.closest("[data-lcdp-compte-parcours]");
       const script=document.createElement("script");
-      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v15");
+      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v16");
       script.onload=()=>{
         section?.remove();
         window.LCDP_PaiementImpaye.ouvrir({}, {quitter:()=>{
