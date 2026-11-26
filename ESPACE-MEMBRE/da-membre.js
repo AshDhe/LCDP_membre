@@ -237,13 +237,14 @@
   // Gabarits de référence dans le slot de lightbox du wrapper, jamais sur body.
   function monterDialogueDa(conteneur, dialogue, focusInitial) {
     const wrapper = document.querySelector(".lcdp-site-page.lcdp-app-wrapper");
-    const slot = wrapper?.querySelector("#lcdp-lightbox-slot");
-    if (!slot) throw new Error("Slot de dialogue du wrapper introuvable.");
+    if (!wrapper) throw new Error("Wrapper de dialogue DA introuvable.");
     dialogue.dataset.lcdpDialogueContext = "conteneur";
     const elements = Array.from(wrapper.children)
-      .filter(element => element !== slot && !element.contains(slot))
       .map(element => ({ element, inert: element.inert }));
-    slot.appendChild(conteneur);
+    const classePresente = wrapper.classList.contains("lcdp-da-dialogue-actif");
+    wrapper.classList.add("lcdp-da-dialogue-actif");
+    conteneur.classList.add("lcdp-da-dialogue-hote");
+    wrapper.appendChild(conteneur);
     elements.forEach(({ element }) => { element.inert = true; });
     const gererClavier = event => {
       if (event.key === "Escape") {
@@ -263,6 +264,7 @@
     return () => {
       document.removeEventListener("keydown", gererClavier, true);
       conteneur.remove();
+      if (!classePresente) wrapper.classList.remove("lcdp-da-dialogue-actif");
       elements.forEach(({ element, inert }) => { element.inert = inert; });
       if (focusInitial?.isConnected) focusInitial.focus({ preventScroll: true });
     };
@@ -319,34 +321,7 @@
           const bouton = conteneur.querySelector('[data-lcdp-dialogue-action="compris"]');
           if (!dialogue || !titre || !texte || !bouton) throw new Error("Structure INFORMATION incomplète.");
           titre.textContent = options.titre || "Information";
-          if (Array.isArray(options.paragraphes) && options.paragraphes.length) {
-            // Le dialogue INFORMATION de référence est conservé.
-            // Chaque information est un paragraphe autonome (sans HTML injecté).
-            dialogue.classList.add("lcdp-da-information-fin");
-            const details = document.createElement("div");
-            details.id = texte.id;
-            details.className = "lcdp-dialogue-ref__message lcdp-da-information-fin__textes";
-            details.setAttribute("data-lcdp-dialogue-message", "");
-            options.paragraphes.forEach((contenu, index) => {
-              const paragraphe = document.createElement("p");
-              paragraphe.className = "lcdp-da-information-fin__texte";
-              paragraphe.textContent = String(contenu);
-              if (index === 2 && options.lienBoutique) {
-                const lien = document.createElement("a");
-                lien.href = construireUrlMembre(options.lienBoutique);
-                lien.textContent = "Accéder à la boutique La Clé du Parc";
-                lien.className = "lcdp-link-secondary";
-                lien.target = "_blank";
-                lien.rel = "noopener noreferrer";
-                paragraphe.appendChild(document.createTextNode(" "));
-                paragraphe.appendChild(lien);
-              }
-              details.appendChild(paragraphe);
-            });
-            texte.replaceWith(details);
-          } else {
-            texte.textContent = String(message || "");
-          }
+          texte.textContent = String(message || "");
           bouton.textContent = "Fermer";
           const retirerDialogue = monterDialogueDa(conteneur, dialogue, focusInitial);
           return await new Promise(resolve => {
@@ -405,7 +380,7 @@
   // particularités du parcours dans lcdp-da-membre.css.
   async function chargerFondationsDa() {
     await chargerCssObjetUneFois("/CSSBASE/lcdp-central-mobile-first.css");
-    await chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261126-da-champs-v19");
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261126-confirmation-da-v25");
   }
 
   async function chargerDependancesAlerteDa() {
@@ -1295,25 +1270,15 @@ form.dataset.lcdpTransmissionDaEnCours =
       transmissionReussie = true;
       retirerAttenteDa();
 
-      const informationsDaFin = [
-        data.emailConfirmationEnvoye === true
-          ? "Un e-mail de confirmation de votre demande de DA vous a été envoyé."
-          : "Votre demande est enregistrée. L’envoi de l’e-mail de confirmation n’est pas confirmé.",
-        "Votre demande de DA sera étudiée par le Club dans les prochains jours. Vous serez informé(e) de sa décision.",
-        "Une fois votre DA accordé, vous pourrez acheter votre bracelet d'accès aux parcs dans la boutique."
-      ];
-      const confirmationLue =
-        await afficherAlerteDa(
-          informationsDaFin.join("\n\n"),
-          {
-            profil: "information",
-            titre: "Demande de DA envoyée",
-            boutonOk: "Fermer",
-            sansCroix: true,
-            paragraphes: informationsDaFin,
-            lienBoutique: "/ESPACE-MEMBRE/boutique-LCDP.html"
-          }
-        );
+      const confirmationLue = await afficherAlerteDa(
+        "Votre demande de DA est enregistrée.\n\nVotre demande de DA est à l’étude. Nous vous tenons informé(e).",
+        {
+          profil: "information",
+          titre: "Demande de DA envoyée",
+          boutonOk: "Fermer",
+          sansCroix: true
+        }
+      );
 
       if (confirmationLue === true) {
         // Ne pas réafficher la présentation DA pendant la navigation.

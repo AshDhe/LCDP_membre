@@ -3114,7 +3114,7 @@ async function ouvrirDemandeDaDepuisCompte() {
   ouvertureDaCompteEnCours = true;
   try {
     if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
-      await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js?v=20261126-titres-da-v24");
+      await chargerScriptMembreUneFois("/ESPACE-MEMBRE/da-membre.js?v=20261126-confirmation-da-v25");
     }
     if (typeof window.LCDP_ouvrirPremiereDaMembre !== "function") {
       throw new Error("Le formulaire de demande de DA est indisponible.");
