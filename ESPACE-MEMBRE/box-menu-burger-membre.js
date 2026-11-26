@@ -1369,7 +1369,7 @@
       {
         label: "Abonnement",
         espace: "membre",
-        href: "/ESPACE-MEMBRE/presentation-abonnements.html?source=menu-burger-membre"
+        href: "/ESPACE-MEMBRE/abonnement-membre.html?source=menu-burger-membre"
       },
       {
         label: "Inviter",
