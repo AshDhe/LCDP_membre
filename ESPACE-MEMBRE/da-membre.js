@@ -412,13 +412,11 @@
     await chargerFondationsDa();
   }
 
-  async function chargerDependancesWorkflowDa() {
-    await chargerFondationsDa();
-  }
-
   async function chargerDependancesFormulaireDa() {
-    await chargerFondationsDa();
-    await chargerScriptObjetUneFois("/JSBASE/03-formulaire.js?v=20261126-da-modele");
+    await Promise.all([
+      chargerFondationsDa(),
+      chargerScriptObjetUneFois("/JSBASE/03-formulaire.js?v=20261126-da-modele")
+    ]);
     if (typeof window.LCDP_creerFormulaire !== "function") {
       throw new Error("Composant formulaire introuvable.");
     }
@@ -560,8 +558,6 @@
   }
 
   async function ouvrirWorkflowDa() {
-    await chargerDependancesWorkflowDa();
-
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-workflow-abonnement.html");
 
     const workflow = fragment.querySelector("[data-lcdp-box-workflow-abonnement]");
@@ -667,6 +663,13 @@
     bouton.addEventListener("click", async () => {
       if (bouton.disabled) return;
       bouton.disabled = true;
+      retour.disabled = true;
+      bouton.setAttribute("aria-busy", "true");
+      bouton.setAttribute("aria-label", "Chargement du formulaire de DA");
+      const roue = creerRoueAttenteDa();
+      roue.style.width = "32px";
+      roue.style.height = "32px";
+      bouton.replaceChildren(roue);
       try {
         if (options?.presentationSeule === true) {
           await ouvrirPremiereDaMembre({ ...options, depuisPresentation: true });
@@ -677,7 +680,11 @@
         console.error(error);
         await afficherAlerteDa(error.message || "Erreur technique. Merci de réessayer.");
       } finally {
+        bouton.textContent = "Faire ma demande de DA";
+        bouton.removeAttribute("aria-busy");
+        bouton.removeAttribute("aria-label");
         bouton.disabled = false;
+        retour.disabled = false;
       }
     });
 
@@ -693,6 +700,10 @@
     const slot = obtenirLightboxSlotDa();
     activerGabaritLegalDa();
     slot.replaceChildren(bloc);
+    // Préparer uniquement la structure statique, sans anticiper le contrôle de session.
+    void preparerStructureFormulaireDa().catch(error => {
+      console.warn("Préchargement du formulaire DA :", error);
+    });
   }
 
   // Contenu éditorial publié depuis Admin > Formulaire DA.
@@ -748,20 +759,34 @@
     return lien;
   }
 
-  async function afficherFormulaireDa(membre, parrain, options) {
-    await chargerDependancesFormulaireDa();
+  let structureFormulaireDaPromise = null;
 
-    // Construire intégralement le formulaire hors DOM, sans exposer ses états intermédiaires.
-    const { fragment, contenu } = await ouvrirWorkflowDa();
-    const formSlot = document.createElement("div");
-    formSlot.id = "lcdp-formulaire-da-slot";
-    contenu.appendChild(formSlot);
-
-    const form = await window.LCDP_creerFormulaire(formSlot, construireConfigurationDa());
-
-    if (!form) {
-      throw new Error("Formulaire DA introuvable.");
+  function preparerStructureFormulaireDa() {
+    if (!structureFormulaireDaPromise) {
+      structureFormulaireDaPromise = (async () => {
+        const [, { fragment, contenu }] = await Promise.all([
+          chargerDependancesFormulaireDa(), ouvrirWorkflowDa()
+        ]);
+        const formSlot = document.createElement("div");
+        formSlot.id = "lcdp-formulaire-da-slot";
+        contenu.appendChild(formSlot);
+        const form = await window.LCDP_creerFormulaire(formSlot, construireConfigurationDa());
+        if (!form) throw new Error("Formulaire DA introuvable.");
+        return { fragment, form };
+      })().catch(error => {
+        structureFormulaireDaPromise = null;
+        throw error;
+      });
     }
+    return structureFormulaireDaPromise;
+  }
+
+  async function afficherFormulaireDa(membre, parrain, options) {
+    // La structure est déjà préparée pendant la lecture de la présentation.
+    // Les données personnelles et les actions restent initialisées après contrôle serveur.
+    const preparation = preparerStructureFormulaireDa();
+    const { fragment, form } = await preparation;
+    if (structureFormulaireDaPromise === preparation) structureFormulaireDaPromise = null;
 
     initialiserValeursFormulaireDa(form, membre, parrain);
     organiserFormulaireDa(form);
@@ -1190,15 +1215,20 @@
     }
   }
 
+  function creerRoueAttenteDa() {
+    const roue = document.createElement("div");
+    roue.className = "lcdp-loading-spinner";
+    roue.setAttribute("aria-hidden", "true");
+    roue.innerHTML = `<svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg><svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg><span class="lcdp-loading-spinner__dot"></span>`;
+    return roue;
+  }
+
   function afficherAttenteTransmissionDa() {
     const attente = document.createElement("div");
     attente.className = "lcdp-da-transmission-attente lcdp-attente-plein-ecran";
     attente.setAttribute("role", "status");
     attente.setAttribute("aria-label", "Transmission de votre demande de DA en cours");
-    const roue = document.createElement("div");
-    roue.className = "lcdp-loading-spinner";
-    roue.setAttribute("aria-hidden", "true");
-    roue.innerHTML = `<svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg><svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg><span class="lcdp-loading-spinner__dot"></span>`;
+    const roue = creerRoueAttenteDa();
     attente.appendChild(roue);
     document.body.appendChild(attente);
     return () => attente.remove();
