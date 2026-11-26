@@ -80,6 +80,7 @@
       <form id="paiement-formulaire" novalidate>
         <h2>Payer par carte bancaire</h2>
         <p class="lcdp-stripe__aide">Vos informations bancaires sont saisies directement dans le composant sécurisé Stripe.</p>
+        <p class="lcdp-stripe__aide">Si votre navigateur propose automatiquement des cartes de paiement enregistrées, fermez cette suggestion et recommencez pour saisir votre carte par vous-même.</p>
         <label class="lcdp-stripe__label" for="email-paiement" hidden>Adresse e-mail</label>
         <input class="lcdp-stripe__email" hidden id="email-paiement" name="email" type="email" autocomplete="email" inputmode="email" placeholder="email@exemple.com" required>
         <div id="stripe-payment-element" aria-label="Formulaire bancaire sécurisé Stripe"></div>
