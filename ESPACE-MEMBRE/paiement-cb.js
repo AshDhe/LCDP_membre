@@ -244,7 +244,7 @@
         if(!window.LCDP_monterElementsImpaye){
           await new Promise((resolve,reject)=>{
             const script=document.createElement("script");
-            script.src=construireUrlMembre("/ESPACE-MEMBRE/paiement-elements-impaye.js?v=20261126-main-v3");
+            script.src=construireUrlMembre("/ESPACE-MEMBRE/paiement-elements-impaye.js?v=20261126-bouton-officiel-v4");
             script.onload=resolve;
             script.onerror=()=>{script.remove();reject(Error("Formulaire bancaire indisponible."));};
             document.head.appendChild(script);
