@@ -2,9 +2,29 @@
   "use strict";
   const config = window.SITE_CONFIG || {};
   const origine = new URLSearchParams(location.search).get("origine");
-  const quitter = () => location.replace(origine === "boutique"
-    ? window.LCDP_urlPublic("/ESPACE-PUBLIC/boutique.html")
-    : window.LCDP_urlMembre("/ESPACE-MEMBRE/accueil-membre.html"));
+  const retours = Object.freeze({
+    accueil:"accueil-membre.html", compte:"mes-informations.html",
+    planifier:"reserver-membre.html", inviter:"inviter-membre.html"
+  });
+  const quitter = () => {
+    if (origine === "boutique") {
+      location.replace(window.LCDP_urlPublic("/ESPACE-PUBLIC/boutique.html"));
+      return;
+    }
+    // Menu et fiche parc : retour à la page d’origine uniquement si elle appartient
+    // aux espaces officiels, sans accepter d’URL de retour transmise en paramètre.
+    if (origine === "menu" || origine === "parc") {
+      try {
+        const ref = new URL(document.referrer);
+        const domaines = [window.LCDP_urlMembre("/"),window.LCDP_urlPublic("/")].map(v=>new URL(v,location.href).origin);
+        if (domaines.includes(ref.origin) && !ref.pathname.endsWith("/paiements-en-attente.html") && history.length>1) {
+          history.back();return;
+        }
+      } catch {}
+    }
+    const page = Object.hasOwn(retours,origine) ? retours[origine] : "accueil-membre.html";
+    location.replace(window.LCDP_urlMembre("/ESPACE-MEMBRE/"+page));
+  };
 
   async function lireEtatMembre() {
     const base = config.workerIndexMembreUrl || config.WORKER_INDEX_MEMBRE_URL ||
@@ -20,7 +40,8 @@
       return null;
     }
     if (!r.ok || data?.success !== true || data.connected !== true) throw Error("État membre indisponible.");
-    return {paiementSuspension: data.paiementSuspension || data.paiementRegularisation || null};
+    return {paiementSuspension: Array.isArray(data.paiementsSuspension) && data.paiementsSuspension.length
+      ? data.paiementsSuspension : data.paiementSuspension || data.paiementRegularisation || null};
   }
   async function initialiser() {
     const main = document.querySelector(".lcdp-app-wrapper > .lcdp-site-main");

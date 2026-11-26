@@ -834,8 +834,7 @@
   }
 
   async function redirigerVersAbonnementPourRegularisationBurger(contexte = {}) {
-    if (!window.LCDP_PaiementImpaye) await chargerScriptMembreUneFois("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v17");
-    return window.LCDP_PaiementImpaye.ouvrir(contexte);
+    naviguerAvecSpinnerBurger(construireUrlMembre("/ESPACE-MEMBRE/paiements-en-attente.html?origine=menu"));
   }
 
   async function gererClicInviterBurger(contexte, etatInviter = null) {
