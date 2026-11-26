@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-lcdp-css="c085 c034 c037 c038 c033 c036 c035 c041 c040 c066 c047 c082">
 <head>
   <meta charset="utf-8">
 
@@ -53,120 +53,36 @@
         return buildUrl(objetBase, path);
       };
 
-      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/cssbase.css') + '">');
+      window.LCDP_urlPublic = function LCDP_urlPublic(path) {
+        if (typeof config.publicUrl === "function") return config.publicUrl(path);
+        return buildUrl(publicBase, path);
+      };
+      ["/CSSBASE/lcdp-central-mobile-first.css",
+       "/CSSBASE/lcdp-mon-compte.css?v=20261125-gestion-invitants-v1",
+       "/CSSBASE/lcdp-ui-badges.css?v=20261124-action-retractation",
+       "/CSSBASE/lcdp-lightbox-convergence.css"].forEach(chemin => {
+        document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(chemin) + '">');
+      });
     })();
   </script>
 
-  <style>
-    body {
-      min-height: 100vh;
-      margin: 0;
-      background: var(--lcdp-color-background, #f7f4ee);
-      color: var(--lcdp-color-text, #1f2a24);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      box-sizing: border-box;
-    }
-
-    .lcdp-paiement-cb {
-      width: min(100%, 680px);
-      background: var(--lcdp-color-surface, #fff);
-      border: 1px solid var(--lcdp-color-border, #ddd6cc);
-      border-radius: var(--lcdp-radius-large, 18px);
-      box-shadow: 0 20px 45px rgba(31, 42, 36, 0.12);
-      padding: clamp(24px, 5vw, 40px);
-      text-align: center;
-      box-sizing: border-box;
-    }
-
-    .lcdp-paiement-cb h1 {
-      margin: 0 0 14px;
-      font-size: clamp(1.55rem, 4vw, 2rem);
-      line-height: 1.1;
-      color: var(--lcdp-color-title, #31473a);
-    }
-
-    .lcdp-paiement-cb__text,
-    .lcdp-paiement-cb__message {
-      margin: 0 auto 18px;
-      line-height: 1.55;
-      color: var(--lcdp-color-text, #1f2a24);
-    }
-
-    .lcdp-paiement-cb__details {
-      width: min(100%, 520px);
-      margin: 18px auto;
-      padding: 14px 16px;
-      border: 1px solid var(--lcdp-color-border, #ddd6cc);
-      border-radius: var(--lcdp-radius-medium, 12px);
-      background: var(--lcdp-color-surface-soft, #fbfaf7);
-      text-align: left;
-      font-size: 0.95rem;
-      box-sizing: border-box;
-    }
-
-    .lcdp-paiement-cb__actions {
-      width: min(100%, 460px);
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-      margin: 24px auto 0;
-      align-items: stretch;
-    }
-
-    .lcdp-paiement-cb__actions .lcdp-button {
-      width: 100%;
-      min-width: 0;
-      max-width: none;
-      min-height: 52px;
-      margin-top: 0;
-      padding: 12px 18px;
-      box-sizing: border-box;
-    }
-
-    @media (min-width: 640px) {
-      .lcdp-paiement-cb__actions {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .lcdp-paiement-cb__actions [data-lcdp-paiement-cb-payer] {
-        grid-column: 1 / -1;
-      }
-    }
-  </style>
 </head>
 
-<body data-lcdp-suivi-vt-abo="vt-paiement-cb">
-  <main class="lcdp-paiement-cb" data-lcdp-paiement-cb>
-    <h1>Paiement CB</h1>
-
-    <p class="lcdp-paiement-cb__text" data-lcdp-paiement-cb-intro>
-      En cliquant sur le lien de paiement, vous serez dirigé(e) vers la solution de paiement CB sécurisée gérée par Stripe.
-    </p>
-
-    <div class="lcdp-paiement-cb__details" data-lcdp-paiement-cb-details hidden></div>
-
-    <p class="lcdp-paiement-cb__message" data-lcdp-paiement-cb-message>
-      Chargement du paiement...
-    </p>
-
-    <div class="lcdp-paiement-cb__actions">
-      <button class="lcdp-button lcdp-button-primary" type="button" data-lcdp-paiement-cb-payer hidden>
-        Accéder au paiement sécurisé Stripe
-      </button>
-
-      <button class="lcdp-button lcdp-button-secondary" type="button" data-lcdp-paiement-cb-recommencer hidden>
-        Recommencer
-      </button>
-
-      <button class="lcdp-button lcdp-button-secondary" type="button" data-lcdp-paiement-cb-quitter hidden>
-        Quitter la page
-      </button>
-    </div>
-  </main>
-
-  <script src="./paiement-cb.js?v=20261126-paiement-origine-v2"></script>
+<body data-lcdp-suivi-vt-abo="vt-paiement-cb" class="lcdp-page-mon-compte lcdp-app-page">
+  <div class="lcdp-site-page lcdp-app-wrapper">
+    <div id="lcdp-bandeau-slot"></div>
+    <main class="lcdp-site-main">
+      <section class="lcdp-page-section" data-lcdp-compte-parcours aria-label="Paiement CB">
+        <div class="lcdp-page-container">
+          <div data-lcdp-compte-parcours-contenu data-lcdp-paiement-cb>
+            <p class="lcdp-dialogue-ref__message" role="status">Chargement du paiement…</p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <div id="lcdp-footer-slot"></div>
+    <div id="lcdp-lightbox-slot"></div>
+  </div>
+  <script src="./paiement-cb.js?v=20261126-impayes-wrapper-v1"></script>
 </body>
 </html>
