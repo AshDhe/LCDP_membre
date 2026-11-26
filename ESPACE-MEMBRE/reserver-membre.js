@@ -259,13 +259,31 @@
         const daValidee = etatMembre.statudaConnue === true &&
           normaliserStatudaReservation(etatMembre.statuda) === "oui";
         const sansAbonnement = etatMembre.abonne === false;
-        if (daValidee && sansAbonnement) {
-          await ouvrirAbonnementDepuisPlanning({ origine: "sans_abonnement" });
-        } else {
+        // Un impayé prime sur les autres motifs de blocage de la souscription.
+        const impaye = etatMembre.abonnementSuspendu === true ||
+          echeancesPaiementSuspension(etatMembre.paiementSuspension).length > 0;
+        if (impaye) {
           await afficherDialogueInformationPlanifier({
             titre: "Abonnement",
-            message: "Votre demande d'abonnement doit être validée et vous ne devez pas disposer d'un abonnement en cours pour utiliser cette entrée."
+            message: "Vous avez un impayé sur un abonnement. Vous ne pouvez pas souscrire un nouvel abonnement tant que cet impayé n'est pas régularisé."
           });
+        } else if (!etatMembre.statudaConnue) {
+          await afficherDialogueInformationPlanifier({
+            titre: "Abonnement",
+            message: "Impossible de vérifier le statut de votre demande d'abonnement."
+          });
+        } else if (!daValidee) {
+          await afficherDialogueInformationPlanifier({
+            titre: "Abonnement",
+            message: "Votre demande d'abonnement doit être validée pour souscrire un abonnement."
+          });
+        } else if (!sansAbonnement) {
+          await afficherDialogueInformationPlanifier({
+            titre: "Abonnement",
+            message: "Vous disposez déjà d'un abonnement en cours. Pour souscrire un nouvel abonnement, sélectionnez une date non couverte dans PLANIFIER."
+          });
+        } else {
+          await ouvrirAbonnementDepuisPlanning({ origine: "sans_abonnement" });
         }
       }
       // RECHERCHE EXPRESS : même wrapper et mêmes fiches, liste conservée.
