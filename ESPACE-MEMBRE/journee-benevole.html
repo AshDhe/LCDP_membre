@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fr" data-lcdp-css="c085 c034 c038 c032 c083 c036 c037 c040 c054 c058 c065 c072 c073 c063 c064 c077">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Journée bénévole — La Clé du Parc</title>
+  <script src="../config.js"></script>
+  <script>
+    (() => {
+      const cfg = window.SITE_CONFIG || {};
+      const script = document.createElement("script");
+      script.src = typeof cfg.objetUrl === "function"
+        ? cfg.objetUrl("/JSBASE/affichage-legal.js")
+        : "https://lacleduparc.fr/OBJET/JSBASE/affichage-legal.js";
+      document.head.appendChild(script);
+    })();
+  </script>
+  <script>
+    (() => {
+      "use strict";
+      const config = window.SITE_CONFIG || {};
+      const nettoyer = value => String(value || "").replace(/\/+$/, "");
+      const joindre = (base, path) => nettoyer(base) + "/" + String(path || "").replace(/^\/+/, "");
+      const membreBase = nettoyer(config.membreBaseUrl || config.MEMBRE_BASE || config.siteBase || "");
+      const publicBase = nettoyer(config.publicBaseUrl || config.PUBLIC_BASE || "");
+      const objetBase = nettoyer(config.objetBaseUrl || config.OBJET_BASE || joindre(publicBase, "/OBJET"));
+
+      window.SITE_BASE = membreBase;
+      window.LCDP_MEMBRE_BASE = membreBase;
+      window.LCDP_PUBLIC_BASE = publicBase;
+      window.LCDP_OBJET_BASE = objetBase;
+      window.LCDP_urlPublic = path => typeof config.publicUrl === "function" ? config.publicUrl(path) : joindre(publicBase, path);
+      window.LCDP_urlMembre = path => typeof config.membreUrl === "function" ? config.membreUrl(path) : joindre(membreBase, path);
+      window.LCDP_urlObjet = path => typeof config.objetUrl === "function" ? config.objetUrl(path) : joindre(objetBase, path);
+
+      [
+        "/CSSBASE/cssbase.css?interface=spinner-officiel",
+        "/CSSBASE/lcdp-central-mobile-first.css",
+        "/CSSBASE/lcdp-central-module-06.css",
+        "/CSSBASE/lcdp-planifier.css",
+        "/CSSBASE/lcdp-navigation-onglets.css",
+        "/CSSBASE/lcdp-carte-acces-visuel.css",
+        "/CSSBASE/lcdp-ui-badges.css?v=20261124-action-ambre",
+        "/CSSBASE/lcdp-lightbox-convergence.css",
+        "/CSSBASE/lcdp-mes-acces-membre.css",
+        "/CSSBASE/lcdp-fiche-parc-wrapper.css?v=20261113-wrapper-unique-v9",
+        "/CSSBASE/lcdp-fiche-parc-vue-carte.css?v=20261113-wrapper-unique-v9"
+      ].forEach(path => {
+        // Comme sur mes-informations.html : conserver l'ordre de cascade CSS
+        // avant le style de page, sans chargement asynchrone concurrent.
+        const versionVue = path.endsWith("/lcdp-mes-acces-membre.css") ? "?v=20261124-etat-vide-actions-v1" : "";
+        document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(path) + versionVue + '">');
+      });
+    })();
+  </script>
+</head>
+<body class="lcdp-app-page lcdp-mes-acces-page">
+  <div class="lcdp-app-wrapper">
+    <div id="lcdp-bandeau-slot"></div>
+    <main class="lcdp-site-main" aria-label="Journée bénévole">
+      <section class="lcdp-page-section">
+        <div class="lcdp-page-container">
+          <div class="lcdp-page-content">
+            <div id="lcdp-planning-calendrier-slot">
+<div class="lcdp-box-workflow-reservation lcdp-box-workflow-reservation--planning-page lcdp-box-workflow-reservation--calendrier-mois lcdp-workflow-reservation-box"  data-lcdp-box-workflow-reservation>
+  <section class="lcdp-box-workflow-reservation__card" data-lcdp-workflow-reservation-card>
+    <div class="lcdp-box-workflow-reservation__content" data-lcdp-workflow-reservation-content>
+<section class="lcdp-box-liste-card lcdp-box-liste-card--planning-membre" data-lcdp-box-liste-card>
+  <div class="lcdp-box-liste-card__header">
+    <div class="lcdp-box-liste-card__heading">
+      <h2 class="lcdp-box-liste-card__title lcdp-editorial-eyebrow" data-lcdp-liste-card-title>
+        Journée bénévole
+      </h2>
+    </div>
+
+    <div
+      class="lcdp-box-liste-card__commande"
+      data-lcdp-liste-card-commande
+    ></div>
+  </div>
+
+  <div class="lcdp-box-liste-card__tools" data-lcdp-liste-card-tools>
+    <form class="lcdp-planning-filtres" aria-label="Filtres des journées bénévoles">
+      <div class="lcdp-planning-filtres__champs"><div class="lcdp-planning-filtres__champ" data-lcdp-filtre-champ="mois"><label class="lcdp-planning-filtres__label" for="lcdp-planning-filtre-mois">Période</label><select class="lcdp-planning-filtres__select" id="lcdp-planning-filtre-mois" data-lcdp-filtre="mois" disabled><option value="">Tous</option></select></div>
+<div class="lcdp-planning-filtres__champ" data-lcdp-filtre-champ="departement"><label class="lcdp-planning-filtres__label" for="lcdp-planning-filtre-departement">Département</label><select class="lcdp-planning-filtres__select" id="lcdp-planning-filtre-departement" data-lcdp-filtre="departement" disabled><option value="">Tous</option></select></div>
+<div class="lcdp-planning-filtres__champ" data-lcdp-filtre-champ="parc"><label class="lcdp-planning-filtres__label" for="lcdp-planning-filtre-parc">Parc</label><select class="lcdp-planning-filtres__select" id="lcdp-planning-filtre-parc" data-lcdp-filtre="parc" disabled><option value="">Tous</option></select></div></div>
+    </form>
+  </div>
+
+  <p
+    class="lcdp-box-liste-card__message"
+    data-lcdp-liste-card-message role="status">Aucune journée planifiée actuellement</p>
+
+  <div class="lcdp-box-liste-card__list" data-lcdp-liste-card-list></div>
+</section>
+
+    </div>
+  </section>
+</div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <div id="lcdp-footer-slot"></div>
+    <div id="lcdp-lightbox-slot"></div>
+  </div>
+  <script src="./journee-benevole.js?v=20261126-base"></script>
+</body>
+</html>
