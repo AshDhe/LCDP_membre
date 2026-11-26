@@ -22,6 +22,20 @@
     @media(prefers-reduced-motion:reduce) {#lcdp-attente-page-membre .lcdp-loading-spinner__arc {animation:none;}}
     #lcdp-attente-page-membre[hidden] {display:none!important;}
     #lcdp-attente-page-membre [hidden] {display:none!important;}
+    /* Validation DFA : animation proposée, sans incidence sur le spinner de chargement. */
+    #dfa-page .dfa-validation[hidden], #dfa-page #dfa-accueil[hidden], #dfa-page #dfa-retour[hidden] {display:none!important;}
+    #dfa-page .dfa-validation {position:relative;display:flex;align-items:center;justify-content:center;width:80px;height:80px;margin:8px auto 16px;}
+    #dfa-page .dfa-validation__halo {position:absolute;inset:0;border-radius:50%;background:#4f6342;opacity:0;}
+    #dfa-page .dfa-validation__cercle {position:relative;display:flex;align-items:center;justify-content:center;width:80px;height:80px;border-radius:50%;background:#4f6342;color:#fff;box-shadow:0 6px 16px rgb(79 99 66 / 30%);}
+    #dfa-page .dfa-validation__cercle svg {width:40px;height:40px;display:block;}
+    #dfa-page .dfa-validation__coche {stroke-dasharray:30;stroke-dashoffset:0;}
+    #lcdp-attente-page-membre[hidden] ~ .lcdp-app-wrapper #dfa-validation:not([hidden]) .dfa-validation__halo {animation:lcdp-dfa-pulse 1s ease-out 1 both;}
+    #lcdp-attente-page-membre[hidden] ~ .lcdp-app-wrapper #dfa-validation:not([hidden]) .dfa-validation__cercle {animation:lcdp-dfa-scale .4s ease-out 1 both;}
+    #lcdp-attente-page-membre[hidden] ~ .lcdp-app-wrapper #dfa-validation:not([hidden]) .dfa-validation__coche {animation:lcdp-dfa-check .45s .25s ease-out 1 both;}
+    @keyframes lcdp-dfa-pulse {from {transform:scale(1);opacity:.2;} to {transform:scale(1.7);opacity:0;}}
+    @keyframes lcdp-dfa-scale {0% {transform:scale(.5);opacity:0;} 70% {transform:scale(1.08);opacity:1;} 100% {transform:scale(1);opacity:1;}}
+    @keyframes lcdp-dfa-check {from {stroke-dashoffset:30;} to {stroke-dashoffset:0;}}
+    @media(prefers-reduced-motion:reduce) {#dfa-page .dfa-validation * {animation:none!important;}}
   </style>
   <noscript><style>#lcdp-attente-page-membre {display:none!important;} #lcdp-attente-page-membre ~ .lcdp-app-wrapper {visibility:visible!important;}</style></noscript>
   <script src="../config.js"></script>
@@ -41,7 +55,7 @@
     })();
   </script>
   <script src="./boutique-accessoires-cadre.js?v=20261126" defer></script>
-  <script src="./dfa-membre.js?v=20261126-dfa-direct-v9" defer></script>
+  <script src="./dfa-membre.js?v=20261126-dfa-validation-v10" defer></script>
 </head>
 
 <body class="lcdp-app-page lcdp-typographie-editoriale-commune">
@@ -92,7 +106,18 @@
             <section class="lcdp-component lcdp-box-carousel lcdp-editorial-card" aria-label="Votre dotation">
               <h2 class="lcdp-box-carousel__title lcdp-boxtext__title--center" id="dfa-choix" hidden>Merci de soutenir les parcs</h2>
               <div class="lcdp-boxtext__content lcdp-editorial-copy">
+                <div id="dfa-validation" class="dfa-validation" aria-hidden="true" hidden>
+                  <span class="dfa-validation__halo"></span>
+                  <div class="dfa-validation__cercle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                      <path class="dfa-validation__coche" d="M5 13l4 4L19 7"/>
+                    </svg>
+                  </div>
+                </div>
                 <p id="dfa-statut" class="dfa-status" role="status" aria-live="polite" hidden></p>
+                <div id="dfa-accueil" class="lcdp-actions-centrees lcdp-editorial-cta" hidden>
+                  <a id="dfa-lien-accueil" class="lcdp-button lcdp-button-orange lcdp-button--haut-etroit lcdp-editorial-action-button lcdp-button--deux-niveaux" href="./accueil-membre.html"><span>Retour à<br><strong>l’accueil</strong></span></a>
+                </div>
                 <form id="formulaire-dfa-membre" class="lcdp-editorial-copy" aria-labelledby="dfa-choix" hidden>
                   <p id="dfa-bonjour" hidden></p>
                   <p id="dfa-aide">Utilisez le pavé numérique pour indiquer le montant de votre dotation financière annuelle.</p>

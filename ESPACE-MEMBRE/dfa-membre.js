@@ -40,6 +40,10 @@
     reprendre.hidden = true;
     annuler.hidden = true;
     actions.hidden = true;
+    const paye = d.statut === "paye";
+    el("dfa-validation").hidden = !paye;
+    el("dfa-accueil").hidden = !paye;
+    retour.hidden = paye;
     const montantOperation = euros(d.montantCentimes);
     if (d.statut === "paye") message("Votre versement de "+montantOperation+" est confirmé. Merci pour votre soutien aux parcs du réseau La Clé du Parc.");
     else if (d.statut === "annule") message("Votre demande de dotation est annulée. Aucun nouveau paiement n’est engagé.");
@@ -59,6 +63,7 @@
     annuler.disabled = occupe;
   }
   retour.href = window.LCDP_urlPublic("/ESPACE-PUBLIC/boutique.html");
+  el("dfa-lien-accueil").href = window.LCDP_urlMembre("/ESPACE-MEMBRE/accueil-membre.html");
   reprendre.addEventListener("click",()=>{try{pagePaiement(operation);}catch(e){erreur(e);}});
   annuler.addEventListener("click",async()=>{
     if (occupe || !operation) return;
