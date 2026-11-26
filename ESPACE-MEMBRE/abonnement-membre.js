@@ -529,7 +529,7 @@
       ["1A", "PASSION (1 an)"]
     ];
     const blocs = exemples.map(([code, nom]) => ({
-      titre: "Abonnement " + code + " — " + nom,
+      titre: "Exemple " + code + " — " + nom,
       html: document.getElementById("lcdp-exemple-" + code).innerHTML
     }));
     window.LCDP_FAQ.afficher(racine, blocs, { ouvrirPremier: false });
@@ -540,7 +540,7 @@
       libelle.className = "lcdp-cout-abonnement__libelle";
       const reference = document.createElement("span");
       reference.className = "lcdp-cout-abonnement__reference";
-      reference.textContent = "Abonnement " + code;
+      reference.textContent = "Exemple " + code;
       const sousTitre = document.createElement("span");
       sousTitre.className = "lcdp-cout-abonnement__nom";
       sousTitre.textContent = nom;
