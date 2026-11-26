@@ -379,14 +379,10 @@
     if (!bouton) return () => {};
     if (window.LCDP_PaiementImpaye?.attendreBouton) return window.LCDP_PaiementImpaye.attendreBouton(bouton);
     const disabled = bouton.disabled;
-    const spinner = document.createElement("img");
-    const cfg = window.SITE_CONFIG || {};
-    const chemin = "/IMAG/PICTO/pictowait.svg";
-    spinner.src = typeof window.LCDP_urlObjet === "function" ? window.LCDP_urlObjet(chemin) : cfg.objetUrl(chemin);
-    spinner.alt = "";
-    spinner.width = 20;
-    spinner.height = 20;
+    const spinner = document.createElement("span");
+    spinner.className = "lcdp-loading-spinner lcdp-loading-spinner--bouton";
     spinner.setAttribute("aria-hidden","true");
+    spinner.innerHTML = "<svg class=\"lcdp-loading-spinner__track\" viewBox=\"0 0 36 36\" aria-hidden=\"true\"><circle cx=\"18\" cy=\"18\" r=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\"></circle></svg><svg class=\"lcdp-loading-spinner__arc\" viewBox=\"0 0 36 36\" aria-hidden=\"true\"><circle cx=\"18\" cy=\"18\" r=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-dasharray=\"100\" stroke-dashoffset=\"75\"></circle></svg><span class=\"lcdp-loading-spinner__dot\"></span>";
     bouton.prepend(spinner);
     bouton.disabled = true;
     bouton.setAttribute("aria-busy","true");
@@ -486,7 +482,7 @@
     if(params.get("liste")==="1"){
       const section=slot.closest("[data-lcdp-compte-parcours]");
       const script=document.createElement("script");
-      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v6");
+      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v7");
       script.onload=()=>{
         section?.remove();
         window.LCDP_PaiementImpaye.ouvrir({}, {quitter:()=>{
