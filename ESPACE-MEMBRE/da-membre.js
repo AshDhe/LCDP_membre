@@ -234,25 +234,53 @@
     }
   }
 
-  // Gabarits de référence dans le slot de lightbox du wrapper, jamais sur body.
-  function monterDialogueDa(conteneur, dialogue, focusInitial) {
+  // Toutes les réponses visuelles DA sont bornées au wrapper appelant.
+  // Le positionnement structurel est explicite, même si un CSS ancien est en cache.
+  function monterHoteDa(conteneur) {
     const wrapper = document.querySelector(".lcdp-site-page.lcdp-app-wrapper");
     if (!wrapper) throw new Error("Wrapper de dialogue DA introuvable.");
-    dialogue.dataset.lcdpDialogueContext = "conteneur";
-    const elements = Array.from(wrapper.children)
-      .map(element => ({ element, inert: element.inert }));
+    const elements = Array.from(wrapper.children).map(element => ({ element, inert: element.inert }));
     const classePresente = wrapper.classList.contains("lcdp-da-dialogue-actif");
+    const positionAvant = wrapper.style.getPropertyValue("position");
+    const prioriteAvant = wrapper.style.getPropertyPriority("position");
     wrapper.classList.add("lcdp-da-dialogue-actif");
+    if (getComputedStyle(wrapper).position === "static") wrapper.style.setProperty("position", "relative", "important");
     conteneur.classList.add("lcdp-da-dialogue-hote");
+    for (const [propriete, valeur] of Object.entries({
+      position: "absolute", inset: "0", width: "100%", height: "100%",
+      "min-height": "0", "max-height": "100%", "z-index": "9500",
+      overflow: "hidden", "border-radius": "inherit", "box-sizing": "border-box"
+    })) conteneur.style.setProperty(propriete, valeur, "important");
     wrapper.appendChild(conteneur);
     elements.forEach(({ element }) => { element.inert = true; });
+    let retire = false;
+    return () => {
+      if (retire) return;
+      retire = true;
+      conteneur.remove();
+      if (!classePresente) wrapper.classList.remove("lcdp-da-dialogue-actif");
+      if (positionAvant) wrapper.style.setProperty("position", positionAvant, prioriteAvant);
+      else wrapper.style.removeProperty("position");
+      elements.forEach(({ element, inert }) => { element.inert = inert; });
+    };
+  }
+
+  function monterDialogueDa(conteneur, dialogue, focusInitial, surEchap) {
+    dialogue.dataset.lcdpDialogueContext = "conteneur";
+    for (const [propriete, valeur] of Object.entries({
+      position: "absolute", inset: "0", width: "100%", height: "100%",
+      "min-height": "0", "max-height": "100%", display: "flex",
+      "align-items": "center", "justify-content": "center", "box-sizing": "border-box"
+    })) dialogue.style.setProperty(propriete, valeur, "important");
+    const retirerHote = monterHoteDa(conteneur);
     const gererClavier = event => {
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
+        surEchap?.();
       } else if (event.key === "Tab") {
-        const cibles = Array.from(dialogue.querySelectorAll('button:not([disabled]), a[href]'))
-          .filter(element => !element.hidden);
+        const cibles = Array.from(dialogue.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])'))
+          .filter(element => !element.hidden && element.getClientRects().length);
         if (!cibles.length) return;
         const index = cibles.indexOf(document.activeElement);
         event.preventDefault();
@@ -263,117 +291,67 @@
     document.addEventListener("keydown", gererClavier, true);
     return () => {
       document.removeEventListener("keydown", gererClavier, true);
-      conteneur.remove();
-      if (!classePresente) wrapper.classList.remove("lcdp-da-dialogue-actif");
-      elements.forEach(({ element, inert }) => { element.inert = inert; });
+      retirerHote();
       if (focusInitial?.isConnected) focusInitial.focus({ preventScroll: true });
     };
   }
 
-  async function afficherAlerteDa(message, options = {}) {
-    if (options.mode === "confirmation") {
-      const conteneur = document.createElement("div");
-      const focusInitial = document.activeElement;
-      try {
-        await chargerCssObjetUneFois("/CSSBASE/lcdp-lightbox-convergence.css");
-        conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html"));
-        const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="choix"]');
-        const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
-        const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
-        const annuler = conteneur.querySelector('[data-lcdp-dialogue-action="annuler"]');
-        const confirmer = conteneur.querySelector('[data-lcdp-dialogue-action="confirmer"]');
-        if (!dialogue || !titre || !texte || !annuler || !confirmer) throw new Error("Structure CHOIX DA incomplète.");
-        titre.textContent = options.titre || "Confirmation";
-        texte.textContent = String(message || "");
-        annuler.textContent = options.libelleAnnuler || "Annuler";
-        confirmer.textContent = options.boutonOk || "Confirmer";
-        const retirerDialogue = monterDialogueDa(conteneur, dialogue, focusInitial);
-        return await new Promise(resolve => {
-          let resolu = false;
-          const fermer = valeur => {
-            if (resolu) return;
-            resolu = true;
-            retirerDialogue();
-            resolve(valeur);
-          };
-          annuler.addEventListener("click", () => fermer(false), { once: true });
-          confirmer.addEventListener("click", () => fermer(true), { once: true });
-          // Le clic sur le fond du dialogue CHOIX ne ferme rien :
-          // seules les actions explicites Annuler et Confirmer répondent.
-          confirmer.focus();
-        });
-      } catch (erreur) {
-        console.error("Dialogue CHOIX DA :", erreur);
-        conteneur.remove();
-        return false;
-      }
-    }
-    if (options.profil === "information") {
-      try {
-        await chargerCssObjetUneFois("/CSSBASE/lcdp-lightbox-convergence.css");
-        const conteneur = document.createElement("div");
-        const focusInitial = document.activeElement;
-        try {
-          conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html"));
-          const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="information"]');
-          const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
-          const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
-          const bouton = conteneur.querySelector('[data-lcdp-dialogue-action="compris"]');
-          if (!dialogue || !titre || !texte || !bouton) throw new Error("Structure INFORMATION incomplète.");
-          titre.textContent = options.titre || "Information";
-          texte.textContent = String(message || "");
-          bouton.textContent = "Fermer";
-          const retirerDialogue = monterDialogueDa(conteneur, dialogue, focusInitial);
-          return await new Promise(resolve => {
-            bouton.addEventListener("click", () => {
-              retirerDialogue();
-              resolve(true);
-            }, { once: true });
-            bouton.focus();
-          });
-        } catch (erreur) {
-          conteneur.remove();
-          throw erreur;
-        }
-      } catch (erreur) {
-        console.error("Dialogue INFORMATION DA :", erreur);
-        window.alert(message || "");
-        return true;
-      }
-    }
-    // Aucun appel métier restant ici n'est une confirmation ou une réussite :
-    // les réussites sont explicitement dirigées vers INFORMATION.
-    const conteneur = document.createElement("div");
-    document.body.appendChild(conteneur);
+  // Copies de secours des trois gabarits HTMLBASE : aucune alerte navigateur.
+  const GABARITS_DIALOGUE_DA = {
+  "choix": "<div class=\"lcdp-dialogue-ref lcdp-dialogue-ref--choix\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"lcdp-ref-choix-titre\" aria-describedby=\"lcdp-ref-choix-message\" data-lcdp-dialogue-reference=\"choix\">\n  <div class=\"lcdp-dialogue-ref__card\">\n    <div class=\"lcdp-dialogue-ref__icone\" aria-hidden=\"true\">\n      <svg viewBox=\"0 0 24 24\"><path d=\"M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z\"/></svg>\n    </div>\n    <h3 class=\"lcdp-dialogue-ref__titre\" id=\"lcdp-ref-choix-titre\" data-lcdp-dialogue-titre>Confirmer cette action ?</h3>\n    <p class=\"lcdp-dialogue-ref__message\" id=\"lcdp-ref-choix-message\" data-lcdp-dialogue-message>Vous êtes sur le point de valider ce créneau pour le dimanche 22 novembre 2026.</p>\n    <div class=\"lcdp-dialogue-ref__actions lcdp-dialogue-ref__actions--choix\">\n      <button type=\"button\" class=\"lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--secondaire\" data-lcdp-dialogue-action=\"annuler\">Non, annuler</button>\n      <button type=\"button\" class=\"lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--principal\" data-lcdp-dialogue-action=\"confirmer\">Oui, confirmer</button>\n    </div>\n  </div>\n</div>",
+  "information": "<div class=\"lcdp-dialogue-ref lcdp-dialogue-ref--information\" role=\"alertdialog\" aria-modal=\"true\" aria-labelledby=\"lcdp-ref-information-titre\" aria-describedby=\"lcdp-ref-information-message\" data-lcdp-dialogue-reference=\"information\">\n  <div class=\"lcdp-dialogue-ref__card\">\n    <div class=\"lcdp-dialogue-ref__icone\" aria-hidden=\"true\">\n      <svg viewBox=\"0 0 24 24\"><path d=\"M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z\"/></svg>\n    </div>\n    <h3 class=\"lcdp-dialogue-ref__titre\" id=\"lcdp-ref-information-titre\" data-lcdp-dialogue-titre>Information importante</h3>\n    <p class=\"lcdp-dialogue-ref__message\" id=\"lcdp-ref-information-message\" data-lcdp-dialogue-message>Votre demande a bien été prise en compte. Un e-mail récapitulatif vient de vous être envoyé.</p>\n    <div class=\"lcdp-dialogue-ref__actions\">\n      <button type=\"button\" class=\"lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--principal\" data-lcdp-dialogue-action=\"compris\">J'ai compris</button>\n    </div>\n  </div>\n</div>",
+  "erreur": "<div class=\"lcdp-dialogue-ref lcdp-dialogue-ref--erreur\" role=\"alertdialog\" aria-modal=\"true\" aria-labelledby=\"lcdp-ref-erreur-titre\" aria-describedby=\"lcdp-ref-erreur-message\" data-lcdp-dialogue-reference=\"erreur\">\n  <div class=\"lcdp-dialogue-ref__card\">\n    <div class=\"lcdp-dialogue-ref__icone\" aria-hidden=\"true\">\n      <svg viewBox=\"0 0 24 24\"><path d=\"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z\"/></svg>\n    </div>\n    <h3 class=\"lcdp-dialogue-ref__titre\" id=\"lcdp-ref-erreur-titre\" data-lcdp-dialogue-titre>Une erreur est survenue</h3>\n    <p class=\"lcdp-dialogue-ref__message\" id=\"lcdp-ref-erreur-message\" data-lcdp-dialogue-message>L'opération n'a pas pu être effectuée. Veuillez réessayer.</p>\n    <div class=\"lcdp-dialogue-ref__actions\">\n      <button type=\"button\" class=\"lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--principal\" data-lcdp-dialogue-action=\"fermer\">Fermer</button>\n    </div>\n  </div>\n</div>"
+};
+  async function chargerDialogueReferenceDa(type) {
     try {
-      await chargerCssObjetUneFois("/CSSBASE/lcdp-lightbox-convergence.css");
-      conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-erreur.html"));
-      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="erreur"]');
+      return await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-" + type + ".html");
+    } catch (erreur) {
+      console.error("Chargement du gabarit DA :", erreur);
+      const template = document.createElement("template");
+      template.innerHTML = GABARITS_DIALOGUE_DA[type];
+      return template.content.cloneNode(true);
+    }
+  }
+
+  async function afficherAlerteDa(message, options = {}) {
+    const type = options.mode === "confirmation" ? "choix" :
+      options.profil === "information" ? "information" : "erreur";
+    const conteneur = document.createElement("div");
+    const focusInitial = document.activeElement;
+    try {
+      await chargerCssObjetUneFois("/CSSBASE/lcdp-lightbox-convergence.css").catch(erreur => console.error("CSS dialogue DA :", erreur));
+      conteneur.appendChild(await chargerDialogueReferenceDa(type));
+      const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="' + type + '"]');
       const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");
       const texte = conteneur.querySelector("[data-lcdp-dialogue-message]");
-      const bouton = conteneur.querySelector('[data-lcdp-dialogue-action="fermer"]');
-      if (!dialogue || !titre || !texte || !bouton) {
-        throw new Error("Structure ERREUR DA incomplète.");
+      const bouton = conteneur.querySelector('[data-lcdp-dialogue-action="' +
+        (type === "choix" ? "confirmer" : type === "information" ? "compris" : "fermer") + '"]');
+      const annuler = conteneur.querySelector('[data-lcdp-dialogue-action="annuler"]');
+      if (!dialogue || !titre || !texte || !bouton || (type === "choix" && !annuler)) {
+        throw new Error("Structure dialogue DA incomplète.");
       }
-      titre.textContent = options.titre || "Erreur";
+      titre.textContent = options.titre || (type === "choix" ? "Confirmation" : type === "information" ? "Information" : "Erreur");
       texte.textContent = String(message || "");
-      bouton.textContent = options.boutonOk || "Fermer";
-      // Comme dans la branche précédente, l'acquittement par le bouton
-      // est obligatoire : Échap et clic sur le fond ne ferment pas ce dialogue.
+      bouton.textContent = options.boutonOk || (type === "choix" ? "Confirmer" : "Fermer");
+      if (annuler) annuler.textContent = options.libelleAnnuler || "Annuler";
+      const retirerDialogue = monterDialogueDa(conteneur, dialogue, focusInitial);
       return await new Promise(resolve => {
-        bouton.addEventListener("click", () => {
-          conteneur.remove();
-          resolve(true);
-        }, { once: true });
+        let resolu = false;
+        const fermer = valeur => {
+          if (resolu) return;
+          resolu = true;
+          retirerDialogue();
+          resolve(valeur);
+        };
+        bouton.addEventListener("click", () => fermer(true), { once: true });
+        annuler?.addEventListener("click", () => fermer(false), { once: true });
         bouton.focus();
       });
     } catch (erreur) {
-      console.error("Dialogue ERREUR DA :", erreur);
+      console.error("Dialogue DA :", erreur);
       conteneur.remove();
-      window.alert(message || "");
-      return true;
+      return false;
     }
-
   }
 
   // Aucun CSS /BOX n’est chargé pour la DA : présentation des objets dans le central,
@@ -1011,7 +989,8 @@
 
   async function ouvrirDialogueEtatCivilDa(options) {
     const conteneur = document.createElement("div");
-    document.body.appendChild(conteneur);
+    const focusInitial = document.activeElement;
+    let retirerDialogue = () => conteneur.remove();
 
     try {
       const fragment = await chargerFragmentObjet("/HTMLBASE/04-dialogue-champ.html");
@@ -1064,10 +1043,11 @@
         function fermer(valeur) {
           if (resolu) return;
           resolu = true;
-          conteneur.remove();
+          retirerDialogue();
           resolve(valeur);
         }
 
+        retirerDialogue = monterDialogueDa(conteneur, dialogue, focusInitial, () => fermer(null));
         boutonFermer.addEventListener("click", () => fermer(null));
         boutonAnnuler.addEventListener("click", () => fermer(null));
 
@@ -1091,19 +1071,11 @@
           fermer(valeur);
         });
 
-        document.addEventListener(
-          "keydown",
-          (event) => {
-            if (event.key === "Escape") fermer(null);
-          },
-          { once: true }
-        );
-
         input.focus();
         input.select();
       });
     } catch (error) {
-      conteneur.remove();
+      retirerDialogue();
       throw error;
     }
   }
@@ -1200,13 +1172,12 @@
 
   function afficherAttenteTransmissionDa() {
     const attente = document.createElement("div");
-    attente.className = "lcdp-da-transmission-attente lcdp-attente-plein-ecran";
+    attente.className = "lcdp-da-transmission-attente";
     attente.setAttribute("role", "status");
     attente.setAttribute("aria-label", "Transmission de votre demande de DA en cours");
     const roue = creerRoueAttenteDa();
     attente.appendChild(roue);
-    document.body.appendChild(attente);
-    return () => attente.remove();
+    return monterHoteDa(attente);
   }
 
   async function transmettreDaDepuisFormulaire(form, options) {
@@ -1271,7 +1242,7 @@ form.dataset.lcdpTransmissionDaEnCours =
       retirerAttenteDa();
 
       const confirmationLue = await afficherAlerteDa(
-        "Votre demande de DA est enregistrée.\n\nVotre demande de DA est à l’étude. Nous vous tenons informé(e).",
+        "Votre demande de DA est à l’étude. Nous vous tenons informé(e).",
         {
           profil: "information",
           titre: "Demande de DA envoyée",
