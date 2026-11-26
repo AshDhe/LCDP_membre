@@ -4752,6 +4752,9 @@ function afficherResumePointsPassion(compte) {
   }
 
   async function afficherInformationMembre(message, titre = "Information", fragmentPrepare = null, libelleBouton = "Fermer", slotParcours = null, proposerResiliation = false) {
+    if (proposerResiliation && !slotParcours?.hasAttribute("data-lcdp-compte-parcours-contenu")) {
+      throw new Error("La résiliation doit rester dans le wrapper de Mon compte.");
+    }
     const slot = slotParcours || document.getElementById("lcdp-lightbox-slot");
     if (!slot) return null;
     const fragment = fragmentPrepare || await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
@@ -4769,9 +4772,6 @@ function afficherResumePointsPassion(compte) {
     texte.textContent = String(message || "");
     bouton.textContent = libelleBouton;
     if (proposerResiliation) {
-      if (!slotParcours?.hasAttribute("data-lcdp-compte-parcours-contenu")) {
-        throw new Error("La résiliation doit rester dans le wrapper de Mon compte.");
-      }
       const libelle = document.createElement("p");
       libelle.className = "lcdp-dialogue-ref__message";
       libelle.textContent = "Demander la résiliation du contrat";
