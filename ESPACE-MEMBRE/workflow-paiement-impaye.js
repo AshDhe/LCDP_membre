@@ -60,7 +60,7 @@
     template.innerHTML=(await r.text()).trim();
     return template.content;
   }
-  function ouvrirParcours(id,libelle) {
+  function ouvrirParcours(id,libelle,options={}) {
     if (document.querySelector("[data-lcdp-paiement-impaye-parcours]")) return null;
     const main = document.querySelector(".lcdp-app-wrapper > #lcdp-accueil-contenu, .lcdp-app-wrapper > .lcdp-site-main, .lcdp-site-page > .lcdp-site-main, .lcdp-app-wrapper > main, .lcdp-site-page > main");
     if (!main) throw Error("Wrapper de l’application introuvable.");
@@ -86,6 +86,7 @@
       ferme=true;section.remove();
       anciens.forEach(({element,hidden})=>{if(element.isConnected)element.hidden=hidden;});
       main.scrollTop=scroll;if(focus?.isConnected)focus.focus();
+      options.quitter?.();
     }};
   }
   async function dialogue(slot,profil,message,options={}) {
@@ -182,8 +183,8 @@
     return [...groupes.values()].map(g=>({...g,echeances:g.echeances.sort((a,b)=>a.numero-b.numero)}));
   }
 
-  async function afficherEcheancesPaiementSuspension(groupes) {
-    const parcours=ouvrirParcours("dialogue-paiement-impaye","Paiements en attente");
+  async function afficherEcheancesPaiementSuspension(groupes,options={}) {
+    const parcours=ouvrirParcours("dialogue-paiement-impaye","Paiements en attente",options);
     if(!parcours)return;
     const slot=parcours.contenu;
     function afficherListe(){
@@ -263,7 +264,7 @@
       await retourListe();
       return;
     }
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-impayes-libelles-v2");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-retour-liste-v3");
     if (typeof window.LCDP_monterPaiementCB !== "function") throw Error("Service de paiement indisponible.");
     await window.LCDP_monterPaiementCB(slot,{
       orderid,echeance:numeroEcheance || 1,source:"suspension",retour:"",
@@ -281,16 +282,16 @@
     return d.paiements;
   }
   let ouverture=null;
-  function ouvrir(etat={}) {
+  function ouvrir(etat={},options={}) {
     if(ouverture)return ouverture;
     ouverture=(async()=>{
       const restaurer=attendreBouton(document.activeElement);
       try{
         const [,paiements]=await Promise.all([assurerCSS(),obtenirPaiements()]);
-        return await afficherEcheancesPaiementSuspension(collecterEcheances(paiements,etat));
+        return await afficherEcheancesPaiementSuspension(collecterEcheances(paiements,etat),options);
       }catch(erreur){
         await assurerCSS();
-        const parcours=ouvrirParcours("dialogue-paiement-impaye","Paiements en attente");
+        const parcours=ouvrirParcours("dialogue-paiement-impaye","Paiements en attente",options);
         if(!parcours)throw erreur;
         try{await alerte("Impossible de charger la liste complète des échéances. Veuillez réessayer.",parcours.contenu);}
         finally{parcours.fermer();}
