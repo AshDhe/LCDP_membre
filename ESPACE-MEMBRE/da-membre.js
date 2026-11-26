@@ -525,15 +525,11 @@
   async function ouvrirWorkflowDa() {
     await chargerDependancesWorkflowDa();
 
-    const slot = obtenirLightboxSlotDa();
-    slot.innerHTML = "";
-
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-workflow-abonnement.html");
-    slot.appendChild(fragment);
 
-    const workflow = slot.querySelector("[data-lcdp-box-workflow-abonnement]");
-    const contenu = slot.querySelector("[data-lcdp-workflow-abonnement-content]");
-    const card = slot.querySelector("[data-lcdp-workflow-abonnement-card]");
+    const workflow = fragment.querySelector("[data-lcdp-box-workflow-abonnement]");
+    const contenu = fragment.querySelector("[data-lcdp-workflow-abonnement-content]");
+    const card = fragment.querySelector("[data-lcdp-workflow-abonnement-card]");
     if (workflow) {
       workflow.setAttribute("role", "region");
       workflow.removeAttribute("aria-modal");
@@ -541,7 +537,6 @@
     }
 
     if (!workflow || !contenu || !card) {
-      slot.innerHTML = "";
       throw new Error("Structure workflow DA incomplète.");
     }
 
@@ -553,7 +548,7 @@
     boutonFermer.addEventListener("click", demanderQuitterDa);
     card.insertBefore(boutonFermer, card.firstChild);
 
-    return { slot, contenu };
+    return { fragment, contenu };
   }
 
   let etatGabaritLegalDa = null;
@@ -719,12 +714,8 @@
   async function afficherFormulaireDa(membre, parrain, options) {
     await chargerDependancesFormulaireDa();
 
-    desactiverGabaritLegalDa();
-    const slot = obtenirLightboxSlotDa();
-    let contenu = slot.querySelector("[data-lcdp-workflow-abonnement-content]");
-    if (!contenu) ({ contenu } = await ouvrirWorkflowDa());
-
-    contenu.innerHTML = "";
+    // Construire intégralement le formulaire hors DOM, sans exposer ses états intermédiaires.
+    const { fragment, contenu } = await ouvrirWorkflowDa();
     const formSlot = document.createElement("div");
     formSlot.id = "lcdp-formulaire-da-slot";
     contenu.appendChild(formSlot);
@@ -745,6 +736,11 @@
       event.preventDefault();
       await transmettreDaDepuisFormulaire(form, options);
     });
+
+    const slot = obtenirLightboxSlotDa();
+    desactiverGabaritLegalDa();
+    slot.replaceChildren(fragment);
+    slot.closest(".lcdp-site-main")?.scrollTo?.({ top: 0 });
   }
 
   function construireConfigurationDa() {
@@ -946,7 +942,7 @@
     const input = form.querySelector(`[name="${name}"]`);
     const zoneControl = wrapper?.querySelector("[data-lcdp-champ-control]") || input?.parentNode;
 
-    if (!input || !wrapper || !zoneControl || document.getElementById(boutonId)) {
+    if (!input || !wrapper || !zoneControl || form.querySelector("#" + boutonId)) {
       return;
     }
 
