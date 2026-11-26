@@ -189,7 +189,6 @@
   // La DA est une vue du wrapper membre, pas une lightbox plein écran.
   // L'écran d'origine reste monté et retrouve son état à la fermeture.
   let vueDaInitiale = null;
-  const coordonneesDaEnregistrees = new WeakMap();
   function obtenirLightboxSlotDa() {
     let slot = document.getElementById("lcdp-da-membre-overlay-slot");
     if (slot) return slot;
@@ -1160,11 +1159,6 @@
     remplirInput(form, "prenommembre", membre.prenommembre || "", true);
     remplirInput(form, "emailmembre", membre.emailmembre || "", true);
     remplirInput(form, "emailparrain", "", false);
-    // Conserver les coordonnées du compte sans les réafficher ni les rendre modifiables.
-    coordonneesDaEnregistrees.set(form, {
-      alias: String(membre.alias ?? "").trim(),
-      tel: String(membre.tel ?? "").replace(/\s+/g, "")
-    });
     remplirInput(form, "autoquali", membre.autoquali || "", false);
     remplirInput(form, "autoloisir", membre.autoloisir || "", false);
     remplirInput(form, "autonouschoisir", membre.autonouschoisir || "", false);
@@ -1272,7 +1266,9 @@ form.dataset.lcdpTransmissionDaEnCours =
       retirerAttenteDa();
 
       const informationsDaFin = [
-        "Un e-mail de confirmation récapitulant les informations de votre demande de DA vous a été envoyé.",
+        data.emailConfirmationEnvoye === true
+          ? "Un e-mail de confirmation de votre demande de DA vous a été envoyé."
+          : "Votre demande est enregistrée. L’envoi de l’e-mail de confirmation n’est pas confirmé.",
         "Votre demande de DA sera étudiée par le Club dans les prochains jours. Vous serez informé(e) de sa décision.",
         "Une fois votre DA accordé, vous pourrez acheter votre bracelet d'accès aux parcs dans la boutique."
       ];
@@ -1384,27 +1380,21 @@ form.dataset.lcdpTransmissionDaEnCours =
 
   function lirePayloadDa(form) {
     const etatcivilmaj = valeurChamp(form, "etatcivilmaj") === "true";
-    const coordonnees = coordonneesDaEnregistrees.get(form);
 
     return {
       etatcivilmaj,
       nommembre: etatcivilmaj ? valeurChamp(form, "nommembre") : "",
       prenommembre: etatcivilmaj ? valeurChamp(form, "prenommembre") : "",
-      alias: coordonnees?.alias ?? "",
       emailparrain: nettoyerEmail(valeurChamp(form, "emailparrain")),
-      tel: coordonnees?.tel ?? "",
       autoquali: valeurChamp(form, "autoquali"),
       autoloisir: valeurChamp(form, "autoloisir"),
       autonouschoisir: valeurChamp(form, "autonouschoisir"),
-      checkboxvaleurs: false, // Question retirée ; contrat Worker conservé en attendant sa révision.
-      targetfamill: false, // Champ retiré du formulaire ; contrat Worker DA conservé.
       iban: valeurChamp(form, "iban").replace(/\s+/g, "").toUpperCase(),
       swift: valeurChamp(form, "swift").replace(/\s+/g, "").toUpperCase(),
       rib: valeurChamp(form, "rib"),
       adresse1: valeurChamp(form, "adresse1"),
       adresse2: valeurChamp(form, "adresse2"),
       adresse3: valeurChamp(form, "adresse3"),
-      regleclub_v1: true,
       regleapp_v1: true
     };
   }
@@ -1419,7 +1409,6 @@ form.dataset.lcdpTransmissionDaEnCours =
 
   function verifierPayloadDa(payload) {
     if (payload.emailparrain && !emailValide(payload.emailparrain)) return "L’adresse e-mail du parrain est invalide.";
-    if (!/^\d{10}$/.test(payload.tel)) return "Le numéro de mobile enregistré dans votre compte doit contenir 10 chiffres. Vérifiez vos coordonnées dans votre compte.";
     if (!payload.autoquali) return "Vos trois qualités sont obligatoires.";
     if (!payload.autoloisir) return "Vos trois loisirs sont obligatoires.";
     if (!payload.autonouschoisir) return "Pourquoi La Clé du Parc ? est obligatoire.";
