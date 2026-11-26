@@ -1682,13 +1682,15 @@
           let parcours = null;
           try {
             const jours = actualiser();
-            const message = messageRetractationCompte(abo, jours);
+            const message = abo.resiliation === true
+              ? "Votre demande de résiliation est enregistrée."
+              : messageRetractationCompte(abo, jours);
             const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
             if (!bouton.isConnected) return;
             parcours = ouvrirParcoursCompte("dialogue-retractation-compte", "Rétractation");
             if (!parcours) return;
-            await afficherInformationMembre(message, "Rétractation", fragment, "Fermer", parcours.contenu,
-              message === "La période de rétractation est close.");
+            await afficherInformationMembre(message, abo.resiliation === true ? "Résiliation de l’abonnement" : "Rétractation", fragment, "Fermer", parcours.contenu,
+              message === "La période de rétractation est close." ? abo : null);
           } catch (erreur) {
             console.error("Parcours de rétractation indisponible :", erreur);
             if (!parcours && bouton.isConnected) {
@@ -4750,6 +4752,7 @@ function afficherResumePointsPassion(compte) {
     titreElement.textContent = titre;
     texte.textContent = String(message || "");
     bouton.textContent = libelleBouton;
+    let fermerParcours;
     if (proposerResiliation) {
       const libelle = document.createElement("p");
       libelle.className = "lcdp-dialogue-ref__message";
@@ -4768,7 +4771,7 @@ function afficherResumePointsPassion(compte) {
         erreurResiliation.hidden = true;
         demander.disabled = true;
         try {
-          await ouvrirAvertissementResiliationCompte(slot, dialogue, demander);
+          await ouvrirAvertissementResiliationCompte(slot, dialogue, demander, proposerResiliation, () => fermerParcours());
         } catch (erreur) {
           console.error("Dialogue de résiliation indisponible :", erreur);
           if (dialogue.isConnected) {
@@ -4789,6 +4792,7 @@ function afficherResumePointsPassion(compte) {
         slot.replaceChildren();
         resolve(true);
       };
+      fermerParcours = fermer;
       bouton.addEventListener("click", fermer, { once: true });
       bouton.focus();
     });
@@ -4796,7 +4800,7 @@ function afficherResumePointsPassion(compte) {
 
   // Même gabarit et même style d’avertissement que la fermeture volontaire du compte.
   // Le dialogue précédent est conservé hors du DOM pour un retour immédiat, sans écran intermédiaire.
-  async function ouvrirAvertissementResiliationCompte(slot, precedent, boutonRetour) {
+  async function ouvrirAvertissementResiliationCompte(slot, precedent, boutonRetour, abonnement, fermerParcours) {
     if (!slot?.hasAttribute("data-lcdp-compte-parcours-contenu")) {
       throw new Error("Wrapper de Mon compte introuvable.");
     }
@@ -4827,19 +4831,62 @@ function afficherResumePointsPassion(compte) {
     annuler.textContent = "Annuler";
     demander.textContent = "Demander";
 
-    // Cette étape est uniquement une interface : aucune demande n’est encore envoyée.
+    let envoiEnCours = false;
     const information = document.createElement("p");
     information.className = "lcdp-dialogue-ref__message";
     information.setAttribute("role", "status");
     information.hidden = true;
     demander.closest(".lcdp-dialogue-ref__actions").after(information);
-    demander.addEventListener("click", () => {
-      information.hidden = false;
-      information.textContent = "Le service de demande de résiliation n’est pas encore disponible.";
+    demander.addEventListener("click", async () => {
+      if (envoiEnCours) return;
+      envoiEnCours = true;
+      annuler.disabled = true;
+      demander.disabled = true;
+      information.hidden = true;
+      try {
+        if (!ENDPOINT_ABONNEMENTS_COMPTE || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(abonnement?.idabo || ""))) {
+          throw new Error("Abonnement non identifiable.");
+        }
+        // Précharger la confirmation pour ne pas annoncer un échec d’envoi si seul le gabarit manque.
+        const confirmation = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
+        const reponse = await fetch(ENDPOINT_ABONNEMENTS_COMPTE + "/resiliation", {
+          method: "POST", credentials: "include", cache: "no-store",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ idabo: abonnement.idabo })
+        });
+        if (reponse.status === 401) {
+          document.removeEventListener("keydown", clavier);
+          fermerParcours();
+          redirigerConnexionMembre("inactive");
+          return;
+        }
+        const resultat = await reponse.json().catch(() => null);
+        if (!reponse.ok || resultat?.ok !== true || resultat.enregistree !== true) {
+          throw new Error(resultat?.message || "L’enregistrement de votre demande n’est pas confirmé.");
+        }
+        abonnement.resiliation = true;
+        abonnement.resiliationDecision = resultat.decision;
+        document.removeEventListener("keydown", clavier);
+        await afficherInformationMembre("Votre demande de résiliation est enregistrée.",
+          "Résiliation de l’abonnement", confirmation, "Fermer", slot);
+        fermerParcours();
+      } catch (erreur) {
+        if (dialogue.parentNode === slot) {
+          information.textContent = erreur?.message || "L’enregistrement de votre demande n’est pas confirmé.";
+          information.hidden = false;
+        } else {
+          fermerParcours();
+        }
+      } finally {
+        envoiEnCours = false;
+        annuler.disabled = false;
+        demander.disabled = false;
+      }
     });
 
     const anciens = Array.from(slot.childNodes);
     const retour = () => {
+      if (envoiEnCours) return;
       document.removeEventListener("keydown", clavier);
       if (dialogue.parentNode !== slot) return;
       slot.replaceChildren(...anciens);
