@@ -1,13 +1,10 @@
 <!doctype html>
-<html lang="fr" data-lcdp-css="c085 c034 c038 c032 c083 c036 c033 c037 c041 c040">
+<html class="lcdp-planifier-pret" lang="fr" data-lcdp-css="c085 c034 c038 c032 c083 c036 c033 c037 c041 c040 c073 c059 c058 c072">
 <head>
   <meta charset="utf-8">
-
-  <title>Page en cours de mise à jour - La Clé du Parc</title>
-
+  <title>Accessoires cadeau - La Clé du Parc</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Cette page est en cours de mise à jour.">
-
+  <meta name="description" content="Accessoires cadeau de la boutique La Clé du Parc.">
   <script src="../config.js"></script>
   <script>
     (() => {
@@ -20,36 +17,81 @@
       window.LCDP_urlPublic = path => typeof cfg.publicUrl === "function" ? cfg.publicUrl(path) : joindre(publicBase, path);
       window.LCDP_urlMembre = path => typeof cfg.membreUrl === "function" ? cfg.membreUrl(path) : joindre(membreBase, path);
       window.LCDP_urlObjet = path => typeof cfg.objetUrl === "function" ? cfg.objetUrl(path) : joindre(objetBase, path);
-      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css') + '">');
+      for (const chemin of [
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261126-da27f214",
+        "/CSSBASE/lcdp-lightbox-convergence.css?v=20261126-conteneur",
+        "/CSSBASE/lcdp-planifier.css"
+      ]) {
+        document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(chemin) + '">');
+      }
     })();
   </script>
+  <link rel="stylesheet" href="./grille-filtrage-acces.css?v=20261126-commun">
   <script src="./boutique-accessoires-cadre.js?v=20261126" defer></script>
+  <script src="./boutique-accessoires.js?v=20261126" defer></script>
 </head>
-
-<body class="lcdp-page-document-legal lcdp-app-page">
-  <div class="lcdp-site-page lcdp-app-wrapper">
-
-    <div id="lcdp-bandeau-slot"></div>
-
-    <main class="lcdp-site-main">
-      <section class="lcdp-page-section" aria-label="Page en cours de mise à jour">
-        <div class="lcdp-page-container">
-          <div class="lcdp-mise-a-jour">
-            <div class="lcdp-loading-spinner" aria-hidden="true">
+<body class="lcdp-app-page public-home--loading">
+  <div id="lcdp-attente-arrivee" class="public-home__loading" data-lcdp-attente-cadre role="status" aria-live="polite" aria-label="Chargement de la page">
+    <div class="public-home__loading-inner">
+      <div class="lcdp-loading-spinner" aria-hidden="true">
         <svg viewBox="0 0 36 36" class="lcdp-loading-spinner__track"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
         <svg viewBox="0 0 36 36" class="lcdp-loading-spinner__arc"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75" /></svg>
         <span class="lcdp-loading-spinner__dot"></span>
       </div>
-            <h1 class="lcdp-title-page-center">La page n'est pas rendue publique actuellement.</h1>
+    </div>
+  </div>
+  <div class="lcdp-site-page lcdp-app-wrapper public-home__app">
+    <div id="lcdp-bandeau-slot"></div>
+    <main class="lcdp-site-main" id="contenu-principal">
+      <section class="lcdp-page-section" aria-label="Accessoires cadeau">
+        <div class="lcdp-page-container">
+          <div class="lcdp-page-content lcdp-stack-large">
+            <header class="lcdp-editorial-page-heading">
+              <a class="lcdp-editorial-back-link" href="https://lacleduparc.fr/ESPACE-PUBLIC/boutique.html" data-lcdp-accessoires-retour><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="m15 19-7-7 7-7"></path></svg><span>Retour à la boutique</span></a>
+              <h1 class="lcdp-title-page-center">Accessoires cadeau</h1>
+            </header>
+            <p id="lcdp-accessoires-etat" role="status" hidden></p>
+            <div data-lcdp-accessoires-reserves="cadeau" class="lcdp-stack-small" hidden>
+              <div id="lcdp-planning-calendrier-slot">
+                <form class="lcdp-planning-filtres" aria-label="Filtrer les accessoires" data-lcdp-accessoires-filtres>
+                  <div class="lcdp-planning-filtres__champs">
+                    <div class="lcdp-planning-filtres__champ" data-lcdp-filtre-champ="mois">
+                      <label class="lcdp-planning-filtres__label" for="lcdp-accessoire-modele">Accessoire</label>
+                      <select id="lcdp-accessoire-modele" class="lcdp-planning-filtres__select" data-lcdp-accessoire-filtre="modele">
+                        <option value="">Tous</option>
+                      </select>
+                    </div>
+                    <div class="lcdp-planning-filtres__champ" data-lcdp-filtre-champ="parc">
+                      <label class="lcdp-planning-filtres__label" for="lcdp-accessoire-prix">Prix</label>
+                      <select id="lcdp-accessoire-prix" class="lcdp-planning-filtres__select" data-lcdp-accessoire-filtre="prix">
+                        <option value="">Tous</option>
+                        <option value="asc">Croissant</option>
+                        <option value="desc">Décroissant</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="lcdp-planning-filtres__actions">
+                    <span class="lcdp-planning-filtres__resultat" data-lcdp-accessoires-resultat role="status"></span>
+                    <button class="lcdp-planning-filtres__effacer" type="reset">Effacer</button>
+                  </div>
+                </form>
+              </div>
+              <section class="lcdp-box-liste-card lcdp-box-liste-card--encadree" data-lcdp-box-liste-card aria-label="Accessoires cadeau">
+                <div class="lcdp-box-liste-card__list" data-lcdp-liste-card-list>
+                  <div class="lcdp-planifier-parcs-diaporama">
+                    <section class="lcdp-box-liste-card-diaporama" data-lcdp-liste-card-diaporama aria-label="Accessoires cadeau">
+                      <div class="lcdp-box-liste-card-diaporama__list" data-lcdp-liste-card-diaporama-list></div>
+                    </section>
+                  </div>
+                </div>
+              </section>
+            </div>
           </div>
         </div>
       </section>
     </main>
-
     <div id="lcdp-footer-slot"></div>
     <div id="lcdp-lightbox-slot"></div>
-
   </div>
-
 </body>
 </html>
