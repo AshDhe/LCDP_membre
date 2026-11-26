@@ -14,15 +14,12 @@
     if (!bouton || bouton.tagName !== "BUTTON") return () => {};
     const dejaDesactive = bouton.disabled;
     const ancienBusy = bouton.getAttribute("aria-busy");
-    const spinner = document.createElement("span");
-    spinner.className = "lcdp-loading-spinner lcdp-loading-spinner--bouton";
-    spinner.setAttribute("aria-hidden","true");
-    spinner.innerHTML = "<svg class=\"lcdp-loading-spinner__track\" viewBox=\"0 0 36 36\" aria-hidden=\"true\"><circle cx=\"18\" cy=\"18\" r=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\"></circle></svg><svg class=\"lcdp-loading-spinner__arc\" viewBox=\"0 0 36 36\" aria-hidden=\"true\"><circle cx=\"18\" cy=\"18\" r=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-dasharray=\"100\" stroke-dashoffset=\"75\"></circle></svg><span class=\"lcdp-loading-spinner__dot\"></span>";
-    bouton.prepend(spinner);
+    const avaitClasse = bouton.classList.contains("lcdp-action-attente");
+    bouton.classList.add("lcdp-action-attente");
     bouton.disabled = true;
     bouton.setAttribute("aria-busy","true");
     return () => {
-      spinner.remove();
+      if (!avaitClasse) bouton.classList.remove("lcdp-action-attente");
       bouton.disabled = dejaDesactive;
       if (ancienBusy === null) bouton.removeAttribute("aria-busy");
       else bouton.setAttribute("aria-busy",ancienBusy);
@@ -33,7 +30,7 @@
     if (!chargementCSS) chargementCSS = new Promise((resolve,reject) => {
       const lien = document.createElement("link");
       lien.rel = "stylesheet";
-      lien.href = url("objet","/CSSBASE/lcdp-lightbox-convergence.css?v=20261126-spinner-v7");
+      lien.href = url("objet","/CSSBASE/lcdp-lightbox-convergence.css?v=20261126-spinner-v8");
       lien.onload = resolve;
       lien.onerror = () => {lien.remove();chargementCSS=null;reject(Error("CSS officiel indisponible."));};
       document.head.appendChild(lien);
@@ -262,7 +259,7 @@
       await retourListe();
       return;
     }
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-spinner-v7");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-spinner-v8");
     if (typeof window.LCDP_monterPaiementCB !== "function") throw Error("Service de paiement indisponible.");
     await window.LCDP_monterPaiementCB(slot,{
       orderid,echeance:numeroEcheance || 1,source:"suspension",retour:"",
