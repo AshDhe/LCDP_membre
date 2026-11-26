@@ -369,7 +369,7 @@
   // particularités du parcours dans lcdp-da-membre.css.
   async function chargerFondationsDa() {
     await chargerCssObjetUneFois("/CSSBASE/lcdp-central-mobile-first.css");
-    await chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261126-da-qualites");
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261126-da-champs-v19");
   }
 
   async function chargerDependancesAlerteDa() {
@@ -729,6 +729,8 @@
 
     initialiserValeursFormulaireDa(form, membre, parrain);
     organiserFormulaireDa(form);
+    // Supprimer uniquement les repères visuels, sans changer les contrôles obligatoires.
+    form.querySelectorAll(".lcdp-box-champ-formulaire__required").forEach(element => element.remove());
 
     const boutonSubmit = form.querySelector("button[type='submit']");
     if (boutonSubmit) boutonSubmit.textContent = "Transmettre";
@@ -756,16 +758,8 @@
         champLectureSeule("da-prenom-membre", "prenommembre", "", "text", "Déjà renseigné"),
         champLectureSeule("da-email-membre", "emailmembre", "", "email", "Déjà renseigné"),
         champTexte("da-autoquali", "autoquali", "Vos trois qualités", true, "Vos trois qualités (100 caractères maximum)", "textarea", "text", 100),
-        champTexte("da-autoloisir", "autoloisir", "Vos trois loisirs préférés", true, "Vos 3 loisirs", "text", "text", 100),
-        champTexte("da-autonouschoisir", "autonouschoisir", "Pourquoi La Clé du Parc ?", true, "Votre motivation", "text", "text", 100),
-        {
-          type: "checkbox",
-          id: "da-checkboxvaleurs",
-          name: "checkboxvaleurs",
-          label: "Valeurs du club",
-          checkboxLabel: "Vous reconnaissez-vous dans les valeurs de respect, de convivialité et de curiosité ?",
-          required: false
-        },
+        champTexte("da-autoloisir", "autoloisir", "Vos trois loisirs préférés", true, "Vos trois loisirs préférés (100 caractères maximum)", "textarea", "text", 100),
+        champTexte("da-autonouschoisir", "autonouschoisir", "Pourquoi La Clé du Parc ?", true, "Votre motivation (100 caractères maximum)", "textarea", "text", 100),
         champEmailParrain(),
         champTexte("da-iban", "iban", "", false, "IBAN remboursement", "text", "text"),
         champTexte("da-swift", "swift", "", false, "BIC / SWIFT", "text", "text"),
@@ -780,7 +774,7 @@
         label: "Transmettre",
         style: "lcdp-button-primary"
       },
-      noteHtml: `* Votre réponse est nécessaire.<br>Ce formulaire et les données qu’il contient sont soumis au <a href="${construireUrlPublic(PAGE_REGLEMENT_CLUB)}" target="_blank" rel="noopener noreferrer">règlement du club</a> et au <a href="${construireUrlPublic(PAGE_REGLEMENT_APPLICATION)}" target="_blank" rel="noopener noreferrer">règlement de l'application</a>.`
+      noteHtml: `Ce formulaire est soumis au <a href="${construireUrlPublic(PAGE_REGLEMENT_APPLICATION)}" target="_blank" rel="noopener noreferrer">règlement de l’application</a>.`
     };
   }
 
@@ -796,7 +790,7 @@
   }
 
   function organiserFormulaireDa(form) {
-    const sectionEtatCivil = creerSectionFormulaireDa(form, "Etat civil *", "nommembre");
+    const sectionEtatCivil = creerSectionFormulaireDa(form, "État civil", "nommembre");
 
     if (sectionEtatCivil) {
       const wrapperNom = deplacerChampDansSectionDa(form, sectionEtatCivil, "nommembre");
@@ -809,7 +803,7 @@
       masquerLibelleChampDa(form, "emailmembre");
     }
 
-    const sectionRemboursement = creerSectionFormulaireDa(form, "Coordonnées bancaires de remboursement *", "iban");
+    const sectionRemboursement = creerSectionFormulaireDa(form, "Coordonnées bancaires de remboursement", "iban");
 
     if (sectionRemboursement) {
       deplacerChampDansSectionDa(form, sectionRemboursement, "iban");
@@ -820,7 +814,7 @@
       masquerLibelleChampDa(form, "rib");
     }
 
-    const sectionAdresseFacturation = creerSectionFormulaireDa(form, "Adresse de facturation *", "adresse1");
+    const sectionAdresseFacturation = creerSectionFormulaireDa(form, "Adresse de facturation", "adresse1");
 
     if (sectionAdresseFacturation) {
       deplacerChampDansSectionDa(form, sectionAdresseFacturation, "adresse1");
@@ -1100,7 +1094,7 @@
       label: "Qui est votre parrain La Clé du Parc ?",
       required: false,
       placeholder: "E-mail de votre parrain",
-      autocomplete: "email",
+      autocomplete: "off",
       autocapitalize: "none",
       spellcheck: "false"
     };
@@ -1118,7 +1112,7 @@
     };
 
     if (maxlength) {
-      champ.description = String(maxlength) + " caractères maximum.";
+      champ.maxlength = maxlength;
     }
 
     return champ;
@@ -1128,7 +1122,7 @@
     remplirInput(form, "nommembre", membre.nommembre || "", true);
     remplirInput(form, "prenommembre", membre.prenommembre || "", true);
     remplirInput(form, "emailmembre", membre.emailmembre || "", true);
-    remplirInput(form, "emailparrain", parrain.emailparrain || membre.emailparrain || "", false);
+    remplirInput(form, "emailparrain", "", false);
     // Conserver les coordonnées du compte sans les réafficher ni les rendre modifiables.
     coordonneesDaEnregistrees.set(form, {
       alias: String(membre.alias ?? "").trim(),
@@ -1149,11 +1143,6 @@
       if (input) input.maxLength = 100;
     });
 
-    const checkboxValeurs = form.querySelector('[name="checkboxvaleurs"]');
-    if (checkboxValeurs) {
-      checkboxValeurs.checked = false;
-      checkboxValeurs.defaultChecked = false;
-    }
 
   }
 
@@ -1373,7 +1362,7 @@ form.dataset.lcdpTransmissionDaEnCours =
       autoquali: valeurChamp(form, "autoquali"),
       autoloisir: valeurChamp(form, "autoloisir"),
       autonouschoisir: valeurChamp(form, "autonouschoisir"),
-      checkboxvaleurs: caseCochee(form, "checkboxvaleurs"),
+      checkboxvaleurs: false, // Question retirée ; contrat Worker conservé en attendant sa révision.
       targetfamill: false, // Champ retiré du formulaire ; contrat Worker DA conservé.
       iban: valeurChamp(form, "iban").replace(/\s+/g, "").toUpperCase(),
       swift: valeurChamp(form, "swift").replace(/\s+/g, "").toUpperCase(),
