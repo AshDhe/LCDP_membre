@@ -437,9 +437,24 @@
         "Il bénéficie également de " + c.acces + " accès maximum planifiés dans les parcs pour un exemple de quatre semaines (" + c.accesSemaine + " accès maximum par semaine du lundi au dimanche) et d’un privilège MAXDUO de " + c.maxduo + " membre" + (c.maxduo > 1 ? "s" : "") + " (soit le nombre d’invités DUO différents sur le mois).",
         "Son coût de revient est de " + nombre.format(c.coutUa) + " € par UA max (" + c.acces + " accès x " + c.membres + " membres par accès = " + c.ua + " UA max) pour MAXDUO=" + c.maxduo + "."
       ];
-      reponse.replaceChildren(...textes.map(texte => {
+      const finsGras = [
+        "sans extension d’invitation" + (comparaison ? "," : ""),
+        "M+2",
+        "accès maximum planifiés",
+        "€ par UA max"
+      ];
+      reponse.replaceChildren(...textes.map((texte, index) => {
         const p = document.createElement("p");
-        p.textContent = texte;
+        const fin = finsGras[index];
+        const position = texte.indexOf(fin);
+        if (position === -1) {
+          p.textContent = texte;
+          return p;
+        }
+        const limite = position + fin.length;
+        const fort = document.createElement("strong");
+        fort.textContent = texte.slice(0, limite);
+        p.append(fort, document.createTextNode(texte.slice(limite)));
         return p;
       }));
     } catch (error) {
