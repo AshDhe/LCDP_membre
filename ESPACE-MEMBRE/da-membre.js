@@ -648,7 +648,7 @@
     const retour = document.createElement("button");
     retour.type = "button";
     retour.className = "lcdp-button lcdp-button-secondary lcdp-button--haut-etroit";
-    retour.textContent = "Retour";
+    retour.textContent = "Ne pas faire ma demande";
     retour.addEventListener("click", () => fermerWorkflowDa());
     actions.appendChild(retour);
     bloc.appendChild(actions);
