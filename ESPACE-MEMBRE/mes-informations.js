@@ -1676,11 +1676,37 @@
           return jours;
         };
         actualiser();
-        bouton.addEventListener("click", () => {
-          const jours = actualiser();
-          const message = messageRetractationCompte(abo, jours);
-          void afficherInformationMembre(message, "Rétractation", null, "Fermer", null,
-            message === "La période de rétractation est close.");
+        let parcoursEnCours = false;
+        bouton.addEventListener("click", async () => {
+          if (parcoursEnCours) return;
+          parcoursEnCours = true;
+          let parcours = null;
+          try {
+            const jours = actualiser();
+            const message = messageRetractationCompte(abo, jours);
+            const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
+            if (!bouton.isConnected) return;
+            parcours = ouvrirParcoursCompte("dialogue-retractation-compte", "Rétractation");
+            if (!parcours) return;
+            await afficherInformationMembre(message, "Rétractation", fragment, "Fermer", parcours.contenu,
+              message === "La période de rétractation est close.");
+          } catch (erreur) {
+            console.error("Parcours de rétractation indisponible :", erreur);
+            if (!parcours && bouton.isConnected) {
+              parcours = ouvrirParcoursCompte("dialogue-retractation-compte", "Rétractation");
+            }
+            if (parcours) {
+              try {
+                await afficherAlerte("Impossible d’ouvrir les informations de rétractation. Veuillez réessayer.", parcours.contenu);
+              } catch (erreurAlerte) {
+                console.error("Dialogue d’erreur indisponible :", erreurAlerte);
+              }
+            }
+          } finally {
+            parcours?.fermer();
+            parcoursEnCours = false;
+            if (parcours && bouton.isConnected) bouton.focus();
+          }
         });
         ligne.appendChild(bouton);
         const extensions = libellesExtensionsCompte(abo);
@@ -4743,6 +4769,9 @@ function afficherResumePointsPassion(compte) {
     texte.textContent = String(message || "");
     bouton.textContent = libelleBouton;
     if (proposerResiliation) {
+      if (!slotParcours?.hasAttribute("data-lcdp-compte-parcours-contenu")) {
+        throw new Error("La résiliation doit rester dans le wrapper de Mon compte.");
+      }
       const libelle = document.createElement("p");
       libelle.className = "lcdp-dialogue-ref__message";
       libelle.textContent = "Demander la résiliation du contrat";
@@ -4751,21 +4780,27 @@ function afficherResumePointsPassion(compte) {
       demander.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--suppression";
       demander.textContent = "Demander";
       demander.setAttribute("aria-label", libelle.textContent);
+      const erreurResiliation = document.createElement("p");
+      erreurResiliation.className = "lcdp-dialogue-ref__message";
+      erreurResiliation.setAttribute("role", "status");
+      erreurResiliation.hidden = true;
       demander.addEventListener("click", async () => {
         if (demander.disabled) return;
+        erreurResiliation.hidden = true;
         demander.disabled = true;
         try {
           await ouvrirAvertissementResiliationCompte(slot, dialogue, demander);
         } catch (erreur) {
           console.error("Dialogue de résiliation indisponible :", erreur);
           if (dialogue.isConnected) {
-            void afficherAlerteSuperposee("Impossible d’ouvrir la demande de résiliation. Veuillez réessayer.", { profil: "information" });
+            erreurResiliation.textContent = "Impossible d’ouvrir la demande de résiliation. Veuillez réessayer.";
+            erreurResiliation.hidden = false;
           }
         } finally {
           demander.disabled = false;
         }
       });
-      bouton.after(libelle, demander);
+      bouton.after(libelle, demander, erreurResiliation);
     }
     return new Promise(resolve => {
       let resolu = false;
@@ -4783,6 +4818,9 @@ function afficherResumePointsPassion(compte) {
   // Même gabarit et même style d’avertissement que la fermeture volontaire du compte.
   // Le dialogue précédent est conservé hors du DOM pour un retour immédiat, sans écran intermédiaire.
   async function ouvrirAvertissementResiliationCompte(slot, precedent, boutonRetour) {
+    if (!slot?.hasAttribute("data-lcdp-compte-parcours-contenu")) {
+      throw new Error("Wrapper de Mon compte introuvable.");
+    }
     const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html");
     if (precedent.parentNode !== slot) return;
     const dialogue = fragment.querySelector('[data-lcdp-dialogue-reference="suppression"]');
@@ -4793,6 +4831,8 @@ function afficherResumePointsPassion(compte) {
     if (!dialogue || !titre || !message || !annuler || !demander) {
       throw new Error("Structure du dialogue de résiliation incomplète.");
     }
+    dialogue.setAttribute("role", "region");
+    dialogue.removeAttribute("aria-modal");
     dialogue.setAttribute("data-lcdp-avertissement-fermeture", "");
     titre.textContent = "Résiliation de l’abonnement";
     message.textContent = [
@@ -4835,14 +4875,6 @@ function afficherResumePointsPassion(compte) {
       if (evenement.key === "Escape") {
         evenement.preventDefault();
         retour();
-      } else if (evenement.key === "Tab") {
-        if (evenement.shiftKey && document.activeElement === lien) {
-          evenement.preventDefault();
-          demander.focus();
-        } else if (!evenement.shiftKey && document.activeElement === demander) {
-          evenement.preventDefault();
-          lien.focus();
-        }
       }
     };
     annuler.addEventListener("click", retour, { once: true });
