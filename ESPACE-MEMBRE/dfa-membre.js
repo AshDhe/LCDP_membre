@@ -144,12 +144,13 @@
   async function initialiserPage() {
     await Promise.all([
       demarrer().catch(erreur),
-      window.LCDP_cadreAccessoiresPret
+      Promise.resolve(window.LCDP_cadreAccessoiresPret).catch(error=>console.warn("Cadre DFA :",error))
     ]);
-    if (!document.querySelector("#lcdp-bandeau-slot [data-lcdp-burger-slot][data-lcdp-burger-initialise='true']") ||
+    // Le burger membre ne renseigne pas data-lcdp-burger-initialise.
+    // Le cadre est secondaire : ne jamais rendre la DFA inaccessible en cas d'échec du menu.
+    if (!document.querySelector("#lcdp-bandeau-slot [data-lcdp-burger-button]") ||
         !document.querySelector("#lcdp-footer-slot .lcdp-box-footer")) {
-      window.LCDP_dfaAttenteErreur?.();
-      return;
+      console.warn("Cadre DFA incomplet ; formulaire conservé accessible.");
     }
     await (document.fonts?.ready || Promise.resolve());
     window.LCDP_dfaAttenteTerminer?.();

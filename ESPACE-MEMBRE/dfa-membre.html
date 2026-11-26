@@ -8,18 +8,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Dotation financière annuelle individuelle La Clé du Parc.">
 
-  <link rel="preload" as="image" href="https://lacleduparc.fr/OBJET/IMAG/PICTO/pictowait.svg">
   <style>
-    /* Voile initial, avant tout chargement du CSS et du cadre partagé. */
-    #dfa-attente:not([hidden]) { position:fixed; inset:0; z-index:2147483646; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px; box-sizing:border-box; background:#fff; text-align:center; }
-    #dfa-attente:not([hidden]) ~ .lcdp-app-wrapper { visibility:hidden; }
-    #dfa-attente [hidden], #dfa-attente[hidden] { display:none !important; }
-    #dfa-attente img { display:block; width:64px; height:64px; }
-    #dfa-attente p { margin:0; color:#334155; font:inherit; }
-    #dfa-attente a { color:#4e6838; font:inherit; text-decoration:underline; }
-    @media (prefers-reduced-motion:reduce) { #dfa-attente img { visibility:hidden; } }
+    /* Masquer le wrapper entier avant toute initialisation, comme sur Mes accès. */
+    #lcdp-attente-page-membre:not([hidden]) ~ .lcdp-app-wrapper {visibility:hidden;}
+    /* Début du document : le spinner est centré avant les CSS externes. */
+    #lcdp-attente-page-membre:not([hidden]) {position:fixed;inset:0;z-index:2147483646;box-sizing:border-box;width:100%;height:100vh;height:100dvh;display:flex;align-items:center;justify-content:center;background:#fff;}
+    #lcdp-attente-page-membre .lcdp-loading-spinner {position:relative;box-sizing:border-box;width:64px;height:64px;display:flex;align-items:center;justify-content:center;}
+    #lcdp-attente-page-membre .lcdp-loading-spinner > svg {position:absolute;inset:0;display:block;width:100%;height:100%;}
+    #lcdp-attente-page-membre .lcdp-loading-spinner__track {color:rgba(6,95,70,.10);}
+    #lcdp-attente-page-membre .lcdp-loading-spinner__arc {color:#e59834;animation:lcdp-attente-page-rotation .8s linear infinite;}
+    #lcdp-attente-page-membre .lcdp-loading-spinner__dot {width:8px;height:8px;border-radius:50%;background:#4e6838;}
+    @keyframes lcdp-attente-page-rotation {to {transform:rotate(360deg);}}
+    @media(prefers-reduced-motion:reduce) {#lcdp-attente-page-membre .lcdp-loading-spinner__arc {animation:none;}}
+    #lcdp-attente-page-membre[hidden] {display:none!important;}
+    #lcdp-attente-page-membre [hidden] {display:none!important;}
   </style>
-  <noscript><style>#dfa-attente { display:none!important; } #dfa-attente ~ .lcdp-app-wrapper { visibility:visible!important; }</style></noscript>
+  <noscript><style>#lcdp-attente-page-membre {display:none!important;} #lcdp-attente-page-membre ~ .lcdp-app-wrapper {visibility:visible!important;}</style></noscript>
   <script src="../config.js"></script>
   <script>
     (() => {
@@ -37,17 +41,21 @@
     })();
   </script>
   <script src="./boutique-accessoires-cadre.js?v=20261126" defer></script>
-  <script src="./dfa-membre.js?v=20261126-dfa-direct-v7" defer></script>
+  <script src="./dfa-membre.js?v=20261126-dfa-direct-v8" defer></script>
 </head>
 
 <body class="lcdp-app-page lcdp-typographie-editoriale-commune">
-  <div id="dfa-attente" role="status" aria-label="Chargement de la dotation financière annuelle">
-    <img id="dfa-attente-picto" src="https://lacleduparc.fr/OBJET/IMAG/PICTO/pictowait.svg" alt="" width="64" height="64">
-    <p id="dfa-attente-erreur" hidden>Impossible de charger le formulaire. <a id="dfa-reessayer" href="">Réessayer</a></p>
+  <div id="lcdp-attente-page-membre" class="lcdp-attente-plein-ecran" role="status" aria-label="Chargement de la dotation financière annuelle">
+    <div id="dfa-attente-picto" class="lcdp-loading-spinner" aria-hidden="true">
+      <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
+      <svg class="lcdp-loading-spinner__arc" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75"></circle></svg>
+      <span class="lcdp-loading-spinner__dot"></span>
+    </div>
+    <p id="dfa-attente-erreur" hidden>Impossible de charger le formulaire. <a href="">Réessayer</a></p>
   </div>
   <script>
     (() => {
-      const attente = document.getElementById("dfa-attente");
+      const attente = document.getElementById("lcdp-attente-page-membre");
       const picto = document.getElementById("dfa-attente-picto");
       const erreur = document.getElementById("dfa-attente-erreur");
       let termine = false;
