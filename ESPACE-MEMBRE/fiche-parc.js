@@ -1306,12 +1306,16 @@
       }
       if (acces?.actionSecondaire === "regulariser" && acces?.orderid) {
         creerAction("Régulariser", () => {
-          const page = construireUrlSite("/ESPACE-MEMBRE/paiement-cb.html");
-          const url = new URL(page, window.location.href);
-          url.searchParams.set("orderid", acces.orderid);
-          url.searchParams.set("echeance", String(acces.echeance || 1));
-          url.searchParams.set("source", "suspension");
-          window.location.href = url.toString();
+          (async () => {
+            if (!window.LCDP_PaiementImpaye) {
+              await new Promise((resolve,reject) => {
+                const script=document.createElement("script");
+                script.src=construireUrlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v2");
+                script.onload=resolve;script.onerror=reject;document.head.appendChild(script);
+              });
+            }
+            await window.LCDP_PaiementImpaye.ouvrir({paiementSuspension:{orderid:acces.orderid,echeance:acces.echeance||1}});
+          })().catch(console.error);
         });
       }
       fermer.focus();
