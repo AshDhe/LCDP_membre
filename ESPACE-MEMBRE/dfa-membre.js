@@ -36,6 +36,7 @@
     if (!d || !uuid.test(d.iddfa || "")) throw Error("Référence de dotation indisponible.");
     operation = d;
     form.hidden = true;
+    el("dfa-choix").hidden = true;
     reprendre.hidden = true;
     annuler.hidden = true;
     actions.hidden = true;
@@ -57,7 +58,7 @@
     reprendre.disabled = occupe;
     annuler.disabled = occupe;
   }
-  retour.addEventListener("click",()=>location.assign(window.LCDP_urlPublic("/ESPACE-PUBLIC/boutique.html")));
+  retour.href = window.LCDP_urlPublic("/ESPACE-PUBLIC/boutique.html");
   reprendre.addEventListener("click",()=>{try{pagePaiement(operation);}catch(e){erreur(e);}});
   annuler.addEventListener("click",async()=>{
     if (occupe || !operation) return;
@@ -91,6 +92,7 @@
         if (cents !== nouveau) demandeId = null;
         cents = nouveau;
         valeur.textContent = euros(cents);
+        montant.setAttribute("data-montant-selectionne", "");
         message("");
       }
     } catch(e) { erreur(e); }
@@ -123,6 +125,7 @@
     if (typeof window.LCDP_diginum?.ouvrir !== "function") throw Error("Pavé numérique indisponible.");
     message("");
     form.hidden = false;
+    el("dfa-choix").hidden = false;
     actualiserBoutons();
   }
   demarrer().catch(erreur);
