@@ -833,12 +833,9 @@
     );
   }
 
-  async function redirigerVersAbonnementPourRegularisationBurger() {
-    const ok = await afficherAlerteBurger("Votre abonnement est suspendu (non payé). Vous allez être redirigé vers la page d’abonnement.", { profil: "choix", boutonOk: "Continuer", boutonAnnuler: "Fermer" });
-
-    if (!ok) return;
-
-    naviguerAvecSpinnerBurger(construireUrlMembre(PAGE_ABONNEMENT_MEMBRE));
+  async function redirigerVersAbonnementPourRegularisationBurger(contexte = {}) {
+    if (!window.LCDP_PaiementImpaye) await chargerScriptMembreUneFois("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v2");
+    return window.LCDP_PaiementImpaye.ouvrir(contexte);
   }
 
   async function gererClicInviterBurger(contexte, etatInviter = null) {
@@ -851,17 +848,17 @@
       return;
     }
 
-    await afficherAlerteInviterBloqueBurger(etat);
+    await afficherAlerteInviterBloqueBurger(etat,contexte);
   }
 
-  async function afficherAlerteInviterBloqueBurger(etatInviter) {
+  async function afficherAlerteInviterBloqueBurger(etatInviter,contexte) {
     const options = {};
 
     if (etatInviter?.peutPayer === true) {
       options.boutonAction = {
         label: "Payer",
         style: "lcdp-button-mini lcdp-button-mini-orange",
-        action: ouvrirPageAbonnementBurgerNouvelOnglet
+        action: () => redirigerVersAbonnementPourRegularisationBurger(contexte).catch(error => afficherAlerteBurger(error.message || "Paiement indisponible.").catch(console.error))
       };
     }
 
@@ -869,10 +866,6 @@
       etatInviter?.message || "Abonnement inactif. Vous ne pouvez pas inviter de membre.",
       options
     );
-  }
-
-  function ouvrirPageAbonnementBurgerNouvelOnglet() {
-    window.open(construireUrlMembre(PAGE_ABONNEMENT_MEMBRE), "_blank", "noopener");
   }
 
   async function ouvrirDialogueBoutonsBurger(options) {
