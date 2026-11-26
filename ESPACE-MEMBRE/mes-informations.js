@@ -1582,7 +1582,7 @@
   }
 
   function raccorderAttestationDfaCompte(lien, dfa) {
-    lien.hidden = !dfa?.attestationDisponible || dfa.modeTest;
+    lien.hidden = !dfa?.attestationDisponible;
     lien.removeAttribute("href");
     if (!lien.hidden) {
       lien.href = ENDPOINT_MON_COMPTE_MEMBRE + "/dfa/attestation?iddfa=" + encodeURIComponent(dfa.iddfa);
@@ -1636,7 +1636,7 @@
         lien.textContent="Attestation";lien.target="_blank";lien.rel="noopener noreferrer";
         raccorderAttestationDfaCompte(lien,dfa);
         if(!lien.hidden)ligne.appendChild(lien);
-        else if(!dfa.modeTest){
+        else {
           const detail=document.createElement("span");detail.className="lcdp-compte-relations__detail";detail.textContent="Attestation indisponible";ligne.appendChild(detail);
         }
         li.appendChild(ligne);ul.appendChild(li);
