@@ -27,14 +27,20 @@
   }
   let chargementCSS, chargementCB;
   function assurerCSS() {
-    if (!chargementCSS) chargementCSS = new Promise((resolve,reject) => {
-      const lien = document.createElement("link");
-      lien.rel = "stylesheet";
-      lien.href = url("objet","/CSSBASE/lcdp-lightbox-convergence.css?v=20261126-spinner-v8");
-      lien.onload = resolve;
-      lien.onerror = () => {lien.remove();chargementCSS=null;reject(Error("CSS officiel indisponible."));};
-      document.head.appendChild(lien);
-    });
+    if (!chargementCSS) {
+      const charger = chemin => new Promise((resolve,reject) => {
+        const lien = document.createElement("link");
+        lien.rel = "stylesheet";
+        lien.href = url("objet",chemin);
+        lien.onload = resolve;
+        lien.onerror = () => {lien.remove();reject(Error("CSS officiel indisponible."));};
+        document.head.appendChild(lien);
+      });
+      chargementCSS = Promise.all([
+        charger("/CSSBASE/lcdp-lightbox-convergence.css?v=20261126-impayes-objet-v1"),
+        charger("/CSSBASE/lcdp-paiements-en-attente.css?v=20261126-v1")
+      ]).catch(erreur=>{chargementCSS=null;throw erreur;});
+    }
     return chargementCSS;
   }
   function chargerScriptMembreUneFois(path) {
@@ -63,12 +69,12 @@
     const focus=document.activeElement, scroll=main.scrollTop;
     const anciens=Array.from(main.children).map(element=>({element,hidden:element.hidden}));
     const section=document.createElement("section");
-    section.className="lcdp-page-section";
+    section.className="lcdp-impaye-parcours";
     section.setAttribute("data-lcdp-paiement-impaye-parcours","");
     section.setAttribute("data-lcdp-compte-parcours","");
     section.setAttribute("aria-label",libelle);
     const conteneur=document.createElement("div");
-    conteneur.className="lcdp-page-container";
+    conteneur.className="lcdp-impaye-conteneur";
     const contenu=document.createElement("div");
     contenu.id=id;
     contenu.setAttribute("data-lcdp-compte-parcours-contenu","");
@@ -188,7 +194,7 @@
       liste.setAttribute("data-lcdp-impaye-liste","");
       liste.setAttribute("aria-label","Paiements en attente");
       const titre=document.createElement("h1");
-      titre.className="lcdp-title-section";
+      titre.className="lcdp-impaye-titre";
       titre.textContent="Paiements en attente";
       const texte=document.createElement("p");
       const nb=groupes.reduce((n,g)=>n+g.echeances.length,0);
