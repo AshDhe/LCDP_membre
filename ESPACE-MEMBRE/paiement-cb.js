@@ -31,6 +31,7 @@
       const url = new URL(valeur, window.location.href);
       if (url.origin !== window.location.origin ||
           !/^\/ESPACE-MEMBRE\/[a-zA-Z0-9_-]+\.html$/.test(url.pathname) ||
+          /^\/ESPACE-MEMBRE\/paiement(?:[-_]|\.html)/i.test(url.pathname) ||
           url.pathname === window.location.pathname) return "";
       return url.href;
     } catch { return ""; }
@@ -146,6 +147,11 @@
       return;
     }
 
+    if (retour === "cancel" && pageOrigine) {
+      revenirPageOrigine();
+      return;
+    }
+
     if (paiement.delaiPaiementDepasse === true || paiement.abonnementAnnuleNonPaye === true) {
       afficherMessage(paiement.messageDelaiPaiement || "Le règlement de cette échéance est indisponible.", "erreur");
       afficherQuitter();
@@ -162,7 +168,6 @@
     if (retour === "cancel") {
       afficherMessage("Votre paiement n'est pas validé. Vous pouvez recommencer.", "information");
       if (paiement.peutRecommencer) afficherRecommencer();
-      afficherQuitter();
       return;
     }
 
