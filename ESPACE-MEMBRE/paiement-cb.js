@@ -222,7 +222,7 @@
           "Accept": "application/json",
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ orderid, echeance, source: sourcePaiement })
+        body: JSON.stringify({ orderid, echeance, source: sourcePaiement, ...(sourcePaiement === "suspension" ? {interface:"elements"} : {}) })
       });
 
       const data = await reponse.json().catch(() => null);
@@ -233,10 +233,37 @@
         return;
       }
 
-      if (!reponse.ok || !data || !reponseApiOk(data) || !data.checkout?.url) {
+      if (!reponse.ok || !data || !reponseApiOk(data) || (!data.checkout?.url && !data.checkout?.clientSecret)) {
         throw new Error(messageErreurApi(data, "Impossible de créer le paiement Stripe."));
       }
 
+      if (sourcePaiement === "suspension" && data.checkout?.clientSecret) {
+        memoriserOrigineListe();
+        const slot = racine.closest("[data-lcdp-compte-parcours-contenu]");
+        if(!slot)throw Error("Emplacement du formulaire bancaire indisponible.");
+        if(!window.LCDP_monterElementsImpaye){
+          await new Promise((resolve,reject)=>{
+            const script=document.createElement("script");
+            script.src=construireUrlMembre("/ESPACE-MEMBRE/paiement-elements-impaye.js?v=20261126-v1");
+            script.onload=resolve;
+            script.onerror=()=>{script.remove();reject(Error("Formulaire bancaire indisponible."));};
+            document.head.appendChild(script);
+          });
+        }
+        if(!racine.isConnected)return;
+        if(typeof window.LCDP_monterElementsImpaye!=="function")throw Error("Formulaire bancaire indisponible.");
+        const verification=construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html?orderid="+encodeURIComponent(orderid)+"&echeance="+encodeURIComponent(echeance)+"&source=suspension&retour=success");
+        await window.LCDP_monterElementsImpaye(slot,data.checkout,{
+          orderid,echeance,
+          quitter:()=>{
+            if(options.integre && typeof options.quitter==="function")options.quitter();
+            else window.location.replace(listeImpayes);
+          },
+          confirmer:()=>window.location.replace(verification)
+        });
+        return;
+      }
+      if (!data.checkout?.url) throw Error("Session de paiement indisponible.");
       if (sourcePaiement === "suspension") {
         memoriserOrigineListe();
         // Le retour navigateur recharge la même liste, même sans bfcache.
@@ -479,7 +506,7 @@
     if(params.get("liste")==="1"){
       const section=slot.closest("[data-lcdp-compte-parcours]");
       const script=document.createElement("script");
-      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v8");
+      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v9");
       script.onload=()=>{
         section?.remove();
         window.LCDP_PaiementImpaye.ouvrir({}, {quitter:()=>{
