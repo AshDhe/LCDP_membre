@@ -188,6 +188,25 @@
     const parcours=ouvrirParcours("dialogue-paiement-impaye","Paiement en attente",options);
     if(!parcours)return;
     const slot=parcours.contenu;
+    async function actualiserListe(){
+      if(!slot.isConnected)return;
+      const [paiements,etat]=await Promise.all([
+        obtenirPaiements(),
+        typeof options.actualiserEtat==="function"?options.actualiserEtat():Promise.resolve({})
+      ]);
+      if(!slot.isConnected||!etat)return;
+      groupes=collecterEcheances(paiements,etat);
+      afficherListe();
+    }
+    async function revenirListe(){
+      try{await actualiserListe();}
+      catch(erreur){
+        console.error("Actualisation des échéances :",erreur);
+        if(!slot.isConnected)return;
+        try{await alerte("Impossible d’actualiser les échéances. Veuillez rouvrir les paiements en attente.",slot);}
+        finally{parcours.fermer();}
+      }
+    }
     function afficherListe(){
       if(!slot.isConnected)return;
       const liste=document.createElement("section");
@@ -236,11 +255,11 @@
             attendreBouton(bouton);
             liste.querySelectorAll("button").forEach(b=>b.disabled=true);
             try{
-              await ouvrirPagePaiementSuspension(paiement,echeance.numero,slot,afficherListe);
+              await ouvrirPagePaiementSuspension(paiement,echeance.numero,slot,revenirListe);
             }catch(erreur){
               console.error("Régularisation indisponible :",erreur);
               if(slot.isConnected){
-                try{await alerte("Impossible de charger le paiement. Veuillez réessayer.",slot);afficherListe();}
+                try{await alerte("Impossible de charger le paiement. Veuillez réessayer.",slot);await revenirListe();}
                 catch{parcours.fermer();}
               }
             }
@@ -258,7 +277,9 @@
       fermer.addEventListener("click",()=>parcours.fermer(),{once:true});
       liste.appendChild(fermer);
       slot.replaceChildren(liste);
-      liste.querySelector("button:not(:disabled)")?.focus();
+      // Le focus se porte sur le titre, jamais sur une action de paiement.
+      titre.tabIndex=-1;
+      titre.focus({preventScroll:true});
     }
     try{afficherListe();}catch(erreur){parcours.fermer();throw erreur;}
   }
@@ -271,7 +292,7 @@
       await retourListe();
       return;
     }
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-main-v17");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-retour-liste-v18");
     if (typeof window.LCDP_monterPaiementCB !== "function") throw Error("Service de paiement indisponible.");
     await window.LCDP_monterPaiementCB(slot,{
       orderid,echeance:numeroEcheance || 1,source:"suspension",retour:"",

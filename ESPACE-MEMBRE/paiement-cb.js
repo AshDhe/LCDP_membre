@@ -1,6 +1,22 @@
 (() => {
   "use strict";
 
+  // Une seule destination pour la liste, avant et après le paiement.
+  function destinationListeImpayes(origine) {
+    const cible=new URL(window.LCDP_urlMembre("/ESPACE-MEMBRE/paiements-en-attente.html"),window.location.href);
+    const valeurs=["boutique","accueil","compte","planifier","inviter","menu","parc"];
+    const pages={"accueil-membre.html":"accueil","mes-informations.html":"compte","reserver-membre.html":"planifier","inviter-membre.html":"inviter"};
+    try{
+      const ancienne=new URL(origine||sessionStorage.getItem("lcdp:impayes:origine")||"",window.location.href);
+      if(ancienne.origin===cible.origin){
+        const mode=ancienne.pathname===cible.pathname?ancienne.searchParams.get("origine"):pages[ancienne.pathname.split("/").pop()];
+        if(valeurs.includes(mode))cible.searchParams.set("origine",mode);
+      }
+    }catch{}
+    if(!cible.searchParams.has("origine"))cible.searchParams.set("origine","accueil");
+    return cible.href;
+  }
+
   function initialiserPaiementCB(racine, options = {}) {
   const CONFIG_PAGE = window.SITE_CONFIG || {};
 
@@ -24,7 +40,7 @@
   // Une URL de retour externe ou une autre page de paiement est refusée.
   const cleOrigine = "lcdp:origine-paiement-cb:" + JSON.stringify([orderid, echeance]);
   const pageOrigine = options.integre ? window.location.href : retrouverPageOrigine();
-  const listeImpayes = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html?liste=1");
+  const listeImpayes = destinationListeImpayes(pageOrigine);
   const cleRetourListe = "lcdp:impayes:origine";
   function memoriserOrigineListe() {
     try {
@@ -502,34 +518,8 @@
     if (!slot) return;
     if (document.getElementById("lcdp-bandeau-slot")) chargerCoquePaiement().catch(console.error);
     const params=new URLSearchParams(window.location.search);
-    if(params.get("liste")==="1"){
-      const section=slot.closest("[data-lcdp-compte-parcours]");
-      const script=document.createElement("script");
-      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v17");
-      script.onload=()=>{
-        section?.remove();
-        window.LCDP_PaiementImpaye.ouvrir({}, {quitter:()=>{
-          const accueil=new URL(window.LCDP_urlMembre("/ESPACE-MEMBRE/accueil-membre.html"));
-          let destination=accueil.href;
-          try{
-            const origine=new URL(sessionStorage.getItem("lcdp:impayes:origine")||accueil.href);
-            sessionStorage.removeItem("lcdp:impayes:origine");
-            const dossier=accueil.pathname.slice(0,accueil.pathname.lastIndexOf("/")+1);
-            if(origine.origin===accueil.origin&&origine.pathname.startsWith(dossier)&&
-               !/^paiement(?:[-_]|\.html)/i.test(origine.pathname.slice(dossier.length)))destination=origine.href;
-          }catch{}
-          window.location.replace(destination);
-        }}).catch(erreur=>{
-          console.error("Liste des impayés :",erreur);
-          window.location.replace(window.LCDP_urlMembre("/ESPACE-MEMBRE/accueil-membre.html"));
-        });
-      };
-      script.onerror=()=>{slot.textContent="Impossible de charger la liste des échéances. Actualisez la page pour réessayer.";};
-      document.head.appendChild(script);
-      return;
-    }
-    if(params.get("source")==="suspension"&&params.get("retour")==="cancel"){
-      window.location.replace(window.LCDP_urlMembre("/ESPACE-MEMBRE/paiement-cb.html?liste=1"));
+    if(params.get("liste")==="1" || (params.get("source")==="suspension" && params.get("retour")==="cancel")){
+      window.location.replace(destinationListeImpayes());
       return;
     }
     monterPaiementCB(slot).catch(erreur => {

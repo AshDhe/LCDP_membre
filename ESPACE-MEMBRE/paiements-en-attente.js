@@ -54,12 +54,14 @@
       if (!pret()) return;
       observer.disconnect();
       window.LCDP_impayeAttenteTerminer?.();
-      main.querySelector("[data-lcdp-paiement-impaye-parcours] button:not(:disabled)")?.focus();
+      const titre=main.querySelector("[data-lcdp-impaye-liste] h1");
+      if(titre){titre.tabIndex=-1;titre.focus({preventScroll:true});}
+      else main.querySelector("[data-lcdp-paiement-impaye-parcours] [data-lcdp-dialogue-titre]")?.focus({preventScroll:true});
     };
     const observer = new MutationObserver(reveiller);
     observer.observe(main, {childList:true,subtree:true});
     try {
-      await window.LCDP_PaiementImpaye.ouvrir(etat,{quitter});
+      await window.LCDP_PaiementImpaye.ouvrir(etat,{quitter,actualiserEtat:lireEtatMembre});
       reveiller();
     } finally {observer.disconnect();}
   }
