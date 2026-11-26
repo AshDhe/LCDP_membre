@@ -473,7 +473,7 @@
 
     appliquerRoutesSite(slot);
 
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261126-workflow-impaye-v2");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261126-workflow-impaye-v3");
   }
 
   async function initialiserBurgerMembre(etat) {
