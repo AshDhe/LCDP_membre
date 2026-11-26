@@ -244,7 +244,7 @@
         if(!window.LCDP_monterElementsImpaye){
           await new Promise((resolve,reject)=>{
             const script=document.createElement("script");
-            script.src=construireUrlMembre("/ESPACE-MEMBRE/paiement-elements-impaye.js?v=20261126-scroll-v2");
+            script.src=construireUrlMembre("/ESPACE-MEMBRE/paiement-elements-impaye.js?v=20261126-main-v3");
             script.onload=resolve;
             script.onerror=()=>{script.remove();reject(Error("Formulaire bancaire indisponible."));};
             document.head.appendChild(script);
@@ -491,7 +491,7 @@
       charger("lcdp-bandeau-slot",window.LCDP_urlMembre("/ESPACE-MEMBRE/box-bandeau-nav-membre.html")).then(async ok => {
         if (!ok) return;
         const script = document.createElement("script");
-        script.src = window.LCDP_urlMembre("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261126-workflow-impaye-v4");
+        script.src = window.LCDP_urlMembre("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261126-workflow-impaye-v11");
         await new Promise((resolve,reject) => {script.onload=resolve;script.onerror=reject;document.body.appendChild(script);});
         await window.LCDP_initialiserMenuBurgerMembre?.();
       }),
@@ -506,7 +506,7 @@
     if(params.get("liste")==="1"){
       const section=slot.closest("[data-lcdp-compte-parcours]");
       const script=document.createElement("script");
-      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v10");
+      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v11");
       script.onload=()=>{
         section?.remove();
         window.LCDP_PaiementImpaye.ouvrir({}, {quitter:()=>{
