@@ -6218,7 +6218,9 @@
       if (classe === 'lcdp-aboreza-privileges-information' || classe === 'lcdp-aboreza-confirmation-information')
         dialogue.classList.add('lcdp-aboreza-dialogue-transition');
       titre.textContent = libelleTitre;
-      message.textContent = contenu;
+      const phrases = String(contenu ?? "").split(/(?<=[.!?])\s+(?=[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇŒ])/u);
+      message.replaceChildren(...phrases.flatMap((phrase, index) =>
+        index ? [document.createElement("br"), document.createTextNode(phrase)] : [document.createTextNode(phrase)]));
       if (Array.isArray(lignes) && lignes.length) {
         // Chaque ligne reçoit le véritable pictogramme LCDP, sans puce CSS.
         const logoPrivileges = typeof window.LCDP_urlObjet === 'function'
