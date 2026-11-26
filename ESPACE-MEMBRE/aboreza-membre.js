@@ -84,7 +84,7 @@
     if (donnees.ouverte !== true) {
       await bridge()?.informer?.(
         donnees.message || 'Les commandes sont enregistrées entre 8 h et 22 h, heure de Paris.',
-        { titre: 'Information', libelleBouton: 'Fermer' }
+        { titre: 'Information', libelleBouton: 'Fermer', onAffiche: masquerAttenteFormules }
       );
       return false;
     }
@@ -211,7 +211,8 @@
         // Ne retirer le spinner qu'après installation de la nouvelle étape.
         masquerAttenteFormules();
         conteneur.closest('.lcdp-site-main')?.scrollTo?.({ top: 0 });
-        fermeture.focus();
+        titreElement.tabIndex=-1;
+        titreElement.focus({preventScroll:true});
       } catch (erreur) {
         slot.replaceChildren();
         slot.hidden = true;
@@ -998,7 +999,6 @@
       await chargerTemplates();
       const enCours=(await api('/panier')).panier;
       if(enCours){
-        masquerAttenteFormules();
         const decision=await reprendreOuRecommencer(enCours);
         if(decision==='reprendre'){
           if(enCours.statut==='transmis_paiement'){
@@ -1019,7 +1019,7 @@
                   [{texte:'Fermer',valeur:'fermer',primaire:true}]);
               }finally{if (!navigationPaiementEnCours) masquerAttenteFormules();}
             }
-            return;
+            return navigationPaiementEnCours ? 'navigation_paiement' : undefined;
           }
           if(enCours.complet){
             courant=enCours;
@@ -1039,7 +1039,7 @@
         afficherAttenteFormules();
         await api('/annuler','POST',{idpanier:enCours.idpanier});
       }
-      masquerAttenteFormules();
+      afficherAttenteFormules('Chargement des abonnements');
       if (!await verifierHorairesNouvelleCommande()) return 'horaires_fermes';
       const parametres=new URLSearchParams({origine:contexte.origine});
       if(contexte.origine==='jour_hors_couverture')parametres.set('dateCible',contexte.date||'');
@@ -1047,7 +1047,7 @@
       const catalogue=await api('/catalogue?'+parametres.toString());
       const offres=catalogue.offres;
       optionsChoisies.clear();
-      masquerAttenteFormules();
+      // modalComposant retire l'attente après montage effectif du catalogue.
       let demande=null;
       let inclureExistants=false;
       if(catalogue.controleCompatibilite===true || ['jour_hors_couverture','horizon'].includes(contexte.origine)){

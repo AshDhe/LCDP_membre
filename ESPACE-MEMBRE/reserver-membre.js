@@ -81,6 +81,7 @@
   const DEBUT_ATTENTE_INITIALE_PLANIFIER = performance.now();
   const DUREE_MIN_ATTENTE_INITIALE_MS = 300;
   let pageInitialisee = false;
+  let restaurerPlanningEntreeAboReza = null;
   let etatMembre = { abonne: false, abonnementSuspendu: false, abonnementAnnuleNonPaye: false, paiementSuspension: null, statudaConnue: false, statuda: null, datenext: null };
   let promessePrechargementConstructeurFicheParc = null;
 
@@ -203,6 +204,7 @@
     viderCache: () => cachePlanningParcLecture.clear(),
     choisirParc: () => ouvrirFiltreParcPlanifier(),
     changerMode: actif => {
+      if (actif) restaurerPlanningEntreeAboReza?.();
       preparationAbonnementPlanifier = Boolean(actif);
       document.body.classList.toggle("lcdp-planifier-commande-active", preparationAbonnementPlanifier);
     }
@@ -239,9 +241,28 @@
     const bandeauPret = initialiserBandeau().catch(erreur => {
       console.warn("Bandeau indisponible sur la page Planifier.", erreur);
     });
-    initialiserFooter().catch(erreur => {
+    const footerPret = initialiserFooter().catch(erreur => {
       console.warn("Footer indisponible sur la page Planifier.", erreur);
     });
+    const urlEntree = new URL(window.location.href);
+    const entreeAboReza = urlEntree.searchParams.get("mode") === "aboreza";
+    let observerEntree = null;
+    const revelerEntree = () => {
+      observerEntree?.disconnect();
+      document.documentElement.classList.add("lcdp-planifier-pret");
+      document.getElementById("lcdp-planifier-attente-initiale")?.remove();
+    };
+    if (entreeAboReza) {
+      document.getElementById("lcdp-planifier-attente-initiale")?.setAttribute("aria-label","Chargement des abonnements");
+      // La grille reste disponible techniquement, mais jamais visible avant le catalogue.
+      const elements = [...document.querySelectorAll(".lcdp-planifier-wrapper .lcdp-page-header, #lcdp-planifier-calendrier-slot")];
+      const anciens = elements.map(element => [element,element.hidden]);
+      elements.forEach(element => {element.hidden=true;});
+      restaurerPlanningEntreeAboReza = () => {
+        anciens.forEach(([element,hidden]) => {element.hidden=hidden;});
+        restaurerPlanningEntreeAboReza=null;
+      };
+    }
 
     try {
       // Vérification de session et construction de la grille indépendantes.
@@ -254,14 +275,24 @@
       document.querySelectorAll(".lcdp-planifier-filtre--coach").forEach(bouton => {
         bouton.setAttribute("aria-disabled", String(!abonnementPermanentActifCoach(etatMembre)));
       });
-      masquerAttenteInitialePlanifier();
+      if (entreeAboReza) {
+        await Promise.all([bandeauPret,footerPret]);
+        const verifierEcran = () => {
+          if (document.querySelector("#lcdp-aboreza-workflow-slot:not([hidden]) > [data-lcdp-box-workflow-abonnement], #lcdp-planifier-dialogues-slot [data-lcdp-dialogue-reference], #lcdp-lightbox-slot [data-lcdp-dialogue-reference]")) revelerEntree();
+        };
+        observerEntree = new MutationObserver(verifierEcran);
+        observerEntree.observe(document.querySelector(".lcdp-planifier-wrapper"),{childList:true,subtree:true,attributes:true,attributeFilter:["hidden"]});
+        verifierEcran();
+      } else masquerAttenteInitialePlanifier();
       // Ouverture directe du catalogue ABO-RÉZA depuis un droit membre vérifié.
       // La vue ABO-RÉZA reste intégrée au wrapper PLANIFIER, sans contourner ses APIs.
       const urlOuverture = new URL(window.location.href);
       if (urlOuverture.searchParams.get("mode") === "aboreza") {
         const origineBoutique = urlOuverture.searchParams.get("origine") === "boutique";
+        const vueRetour = urlOuverture.searchParams.get("vue") === "dfa" ? "dfa" : "abonnement";
         urlOuverture.searchParams.delete("mode");
         if (origineBoutique) urlOuverture.searchParams.delete("origine");
+        urlOuverture.searchParams.delete("vue");
         window.history.replaceState(window.history.state, "", urlOuverture.href);
         const daValidee = etatMembre.statudaConnue === true &&
           normaliserStatudaReservation(etatMembre.statuda) === "oui";
@@ -270,7 +301,14 @@
           etatMembre.abonnementSuspendu === true ||
           echeancesPaiementSuspension(etatMembre.paiementSuspension).length > 0;
         if (impaye) {
-          await ouvrirDialogueImpayePlanifier("Vous avez un impayé sur un abonnement. Vous devez le régulariser pour souscrire un nouvel abonnement.");
+          const choix = await afficherDialogueInformationPlanifier({
+            titre:"Abonnement impayé", message:"Vous avez un impayé sur un abonnement. Vous devez le régulariser pour souscrire un nouvel abonnement.",
+            libelleAction:"Payer", valeurAction:"payer", profil:"abonnement-impaye", annulable:true
+          });
+          if (choix === "payer") {
+            window.location.replace(construireUrlMembre("/ESPACE-MEMBRE/paiements-en-attente.html?origine=" + (origineBoutique ? "boutique" : "planifier")));
+            return;
+          }
         } else if (!etatMembre.statudaConnue) {
           await afficherDialogueInformationPlanifier({
             titre: "Abonnement",
@@ -283,11 +321,20 @@
           });
         } else {
           const resultat = await ouvrirAbonnementDepuisPlanning({ origine: "sans_abonnement" });
-          if (origineBoutique && resultat === "horaires_fermes") {
-            window.location.replace(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#abonnement"));
+          if (resultat === "navigation_paiement") return;
+          if (origineBoutique && (resultat === "horaires_fermes" || !window.LCDP_ABOREZA?.actif())) {
+            window.location.replace(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#" + vueRetour));
             return;
           }
         }
+        // Une fermeture explicite hors boutique revient à PLANIFIER ; une
+        // régularisation en cours de navigation ne doit pas dévoiler la grille.
+        if (origineBoutique && restaurerPlanningEntreeAboReza) {
+          window.location.replace(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#" + vueRetour));
+          return;
+        }
+        restaurerPlanningEntreeAboReza?.();
+        revelerEntree();
       }
       // RECHERCHE EXPRESS : même wrapper et mêmes fiches, liste conservée.
       if(new URL(window.location.href).searchParams.get("mode")==="express"){
@@ -350,8 +397,18 @@
       }
     } catch (erreur) {
       console.error("Erreur ouverture du planning général :", erreur);
-      masquerAttenteInitialePlanifier();
-      await afficherAlerte(erreur.message || "Impossible d’ouvrir le planning.");
+      if (entreeAboReza) {
+        await afficherAlerteSuperposee(erreur.message || "Impossible d’ouvrir les abonnements.", "orange", {onAffiche:revelerEntree});
+        if (urlEntree.searchParams.get("origine")==="boutique") {
+          window.location.replace(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#" + (urlEntree.searchParams.get("vue")==="dfa"?"dfa":"abonnement")));
+          return;
+        }
+        restaurerPlanningEntreeAboReza?.();
+        revelerEntree();
+      } else {
+        masquerAttenteInitialePlanifier();
+        await afficherAlerte(erreur.message || "Impossible d’ouvrir le planning.");
+      }
     }
   }
 
@@ -6275,7 +6332,6 @@
             bouton.addEventListener("click",()=>clore(action.valeur),{once:true});
             zone.appendChild(bouton);
           }
-          zone.firstElementChild?.focus();
         } else fermer.addEventListener('click', () => clore(), { once: true });
         if (fermetureLibre || annulable) {
           dialogue.addEventListener('click', event => {
@@ -6291,7 +6347,8 @@
             }
           });
         }
-        if (!Array.isArray(actions) || !actions.length) fermer.focus();
+        titre.tabIndex=-1;
+        titre.focus({preventScroll:true});
       });
     } catch (erreur) {
       enveloppe.remove();
