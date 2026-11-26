@@ -20,7 +20,7 @@
   }
   function preparer() {
     if(!chargement)chargement=Promise.all([
-      ressource("link",objet("/CSSBASE/lcdp-paiement-elements.css?v=20261126-stripe-commun-v2")),
+      ressource("link",objet("/CSSBASE/lcdp-paiement-elements.css?v=20261126-stripe-commun-v3")),
       ressource("link",objet("/CSSBASE/lcdp-attente.css?v=20261126-v1")),
       typeof window.Stripe==="function"?Promise.resolve():ressource("script","https://js.stripe.com/endive/stripe.js")
     ]).catch(e=>{chargement=null;throw e;});
