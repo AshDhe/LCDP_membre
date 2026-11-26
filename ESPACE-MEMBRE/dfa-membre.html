@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr" data-lcdp-css="c024 c085 c034 c038 c032 c031 c036 c037 c083 c033 c041 c040 c073 c079 c080">
+<head>
+  <meta charset="utf-8">
+
+  <title>Dotation financière annuelle - La Clé du Parc</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Dotation financière annuelle individuelle La Clé du Parc.">
+
+  <script src="../config.js"></script>
+  <script>
+    (() => {
+      const cfg = window.SITE_CONFIG || {};
+      const joindre = (base, chemin) => String(base || "").replace(/\/+$/, "") + "/" + String(chemin).replace(/^\/+/, "");
+      const publicBase = cfg.publicBaseUrl || cfg.PUBLIC_BASE || "";
+      const membreBase = cfg.membreBaseUrl || cfg.MEMBRE_BASE || cfg.siteBase || "";
+      const objetBase = cfg.objetBaseUrl || cfg.OBJET_BASE || joindre(publicBase, "/OBJET");
+      window.SITE_BASE = membreBase;
+      window.LCDP_urlPublic = path => typeof cfg.publicUrl === "function" ? cfg.publicUrl(path) : joindre(publicBase, path);
+      window.LCDP_urlMembre = path => typeof cfg.membreUrl === "function" ? cfg.membreUrl(path) : joindre(membreBase, path);
+      window.LCDP_urlObjet = path => typeof cfg.objetUrl === "function" ? cfg.objetUrl(path) : joindre(objetBase, path);
+      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css?v=20261126-da27f214') + '">');
+    })();
+  </script>
+  <script src="./boutique-accessoires-cadre.js?v=20261126" defer></script>
+  <script src="./dfa-membre.js?v=20261126-dfa-v1" defer></script>
+</head>
+
+<body class="lcdp-page-document-legal lcdp-app-page">
+  <div class="lcdp-site-page lcdp-app-wrapper">
+
+    <div id="lcdp-bandeau-slot"></div>
+
+    <main class="lcdp-site-main">
+      <section class="lcdp-page-section" aria-label="Dotation financière annuelle">
+        <div class="lcdp-page-container">
+          <div class="lcdp-page-content lcdp-stack-large lcdp-contenu-editorial">
+            <p id="dfa-statut" role="status" aria-live="polite">Chargement…</p>
+            <div id="dfa-formulaire-slot"></div>
+            <div id="dfa-actions" class="lcdp-workflow-actions" hidden>
+              <button type="button" class="lcdp-button lcdp-button-primary" id="dfa-reprendre" hidden>Reprendre le paiement</button>
+              <button type="button" class="lcdp-button lcdp-button-secondary" id="dfa-annuler" hidden>Annuler la demande</button>
+              <button type="button" class="lcdp-button lcdp-button-primary" id="dfa-terminer" hidden>OK</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="lcdp-footer-slot"></div>
+    <div id="lcdp-lightbox-slot"></div>
+
+  </div>
+
+</body>
+</html>
