@@ -253,19 +253,21 @@
       // Ouverture directe du catalogue ABO-RÉZA depuis un droit membre vérifié.
       // La vue ABO-RÉZA reste intégrée au wrapper PLANIFIER, sans contourner ses APIs.
       const urlOuverture = new URL(window.location.href);
-      if (urlOuverture.searchParams.get("mode") === "aboreza") {
+      if (urlOuverture.searchParams.get("mode") === "impaye") {
+        urlOuverture.searchParams.delete("mode");
+        window.history.replaceState(window.history.state, "", urlOuverture.href);
+        await gererPaiementSuspensionMembre(etatMembre);
+      } else if (urlOuverture.searchParams.get("mode") === "aboreza") {
         urlOuverture.searchParams.delete("mode");
         window.history.replaceState(window.history.state, "", urlOuverture.href);
         const daValidee = etatMembre.statudaConnue === true &&
           normaliserStatudaReservation(etatMembre.statuda) === "oui";
         // Un impayé prime sur les autres motifs de blocage de la souscription.
-        const impaye = etatMembre.abonnementSuspendu === true ||
+        const impaye = etatMembre.causesSuspension?.includes("impaye") ||
+          etatMembre.abonnementSuspendu === true ||
           echeancesPaiementSuspension(etatMembre.paiementSuspension).length > 0;
         if (impaye) {
-          await afficherDialogueInformationPlanifier({
-            titre: "Abonnement",
-            message: "Vous avez un impayé sur un abonnement. Vous ne pouvez pas souscrire un nouvel abonnement tant que cet impayé n'est pas régularisé."
-          });
+          await ouvrirDialogueImpayePlanifier("Vous avez un impayé sur un abonnement. Vous devez le régulariser pour souscrire un nouvel abonnement.");
         } else if (!etatMembre.statudaConnue) {
           await afficherDialogueInformationPlanifier({
             titre: "Abonnement",
@@ -1925,6 +1927,7 @@
       statutaboEnCours: resultat.abonnementEnCours?.statutabo || "",
       abonnementSuspendu: valeurBooleenneVraie(resultat.abonnementSuspendu || resultat.suspendu),
       abonnementAnnuleNonPaye: valeurBooleenneVraie(resultat.abonnementAnnuleNonPaye || resultat.abonnementAnnule || resultat.annuleNonPaye),
+      causesSuspension: Array.isArray(resultat.causesSuspension) ? resultat.causesSuspension : [],
       paiementSuspension: resultat.paiementSuspension || resultat.paiementRegularisation || null,
       statudaConnue: Object.prototype.hasOwnProperty.call(resultat, "statuda"),
       statuda: normaliserStatudaReservation(resultat.statuda),
@@ -1989,6 +1992,22 @@
       gererPaiementSuspensionMembre(etat).catch(console.error);
     });
     bloc.appendChild(bouton);
+  }
+
+  async function ouvrirDialogueImpayePlanifier(message) {
+    if (!window.LCDP_DialogueImpaye) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = construireUrlObjet("/JSBASE/dialogue-impaye.js?v=20261126-v1");
+        script.onload = resolve;
+        script.onerror = () => { script.remove(); reject(Error("Objet de régularisation indisponible.")); };
+        document.head.appendChild(script);
+      });
+    }
+    return window.LCDP_DialogueImpaye.ouvrir({
+      hote: hoteDialoguesPlanifier(), message,
+      payer: () => gererPaiementSuspensionMembre(etatMembre)
+    });
   }
 
   async function gererPaiementSuspensionMembre(etat) {
