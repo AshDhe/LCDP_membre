@@ -227,6 +227,11 @@
   async function initialiserPage() {
     if (pageInitialisee) return;
     pageInitialisee = true;
+    // Compatibilité des anciens liens boutique : aucun calendrier à initialiser.
+    if (new URL(window.location.href).searchParams.get("mode") === "impaye") {
+      window.location.replace(construireUrlMembre("/ESPACE-MEMBRE/paiements-en-attente.html?origine=boutique"));
+      return;
+    }
     document.addEventListener("click", gererClicDocument);
     document.body.classList.add("lcdp-page-reserver");
 
@@ -253,11 +258,7 @@
       // Ouverture directe du catalogue ABO-RÉZA depuis un droit membre vérifié.
       // La vue ABO-RÉZA reste intégrée au wrapper PLANIFIER, sans contourner ses APIs.
       const urlOuverture = new URL(window.location.href);
-      if (urlOuverture.searchParams.get("mode") === "impaye") {
-        urlOuverture.searchParams.delete("mode");
-        window.history.replaceState(window.history.state, "", urlOuverture.href);
-        await gererPaiementSuspensionMembre(etatMembre);
-      } else if (urlOuverture.searchParams.get("mode") === "aboreza") {
+      if (urlOuverture.searchParams.get("mode") === "aboreza") {
         urlOuverture.searchParams.delete("mode");
         window.history.replaceState(window.history.state, "", urlOuverture.href);
         const daValidee = etatMembre.statudaConnue === true &&
