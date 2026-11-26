@@ -47,16 +47,25 @@
     bouton.textContent = 'Payer ' + montantAffiche;
     checkout.createPaymentElement({layout:{type:'accordion'}}).mount('#stripe-payment-element');
 
-    const email=el('email-paiement');email.value=String(d.emailMembre||'');
+    const email=el('email-paiement');
+    const emailSession=()=>String(actions.getSession()?.email||'').trim();
+    email.value=emailSession()||String(d.emailMembre||'').trim();
     if(!email.validity.valid)throw Error('Adresse du compte membre invalide.');
-    const synchroniser=()=>{bouton.disabled=!email.validity.valid||!actions.getSession()?.canConfirm;};
+    let emailPret=Boolean(emailSession());
+    const synchroniser=()=>{bouton.disabled=!emailPret||!actions.getSession()?.canConfirm;};
     checkout.on('change',synchroniser);
-    const emailResultat=await actions.updateEmail(email.value.trim());
-    if(emailResultat.type==='error')throw Error(emailResultat.error?.message||'Adresse du compte indisponible.');
+    // Une session déjà associée à un client ou à un email ne doit pas être modifiée.
+    if(!emailPret){
+      const emailResultat=await actions.updateEmail(email.value.trim());
+      if(emailResultat.type==='error'){
+        if(!emailSession())throw Error(emailResultat.error?.message||'Adresse du compte indisponible.');
+      }
+      emailPret=true;
+    }
     synchroniser();
     el('paiement-formulaire').addEventListener('submit',async event=>{
       event.preventDefault();if(bouton.disabled)return;bouton.disabled=true;erreur.hidden=true;
-      try{const resultat=await actions.confirm({email:email.value.trim()});if(resultat.type==='error'){afficherErreur(resultat.error?.message||'Le paiement est refusé.');synchroniser();}else retour();}
+      try{const resultat=await actions.confirm();if(resultat.type==='error'){afficherErreur(resultat.error?.message||'Le paiement est refusé.');synchroniser();}else retour();}
       catch(e){afficherErreur(e.message);synchroniser();}
     });
   }
