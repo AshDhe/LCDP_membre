@@ -389,6 +389,15 @@
       await initialiserFormulaireInformations();
       await chargerCompteMembre();
       terminerAttenteCompte();
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("mode") === "rouvrir") {
+        url.searchParams.delete("mode");
+        window.history.replaceState(window.history.state, "", url.href);
+        // Ne jamais déclencher la fermeture à partir d'une URL de réouverture.
+        if (lireEtatFermetureCompte(compteMembreActuel) === "suspendu") {
+          await gererFermetureCompte();
+        }
+      }
     } catch (error) {
       console.error("Erreur mes informations membre :", error);
       // L'alerte doit rester accessible en cas d'erreur, sans masque de chargement.
