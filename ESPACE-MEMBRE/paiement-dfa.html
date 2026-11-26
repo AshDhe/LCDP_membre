@@ -49,7 +49,9 @@
     .lcdp-stripe__reprendre:disabled{opacity:.55;cursor:wait}
     .lcdp-stripe__reprendre[hidden]{display:none!important}
     body.lcdp-stripe-page #paiement-formulaire > h2 {margin-bottom:6px;}
-    body.lcdp-stripe-page #paiement-formulaire > .lcdp-stripe__aide {margin:0 0 15px;text-align:left;}
+    body.lcdp-stripe-page #paiement-formulaire > .lcdp-stripe__aide {margin:0 0 10px;padding:10px 12px;border:1px solid transparent;border-radius:10px;font-size:13px;font-weight:500;line-height:1.55;text-align:left;}
+    body.lcdp-stripe-page #paiement-formulaire > .lcdp-stripe__aide--securite {background:#f0fdf4;border-color:#bbf7d0;color:#166534;}
+    body.lcdp-stripe-page #paiement-formulaire > .lcdp-stripe__aide--saisie {background:#fefce8;border-color:#fde68a;color:#991b1b;margin-bottom:15px;}
   </style>
   <script defer src="./paiement-dfa.js?v=20261126-dfa-email-v3"></script>
 </head>
@@ -73,8 +75,8 @@
       </div>
       <form id="paiement-formulaire" novalidate>
         <h2>Payer par carte bancaire</h2>
-        <p class="lcdp-stripe__aide">Vos informations bancaires sont saisies directement dans le composant sécurisé Stripe.</p>
-        <p class="lcdp-stripe__aide">Si votre navigateur propose automatiquement des cartes de paiement enregistrées, fermez cette suggestion et recommencez pour saisir votre carte par vous-même.</p>
+        <p class="lcdp-stripe__aide lcdp-stripe__aide--securite">Vos informations bancaires sont saisies directement dans le composant sécurisé Stripe.</p>
+        <p class="lcdp-stripe__aide lcdp-stripe__aide--saisie">Si votre navigateur propose automatiquement des cartes de paiement enregistrées, fermez cette suggestion et recommencez pour saisir votre carte par vous-même.</p>
         <label class="lcdp-stripe__label" for="email-paiement" hidden>Adresse e-mail</label>
         <input class="lcdp-stripe__email" hidden id="email-paiement" name="email" type="email" autocomplete="email" inputmode="email" placeholder="email@exemple.com" required>
         <div id="stripe-payment-element" aria-label="Formulaire bancaire sécurisé Stripe"></div>
