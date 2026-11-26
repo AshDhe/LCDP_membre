@@ -41,8 +41,10 @@
     const actions = loaded.actions;
     const montantStripe = actions.getSession()?.total?.total?.amount;
     if (!montantStripe) throw new Error('Montant Stripe indisponible.');
-    el('montant-commande').textContent = montantStripe;
-    bouton.textContent = 'Payer ' + montantStripe;
+    // Présentation uniquement : le montant et la session Stripe restent inchangés.
+    const montantAffiche = montantStripe.replace(/([0-9]),00(?=\s*€(?:\s|$))/u, '$1');
+    el('montant-commande').textContent = montantAffiche;
+    bouton.textContent = 'Payer ' + montantAffiche;
     checkout.createPaymentElement({layout:{type:'accordion'}}).mount('#stripe-payment-element');
 
     const email=el('email-paiement');email.value=String(d.emailMembre||'');

@@ -7,7 +7,7 @@
   const reprendre = el("dfa-reprendre"), annuler = el("dfa-annuler"), retour = el("dfa-retour");
   const montant = el("dfa-montant"), valeur = el("dfa-valeur"), enregistrer = el("dfa-enregistrer");
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const euros = n => new Intl.NumberFormat("fr-FR", {style:"currency",currency:"EUR"}).format(n/100);
+  const euros = n => new Intl.NumberFormat("fr-FR", {style:"currency",currency:"EUR",minimumFractionDigits:0,maximumFractionDigits:2}).format(n/100);
   let operation = null, demandeId = null, cents = null, occupe = false, saisie = false;
   function convertir(code) {
     if (!/^\d{1,3}(?:,\d{1,2})?$/.test(code)) return null;
@@ -36,7 +36,7 @@
     if (!d || !uuid.test(d.iddfa || "")) throw Error("Référence de dotation indisponible.");
     operation = d;
     form.hidden = true;
-    el("dfa-choix").hidden = true;
+    el("dfa-choix").hidden = false;
     reprendre.hidden = true;
     annuler.hidden = true;
     actions.hidden = true;
@@ -44,9 +44,9 @@
     if (d.statut === "paye") message("Votre versement de "+montantOperation+" est confirmé. Merci pour votre soutien aux parcs du réseau La Clé du Parc.");
     else if (d.statut === "annule") message("Votre demande de dotation est annulée. Aucun nouveau paiement n’est engagé.");
     else if (d.statut === "incident") message("Votre dotation est en cours de vérification. Aucun nouveau règlement n’est proposé.");
-    else if (retourVerification) message("Votre demande de paiement DFA de "+montantOperation+" est enregistrée. La confirmation définitive du versement vous est transmise avec votre reçu fiscal après confirmation bancaire.");
+    else if (retourVerification) message("La confirmation bancaire de votre paiement de "+montantOperation+" est en attente. Aucun nouveau règlement n’est nécessaire à ce stade.");
     else {
-      message("Votre dotation de "+montantOperation+" est en cours.");
+      message("Votre demande de dotation de "+montantOperation+" est enregistrée. Le paiement reste à effectuer.");
       actions.hidden = false;
       reprendre.hidden = false;
       annuler.hidden = false;
@@ -83,7 +83,7 @@
         titre:"Merci de soutenir les parcs",
         placeholder:"Montant en euros",
         longueurMax:6,
-        valeurInitiale:cents===null?"":(cents/100).toFixed(2).replace(".",","),
+        valeurInitiale:cents===null?"":String(cents/100).replace(".",","),
         verifier:code=>convertir(code)===null?"Choisissez un montant de 10 € à 150 €.":null
       });
       if (code !== null) {
@@ -102,15 +102,28 @@
     event.preventDefault();
     if (occupe || saisie || cents === null) return;
     occupe = true; actualiserBoutons();
+    enregistrer.setAttribute("aria-busy","true");
+    let navigation = false;
     try {
       demandeId = demandeId || crypto.randomUUID();
       const d = await api("/enregistrer",{demandeId,montantCentimes:cents});
-      afficherOperation(d.operation);
+      if (["paye","annule","incident"].includes(d.operation?.statut)) {
+        afficherOperation(d.operation);
+      } else {
+        pagePaiement(d.operation);
+        navigation = true;
+      }
     } catch(e) {
       erreur(e);
       const c = await api("/contexte").catch(()=>null);
       if (c?.operation) afficherOperation(c.operation);
-    } finally { occupe = false; actualiserBoutons(); }
+    } finally {
+      if (!navigation) {
+        occupe = false;
+        enregistrer.removeAttribute("aria-busy");
+        actualiserBoutons();
+      }
+    }
   });
   async function demarrer() {
     const params = new URLSearchParams(location.search), id = params.get("iddfa");
@@ -118,8 +131,6 @@
       const d = await api("/verifier",{iddfa:id}); afficherOperation(d.operation,true); return;
     }
     const contexte = await api("/contexte");
-    const bonjour = el("dfa-bonjour");
-    if (contexte.prenom) { bonjour.textContent = "Bonjour "+String(contexte.prenom); bonjour.hidden = false; }
     if (contexte.operation) { afficherOperation(contexte.operation); return; }
     await script(window.LCDP_urlObjet("/JSBASE/07-diginum.js?v=b92b39e"));
     if (typeof window.LCDP_diginum?.ouvrir !== "function") throw Error("Pavé numérique indisponible.");
