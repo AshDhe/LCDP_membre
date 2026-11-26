@@ -244,7 +244,7 @@
         if(!window.LCDP_monterElementsImpaye){
           await new Promise((resolve,reject)=>{
             const script=document.createElement("script");
-            script.src=construireUrlMembre("/ESPACE-MEMBRE/paiement-elements-impaye.js?v=20261126-v1");
+            script.src=construireUrlMembre("/ESPACE-MEMBRE/paiement-elements-impaye.js?v=20261126-scroll-v2");
             script.onload=resolve;
             script.onerror=()=>{script.remove();reject(Error("Formulaire bancaire indisponible."));};
             document.head.appendChild(script);
@@ -506,7 +506,7 @@
     if(params.get("liste")==="1"){
       const section=slot.closest("[data-lcdp-compte-parcours]");
       const script=document.createElement("script");
-      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v9");
+      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v10");
       script.onload=()=>{
         section?.remove();
         window.LCDP_PaiementImpaye.ouvrir({}, {quitter:()=>{
