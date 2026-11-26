@@ -109,12 +109,16 @@
     tools.replaceChildren(commandeFiltres, formulaire);
     tools.hidden = false;
   }
-  installerCommandeFiltres();
-
-  // Le contenu de la liste reste visible même si un fragment de navigation échoue.
-  Promise.allSettled([initialiserBandeau(), initialiserFooter()]).then(resultats => {
-    for (const resultat of resultats) {
-      if (resultat.status === "rejected") console.error("Journée bénévole :", resultat.reason);
+  async function initialiserPage() {
+    try {
+      installerCommandeFiltres();
+      const resultats = await Promise.allSettled([initialiserBandeau(), initialiserFooter()]);
+      for (const resultat of resultats) {
+        if (resultat.status === "rejected") console.error("Journée bénévole :", resultat.reason);
+      }
+    } finally {
+      window.LCDP_terminerAttentePageMembre?.();
     }
-  });
+  }
+  initialiserPage().catch(erreur => console.error("Journée bénévole :", erreur));
 })();
