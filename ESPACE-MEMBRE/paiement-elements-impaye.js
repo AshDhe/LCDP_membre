@@ -20,7 +20,7 @@
   }
   function preparer() {
     if(!chargement)chargement=Promise.all([
-      ressource("link",objet("/CSSBASE/lcdp-paiement-elements.css?v=20261126-main-v3")),
+      ressource("link",objet("/CSSBASE/lcdp-paiement-elements.css?v=20261126-bouton-officiel-v4")),
       ressource("link",objet("/CSSBASE/lcdp-attente.css?v=20261126-v1")),
       typeof window.Stripe==="function"?Promise.resolve():ressource("script","https://js.stripe.com/endive/stripe.js")
     ]).catch(e=>{chargement=null;throw e;});
@@ -31,7 +31,7 @@
     const mode=cle.startsWith("pk_test_")?"test":cle.startsWith("pk_live_")?"live":"";
     if(!mode||!d.id||!secret.startsWith(String(d.id)+"_secret_")||!secret.startsWith("cs_"+mode+"_"))
       throw Error("Les paramètres Stripe de la session ne correspondent pas au même environnement.");
-    const [,reponse]=await Promise.all([preparer(),fetch(objet("/HTMLBASE/04-paiement-elements-impaye.html?v=20261126-v1"),{cache:"no-cache",credentials:"omit"})]);
+    const [,reponse]=await Promise.all([preparer(),fetch(objet("/HTMLBASE/04-paiement-elements-impaye.html?v=20261126-bouton-officiel-v4"),{cache:"no-cache",credentials:"omit"})]);
     if(!reponse.ok)throw Error("Formulaire bancaire indisponible.");
     const template=document.createElement("template");
     template.innerHTML=(await reponse.text()).trim();
