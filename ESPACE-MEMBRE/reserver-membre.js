@@ -258,7 +258,6 @@
         window.history.replaceState(window.history.state, "", urlOuverture.href);
         const daValidee = etatMembre.statudaConnue === true &&
           normaliserStatudaReservation(etatMembre.statuda) === "oui";
-        const sansAbonnement = etatMembre.abonne === false;
         // Un impayé prime sur les autres motifs de blocage de la souscription.
         const impaye = etatMembre.abonnementSuspendu === true ||
           echeancesPaiementSuspension(etatMembre.paiementSuspension).length > 0;
@@ -276,11 +275,6 @@
           await afficherDialogueInformationPlanifier({
             titre: "Abonnement",
             message: "Votre demande d'abonnement doit être validée pour souscrire un abonnement."
-          });
-        } else if (!sansAbonnement) {
-          await afficherDialogueInformationPlanifier({
-            titre: "Abonnement",
-            message: "Vous disposez déjà d'un abonnement en cours. Pour souscrire un nouvel abonnement, sélectionnez une date non couverte dans PLANIFIER."
           });
         } else {
           await ouvrirAbonnementDepuisPlanning({ origine: "sans_abonnement" });
