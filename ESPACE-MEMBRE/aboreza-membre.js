@@ -310,7 +310,7 @@
   }
   // Les cinq rubriques viennent exclusivement de prixabo via le Worker.
   // La lightbox INFORMATION est montée dans le slot de dialogues du wrapper.
-  async function afficherPrivilegesAbonnement(formule) {
+  async function afficherPrivilegesAbonnement(formule, bienfaiteur = false) {
     let titre = 'Privilège de l’abonnement ' + formule;
     let lignes = [];
     try {
@@ -339,7 +339,7 @@
               ? 'DUO+ ' + nombre(p.freqduoplus) + ' x par mois (' + nombre(p.duoplus) + ' invités simultanés)'
               : 'DUO+ non inclus',
             nombre(p.famille) + ' invités FAMILLE',
-            'Payable en ' + nombre(p.ech) + (Number(p.ech) === 1 ? ' échéance' : ' échéances')
+            bienfaiteur ? 'Paiement en une fois' : 'Payable en ' + nombre(p.ech) + (Number(p.ech) === 1 ? ' échéance' : ' échéances')
           ];
         }
       }
@@ -351,13 +351,13 @@
       lignes
     });
   }
-  function lienPrivilegesAbonnement(formule) {
+  function lienPrivilegesAbonnement(formule, bienfaiteur = false) {
     const lien = elem('a', 'lcdp-aboreza-catalogue__privileges', 'Voir les privilèges');
     lien.href = '#';
     lien.addEventListener('click', evenement => {
       evenement.preventDefault();
       evenement.stopPropagation();
-      afficherPrivilegesAbonnement(formule).catch(console.error);
+      afficherPrivilegesAbonnement(formule, bienfaiteur).catch(console.error);
     });
     return lien;
   }
@@ -1060,7 +1060,7 @@
             // inventer un avantage ni transformer une option payante en cadeau.
             const offertes=elem('p','lcdp-box-dialogue-bouton__text','Extensions offertes : détail non configuré.');
             actions.append(offertes);
-            actions.append(lienPrivilegesAbonnement('12M'));
+            actions.append(lienPrivilegesAbonnement('12M', true));
             const liste=elem('dl','lcdp-box-card-recaporder__list');
             const afficherExtensions=()=>{
               liste.replaceChildren();
