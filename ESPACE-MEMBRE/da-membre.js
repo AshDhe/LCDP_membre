@@ -188,6 +188,7 @@
   // La DA est une vue du wrapper membre, pas une lightbox plein écran.
   // L'écran d'origine reste monté et retrouve son état à la fermeture.
   let vueDaInitiale = null;
+  const coordonneesDaEnregistrees = new WeakMap();
   function obtenirLightboxSlotDa() {
     let slot = document.getElementById("lcdp-da-membre-overlay-slot");
     if (slot) return slot;
@@ -368,7 +369,7 @@
   // particularités du parcours dans lcdp-da-membre.css.
   async function chargerFondationsDa() {
     await chargerCssObjetUneFois("/CSSBASE/lcdp-central-mobile-first.css");
-    await chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css");
+    await chargerCssObjetUneFois("/CSSBASE/lcdp-da-membre.css?v=20261126-da-qualites");
   }
 
   async function chargerDependancesAlerteDa() {
@@ -381,7 +382,7 @@
 
   async function chargerDependancesFormulaireDa() {
     await chargerFondationsDa();
-    await chargerScriptObjetUneFois("/JSBASE/03-formulaire.js");
+    await chargerScriptObjetUneFois("/JSBASE/03-formulaire.js?v=20261126-da-modele");
     if (typeof window.LCDP_creerFormulaire !== "function") {
       throw new Error("Composant formulaire introuvable.");
     }
@@ -692,7 +693,7 @@
       },
       {
         titre: "À confirmer ou compléter",
-        texte: "Votre état civil (nom, prénom), votre alias dans l'application (si souhaité), une adresse e-mail personnelle valide, votre n° de téléphone mobile personnel, vos qualités, loisirs et motivation à devenir membre abonné, les valeurs du club, votre parrain actuel dans l'application (si vous en avez un), vos coordonnées bancaires personnelles afin de vous rembourser en cas d'annulation d'abonnement."
+        texte: "Votre état civil (nom, prénom), une adresse e-mail personnelle valide, vos qualités, loisirs et motivation à devenir membre abonné, les valeurs du club, votre parrain actuel dans l'application (si vous en avez un), vos coordonnées bancaires personnelles afin de vous rembourser en cas d'annulation d'abonnement."
       },
       {
         titre: "Après envoi",
@@ -746,16 +747,15 @@
   function construireConfigurationDa() {
     return {
       id: "formulaire-da-membre",
+      reutiliserModeleChamp: true,
       ariaLabel: "Première demande de DA membre",
       titre: "Demande de DA",
       sousTitre: "La Clé du Parc",
       champs: [
         champLectureSeule("da-nom-membre", "nommembre", "", "text", "Déjà renseigné"),
         champLectureSeule("da-prenom-membre", "prenommembre", "", "text", "Déjà renseigné"),
-        champTexte("da-alias", "alias", "", false, "Indiquez ici un alias"),
         champLectureSeule("da-email-membre", "emailmembre", "", "email", "Déjà renseigné"),
-        champTexte("da-tel", "tel", "N° de mobile personnel", true, "Numéro de téléphone mobile personnel", "tel", "numeric"),
-        champTexte("da-autoquali", "autoquali", "Vos trois qualités", true, "Vos 3 qualités", "text", "text", 100),
+        champTexte("da-autoquali", "autoquali", "Vos trois qualités", true, "Vos trois qualités (100 caractères maximum)", "textarea", "text", 100),
         champTexte("da-autoloisir", "autoloisir", "Vos trois loisirs préférés", true, "Vos 3 loisirs", "text", "text", 100),
         champTexte("da-autonouschoisir", "autonouschoisir", "Pourquoi La Clé du Parc ?", true, "Votre motivation", "text", "text", 100),
         {
@@ -803,18 +803,10 @@
       const wrapperPrenom = deplacerChampDansSectionDa(form, sectionEtatCivil, "prenommembre");
       ajouterActionModificationEtatCivilDa(form, wrapperNom, "nommembre", "Nom", "modifier-nom-da-membre");
       ajouterActionModificationEtatCivilDa(form, wrapperPrenom, "prenommembre", "Prénom", "modifier-prenom-da-membre");
-      deplacerChampDansSectionDa(form, sectionEtatCivil, "alias");
       deplacerChampDansSectionDa(form, sectionEtatCivil, "emailmembre");
       masquerLibelleChampDa(form, "nommembre");
       masquerLibelleChampDa(form, "prenommembre");
-      masquerLibelleChampDa(form, "alias");
       masquerLibelleChampDa(form, "emailmembre");
-    }
-
-    const sectionTelephone = creerSectionFormulaireDa(form, "", "tel");
-
-    if (sectionTelephone) {
-      deplacerChampDansSectionDa(form, sectionTelephone, "tel");
     }
 
     const sectionRemboursement = creerSectionFormulaireDa(form, "Coordonnées bancaires de remboursement *", "iban");
@@ -1137,8 +1129,11 @@
     remplirInput(form, "prenommembre", membre.prenommembre || "", true);
     remplirInput(form, "emailmembre", membre.emailmembre || "", true);
     remplirInput(form, "emailparrain", parrain.emailparrain || membre.emailparrain || "", false);
-    remplirInput(form, "alias", membre.alias || "", false);
-    remplirInput(form, "tel", membre.tel || "", false);
+    // Conserver les coordonnées du compte sans les réafficher ni les rendre modifiables.
+    coordonneesDaEnregistrees.set(form, {
+      alias: String(membre.alias ?? "").trim(),
+      tel: String(membre.tel ?? "").replace(/\s+/g, "")
+    });
     remplirInput(form, "autoquali", membre.autoquali || "", false);
     remplirInput(form, "autoloisir", membre.autoloisir || "", false);
     remplirInput(form, "autonouschoisir", membre.autonouschoisir || "", false);
@@ -1366,14 +1361,15 @@ form.dataset.lcdpTransmissionDaEnCours =
 
   function lirePayloadDa(form) {
     const etatcivilmaj = valeurChamp(form, "etatcivilmaj") === "true";
+    const coordonnees = coordonneesDaEnregistrees.get(form);
 
     return {
       etatcivilmaj,
       nommembre: etatcivilmaj ? valeurChamp(form, "nommembre") : "",
       prenommembre: etatcivilmaj ? valeurChamp(form, "prenommembre") : "",
-      alias: valeurChamp(form, "alias"),
+      alias: coordonnees?.alias ?? "",
       emailparrain: nettoyerEmail(valeurChamp(form, "emailparrain")),
-      tel: valeurChamp(form, "tel").replace(/\s+/g, ""),
+      tel: coordonnees?.tel ?? "",
       autoquali: valeurChamp(form, "autoquali"),
       autoloisir: valeurChamp(form, "autoloisir"),
       autonouschoisir: valeurChamp(form, "autonouschoisir"),
@@ -1400,7 +1396,7 @@ form.dataset.lcdpTransmissionDaEnCours =
 
   function verifierPayloadDa(payload) {
     if (payload.emailparrain && !emailValide(payload.emailparrain)) return "L’adresse e-mail du parrain est invalide.";
-    if (!/^\d{10}$/.test(payload.tel)) return "Votre numéro de mobile doit contenir 10 chiffres, sans espace.";
+    if (!/^\d{10}$/.test(payload.tel)) return "Le numéro de mobile enregistré dans votre compte doit contenir 10 chiffres. Vérifiez vos coordonnées dans votre compte.";
     if (!payload.autoquali) return "Vos trois qualités sont obligatoires.";
     if (!payload.autoloisir) return "Vos trois loisirs sont obligatoires.";
     if (!payload.autonouschoisir) return "Pourquoi La Clé du Parc ? est obligatoire.";
