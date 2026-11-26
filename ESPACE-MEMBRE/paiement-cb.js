@@ -1,6 +1,7 @@
 (() => {
   "use strict";
 
+  function initialiserPaiementCB(racine, options = {}) {
   const CONFIG_PAGE = window.SITE_CONFIG || {};
 
   const ENDPOINT_FACTUPAIEMENT = construireEndpointApi(
@@ -14,15 +15,16 @@
   const SOURCE_PAGE = "paiement-cb";
 
   const params = new URLSearchParams(window.location.search);
-  const orderid = String(params.get("orderid") || "").trim();
-  const echeance = String(params.get("echeance") || "1").trim() || "1";
-  const retour = String(params.get("retour") || "").trim().toLowerCase();
-  const sourcePaiement = String(params.get("source") || "").trim().toLowerCase();
+  const orderid = String(options.orderid ?? params.get("orderid") ?? "").trim();
+  const echeance = String(options.echeance ?? params.get("echeance") ?? "1").trim() || "1";
+  const retour = String(options.retour ?? params.get("retour") ?? "").trim().toLowerCase();
+  const sourcePaiement = String(options.source ?? params.get("source") ?? "").trim().toLowerCase();
 
   // Conserver l’origine dans cet onglet, y compris au retour de Stripe.
   // Une URL de retour externe ou une autre page de paiement est refusée.
   const cleOrigine = "lcdp:origine-paiement-cb:" + JSON.stringify([orderid, echeance]);
-  const pageOrigine = retrouverPageOrigine();
+  const pageOrigine = options.integre ? window.location.href : retrouverPageOrigine();
+  if (options.integre && orderid) { try { sessionStorage.setItem(cleOrigine, pageOrigine); } catch {} }
   let redirectionPaiementValideProgrammee = false;
 
   function origineMembreSure(valeur) {
@@ -40,10 +42,8 @@
   function retrouverPageOrigine() {
     let origine = origineMembreSure(document.referrer);
     try {
-      if (!origine && !retour && sourcePaiement === "suspension") {
-        origine = origineMembreSure(PAGE_ACCUEIL_MEMBRE);
-      }
       if (!origine) origine = origineMembreSure(sessionStorage.getItem(cleOrigine));
+      if (!origine && sourcePaiement === "suspension") origine = origineMembreSure(PAGE_ACCUEIL_MEMBRE);
       if (origine && orderid) sessionStorage.setItem(cleOrigine, origine);
     } catch {
       if (!origine && sourcePaiement === "suspension") origine = origineMembreSure(PAGE_ACCUEIL_MEMBRE);
@@ -51,24 +51,22 @@
     return origine;
   }
 
-  function revenirPageOrigine() {
-    if (!pageOrigine) return;
+  function revenirPageOrigine(actualiser = false) {
+    if (!pageOrigine || !racine.isConnected) return;
     try { sessionStorage.removeItem(cleOrigine); } catch {}
+    if (options.integre && !actualiser && typeof options.quitter === "function") {
+      options.quitter();
+      return;
+    }
     window.location.replace(pageOrigine);
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initialiserPage);
-  } else {
-    initialiserPage();
-  }
-
   async function initialiserPage() {
-    const boutonPayer = document.querySelector("[data-lcdp-paiement-cb-payer]");
-    const boutonRecommencer = document.querySelector("[data-lcdp-paiement-cb-recommencer]");
-    const boutonQuitter = document.querySelector("[data-lcdp-paiement-cb-quitter]");
+    const boutonPayer = racine.querySelector("[data-lcdp-paiement-cb-payer]");
+    const boutonRecommencer = racine.querySelector("[data-lcdp-paiement-cb-recommencer]");
+    const boutonQuitter = racine.querySelector("[data-lcdp-paiement-cb-quitter]");
 
-    if (boutonQuitter) boutonQuitter.addEventListener("click", revenirPageOrigine);
+    if (boutonQuitter) boutonQuitter.addEventListener("click", () => revenirPageOrigine());
 
     if (!orderid) {
       afficherMessage("Numéro de commande manquant.", "erreur");
@@ -83,6 +81,7 @@
   }
 
   async function actualiserEtatPaiement() {
+    if (!racine.isConnected) return;
     if (!ENDPOINT_FACTUPAIEMENT) {
       afficherMessage("Le service de paiement n’est pas configuré.", "erreur");
       afficherQuitter();
@@ -103,6 +102,7 @@
       );
 
       const data = await reponse.json().catch(() => null);
+      if (!racine.isConnected) return;
 
       if (reponse.status === 401) {
         redirigerConnexionMembre("inactive");
@@ -122,7 +122,7 @@
   }
 
   function afficherEtat(paiement) {
-    const details = document.querySelector("[data-lcdp-paiement-cb-details]");
+    const details = racine.querySelector("[data-lcdp-paiement-cb-details]");
     const statustripe = String(paiement.statustripe || "attente").toLowerCase();
     const montant = formaterMontant(paiement.montant);
     const date = formaterDate(paiement.date);
@@ -184,6 +184,7 @@
   }
 
   async function creerCheckout() {
+    if (!racine.isConnected) return;
     masquerActions();
     afficherMessage("Préparation du paiement sécurisé...", "information");
 
@@ -200,6 +201,7 @@
       });
 
       const data = await reponse.json().catch(() => null);
+      if (!racine.isConnected) return;
 
       if (reponse.status === 401) {
         redirigerConnexionMembre("inactive");
@@ -220,7 +222,7 @@
   }
 
   function afficherMessage(message, type) {
-    const element = document.querySelector("[data-lcdp-paiement-cb-message]");
+    const element = racine.querySelector("[data-lcdp-paiement-cb-message]");
     if (!element) return;
     element.textContent = message || "";
     element.dataset.messageType = type || "information";
@@ -232,7 +234,7 @@
       "[data-lcdp-paiement-cb-recommencer]",
       "[data-lcdp-paiement-cb-quitter]"
     ].forEach((selecteur) => {
-      const bouton = document.querySelector(selecteur);
+      const bouton = racine.querySelector(selecteur);
 
       if (!bouton) return;
 
@@ -241,18 +243,18 @@
   }
 
   function afficherPayer() {
-    const bouton = document.querySelector("[data-lcdp-paiement-cb-payer]");
+    const bouton = racine.querySelector("[data-lcdp-paiement-cb-payer]");
     afficherBoutonAction(bouton);
   }
 
   function afficherRecommencer() {
-    const bouton = document.querySelector("[data-lcdp-paiement-cb-recommencer]");
+    const bouton = racine.querySelector("[data-lcdp-paiement-cb-recommencer]");
     afficherBoutonAction(bouton);
   }
 
   function afficherQuitter() {
     if (!pageOrigine) return;
-    const bouton = document.querySelector("[data-lcdp-paiement-cb-quitter]");
+    const bouton = racine.querySelector("[data-lcdp-paiement-cb-quitter]");
     afficherBoutonAction(bouton);
   }
 
@@ -266,7 +268,7 @@
     if (!pageOrigine || redirectionPaiementValideProgrammee) return;
 
     redirectionPaiementValideProgrammee = true;
-    window.setTimeout(revenirPageOrigine, 900);
+    window.setTimeout(() => revenirPageOrigine(true), 900);
   }
 
   function construireEndpointApi(cleModerne, cleLegacy, sousDomaineWorker) {
@@ -329,4 +331,94 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
   }
+  return initialiserPage();
+  }
+
+  async function monterPaiementCB(slot, options = {}) {
+    if (!slot?.isConnected) return;
+    if (slot.querySelector("[data-lcdp-paiement-cb-payer]")) return initialiserPaiementCB(slot,options);
+    const cfg = window.SITE_CONFIG || {};
+    const url = typeof window.LCDP_urlObjet === "function"
+      ? window.LCDP_urlObjet("/HTMLBASE/02-dialogue-reference-information.html")
+      : cfg.objetUrl("/HTMLBASE/02-dialogue-reference-information.html");
+    const reponse = await fetch(url,{credentials:"omit",cache:"no-cache"});
+    if (!reponse.ok) throw Error("Boîte de paiement indisponible.");
+    const template = document.createElement("template");
+    template.innerHTML = (await reponse.text()).trim();
+    if (!slot.isConnected) return;
+    const dialogue = template.content.querySelector('[data-lcdp-dialogue-reference="information"]');
+    const titre = dialogue?.querySelector("[data-lcdp-dialogue-titre]");
+    const message = dialogue?.querySelector("[data-lcdp-dialogue-message]");
+    const actions = dialogue?.querySelector(".lcdp-dialogue-ref__actions");
+    if (!dialogue || !titre || !message || !actions) throw Error("Boîte de paiement incomplète.");
+    dialogue.setAttribute("role","region");
+    dialogue.removeAttribute("aria-modal");
+    titre.textContent = "Paiement CB";
+    message.textContent = "Chargement du paiement…";
+    message.setAttribute("data-lcdp-paiement-cb-message","");
+    message.setAttribute("aria-live","polite");
+    const details = document.createElement("p");
+    details.className = "lcdp-dialogue-ref__message";
+    details.setAttribute("data-lcdp-paiement-cb-details","");
+    details.hidden = true;
+    message.before(details);
+    actions.replaceChildren();
+    for (const [type,libelle,style] of [
+      ["payer","Accéder au paiement sécurisé Stripe","principal"],
+      ["recommencer","Recommencer","principal"],
+      ["quitter",options.integre ? "Retour aux échéances" : "Retour","secondaire"]
+    ]) {
+      const bouton = document.createElement("button");
+      bouton.type = "button";
+      bouton.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--"+style;
+      bouton.textContent = libelle;
+      bouton.setAttribute("data-lcdp-paiement-cb-"+type,"");
+      bouton.hidden = true;
+      actions.appendChild(bouton);
+    }
+    slot.replaceChildren(template.content);
+    return initialiserPaiementCB(dialogue,options);
+  }
+  window.LCDP_monterPaiementCB = monterPaiementCB;
+
+  async function chargerCoquePaiement() {
+    async function charger(id,url) {
+      const slot = document.getElementById(id);
+      if (!slot) return false;
+      const r = await fetch(url,{credentials:"omit",cache:"no-cache"});
+      if (!r.ok) throw Error("Coque de paiement indisponible.");
+      const template = document.createElement("template");
+      template.innerHTML = (await r.text()).trim();
+      slot.replaceChildren(template.content);
+      slot.querySelectorAll("[data-site-href]").forEach(el => {
+        el.href = el.dataset.space === "membre" ? window.LCDP_urlMembre(el.dataset.siteHref) : window.LCDP_urlPublic(el.dataset.siteHref);
+      });
+      slot.querySelectorAll("[data-site-src]").forEach(el => {
+        el.src = window.LCDP_urlObjet(el.dataset.siteSrc.replace(/^\/?OBJET\/?/,"/"));
+      });
+      return true;
+    }
+    await Promise.allSettled([
+      charger("lcdp-bandeau-slot",window.LCDP_urlMembre("/ESPACE-MEMBRE/box-bandeau-nav-membre.html")).then(async ok => {
+        if (!ok) return;
+        const script = document.createElement("script");
+        script.src = window.LCDP_urlMembre("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261120-presentation-abonnements");
+        await new Promise((resolve,reject) => {script.onload=resolve;script.onerror=reject;document.body.appendChild(script);});
+        await window.LCDP_initialiserMenuBurgerMembre?.();
+      }),
+      charger("lcdp-footer-slot",window.LCDP_urlObjet("/HTMLBASE/02-footer.html"))
+    ]);
+  }
+  function demarrerPage() {
+    const slot = document.querySelector("[data-lcdp-paiement-cb]");
+    if (!slot) return;
+    if (document.getElementById("lcdp-bandeau-slot")) chargerCoquePaiement().catch(console.error);
+    monterPaiementCB(slot).catch(erreur => {
+      console.error("Paiement CB :",erreur);
+      const message = slot.querySelector("[data-lcdp-paiement-cb-message]") || slot;
+      message.textContent = "Impossible de charger le paiement. Revenez à votre compte pour réessayer.";
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded",demarrerPage,{once:true});
+  else demarrerPage();
 })();
