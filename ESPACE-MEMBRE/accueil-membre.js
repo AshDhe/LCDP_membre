@@ -131,7 +131,7 @@
 
   // Une boîte CHOIX officielle par événement de publication non accepté.
   async function traiterOptinAccueil() {
-    if (!etatMembre.causesSuspension?.some(c => c === "optin_reglement_app" || c === "optin_reglement_club")) return;
+    // Une demande d’accord peut précéder la suspension : consulter les demandes même si le compte est actif.
     if (!ENDPOINT_OPTIN_MEMBRE || !ENDPOINT_REGLEMENT_PUBLICATION) throw Error("Service non configuré.");
     const endpoint = ENDPOINT_OPTIN_MEMBRE + "/optin-reglements";
     const reponse = await fetch(endpoint, {credentials:"include",cache:"no-store",headers:{Accept:"application/json"}});
@@ -152,7 +152,14 @@
         !["reglement-app","reglement-club"].includes(demande.document) || !String(demande.version||"").trim()) throw Error("Publication invalide.");
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) throw Error("Emplacement dialogue indisponible.");
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-mise-a-jour-reglement.html");
+    // La date de publication n'est pas une échéance future. Les publications historiques
+    // conservent leur prise d'effet immédiate jusqu'à la migration du service.
+    const dateIso = String(demande.dateapplication || "");
+    const jourParis = new Intl.DateTimeFormat("sv-SE", {timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+    const dateExplicite = /^\d{4}-\d{2}-\d{2}$/.test(dateIso);
+    const future = dateExplicite && dateIso > jourParis;
+    const profil = future ? "mise-a-jour-reglement" : "compte-suspendu-optin";
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-" + profil + ".html");
     // Ne jamais remplacer un dialogue déjà ouvert.
     if (slot.childElementCount) await new Promise(resolve => {
       const observation = new MutationObserver(() => { if (!slot.childElementCount) { observation.disconnect(); resolve(); } });
@@ -161,7 +168,7 @@
     });
     const avant = document.activeElement;
     slot.replaceChildren(fragment);
-    const boite=slot.querySelector('[data-lcdp-dialogue-reference="mise-a-jour-reglement"]');
+    const boite=slot.querySelector('[data-lcdp-dialogue-reference="'+profil+'"]');
     const texte=slot.querySelector("[data-lcdp-dialogue-message]");
     const nom=slot.querySelector("[data-lcdp-reglement-nom]");
     const application=slot.querySelector("[data-lcdp-reglement-application]");
@@ -171,14 +178,13 @@
     if (!boite||!texte||!nom||!application||!accord||!voir||!accepter) { slot.replaceChildren(); throw Error("Dialogue règlement incomplet."); }
     const type=demande.document==="reglement-club"?"du club":"de l’application";
     nom.textContent="Le règlement "+type;
-    // Aujourd’hui, la publication vaut prise d'effet. Ne pas inventer de délai d'acceptation.
-    const date=demande.datepublication ? new Date(demande.datepublication) : null;
+    const date = dateExplicite ? new Date(dateIso+"T12:00:00Z") : demande.datepublication ? new Date(demande.datepublication) : null;
     if(date && Number.isFinite(date.getTime())){
-      application.textContent="Il est applicable depuis le "+new Intl.DateTimeFormat("fr-FR",{
+      application.textContent=(future ? "Il est applicable à compter du " : "Il est applicable depuis le ")+new Intl.DateTimeFormat("fr-FR",{
         timeZone:"Europe/Paris",day:"numeric",month:"long",year:"numeric"
       }).format(date)+".";
     }
-    accord.textContent="Votre accord est nécessaire pour utiliser l’application.";
+    accord.textContent=future?"Votre accord est nécessaire d’ici là.":"Vous n’avez pas encore donné votre accord.";
     const url=ENDPOINT_REGLEMENT_PUBLICATION+"/reglement-publication?id="+encodeURIComponent(demande.idpublication);
     // Afficher précisément la version soumise à l'accord, jamais le règlement courant par défaut.
     voir.addEventListener("click",()=>window.open(url,"_blank","popup,noopener,noreferrer,width=900,height=800"));
