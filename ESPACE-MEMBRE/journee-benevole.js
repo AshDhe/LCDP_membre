@@ -13,9 +13,8 @@
     appliquerRoutesSite(slot);
     await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js");
 
-    if (typeof window.LCDP_initialiserMenuBurgerMembre === "function") {
-      await window.LCDP_initialiserMenuBurgerMembre();
-    }
+    if (typeof window.LCDP_initialiserMenuBurgerMembre !== "function") throw new Error("Menu membre indisponible.");
+    await window.LCDP_initialiserMenuBurgerMembre();
   }
 
   async function initialiserFooter() {
@@ -80,7 +79,7 @@
   function installerCommandeFiltres() {
     const tools = document.querySelector("[data-lcdp-liste-card-tools]");
     const formulaire = tools?.querySelector(".lcdp-planning-filtres");
-    if (!formulaire) return;
+    if (!formulaire) throw new Error("Grille de filtrage indisponible.");
     const commandeFiltres = document.createElement("button");
     commandeFiltres.type = "button";
     commandeFiltres.className = "lcdp-planning-filtres__bascule";
@@ -112,13 +111,14 @@
   async function initialiserPage() {
     try {
       installerCommandeFiltres();
-      const resultats = await Promise.allSettled([initialiserBandeau(), initialiserFooter()]);
-      for (const resultat of resultats) {
-        if (resultat.status === "rejected") console.error("Journée bénévole :", resultat.reason);
-      }
-    } finally {
+      await Promise.all([initialiserBandeau(), initialiserFooter()]);
+      const logo = document.querySelector("#lcdp-bandeau-slot img");
+      if (logo && typeof logo.decode === "function") await logo.decode().catch(() => {});
       window.LCDP_terminerAttentePageMembre?.();
+    } catch (erreur) {
+      console.error("Journée bénévole :", erreur);
+      window.LCDP_echecAttentePageMembre?.();
     }
   }
-  initialiserPage().catch(erreur => console.error("Journée bénévole :", erreur));
+  initialiserPage();
 })();

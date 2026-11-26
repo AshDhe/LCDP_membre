@@ -2,6 +2,8 @@
 <html lang="fr" data-lcdp-css="c085 c034 c038 c032 c083 c036 c037 c040 c054 c058 c065 c072 c073 c063 c064 c077">
 <head>
   <style>
+    /* Masquer le wrapper entier avant toute initialisation, comme sur Mes accès. */
+    html:not(.lcdp-journee-benevole-ready) body.lcdp-app-page > .lcdp-app-wrapper {display:none!important;}
     /* Début du document : le spinner est centré avant les CSS externes. */
     #lcdp-attente-page-membre {position:fixed;inset:0;z-index:2147483646;box-sizing:border-box;width:100%;height:100vh;height:100dvh;display:flex;align-items:center;justify-content:center;background:#fff;}
     #lcdp-attente-page-membre .lcdp-loading-spinner {position:relative;box-sizing:border-box;width:64px;height:64px;display:flex;align-items:center;justify-content:center;}
@@ -12,7 +14,7 @@
     @keyframes lcdp-attente-page-rotation {to {transform:rotate(360deg);}}
     @media(prefers-reduced-motion:reduce) {#lcdp-attente-page-membre .lcdp-loading-spinner__arc {animation:none;}}
   </style>
-  <noscript><style>#lcdp-attente-page-membre{display:none!important;}</style></noscript>
+  <noscript><style>#lcdp-attente-page-membre{display:none!important;} html:not(.lcdp-journee-benevole-ready) body.lcdp-app-page > .lcdp-app-wrapper{display:block!important;}</style></noscript>
 
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -79,10 +81,29 @@
   </div>
   <script>
     (() => {
-      const terminer = () => document.getElementById("lcdp-attente-page-membre")?.remove();
-      window.LCDP_terminerAttentePageMembre = terminer;
-      window.setTimeout(terminer, 15000);
-      window.addEventListener("pageshow", event => { if(event.persisted) terminer(); });
+      let termine = false;
+      const attente = document.getElementById("lcdp-attente-page-membre");
+      const echec = () => {
+        if (termine || !attente) return;
+        const message = document.createElement("p");
+        message.textContent = "Impossible de charger la page. ";
+        const reessayer = document.createElement("a");
+        reessayer.href = window.location.href;
+        reessayer.textContent = "Réessayer";
+        message.appendChild(reessayer);
+        attente.replaceChildren(message);
+        attente.setAttribute("role", "alert");
+        attente.removeAttribute("aria-label");
+      };
+      const minuterie = window.setTimeout(echec, 15000);
+      window.LCDP_echecAttentePageMembre = () => { window.clearTimeout(minuterie); echec(); };
+      window.LCDP_terminerAttentePageMembre = () => {
+        if (termine) return;
+        termine = true;
+        window.clearTimeout(minuterie);
+        document.documentElement.classList.add("lcdp-journee-benevole-ready");
+        attente?.remove();
+      };
     })();
   </script>
 
@@ -137,6 +158,6 @@
     <div id="lcdp-footer-slot"></div>
     <div id="lcdp-lightbox-slot"></div>
   </div>
-  <script src="./journee-benevole.js?v=20261126-affichage-unique"></script>
+  <script src="./journee-benevole.js?v=20261126-wrapper-ready-v2"></script>
 </body>
 </html>
