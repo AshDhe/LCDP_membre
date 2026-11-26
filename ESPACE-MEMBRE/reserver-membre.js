@@ -77,7 +77,6 @@
   );
 
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
-  const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
 
   const DEBUT_ATTENTE_INITIALE_PLANIFIER = performance.now();
   const DUREE_MIN_ATTENTE_INITIALE_MS = 300;
@@ -1208,12 +1207,7 @@
         Boolean(String(paiement?.orderid || "").trim()) &&
         echeancesPaiementSuspension(paiement).length > 0;
       if (peutRegulariser) {
-        const choix = await ouvrirDialogueBoutonsSuperpose({
-          titre: "Paiement en attente",
-          texte: messageImpayé,
-          boutons: [{label:"Régulariser", valeur:"payer", style:"lcdp-button-primary"}]
-        });
-        if (choix === "payer") await gererPaiementSuspensionMembre(etatMembre);
+        await gererPaiementSuspensionMembre(etatMembre);
       } else {
         await afficherDialogueInformationPlanifier({ titre: "Abonnement", message: messageImpayé });
       }
@@ -1990,83 +1984,9 @@
   }
 
   async function afficherEcheancesPaiementSuspension(etat) {
-    const paiement = etat && etat.paiementSuspension ? etat.paiementSuspension : null;
-    const orderid = String(paiement?.orderid || "").trim();
-    const echeances = echeancesPaiementSuspension(paiement);
-
-    if (!orderid) {
-      await afficherAlerte("Paiement introuvable.");
-      return;
-    }
-
-    if (!echeances.length) {
-      await afficherDialogueInformationPlanifier({
-        titre: "Échéances de paiement",
-        message: "Aucune échéance non payée."
-      });
-      return;
-    }
-
-    const slot = document.getElementById("lcdp-lightbox-slot");
-
-    if (!slot) return;
-
-    slot.innerHTML = "";
-
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-bouton.html");
-    slot.appendChild(fragment);
-
-    const dialogue = slot.querySelector("[data-lcdp-box-dialogue-bouton]");
-    const titre = slot.querySelector("[data-lcdp-dialogue-title]");
-    const texte = slot.querySelector("[data-lcdp-dialogue-text]");
-    const actions = slot.querySelector("[data-lcdp-dialogue-actions]");
-    const boutonFermer = slot.querySelector("[data-lcdp-dialogue-close]");
-
-    if (!dialogue || !titre || !texte || !actions || !boutonFermer) {
-      slot.innerHTML = "";
-      throw new Error("Structure dialogue bouton incomplète.");
-    }
-
-    titre.textContent = "Paiement en attente";
-    texte.textContent = "";
-    texte.hidden = true;
-    actions.innerHTML = "";
-    actions.classList.add("lcdp-dialogue-echeances-impayees");
-
-    echeances.forEach((echeance) => {
-      const ligne = document.createElement("div");
-      ligne.className = "lcdp-dialogue-echeances-impayees__row";
-
-      const description = document.createElement("p");
-      description.className = "lcdp-dialogue-echeances-impayees__text";
-      description.textContent = "Échéance " + String(echeance.numero) + " du " + formaterDatePaiementSuspension(echeance.date) + " : " + formaterMontantPaiementSuspension(echeance.montant) + " TTC\nNon payée";
-
-      const boutonPayer = creerBoutonPaiementSuspension("Payer", "lcdp-button-secondary lcdp-workflow-micro-action lcdp-workflow-micro-action--alerte-paiement", () => {
-        ouvrirPagePaiementSuspension(paiement, echeance.numero).catch(console.error);
-      });
-
-      ligne.appendChild(description);
-      ligne.appendChild(boutonPayer);
-      actions.appendChild(ligne);
-    });
-
-
-    function fermer() {
-      slot.innerHTML = "";
-    }
-
-    boutonFermer.addEventListener("click", fermer);
-    dialogue.addEventListener("click", (event) => {
-      if (event.target === dialogue) fermer();
-    });
-
-    document.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.key === "Escape") fermer();
-      },
-      { once: true }
-    );
+    if (!window.LCDP_PaiementImpaye) await chargerScriptMembreUneFois("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v2");
+    if (!window.LCDP_PaiementImpaye) throw Error("Workflow de paiement indisponible.");
+    return window.LCDP_PaiementImpaye.ouvrir(etat);
   }
 
   function echeancesPaiementSuspension(paiement) {
@@ -2088,35 +2008,6 @@
     }
 
     return echeances;
-  }
-
-  function creerBoutonPaiementSuspension(label, style, action) {
-    const bouton = document.createElement("button");
-    bouton.type = "button";
-    bouton.className = "lcdp-button " + (style || "lcdp-button-primary");
-    bouton.textContent = label || "OK";
-    bouton.addEventListener("click", action);
-    return bouton;
-  }
-
-  async function ouvrirPagePaiementSuspension(paiement, numeroEcheance) {
-    const orderid = String(paiement?.orderid || "").trim();
-
-    if (!orderid) {
-      await afficherAlerte("Commande non renseignée.");
-      return;
-    }
-
-    if (paiementSuspensionDelaiDepasse(paiement)) {
-      await afficherAlerte(messageDelaiPaiementDepasse());
-      return;
-    }
-
-    const ok = await afficherChoixPlanifier("Vous allez être dirigé vers la page de paiement. La régularisation de votre abonnement se fait par carte bancaire uniquement.", { titre: "Régulariser l’abonnement", libelleConfirmer: "Continuer vers le paiement" });
-    if (!ok) return;
-
-    const separateur = PAGE_PAIEMENT_CB.includes("?") ? "&" : "?";
-    window.location.href = PAGE_PAIEMENT_CB + separateur + "orderid=" + encodeURIComponent(orderid) + "&echeance=" + encodeURIComponent(String(numeroEcheance || 1)) + "&source=suspension";
   }
 
   function messageDelaiPaiementDepasse() {
