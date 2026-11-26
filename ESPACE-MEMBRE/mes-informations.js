@@ -4751,9 +4751,19 @@ function afficherResumePointsPassion(compte) {
       demander.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--suppression";
       demander.textContent = "Demander";
       demander.setAttribute("aria-label", libelle.textContent);
-      // Étape interface uniquement : aucun envoi ni changement de contrat.
-      demander.addEventListener("click", () => {
-        void afficherAlerteSuperposee("Le service de demande de résiliation n’est pas encore disponible.", { profil: "information" });
+      demander.addEventListener("click", async () => {
+        if (demander.disabled) return;
+        demander.disabled = true;
+        try {
+          await ouvrirAvertissementResiliationCompte(slot, dialogue, demander);
+        } catch (erreur) {
+          console.error("Dialogue de résiliation indisponible :", erreur);
+          if (dialogue.isConnected) {
+            void afficherAlerteSuperposee("Impossible d’ouvrir la demande de résiliation. Veuillez réessayer.", { profil: "information" });
+          }
+        } finally {
+          demander.disabled = false;
+        }
       });
       bouton.after(libelle, demander);
     }
@@ -4768,6 +4778,77 @@ function afficherResumePointsPassion(compte) {
       bouton.addEventListener("click", fermer, { once: true });
       bouton.focus();
     });
+  }
+
+  // Même gabarit et même style d’avertissement que la fermeture volontaire du compte.
+  // Le dialogue précédent est conservé hors du DOM pour un retour immédiat, sans écran intermédiaire.
+  async function ouvrirAvertissementResiliationCompte(slot, precedent, boutonRetour) {
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-suppression.html");
+    if (precedent.parentNode !== slot) return;
+    const dialogue = fragment.querySelector('[data-lcdp-dialogue-reference="suppression"]');
+    const titre = dialogue?.querySelector("[data-lcdp-dialogue-titre]");
+    const message = dialogue?.querySelector("[data-lcdp-dialogue-message]");
+    const annuler = dialogue?.querySelector('[data-lcdp-dialogue-action="conserver"]');
+    const demander = dialogue?.querySelector('[data-lcdp-dialogue-action="supprimer"]');
+    if (!dialogue || !titre || !message || !annuler || !demander) {
+      throw new Error("Structure du dialogue de résiliation incomplète.");
+    }
+    dialogue.setAttribute("data-lcdp-avertissement-fermeture", "");
+    titre.textContent = "Résiliation de l’abonnement";
+    message.textContent = [
+      "Vous pouvez faire la demande de résiliation de votre abonnement. L’acceptation du club n’est pas garantie et dépend de la légitimité de votre demande.",
+      "Nous vous contactons rapidement à réception de votre demande de résiliation de contrat pour étudier les raisons de cette demande."
+    ].join("\n\n") + "\n\nConsultez les ";
+    const lien = document.createElement("a");
+    lien.href = construireUrlMembre("/ESPACE-MEMBRE/cgv-lcdp.html");
+    lien.target = "_blank";
+    lien.rel = "noopener noreferrer";
+    lien.textContent = "conditions générales de vente";
+    message.append(lien, " pour plus d’informations sur la résiliation de l’abonnement.");
+    annuler.textContent = "Annuler";
+    demander.textContent = "Demander";
+
+    // Cette étape est uniquement une interface : aucune demande n’est encore envoyée.
+    const information = document.createElement("p");
+    information.className = "lcdp-dialogue-ref__message";
+    information.setAttribute("role", "status");
+    information.hidden = true;
+    demander.closest(".lcdp-dialogue-ref__actions").after(information);
+    demander.addEventListener("click", () => {
+      information.hidden = false;
+      information.textContent = "Le service de demande de résiliation n’est pas encore disponible.";
+    });
+
+    const anciens = Array.from(slot.childNodes);
+    const retour = () => {
+      document.removeEventListener("keydown", clavier);
+      if (dialogue.parentNode !== slot) return;
+      slot.replaceChildren(...anciens);
+      boutonRetour.disabled = false;
+      boutonRetour.focus();
+    };
+    const clavier = evenement => {
+      if (dialogue.parentNode !== slot) {
+        document.removeEventListener("keydown", clavier);
+        return;
+      }
+      if (evenement.key === "Escape") {
+        evenement.preventDefault();
+        retour();
+      } else if (evenement.key === "Tab") {
+        if (evenement.shiftKey && document.activeElement === lien) {
+          evenement.preventDefault();
+          demander.focus();
+        } else if (!evenement.shiftKey && document.activeElement === demander) {
+          evenement.preventDefault();
+          lien.focus();
+        }
+      }
+    };
+    annuler.addEventListener("click", retour, { once: true });
+    slot.replaceChildren(fragment);
+    document.addEventListener("keydown", clavier);
+    annuler.focus();
   }
 
   async function afficherAlerteSuperposee(message, options = {}) {
