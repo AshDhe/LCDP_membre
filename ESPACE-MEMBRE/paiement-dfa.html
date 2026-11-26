@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-lcdp-css="c085">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -22,46 +22,18 @@
       const c = window.SITE_CONFIG || {};
       const base = String(c.objetBaseUrl || c.OBJET_BASE || 
         (String(c.publicBaseUrl || c.PUBLIC_BASE || '').replace(/\/+$/, '') + '/OBJET')).replace(/\/+$/, '');
-      const url = typeof c.objetUrl === 'function'
-        ? c.objetUrl('/CSSBASE/lcdp-planifier.css')
-        : base + '/CSSBASE/lcdp-planifier.css';
-      const link = document.createElement('link');
-      link.rel = 'stylesheet'; link.href = url; document.head.appendChild(link);
       window.LCDP_urlObjet = typeof c.objetUrl === 'function' ? c.objetUrl : (p => base + '/' + p.replace(/^\/+/, ''));
+      for (const path of ['/CSSBASE/lcdp-central-mobile-first.css', '/CSSBASE/lcdp-paiement-elements.css?v=20261126-stripe-commun-v1']) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet'; link.href = window.LCDP_urlObjet(path); document.head.appendChild(link);
+      }
     })();
   </script>
   <script defer src="https://js.stripe.com/endive/stripe.js"></script>
-  <style>
-    .lcdp-stripe__detail-lien{display:block;margin:11px 0 5px auto;padding:3px 0;border:0;background:none;color:#4b6333;text-decoration:underline;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
-    .lcdp-stripe__detail{margin-top:12px;padding:15px 16px;border:1px solid #e7e5e4;border-radius:15px;background:#fafaf9;font-size:13px}
-    .lcdp-stripe__detail[hidden]{display:none!important}
-    .lcdp-stripe__detail p{margin:0 0 10px;line-height:1.5}
-    .lcdp-stripe__detail dl{margin:0;display:grid;gap:9px}
-    .lcdp-stripe__detail dl>div{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-    .lcdp-stripe__detail dt{color:#78716c}
-    .lcdp-stripe__detail dd{margin:0;text-align:right;font-weight:700;overflow-wrap:anywhere}
-    .lcdp-stripe__detail .lcdp-stripe__detail-total{padding-top:9px;border-top:1px solid #d6d3d1}
-    .lcdp-stripe__detail-reference{display:flex;justify-content:space-between;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid #e7e5e4;font-size:12px}
-    .lcdp-stripe__detail-reference span{color:#78716c}
-    .lcdp-stripe__detail-reference strong{text-align:right;overflow-wrap:anywhere}
-    .lcdp-stripe__email[hidden], .lcdp-stripe__label[hidden]{display:none!important}
-    .lcdp-stripe__reprendre{display:block;width:100%;margin:12px 0 0;padding:13px 15px;border:0;border-radius:12px;background:#4b6333;color:white;font:inherit;font-weight:750;cursor:pointer}
-    .lcdp-stripe__reprendre:disabled{opacity:.55;cursor:wait}
-    .lcdp-stripe__reprendre[hidden]{display:none!important}
-    body.lcdp-stripe-page #paiement-formulaire > h2 {margin-bottom:6px;}
-    body.lcdp-stripe-page #paiement-formulaire > .lcdp-stripe__aide {margin:0 0 10px;padding:10px 12px;border:1px solid transparent;border-radius:10px;font-size:13px;font-weight:500;line-height:1.55;text-align:left;}
-    body.lcdp-stripe-page #paiement-formulaire > .lcdp-stripe__aide--securite {background:#f0fdf4;border-color:#bbf7d0;color:#166534;}
-    body.lcdp-stripe-page #paiement-formulaire > .lcdp-stripe__aide--saisie {background:#fefce8;border-color:#fde68a;color:#991b1b;margin-bottom:15px;}
-    /* Action principale haute et centrée ; même gabarit sur les deux paiements. */
-    body.lcdp-stripe-page #bouton-payer {box-sizing:border-box;display:flex;align-items:center;justify-content:center;width:min(100%,160px);min-height:144px;margin:24px auto 0;padding:16px 12px;text-align:center;white-space:normal;overflow-wrap:anywhere;font-size:18px;}
-    body.lcdp-stripe-page #dfa-abandon {box-sizing:border-box;min-height:48px;margin:32px 0 0;background:#fff;border:1px solid #e2e8f0;color:#334155;font-weight:500;box-shadow:none;}
-    body.lcdp-stripe-page #dfa-abandon:hover {background:#f8fafc;border-color:#94a3b8;color:#0f172a;}
-    body.lcdp-stripe-page #dfa-abandon:focus-visible {outline:2px solid #4b6333;outline-offset:3px;}
-  </style>
-  <script defer src="./paiement-dfa.js?v=20261126-dfa-email-v3"></script>
+  <script defer src="./paiement-dfa.js?v=20261126-stripe-commun-v1"></script>
 </head>
 <body class="lcdp-page-reserver lcdp-stripe-page">
-  <main class="lcdp-stripe" aria-labelledby="paiement-titre">
+  <main class="lcdp-stripe lcdp-app-wrapper" aria-labelledby="paiement-titre">
     <header class="lcdp-stripe__entete">
       <span class="lcdp-stripe__logo">
         <img id="logo-lcdp" alt="La Clé du Parc" hidden>
@@ -86,7 +58,9 @@
         <input class="lcdp-stripe__email" hidden id="email-paiement" name="email" type="email" autocomplete="email" inputmode="email" placeholder="email@exemple.com" required>
         <div id="stripe-payment-element" aria-label="Formulaire bancaire sécurisé Stripe"></div>
         <p class="lcdp-stripe__erreur" id="paiement-erreur" role="alert" hidden></p>
-        <button class="lcdp-stripe__payer" id="bouton-payer" type="submit" disabled>Payer</button>
+        <div class="lcdp-actions-centrees">
+          <button class="lcdp-button lcdp-button-primary lcdp-button--haut-etroit lcdp-button--deux-niveaux" id="bouton-payer" type="submit" disabled><span>Payer<br><strong data-lcdp-montant-payer>—</strong></span></button>
+        </div>
       </form>
       <button type="button" class="lcdp-stripe__reprendre" id="dfa-abandon">Quitter le paiement</button>
     </section>
