@@ -392,7 +392,7 @@
   }
 
   async function afficherEcheancesPaiementSuspension(etat) {
-    if (!window.LCDP_PaiementImpaye) await chargerScriptMembreUneFois("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v2");
+    if (!window.LCDP_PaiementImpaye) await chargerScriptMembreUneFois("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v3");
     if (!window.LCDP_PaiementImpaye) throw Error("Workflow de paiement indisponible.");
     return window.LCDP_PaiementImpaye.ouvrir(etat);
   }
