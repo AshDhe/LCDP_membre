@@ -20,7 +20,7 @@
   }
   function preparer() {
     if(!chargement)chargement=Promise.all([
-      ressource("link",objet("/CSSBASE/lcdp-paiement-elements.css?v=20261126-bouton-deux-niveaux-v5")),
+      ressource("link",objet("/CSSBASE/lcdp-paiement-elements.css?v=20261126-stripe-commun-v1")),
       ressource("link",objet("/CSSBASE/lcdp-attente.css?v=20261126-v1")),
       typeof window.Stripe==="function"?Promise.resolve():ressource("script","https://js.stripe.com/endive/stripe.js")
     ]).catch(e=>{chargement=null;throw e;});
@@ -90,7 +90,7 @@
         clientSecret:secret,
         elementsOptions:{appearance:{theme:"stripe",variables:{
           colorPrimary:"#4b6333",colorText:"#292524",colorBackground:"#ffffff",
-          colorDanger:"#be123c",borderRadius:"12px",
+          colorDanger:"#be123c",borderRadius:"12px",fontSizeBase:"16px",
           fontFamily:"system-ui, -apple-system, Segoe UI, sans-serif"
         }}}
       });
