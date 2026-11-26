@@ -1678,7 +1678,9 @@
         actualiser();
         bouton.addEventListener("click", () => {
           const jours = actualiser();
-          void afficherInformationMembre(messageRetractationCompte(abo, jours), "Rétractation");
+          const message = messageRetractationCompte(abo, jours);
+          void afficherInformationMembre(message, "Rétractation", null, "Fermer", null,
+            message === "La période de rétractation est close.");
         });
         ligne.appendChild(bouton);
         const extensions = libellesExtensionsCompte(abo);
@@ -4723,7 +4725,7 @@ function afficherResumePointsPassion(compte) {
     return champ;
   }
 
-  async function afficherInformationMembre(message, titre = "Information", fragmentPrepare = null, libelleBouton = "Fermer", slotParcours = null) {
+  async function afficherInformationMembre(message, titre = "Information", fragmentPrepare = null, libelleBouton = "Fermer", slotParcours = null, proposerResiliation = false) {
     const slot = slotParcours || document.getElementById("lcdp-lightbox-slot");
     if (!slot) return null;
     const fragment = fragmentPrepare || await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
@@ -4740,6 +4742,21 @@ function afficherResumePointsPassion(compte) {
     titreElement.textContent = titre;
     texte.textContent = String(message || "");
     bouton.textContent = libelleBouton;
+    if (proposerResiliation) {
+      const libelle = document.createElement("p");
+      libelle.className = "lcdp-dialogue-ref__message";
+      libelle.textContent = "Demander la résiliation du contrat";
+      const demander = document.createElement("button");
+      demander.type = "button";
+      demander.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--suppression";
+      demander.textContent = "Demander";
+      demander.setAttribute("aria-label", libelle.textContent);
+      // Étape interface uniquement : aucun envoi ni changement de contrat.
+      demander.addEventListener("click", () => {
+        void afficherAlerteSuperposee("Le service de demande de résiliation n’est pas encore disponible.", { profil: "information" });
+      });
+      bouton.after(libelle, demander);
+    }
     return new Promise(resolve => {
       let resolu = false;
       const fermer = () => {
