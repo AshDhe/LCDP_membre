@@ -1310,7 +1310,7 @@
             if (!window.LCDP_PaiementImpaye) {
               await new Promise((resolve,reject) => {
                 const script=document.createElement("script");
-                script.src=construireUrlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v2");
+                script.src=construireUrlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v3");
                 script.onload=resolve;script.onerror=reject;document.head.appendChild(script);
               });
             }
