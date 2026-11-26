@@ -259,7 +259,9 @@
       // La vue ABO-RÉZA reste intégrée au wrapper PLANIFIER, sans contourner ses APIs.
       const urlOuverture = new URL(window.location.href);
       if (urlOuverture.searchParams.get("mode") === "aboreza") {
+        const origineBoutique = urlOuverture.searchParams.get("origine") === "boutique";
         urlOuverture.searchParams.delete("mode");
+        if (origineBoutique) urlOuverture.searchParams.delete("origine");
         window.history.replaceState(window.history.state, "", urlOuverture.href);
         const daValidee = etatMembre.statudaConnue === true &&
           normaliserStatudaReservation(etatMembre.statuda) === "oui";
@@ -280,7 +282,11 @@
             message: "Votre demande d'abonnement doit être validée pour souscrire un abonnement."
           });
         } else {
-          await ouvrirAbonnementDepuisPlanning({ origine: "sans_abonnement" });
+          const resultat = await ouvrirAbonnementDepuisPlanning({ origine: "sans_abonnement" });
+          if (origineBoutique && resultat === "horaires_fermes") {
+            window.location.replace(construireUrlPublic("/ESPACE-PUBLIC/boutique.html#abonnement"));
+            return;
+          }
         }
       }
       // RECHERCHE EXPRESS : même wrapper et mêmes fiches, liste conservée.
@@ -1245,8 +1251,7 @@
     // Point de transfert unique. ABO-RÉZA n'existe pas encore : ne pas ouvrir
     // l'ancien panier et ne pas simuler une souscription.
     if (typeof window.LCDP_ouvrirAboReza === "function") {
-      await window.LCDP_ouvrirAboReza({...contexte});
-      return;
+      return await window.LCDP_ouvrirAboReza({...contexte});
     }
     await afficherDialogueInformationPlanifier({
       titre: "Abonnement",
