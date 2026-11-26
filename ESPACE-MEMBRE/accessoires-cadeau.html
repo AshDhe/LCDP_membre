@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr" data-lcdp-css="c085 c034 c038 c032 c083 c036 c033 c037 c041 c040">
+<html lang="fr" data-lcdp-css="c085 c034 c038 c032 c083 c036 c033 c037 c041 c040 c084">
 <head>
   <meta charset="utf-8">
 
-  <title>Page en cours de mise à jour - La Clé du Parc</title>
+  <title>Accessoires cadeau - La Clé du Parc</title>
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Cette page est en cours de mise à jour.">
@@ -20,7 +20,7 @@
       window.LCDP_urlPublic = path => typeof cfg.publicUrl === "function" ? cfg.publicUrl(path) : joindre(publicBase, path);
       window.LCDP_urlMembre = path => typeof cfg.membreUrl === "function" ? cfg.membreUrl(path) : joindre(membreBase, path);
       window.LCDP_urlObjet = path => typeof cfg.objetUrl === "function" ? cfg.objetUrl(path) : joindre(objetBase, path);
-      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css') + '">');
+      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css?v=20261126-da27f214') + '">');
     })();
   </script>
   <script src="./boutique-accessoires-cadre.js?v=20261126" defer></script>
@@ -34,14 +34,16 @@
     <main class="lcdp-site-main">
       <section class="lcdp-page-section" aria-label="Page en cours de mise à jour">
         <div class="lcdp-page-container">
-          <div class="lcdp-mise-a-jour">
-            <div class="lcdp-loading-spinner" aria-hidden="true">
-        <svg viewBox="0 0 36 36" class="lcdp-loading-spinner__track"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
-        <svg viewBox="0 0 36 36" class="lcdp-loading-spinner__arc"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="75" /></svg>
-        <span class="lcdp-loading-spinner__dot"></span>
-      </div>
-            <h1 class="lcdp-title-page-center">La page n'est pas rendue publique actuellement.</h1>
-          </div>
+          <h2 class="lcdp-boxtext__title lcdp-boxtext__title--center" style="margin-bottom: 24px;">Accessoires cadeau</h2>
+          <div class="lcdp-section-sommeil" role="status" aria-labelledby="lcdp-section-sommeil-titre">
+              <div class="lcdp-section-sommeil__icone" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                  <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <h1 id="lcdp-section-sommeil-titre" class="lcdp-section-sommeil__titre">Page inactive</h1>
+              <p class="lcdp-section-sommeil__texte">Nous ne diffusons pas cette page pour le moment. Cette page est inactive.</p>
+            </div>
         </div>
       </section>
     </main>
