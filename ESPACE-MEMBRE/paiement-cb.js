@@ -24,6 +24,19 @@
   // Une URL de retour externe ou une autre page de paiement est refusée.
   const cleOrigine = "lcdp:origine-paiement-cb:" + JSON.stringify([orderid, echeance]);
   const pageOrigine = options.integre ? window.location.href : retrouverPageOrigine();
+  const listeImpayes = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html?liste=1");
+  const cleRetourListe = "lcdp:impayes:origine";
+  function memoriserOrigineListe() {
+    try {
+      const origine = new URL(pageOrigine,window.location.href);
+      const accueil = new URL(PAGE_ACCUEIL_MEMBRE,window.location.href);
+      const dossier = accueil.pathname.slice(0,accueil.pathname.lastIndexOf("/")+1);
+      if(origine.origin===accueil.origin && origine.pathname.startsWith(dossier) &&
+         !/^paiement(?:[-_]|\.html)/i.test(origine.pathname.slice(dossier.length))) {
+        sessionStorage.setItem(cleRetourListe,origine.href);
+      }
+    } catch {}
+  }
   if (options.integre && orderid) { try { sessionStorage.setItem(cleOrigine, pageOrigine); } catch {} }
   let redirectionPaiementValideProgrammee = false;
   let checkoutEnCours = false;
@@ -53,7 +66,14 @@
   }
 
   function revenirPageOrigine(actualiser = false) {
-    if (!pageOrigine || !racine.isConnected) return;
+    if (!racine.isConnected) return;
+    if (sourcePaiement === "suspension" && (!options.integre || actualiser)) {
+      memoriserOrigineListe();
+      try { sessionStorage.removeItem(cleOrigine); } catch {}
+      window.location.replace(listeImpayes);
+      return;
+    }
+    if (!pageOrigine) return;
     try { sessionStorage.removeItem(cleOrigine); } catch {}
     if (options.integre && !actualiser && typeof options.quitter === "function") {
       options.quitter();
@@ -217,6 +237,18 @@
         throw new Error(messageErreurApi(data, "Impossible de créer le paiement Stripe."));
       }
 
+      if (sourcePaiement === "suspension") {
+        memoriserOrigineListe();
+        // Le retour navigateur recharge la même liste, même sans bfcache.
+        const cibleListe = new URL(listeImpayes,window.location.href);
+        if(cibleListe.origin===window.location.origin){
+          try { window.history.replaceState(window.history.state,"",cibleListe.href); } catch {}
+        }
+        // Si le navigateur restaure le DOM précédent, ne pas conserver l'écran CB occupé.
+        window.addEventListener("pageshow",event=>{
+          if(event.persisted && checkoutEnCours) window.location.replace(cibleListe.href);
+        },{once:true});
+      }
       window.location.href = data.checkout.url;
     } catch (error) {
       console.error("Erreur création Checkout Stripe :", error);
@@ -450,6 +482,37 @@
     const slot = document.querySelector("[data-lcdp-paiement-cb]");
     if (!slot) return;
     if (document.getElementById("lcdp-bandeau-slot")) chargerCoquePaiement().catch(console.error);
+    const params=new URLSearchParams(window.location.search);
+    if(params.get("liste")==="1"){
+      const section=slot.closest("[data-lcdp-compte-parcours]");
+      const script=document.createElement("script");
+      script.src=window.LCDP_urlMembre("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v6");
+      script.onload=()=>{
+        section?.remove();
+        window.LCDP_PaiementImpaye.ouvrir({}, {quitter:()=>{
+          const accueil=new URL(window.LCDP_urlMembre("/ESPACE-MEMBRE/accueil-membre.html"));
+          let destination=accueil.href;
+          try{
+            const origine=new URL(sessionStorage.getItem("lcdp:impayes:origine")||accueil.href);
+            sessionStorage.removeItem("lcdp:impayes:origine");
+            const dossier=accueil.pathname.slice(0,accueil.pathname.lastIndexOf("/")+1);
+            if(origine.origin===accueil.origin&&origine.pathname.startsWith(dossier)&&
+               !/^paiement(?:[-_]|\.html)/i.test(origine.pathname.slice(dossier.length)))destination=origine.href;
+          }catch{}
+          window.location.replace(destination);
+        }}).catch(erreur=>{
+          console.error("Liste des impayés :",erreur);
+          window.location.replace(window.LCDP_urlMembre("/ESPACE-MEMBRE/accueil-membre.html"));
+        });
+      };
+      script.onerror=()=>{slot.textContent="Impossible de charger la liste des échéances. Actualisez la page pour réessayer.";};
+      document.head.appendChild(script);
+      return;
+    }
+    if(params.get("source")==="suspension"&&params.get("retour")==="cancel"){
+      window.location.replace(window.LCDP_urlMembre("/ESPACE-MEMBRE/paiement-cb.html?liste=1"));
+      return;
+    }
     monterPaiementCB(slot).catch(erreur => {
       console.error("Paiement CB :",erreur);
       const message = slot.querySelector("[data-lcdp-paiement-cb-message]") || slot;
