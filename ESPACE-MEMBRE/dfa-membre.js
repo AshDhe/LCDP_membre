@@ -41,6 +41,7 @@
     annuler.hidden = true;
     actions.hidden = true;
     const paye = d.statut === "paye";
+    etat.classList.toggle("dfa-confirmation-centree", paye);
     el("dfa-validation").hidden = !paye;
     el("dfa-accueil").hidden = !paye;
     el("dfa-confirmation-mail").hidden = !paye;

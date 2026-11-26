@@ -23,6 +23,9 @@
     #lcdp-attente-page-membre[hidden] {display:none!important;}
     #lcdp-attente-page-membre [hidden] {display:none!important;}
     /* Validation DFA : animation proposée, sans incidence sur le spinner de chargement. */
+    #dfa-page #dfa-statut.dfa-confirmation-centree,
+    #dfa-page #dfa-confirmation-mail,
+    #dfa-page #dfa-confirmation-mail p {text-align:center;}
     #dfa-page .dfa-validation[hidden], #dfa-page #dfa-accueil[hidden], #dfa-page #dfa-retour[hidden] {display:none!important;}
     #dfa-page .dfa-validation {position:relative;display:flex;align-items:center;justify-content:center;width:80px;height:80px;margin:8px auto 16px;}
     #dfa-page .dfa-validation__halo {position:absolute;inset:0;border-radius:50%;background:#4f6342;opacity:0;}
@@ -55,7 +58,7 @@
     })();
   </script>
   <script src="./boutique-accessoires-cadre.js?v=20261126" defer></script>
-  <script src="./dfa-membre.js?v=20261126-dfa-validation-v11" defer></script>
+  <script src="./dfa-membre.js?v=20261126-dfa-validation-v12" defer></script>
 </head>
 
 <body class="lcdp-app-page lcdp-typographie-editoriale-commune">
