@@ -9,6 +9,27 @@
     const base = espace === "membre" ? cfg.membreBaseUrl || cfg.MEMBRE_BASE || cfg.siteBase : cfg.objetBaseUrl || cfg.OBJET_BASE || String(cfg.publicBaseUrl || cfg.PUBLIC_BASE || "").replace(/\/+$/,"")+"/OBJET";
     return String(base || "").replace(/\/+$/,"")+"/"+path.replace(/^\/+/,"");
   }
+  // Réutilise le pictogramme d'attente animé officiel sans style local.
+  function attendreBouton(bouton) {
+    if (!bouton || bouton.tagName !== "BUTTON") return () => {};
+    const dejaDesactive = bouton.disabled;
+    const ancienBusy = bouton.getAttribute("aria-busy");
+    const spinner = document.createElement("img");
+    spinner.src = url("objet","/IMAG/PICTO/pictowait.svg");
+    spinner.alt = "";
+    spinner.width = 20;
+    spinner.height = 20;
+    spinner.setAttribute("aria-hidden","true");
+    bouton.prepend(spinner);
+    bouton.disabled = true;
+    bouton.setAttribute("aria-busy","true");
+    return () => {
+      spinner.remove();
+      bouton.disabled = dejaDesactive;
+      if (ancienBusy === null) bouton.removeAttribute("aria-busy");
+      else bouton.setAttribute("aria-busy",ancienBusy);
+    };
+  }
   let chargementCSS, chargementCB;
   function assurerCSS() {
     if (!chargementCSS) chargementCSS = new Promise((resolve,reject) => {
@@ -84,9 +105,18 @@
     slot.replaceChildren(fragment);
     return new Promise(resolve=>{
       let fini=false;
-      function fermer(v){if(fini)return;fini=true;slot.replaceChildren();resolve(v);}
-      bouton.addEventListener("click",()=>fermer(true),{once:true});
-      annuler?.addEventListener("click",()=>fermer(false),{once:true});
+      function fermer(v,action){
+        if(fini)return;
+        fini=true;
+        if(options.transition){
+          attendreBouton(action);
+          bouton.disabled=true;
+          if(annuler)annuler.disabled=true;
+        }else slot.replaceChildren();
+        resolve(v);
+      }
+      bouton.addEventListener("click",()=>fermer(true,bouton),{once:true});
+      annuler?.addEventListener("click",()=>fermer(false,annuler),{once:true});
       bouton.focus();
     });
   }
@@ -133,6 +163,7 @@
         bouton.setAttribute("aria-label","Payer l’échéance " + echeance.numero);
         bouton.addEventListener("click",async () => {
           if (bouton.disabled) return;
+          attendreBouton(bouton);
           actions.querySelectorAll("button").forEach(b => b.disabled = true);
           try {
             await ouvrirPagePaiementSuspension(paiement,echeance.numero,slot,afficherListe);
@@ -200,10 +231,10 @@
     }
     const ok = await choix(
       "La régularisation de votre abonnement se fait par carte bancaire uniquement.",
-      {titre:"Régulariser l’abonnement",libelleConfirmer:"Continuer vers le paiement",libelleAnnuler:"Retour"},slot
+      {titre:"Régulariser l’abonnement",libelleConfirmer:"Continuer vers le paiement",libelleAnnuler:"Retour",transition:true},slot
     );
     if (!ok) { await retourListe(); return; }
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-impayes-wrapper-v1");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-impayes-libelles-v2");
     if (typeof window.LCDP_monterPaiementCB !== "function") throw Error("Service de paiement indisponible.");
     await window.LCDP_monterPaiementCB(slot,{
       orderid,echeance:numeroEcheance || 1,source:"suspension",retour:"",
@@ -224,15 +255,18 @@
   function ouvrir(etat={}) {
     if(ouverture)return ouverture;
     ouverture=(async()=>{
+      const restaurer = attendreBouton(document.activeElement);
+      try {
       await assurerCSS();
       let paiement=etat.paiementSuspension||etat.paiementRegularisation||null;
       if(!paiement?.orderid || !echeancesPaiementSuspension(paiement).length) {
         const actuel=await obtenirPaiement();
         if(actuel?.orderid) paiement=actuel;
       }
-      return afficherEcheancesPaiementSuspension({paiementSuspension:paiement});
+      return await afficherEcheancesPaiementSuspension({paiementSuspension:paiement});
+      } finally { restaurer(); }
     })().finally(()=>{ouverture=null;});
     return ouverture;
   }
-  window.LCDP_PaiementImpaye=Object.freeze({ouvrir});
+  window.LCDP_PaiementImpaye=Object.freeze({ouvrir,attendreBouton});
 })();
