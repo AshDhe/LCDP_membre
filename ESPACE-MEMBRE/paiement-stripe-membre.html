@@ -23,7 +23,7 @@
       const base = String(c.objetBaseUrl || c.OBJET_BASE || 
         (String(c.publicBaseUrl || c.PUBLIC_BASE || '').replace(/\/+$/, '') + '/OBJET')).replace(/\/+$/, '');
       window.LCDP_urlObjet = typeof c.objetUrl === 'function' ? c.objetUrl : (p => base + '/' + p.replace(/^\/+/, ''));
-      for (const path of ['/CSSBASE/lcdp-central-mobile-first.css', '/CSSBASE/lcdp-paiement-elements.css?v=20261126-stripe-commun-v2']) {
+      for (const path of ['/CSSBASE/lcdp-central-mobile-first.css', '/CSSBASE/lcdp-paiement-elements.css?v=20261126-stripe-commun-v3']) {
         const link = document.createElement('link');
         link.rel = 'stylesheet'; link.href = window.LCDP_urlObjet(path); document.head.appendChild(link);
       }
