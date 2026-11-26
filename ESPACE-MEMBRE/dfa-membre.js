@@ -132,6 +132,8 @@
     }
     const contexte = await api("/contexte");
     if (contexte.operation) { afficherOperation(contexte.operation); return; }
+    const bonjour = el("dfa-bonjour");
+    if (contexte.prenom) { bonjour.textContent = "Bonjour "+String(contexte.prenom); bonjour.hidden = false; }
     await script(window.LCDP_urlObjet("/JSBASE/07-diginum.js?v=b92b39e"));
     if (typeof window.LCDP_diginum?.ouvrir !== "function") throw Error("Pavé numérique indisponible.");
     message("");
