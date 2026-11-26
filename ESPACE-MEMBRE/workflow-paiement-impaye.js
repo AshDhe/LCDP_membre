@@ -122,7 +122,6 @@
   }
   const alerte=(message,slot)=>dialogue(slot,"erreur",message);
   const information=(message,titre,slot)=>dialogue(slot,"information",message,{titre});
-  const choix=(message,options,slot)=>dialogue(slot,"choix",message,options);
   const vraie=v=>v===true||v==="true"||v===1||v==="1";
   function paiementSuspensionDelaiDepasse(p){return vraie(p?.delaiPaiementDepasse)||vraie(p?.abonnementAnnuleNonPaye);}
   function messageDelaiPaiementDepasse(){return "Le règlement de cette échéance est indisponible.";}
@@ -229,11 +228,6 @@
       await retourListe();
       return;
     }
-    const ok = await choix(
-      "La régularisation de votre abonnement se fait par carte bancaire uniquement.",
-      {titre:"Régulariser l’abonnement",libelleConfirmer:"Continuer vers le paiement",libelleAnnuler:"Retour",transition:true},slot
-    );
-    if (!ok) { await retourListe(); return; }
     await chargerScriptMembreUneFois("/ESPACE-MEMBRE/paiement-cb.js?v=20261126-impayes-libelles-v2");
     if (typeof window.LCDP_monterPaiementCB !== "function") throw Error("Service de paiement indisponible.");
     await window.LCDP_monterPaiementCB(slot,{
