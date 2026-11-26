@@ -439,7 +439,7 @@
       charger("lcdp-bandeau-slot",window.LCDP_urlMembre("/ESPACE-MEMBRE/box-bandeau-nav-membre.html")).then(async ok => {
         if (!ok) return;
         const script = document.createElement("script");
-        script.src = window.LCDP_urlMembre("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261126-workflow-impaye-v3");
+        script.src = window.LCDP_urlMembre("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261126-workflow-impaye-v4");
         await new Promise((resolve,reject) => {script.onload=resolve;script.onerror=reject;document.body.appendChild(script);});
         await window.LCDP_initialiserMenuBurgerMembre?.();
       }),
