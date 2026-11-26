@@ -41,7 +41,7 @@
     })();
   </script>
   <script src="./boutique-accessoires-cadre.js?v=20261126" defer></script>
-  <script src="./dfa-membre.js?v=20261126-dfa-direct-v8" defer></script>
+  <script src="./dfa-membre.js?v=20261126-dfa-direct-v9" defer></script>
 </head>
 
 <body class="lcdp-app-page lcdp-typographie-editoriale-commune">
@@ -61,7 +61,6 @@
       let termine = false;
       const echec = () => {
         if (termine) return;
-        termine = true;
         clearTimeout(delai);
         picto.hidden = true;
         erreur.hidden = false;

@@ -17,7 +17,7 @@
   }
   async function api(path, body) {
     if (!endpoint) throw Error("Le service DFA n’est pas configuré.");
-    const r = await fetch(endpoint+path,{method:body?"POST":"GET",credentials:"include",cache:"no-store",headers:{Accept:"application/json",...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{})});
+    const r = await fetch(endpoint+path,{method:body?"POST":"GET",credentials:"include",cache:"no-store",signal:AbortSignal.timeout(15000),headers:{Accept:"application/json",...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{})});
     const d = await r.json().catch(()=>null);
     if (!r.ok || !d?.ok) throw Error(d?.message || "Le service DFA est momentanément indisponible.");
     return d;
@@ -70,7 +70,9 @@
   function script(src) {
     return new Promise((resolve,reject)=>{
       const s = document.createElement("script"); s.src = src;
-      s.onload = resolve; s.onerror = ()=>reject(Error("Pavé numérique indisponible."));
+      const delai = setTimeout(()=>reject(Error("Pavé numérique indisponible.")),8000);
+      s.onload = ()=>{clearTimeout(delai);resolve();};
+      s.onerror = ()=>{clearTimeout(delai);reject(Error("Pavé numérique indisponible."));};
       document.head.appendChild(s);
     });
   }
@@ -142,17 +144,11 @@
     actualiserBoutons();
   }
   async function initialiserPage() {
-    await Promise.all([
-      demarrer().catch(erreur),
-      Promise.resolve(window.LCDP_cadreAccessoiresPret).catch(error=>console.warn("Cadre DFA :",error))
-    ]);
-    // Le burger membre ne renseigne pas data-lcdp-burger-initialise.
-    // Le cadre est secondaire : ne jamais rendre la DFA inaccessible en cas d'échec du menu.
-    if (!document.querySelector("#lcdp-bandeau-slot [data-lcdp-burger-button]") ||
-        !document.querySelector("#lcdp-footer-slot .lcdp-box-footer")) {
-      console.warn("Cadre DFA incomplet ; formulaire conservé accessible.");
-    }
-    await (document.fonts?.ready || Promise.resolve());
+    // Le cadre et les polices ne peuvent pas empêcher l'accès à un formulaire prêt.
+    const cadre = Promise.resolve(window.LCDP_cadreAccessoiresPret).catch(error=>console.warn("Cadre DFA :",error));
+    const donnees = demarrer().catch(e=>{el("dfa-choix").hidden=false;erreur(e);});
+    let delaiCadre;
+    await Promise.all([donnees,Promise.race([cadre,new Promise(resolve=>{delaiCadre=setTimeout(resolve,4000);})]).finally(()=>clearTimeout(delaiCadre))]);
     window.LCDP_dfaAttenteTerminer?.();
   }
   initialiserPage().catch(()=>window.LCDP_dfaAttenteErreur?.());
