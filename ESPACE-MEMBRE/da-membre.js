@@ -3,6 +3,7 @@
 
   const CONFIG_DA_MEMBRE = window.SITE_CONFIG || {};
   const PAGE_ABONNEMENT_MEMBRE = "/ESPACE-MEMBRE/abonnement-membre.html";
+  const PAGE_MON_COMPTE = "/ESPACE-MEMBRE/mes-informations.html";
   const PAGE_REGLEMENT_CLUB = "/ESPACE-PUBLIC/reglement-club.html";
   const PAGE_REGLEMENT_APPLICATION = "/ESPACE-PUBLIC/reglement-app.html";
 
@@ -234,10 +235,44 @@
     }
   }
 
+  // Gabarits de référence dans le slot de lightbox du wrapper, jamais sur body.
+  function monterDialogueDa(conteneur, dialogue, focusInitial) {
+    const wrapper = document.querySelector(".lcdp-site-page.lcdp-app-wrapper");
+    const slot = wrapper?.querySelector("#lcdp-lightbox-slot");
+    if (!slot) throw new Error("Slot de dialogue du wrapper introuvable.");
+    dialogue.dataset.lcdpDialogueContext = "conteneur";
+    const elements = Array.from(wrapper.children)
+      .filter(element => element !== slot && !element.contains(slot))
+      .map(element => ({ element, inert: element.inert }));
+    slot.appendChild(conteneur);
+    elements.forEach(({ element }) => { element.inert = true; });
+    const gererClavier = event => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+      } else if (event.key === "Tab") {
+        const cibles = Array.from(dialogue.querySelectorAll('button:not([disabled]), a[href]'))
+          .filter(element => !element.hidden);
+        if (!cibles.length) return;
+        const index = cibles.indexOf(document.activeElement);
+        event.preventDefault();
+        cibles[index < 0 ? (event.shiftKey ? cibles.length - 1 : 0) :
+          (index + (event.shiftKey ? -1 : 1) + cibles.length) % cibles.length].focus();
+      }
+    };
+    document.addEventListener("keydown", gererClavier, true);
+    return () => {
+      document.removeEventListener("keydown", gererClavier, true);
+      conteneur.remove();
+      elements.forEach(({ element, inert }) => { element.inert = inert; });
+      if (focusInitial?.isConnected) focusInitial.focus({ preventScroll: true });
+    };
+  }
+
   async function afficherAlerteDa(message, options = {}) {
     if (options.mode === "confirmation") {
       const conteneur = document.createElement("div");
-      document.body.appendChild(conteneur);
+      const focusInitial = document.activeElement;
       try {
         await chargerCssObjetUneFois("/CSSBASE/lcdp-lightbox-convergence.css");
         conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html"));
@@ -251,12 +286,13 @@
         texte.textContent = String(message || "");
         annuler.textContent = options.libelleAnnuler || "Annuler";
         confirmer.textContent = options.boutonOk || "Confirmer";
+        const retirerDialogue = monterDialogueDa(conteneur, dialogue, focusInitial);
         return await new Promise(resolve => {
           let resolu = false;
           const fermer = valeur => {
             if (resolu) return;
             resolu = true;
-            conteneur.remove();
+            retirerDialogue();
             resolve(valeur);
           };
           annuler.addEventListener("click", () => fermer(false), { once: true });
@@ -275,7 +311,7 @@
       try {
         await chargerCssObjetUneFois("/CSSBASE/lcdp-lightbox-convergence.css");
         const conteneur = document.createElement("div");
-        document.body.appendChild(conteneur);
+        const focusInitial = document.activeElement;
         try {
           conteneur.appendChild(await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html"));
           const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="information"]');
@@ -313,9 +349,10 @@
             texte.textContent = String(message || "");
           }
           bouton.textContent = "Fermer";
+          const retirerDialogue = monterDialogueDa(conteneur, dialogue, focusInitial);
           return await new Promise(resolve => {
             bouton.addEventListener("click", () => {
-              conteneur.remove();
+              retirerDialogue();
               resolve(true);
             }, { once: true });
             bouton.focus();
@@ -1252,20 +1289,17 @@ form.dataset.lcdpTransmissionDaEnCours =
           }
         );
 
-      fermerWorkflowDa();
-
-      if (
-        typeof options?.onTerminee === "function"
-      ) {
-        await Promise.resolve(
-          options.onTerminee()
-        );
-      }
-
       if (confirmationLue === true) {
-        window.requestAnimationFrame(() => {
-          window.location.reload();
-        });
+        // Ne pas réafficher la présentation DA pendant la navigation.
+        afficherAttenteTransmissionDa();
+        if (typeof options?.onTerminee === "function") {
+          try {
+            await Promise.resolve(options.onTerminee());
+          } catch (erreur) {
+            console.error("Actualisation après dépôt DA :", erreur);
+          }
+        }
+        window.location.replace(construireUrlMembre(PAGE_MON_COMPTE));
       }
     } catch (error) {
       retirerAttenteDa();
