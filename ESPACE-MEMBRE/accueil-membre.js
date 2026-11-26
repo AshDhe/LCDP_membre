@@ -392,7 +392,7 @@
   }
 
   async function afficherEcheancesPaiementSuspension(etat) {
-    if (!window.LCDP_PaiementImpaye) await chargerScriptMembreUneFois("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v3");
+    if (!window.LCDP_PaiementImpaye) await chargerScriptMembreUneFois("/ESPACE-MEMBRE/workflow-paiement-impaye.js?v=20261126-v4");
     if (!window.LCDP_PaiementImpaye) throw Error("Workflow de paiement indisponible.");
     return window.LCDP_PaiementImpaye.ouvrir(etat);
   }
@@ -473,7 +473,7 @@
 
     appliquerRoutesSite(slot);
 
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261126-workflow-impaye-v3");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/box-menu-burger-membre.js?v=20261126-workflow-impaye-v4");
   }
 
   async function initialiserBurgerMembre(etat) {
