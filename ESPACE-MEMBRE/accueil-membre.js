@@ -152,7 +152,7 @@
         !["reglement-app","reglement-club"].includes(demande.document) || !String(demande.version||"").trim()) throw Error("Publication invalide.");
     const slot = document.getElementById("lcdp-lightbox-slot");
     if (!slot) throw Error("Emplacement dialogue indisponible.");
-    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html");
+    const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-mise-a-jour-reglement.html");
     // Ne jamais remplacer un dialogue déjà ouvert.
     if (slot.childElementCount) await new Promise(resolve => {
       const observation = new MutationObserver(() => { if (!slot.childElementCount) { observation.disconnect(); resolve(); } });
@@ -161,49 +161,66 @@
     });
     const avant = document.activeElement;
     slot.replaceChildren(fragment);
-    const titre=slot.querySelector("[data-lcdp-dialogue-titre]");
+    const boite=slot.querySelector('[data-lcdp-dialogue-reference="mise-a-jour-reglement"]');
     const texte=slot.querySelector("[data-lcdp-dialogue-message]");
-    const refuser=slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
+    const nom=slot.querySelector("[data-lcdp-reglement-nom]");
+    const application=slot.querySelector("[data-lcdp-reglement-application]");
+    const accord=slot.querySelector("[data-lcdp-reglement-accord]");
+    const voir=slot.querySelector('[data-lcdp-dialogue-action="voir-reglement"]');
     const accepter=slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
-    if (!titre||!texte||!refuser||!accepter) { slot.replaceChildren(); throw Error("Dialogue CHOIX incomplet."); }
+    if (!boite||!texte||!nom||!application||!accord||!voir||!accepter) { slot.replaceChildren(); throw Error("Dialogue règlement incomplet."); }
     const type=demande.document==="reglement-club"?"du club":"de l’application";
-    const version=String(demande.version).trim();
-    titre.textContent="Mise à jour du règlement";
-    const lien=document.createElement("a");
-    lien.href=ENDPOINT_REGLEMENT_PUBLICATION+"/reglement-publication?id="+encodeURIComponent(demande.idpublication);
-    lien.target="_blank";lien.rel="noopener noreferrer";
-    lien.textContent="Voir le nouveau règlement "+type;
-    texte.replaceChildren("Le règlement "+type+" a été mis à jour (passage à "+(/^version\b/i.test(version)?"la "+version.charAt(0).toLowerCase()+version.slice(1):"la version "+version)+").",document.createElement("br"),"Votre accord est nécessaire.",document.createElement("br"),lien);
-    refuser.textContent="Refuser";
-    accepter.textContent="Accepter";
+    nom.textContent="Le règlement "+type;
+    // Aujourd’hui, la publication vaut prise d'effet. Ne pas inventer de délai d'acceptation.
+    const date=demande.datepublication ? new Date(demande.datepublication) : null;
+    if(date && Number.isFinite(date.getTime())){
+      application.textContent="Il est applicable depuis le "+new Intl.DateTimeFormat("fr-FR",{
+        timeZone:"Europe/Paris",day:"numeric",month:"long",year:"numeric"
+      }).format(date)+".";
+    }
+    accord.textContent="Votre accord est nécessaire pour utiliser l’application.";
+    const url=ENDPOINT_REGLEMENT_PUBLICATION+"/reglement-publication?id="+encodeURIComponent(demande.idpublication);
+    // Afficher précisément la version soumise à l'accord, jamais le règlement courant par défaut.
+    voir.addEventListener("click",()=>window.open(url,"_blank","popup,noopener,noreferrer,width=900,height=800"));
+    const wrapper=slot.closest(".lcdp-app-wrapper, .lcdp-site-page");
+    const etats=Array.from(wrapper?.children||[]).filter(el=>el!==slot&&!el.contains(slot)).map(el=>[el,el.inert]);
+    etats.forEach(([el])=>{el.inert=true;});
     return new Promise(resolve=>{
-      let occupe=false;
+      let occupe=false, termine=false;
       const erreur=document.createElement("span");
       erreur.setAttribute("role","alert");
+      const fermer=()=>{
+        if(termine)return;termine=true;
+        document.removeEventListener("keydown",clavier);
+        slot.replaceChildren();
+        etats.forEach(([el,inert])=>{el.inert=inert;});
+        if(avant?.isConnected)avant.focus();
+        resolve();
+      };
       const clavier=event=>{
-        if(event.key==="Escape"){event.preventDefault();return;}
+        if(event.key==="Escape"){event.preventDefault();if(!occupe)fermer();return;}
         if(event.key==="Tab"){
-          const cibles=[lien,refuser,accepter].filter(el=>!el.disabled);
+          const cibles=[voir,accepter].filter(el=>!el.disabled);
+          if(cibles.length===0){event.preventDefault();return;}
           if(event.shiftKey&&document.activeElement===cibles[0]){event.preventDefault();cibles.at(-1).focus();}
           else if(!event.shiftKey&&document.activeElement===cibles.at(-1)){event.preventDefault();cibles[0].focus();}
         }
       };
-      const decider=async valeur=>{
-        if(occupe)return;occupe=true;refuser.disabled=true;accepter.disabled=true;erreur.remove();
+      accepter.addEventListener("click",async()=>{
+        if(occupe)return;occupe=true;voir.disabled=true;accepter.disabled=true;erreur.remove();
         try{
-          const reponse=await fetch(endpoint,{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({idpublication:demande.idpublication,accepter:valeur})});
+          const reponse=await fetch(endpoint,{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({idpublication:demande.idpublication,accepter:true})});
           const r=await reponse.json().catch(()=>null);
-          if(!reponse.ok||r?.ok!==true)throw Error(r?.message||"La décision n'a pas pu être enregistrée.");
-          document.removeEventListener("keydown",clavier);
-          slot.replaceChildren();if(avant?.isConnected)avant.focus();
-          resolve();
+          if(!reponse.ok||r?.ok!==true)throw Error(r?.message||"L’accord n’a pas pu être enregistré.");
+          fermer();
         }catch(e){
-          erreur.textContent=" "+(e.message||"Réessayez.");texte.appendChild(erreur);
-          occupe=false;refuser.disabled=false;accepter.disabled=false;refuser.focus();
+          erreur.textContent=" "+(e.message||"Réessayez.");texte.appendChild(document.createElement("br"),erreur);
+          occupe=false;voir.disabled=false;accepter.disabled=false;accepter.focus();
         }
-      };
-      refuser.addEventListener("click",()=>decider(false));accepter.addEventListener("click",()=>decider(true));
-      document.addEventListener("keydown",clavier);refuser.focus();
+      });
+      // Fermer sans accepter ne vaut ni accord ni refus ; la demande reste en attente.
+      boite.addEventListener("click",event=>{if(event.target===boite&&!occupe)fermer();});
+      document.addEventListener("keydown",clavier);voir.focus();
     });
   }
 
