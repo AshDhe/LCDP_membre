@@ -80,7 +80,7 @@
     try {
       const code = await window.LCDP_diginum.ouvrir({
         modeMontant:true,
-        titre:"Choisissez votre dotation",
+        titre:"Merci de soutenir les parcs",
         placeholder:"Montant en euros",
         longueurMax:6,
         valeurInitiale:cents===null?"":(cents/100).toFixed(2).replace(".",","),

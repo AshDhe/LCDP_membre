@@ -25,7 +25,7 @@
     })();
   </script>
   <script src="./boutique-accessoires-cadre.js?v=20261126" defer></script>
-  <script src="./dfa-membre.js?v=20261126-dfa-editorial-v3" defer></script>
+  <script src="./dfa-membre.js?v=20261126-dfa-editorial-v4" defer></script>
 </head>
 
 <body class="lcdp-app-page lcdp-typographie-editoriale-commune">
@@ -42,18 +42,19 @@
               <h1 id="dfa-titre" class="lcdp-title-page-center">Dotation financière annuelle</h1>
             </header>
             <section class="lcdp-component lcdp-box-carousel lcdp-editorial-card" aria-label="Votre dotation">
-              <h2 class="lcdp-box-carousel__title lcdp-boxtext__title--center" id="dfa-choix" hidden>Choisissez votre dotation</h2>
+              <h2 class="lcdp-box-carousel__title lcdp-boxtext__title--center" id="dfa-choix" hidden>Merci de soutenir les parcs</h2>
               <div class="lcdp-boxtext__content lcdp-editorial-copy">
                 <p id="dfa-bonjour" hidden></p>
                 <p id="dfa-statut" class="dfa-status" role="status" aria-live="polite">Chargement…</p>
                 <form id="formulaire-dfa-membre" class="lcdp-editorial-copy" aria-labelledby="dfa-choix" hidden>
-                  <p id="dfa-aide">Sélectionnez un montant de 10 € à 150 € à l’aide du pavé numérique.</p>
+                  <p id="dfa-aide">Utilisez le pavé numérique pour indiquer le montant de votre dotation financière annuelle.</p>
                   <button type="button" class="dfa-amount" id="dfa-montant" aria-describedby="dfa-aide" aria-haspopup="dialog">
                     <span id="dfa-valeur" class="dfa-value">Montant en euros</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                 <rect x="4" y="2.5" width="16" height="19" rx="3"></rect><path d="M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 18.5h.01M12 18.5h4"></path>
               </svg>
                   </button>
+                  <p>Puis enregistrez votre dotation. Vous recevrez confirmation par mail après cette opération.</p>
                   <div class="lcdp-actions-centrees lcdp-editorial-cta">
                     <button type="submit" class="lcdp-button lcdp-button-primary lcdp-button--haut-etroit lcdp-editorial-action-button lcdp-button--deux-niveaux" id="dfa-enregistrer" disabled><span>Enregistrer<br><strong>la dotation</strong></span></button>
                   </div>
