@@ -35,7 +35,7 @@
     if (!chargementCSS) chargementCSS = new Promise((resolve,reject) => {
       const lien = document.createElement("link");
       lien.rel = "stylesheet";
-      lien.href = url("objet","/CSSBASE/lcdp-lightbox-convergence.css?v=20261126-workflow-impaye-v2");
+      lien.href = url("objet","/CSSBASE/lcdp-lightbox-convergence.css?v=20261126-workflow-impaye-liste-v5");
       lien.onload = resolve;
       lien.onerror = () => {lien.remove();chargementCSS=null;reject(Error("CSS officiel indisponible."));};
       document.head.appendChild(lien);
@@ -127,97 +127,132 @@
   function messageDelaiPaiementDepasse(){return "Le règlement de cette échéance est indisponible.";}
   function formaterDatePaiementSuspension(v){if(!v)return "Non renseignée";const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString("fr-FR",{timeZone:"Europe/Paris"});}
   function formaterMontantPaiementSuspension(v){if(v===null||v===undefined||v==="")return "Montant non renseigné";const n=Number(String(v).replace(",","."));return Number.isFinite(n)?n.toLocaleString("fr-FR",{style:"currency",currency:"EUR"}):"Montant non renseigné";}
-  async function afficherEcheancesPaiementSuspension(etat) {
-    const parcours = ouvrirParcours("dialogue-paiement-impaye","Régulariser mon abonnement");
-    if (!parcours) return;
-    const slot = parcours.contenu;
-    const paiement = etat?.paiementSuspension || null;
-    const orderid = String(paiement?.orderid || "").trim();
-    const echeances = echeancesPaiementSuspension(paiement);
-    async function afficherListe() {
-      if (!slot.isConnected) return;
-      const fragment = await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-information.html");
-      if (!slot.isConnected) return;
-      const dialogue = fragment.querySelector('[data-lcdp-dialogue-reference="information"]');
-      const titre = dialogue?.querySelector("[data-lcdp-dialogue-titre]");
-      const texte = dialogue?.querySelector("[data-lcdp-dialogue-message]");
-      const actions = dialogue?.querySelector(".lcdp-dialogue-ref__actions");
-      const fermer = dialogue?.querySelector('[data-lcdp-dialogue-action="compris"]');
-      if (!dialogue || !titre || !texte || !actions || !fermer) throw Error("Boîte d’échéances incomplète.");
-      dialogue.setAttribute("role","region");
-      dialogue.removeAttribute("aria-modal");
-      titre.textContent = "Paiement en attente";
-      texte.textContent = "Sélectionnez l’échéance à régulariser.";
-      fermer.textContent = "Fermer";
-      fermer.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--secondaire";
-      fermer.addEventListener("click",() => parcours.fermer(),{once:true});
-      for (const echeance of echeances) {
-        const description = document.createElement("p");
-        description.className = "lcdp-dialogue-ref__message";
-        description.textContent = "Échéance " + echeance.numero + " du " + formaterDatePaiementSuspension(echeance.date) + "\n" + formaterMontantPaiementSuspension(echeance.montant) + " TTC — Non payée";
-        const bouton = document.createElement("button");
-        bouton.type = "button";
-        bouton.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--principal";
-        bouton.textContent = "Payer";
-        bouton.setAttribute("aria-label","Payer l’échéance " + echeance.numero);
-        bouton.addEventListener("click",async () => {
-          if (bouton.disabled) return;
-          attendreBouton(bouton);
-          actions.querySelectorAll("button").forEach(b => b.disabled = true);
-          try {
-            await ouvrirPagePaiementSuspension(paiement,echeance.numero,slot,afficherListe);
-          } catch (erreur) {
-            console.error("Régularisation indisponible :",erreur);
-            if (slot.isConnected) {
-              try { await alerte("Impossible de charger le paiement. Veuillez réessayer.",slot); await afficherListe(); }
-              catch { parcours.fermer(); }
-            }
-          }
-        });
-        actions.insertBefore(description,fermer);
-        actions.insertBefore(bouton,fermer);
+  function dateParis(v) {
+    if (!v) return "";
+    const brut=String(v);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(brut)) return brut;
+    const d=new Date(v);
+    if (!Number.isFinite(d.getTime())) return "";
+    const p=new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);
+    const get=k=>p.find(x=>x.type===k)?.value;
+    return get("year")+"-"+get("month")+"-"+get("day");
+  }
+  function collecterEcheances(paiements,etat) {
+    const groupes=new Map();
+    const aujourdHui=dateParis(new Date());
+    const normaliser=v=>String(v||"").trim().toLowerCase();
+    const signal=etat?.paiementSuspension||etat?.paiementRegularisation;
+    const signaux=Array.isArray(signal)?signal:[signal].filter(Boolean);
+    const annule=p=>["cancd","annule","annulé"].includes(normaliser(p?.statutabo));
+    const ajouter=(p,e)=>{
+      const orderid=String(p?.orderid||"").trim();
+      const numero=Number(e.numero);
+      if(!Number.isInteger(numero)||numero<1||numero>3||annule(p))return;
+      const cle=orderid||String(p?.idabo||"");
+      if(!cle)return;
+      if(!groupes.has(cle))groupes.set(cle,{...p,orderid,echeances:[]});
+      const g=groupes.get(cle);
+      if(!g.echeances.some(x=>x.numero===numero))g.echeances.push({...e,numero});
+    };
+    for(const p of paiements){
+      if(!p||annule(p))continue;
+      for(let n=1;n<=Math.min(3,Number(p.ech||1));n++){
+        const statut=normaliser(p["etatmois"+n]);
+        const date=p["datemois"+n];
+        if(!["du","impaye"].includes(statut))continue;
+        if(statut==="du"&&dateParis(date)>aujourdHui)continue;
+        ajouter(p,{numero:n,date,montant:p["valmois"+n]});
       }
-      slot.replaceChildren(fragment);
-      actions.querySelector("button")?.focus();
     }
-    try {
-      if (paiementSuspensionDelaiDepasse(paiement)) {
-        await alerte(messageDelaiPaiementDepasse(),slot);
-        parcours.fermer();
-      } else if (!orderid) {
-        await alerte("Paiement introuvable.",slot);
-        parcours.fermer();
-      } else if (!echeances.length) {
-        await information("Aucune échéance non payée.","Échéances de paiement",slot);
-        parcours.fermer();
-      } else {
-        await afficherListe();
+    // Le signal du compte peut désigner une commande non encore présente dans les factures.
+    // Ne jamais réintroduire une échéance que le service de facturation indique payée ou annulée.
+    for(const p of signaux){
+      if(!p?.orderid||annule(p))continue;
+      const facture=paiements.find(x=>String(x?.orderid||"")===String(p.orderid));
+      if(facture&&annule(facture))continue;
+      const es=Array.isArray(p.echeances)?p.echeances:p.echeance?[p]:[];
+      for(const e of es){
+        const n=Number(e.numero||e.echeance);
+        if(facture&&normaliser(facture["etatmois"+n])==="paye")continue;
+        ajouter({...facture,...p},{numero:n,date:e.date,montant:e.montant});
       }
-    } catch (erreur) {
-      parcours.fermer();
-      throw erreur;
+      const g=groupes.get(String(p.orderid));
+      if(g&&paiementSuspensionDelaiDepasse(p))g.delaiPaiementDepasse=true;
     }
+    return [...groupes.values()].map(g=>({...g,echeances:g.echeances.sort((a,b)=>a.numero-b.numero)}));
   }
 
-  function echeancesPaiementSuspension(paiement) {
-    const source = Array.isArray(paiement?.echeances) ? paiement.echeances : [];
-    const echeances = source
-      .map((echeance) => ({
-        numero: Number(echeance?.numero || echeance?.echeance || 0),
-        date: echeance?.date || "",
-        montant: echeance?.montant ?? ""
-      }))
-      .filter((echeance) => echeance.numero >= 1);
-
-    if (!echeances.length && paiement?.echeance) {
-      echeances.push({
-        numero: Number(paiement.echeance || 1),
-        date: paiement.date || "",
-        montant: paiement.montant ?? ""
-      });
+  async function afficherEcheancesPaiementSuspension(groupes) {
+    const parcours=ouvrirParcours("dialogue-paiement-impaye","Paiements en attente");
+    if(!parcours)return;
+    const slot=parcours.contenu;
+    function afficherListe(){
+      if(!slot.isConnected)return;
+      const liste=document.createElement("section");
+      liste.setAttribute("data-lcdp-impaye-liste","");
+      liste.setAttribute("aria-label","Paiements en attente");
+      const titre=document.createElement("h1");
+      titre.className="lcdp-title-section";
+      titre.textContent="Paiements en attente";
+      const texte=document.createElement("p");
+      const nb=groupes.reduce((n,g)=>n+g.echeances.length,0);
+      texte.className="lcdp-impaye-intro";
+      texte.textContent=nb===0?"Aucune échéance non payée.":nb+" échéance"+(nb>1?"s":"")+" à régulariser. Sélectionnez le paiement souhaité.";
+      liste.append(titre,texte);
+      for(const paiement of groupes){
+        const bloc=document.createElement("section");
+        bloc.className="lcdp-impaye-groupe";
+        const entete=document.createElement("h2");
+        entete.textContent=[paiement.typabo||paiement.formule||"Abonnement",paiement.orderid?"Commande "+paiement.orderid:"Commande non renseignée"].join(" — ");
+        bloc.appendChild(entete);
+        const lignes=document.createElement("ul");
+        lignes.className="lcdp-impaye-lignes";
+        for(const echeance of paiement.echeances){
+          const ligne=document.createElement("li");
+          ligne.className="lcdp-impaye-ligne";
+          const infos=document.createElement("div");
+          const nom=document.createElement("strong");
+          nom.textContent="Échéance "+echeance.numero+" du "+formaterDatePaiementSuspension(echeance.date);
+          const montant=document.createElement("span");
+          montant.textContent=formaterMontantPaiementSuspension(echeance.montant)+(echeance.montant!==null&&echeance.montant!==undefined&&echeance.montant!==""?" TTC":"");
+          infos.append(nom,montant);
+          const bouton=document.createElement("button");
+          bouton.type="button";
+          bouton.className="lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--principal";
+          bouton.textContent="Payer";
+          bouton.disabled=!paiement.orderid||paiementSuspensionDelaiDepasse(paiement);
+          if(bouton.disabled)bouton.textContent="Indisponible";
+          bouton.setAttribute("aria-label","Payer l’échéance "+echeance.numero+" de la commande "+paiement.orderid);
+          bouton.addEventListener("click",async()=>{
+            if(bouton.disabled)return;
+            attendreBouton(bouton);
+            liste.querySelectorAll("button").forEach(b=>b.disabled=true);
+            try{
+              await ouvrirPagePaiementSuspension(paiement,echeance.numero,slot,afficherListe);
+            }catch(erreur){
+              console.error("Régularisation indisponible :",erreur);
+              if(slot.isConnected){
+                try{await alerte("Impossible de charger le paiement. Veuillez réessayer.",slot);afficherListe();}
+                catch{parcours.fermer();}
+              }
+            }
+          });
+          ligne.append(infos,bouton);
+          lignes.appendChild(ligne);
+        }
+        bloc.appendChild(lignes);
+        liste.appendChild(bloc);
+      }
+      const fermer=document.createElement("button");
+      fermer.type="button";
+      fermer.className="lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--secondaire";
+      fermer.textContent="Fermer";
+      fermer.addEventListener("click",()=>parcours.fermer(),{once:true});
+      liste.appendChild(fermer);
+      slot.replaceChildren(liste);
+      liste.querySelector("button:not(:disabled)")?.focus();
     }
-
-    return echeances;
+    try{afficherListe();}catch(erreur){parcours.fermer();throw erreur;}
   }
 
   async function ouvrirPagePaiementSuspension(paiement,numeroEcheance,slot,retourListe) {
@@ -232,33 +267,34 @@
     if (typeof window.LCDP_monterPaiementCB !== "function") throw Error("Service de paiement indisponible.");
     await window.LCDP_monterPaiementCB(slot,{
       orderid,echeance:numeroEcheance || 1,source:"suspension",retour:"",
-      integre:true,quitter:() => retourListe().catch(console.error)
+      integre:true,quitter:() => Promise.resolve().then(retourListe).catch(console.error)
     });
   }
 
 
-  async function obtenirPaiement() {
-    const endpoint=String(cfg.workerIndexMembreUrl||cfg.WORKER_INDEX_MEMBRE_URL||cfg.W_INDEX_MEMBRE_URL||(typeof cfg.apiUrl==="function"?cfg.apiUrl("index-membre-api"):"")).replace(/\/+$/,"");
-    if(!endpoint)throw Error("Service de vérification indisponible.");
-    const r=await fetch(endpoint+"/index",{credentials:"include",cache:"no-store",headers:{Accept:"application/json"}});
+  async function obtenirPaiements() {
+    const endpoint=String(cfg.workerFactuPaiementUrl||cfg.WORKER_FACTUPAIEMENT_URL||(typeof cfg.apiUrl==="function"?cfg.apiUrl("factupaiement-api"):"")).replace(/\/+$/,"");
+    if(!endpoint)throw Error("Service de facturation indisponible.");
+    const r=await fetch(endpoint+"/mes-factures",{credentials:"include",cache:"no-store",headers:{Accept:"application/json"}});
     const d=await r.json().catch(()=>null);
-    if(!r.ok||!d||d.success!==true||d.connected!==true)throw Error("Impossible de vérifier les échéances.");
-    return d.paiementSuspension||d.paiementRegularisation||null;
+    if(!r.ok||!d||(d.ok!==true&&d.success!==true)||!Array.isArray(d.paiements))throw Error("Impossible de charger la liste des échéances.");
+    return d.paiements;
   }
   let ouverture=null;
   function ouvrir(etat={}) {
     if(ouverture)return ouverture;
     ouverture=(async()=>{
-      const restaurer = attendreBouton(document.activeElement);
-      try {
-      await assurerCSS();
-      let paiement=etat.paiementSuspension||etat.paiementRegularisation||null;
-      if(!paiement?.orderid || !echeancesPaiementSuspension(paiement).length) {
-        const actuel=await obtenirPaiement();
-        if(actuel?.orderid) paiement=actuel;
-      }
-      return await afficherEcheancesPaiementSuspension({paiementSuspension:paiement});
-      } finally { restaurer(); }
+      const restaurer=attendreBouton(document.activeElement);
+      try{
+        const [,paiements]=await Promise.all([assurerCSS(),obtenirPaiements()]);
+        return await afficherEcheancesPaiementSuspension(collecterEcheances(paiements,etat));
+      }catch(erreur){
+        await assurerCSS();
+        const parcours=ouvrirParcours("dialogue-paiement-impaye","Paiements en attente");
+        if(!parcours)throw erreur;
+        try{await alerte("Impossible de charger la liste complète des échéances. Veuillez réessayer.",parcours.contenu);}
+        finally{parcours.fermer();}
+      }finally{restaurer();}
     })().finally(()=>{ouverture=null;});
     return ouverture;
   }
