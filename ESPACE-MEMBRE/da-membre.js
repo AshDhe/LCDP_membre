@@ -895,7 +895,7 @@
     const configuration = [
       ["adresse1", "address-line1", "Numéro et voie"],
       ["adresse2", "address-line2", "Code postal et ville"],
-      ["adresse3", "address-line3", "Complément d’adresse (facultatif)"]
+      ["adresse3", "address-line3", "Complément (facultatif)"]
     ];
     const champs = configuration.map(([name, autocomplete, placeholder], index) => {
       const input = form.querySelector(`[name="${name}"]`);
