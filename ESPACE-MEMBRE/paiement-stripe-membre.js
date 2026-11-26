@@ -209,7 +209,7 @@
       clientSecret:d.clientSecret,
       elementsOptions:{appearance:{theme:'stripe', variables:{
         colorPrimary:'#4b6333', colorText:'#292524', colorBackground:'#ffffff',
-        colorDanger:'#be123c', borderRadius:'12px',
+        colorDanger:'#be123c', borderRadius:'12px', fontSizeBase:'16px',
         fontFamily:'system-ui, -apple-system, Segoe UI, sans-serif'
       }}}
     });
@@ -218,8 +218,9 @@
     const actions = loaded.actions;
     const montantStripe = actions.getSession()?.total?.total?.amount;
     if (!montantStripe) throw new Error('Montant Stripe indisponible.');
-    el('montant-commande').textContent = montantStripe;
-    bouton.textContent = 'Payer ' + montantStripe;
+    const montantAffiche = montantStripe.replace(/([0-9]),00(?=\s*€(?:\s|$))/u, '$1');
+    el('montant-commande').textContent = montantAffiche;
+    bouton.querySelector('[data-lcdp-montant-payer]').textContent = montantAffiche;
     checkout.createPaymentElement({layout:{type:'accordion'}}).mount('#stripe-payment-element');
     const email = el('email-paiement');
     const emailCompte = typeof d.emailMembre === 'string' ? d.emailMembre.trim() : '';
