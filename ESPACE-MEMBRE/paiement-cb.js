@@ -9,7 +9,7 @@
     "factupaiement-api"
   );
 
-  const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
+  const PAGE_ACCUEIL_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/accueil-membre.html");
   const PAGE_CONNEXION_MEMBRE = construireUrlPublic("/ESPACE-PUBLIC/connexion-membre.html");
   const SOURCE_PAGE = "paiement-cb";
 
@@ -19,7 +19,42 @@
   const retour = String(params.get("retour") || "").trim().toLowerCase();
   const sourcePaiement = String(params.get("source") || "").trim().toLowerCase();
 
+  // Conserver l’origine dans cet onglet, y compris au retour de Stripe.
+  // Une URL de retour externe ou une autre page de paiement est refusée.
+  const cleOrigine = "lcdp:origine-paiement-cb:" + JSON.stringify([orderid, echeance]);
+  const pageOrigine = retrouverPageOrigine();
   let redirectionPaiementValideProgrammee = false;
+
+  function origineMembreSure(valeur) {
+    if (!valeur) return "";
+    try {
+      const url = new URL(valeur, window.location.href);
+      if (url.origin !== window.location.origin ||
+          !/^\/ESPACE-MEMBRE\/[a-zA-Z0-9_-]+\.html$/.test(url.pathname) ||
+          url.pathname === window.location.pathname) return "";
+      return url.href;
+    } catch { return ""; }
+  }
+
+  function retrouverPageOrigine() {
+    let origine = origineMembreSure(document.referrer);
+    try {
+      if (!origine && !retour && sourcePaiement === "suspension") {
+        origine = origineMembreSure(PAGE_ACCUEIL_MEMBRE);
+      }
+      if (!origine) origine = origineMembreSure(sessionStorage.getItem(cleOrigine));
+      if (origine && orderid) sessionStorage.setItem(cleOrigine, origine);
+    } catch {
+      if (!origine && sourcePaiement === "suspension") origine = origineMembreSure(PAGE_ACCUEIL_MEMBRE);
+    }
+    return origine;
+  }
+
+  function revenirPageOrigine() {
+    if (!pageOrigine) return;
+    try { sessionStorage.removeItem(cleOrigine); } catch {}
+    window.location.replace(pageOrigine);
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialiserPage);
@@ -32,6 +67,8 @@
     const boutonRecommencer = document.querySelector("[data-lcdp-paiement-cb-recommencer]");
     const boutonQuitter = document.querySelector("[data-lcdp-paiement-cb-quitter]");
 
+    if (boutonQuitter) boutonQuitter.addEventListener("click", revenirPageOrigine);
+
     if (!orderid) {
       afficherMessage("Numéro de commande manquant.", "erreur");
       afficherQuitter();
@@ -40,9 +77,6 @@
 
     if (boutonPayer) boutonPayer.addEventListener("click", creerCheckout);
     if (boutonRecommencer) boutonRecommencer.addEventListener("click", creerCheckout);
-    if (boutonQuitter) boutonQuitter.addEventListener("click", () => {
-      window.location.href = PAGE_ABONNEMENT_MEMBRE;
-    });
 
     await actualiserEtatPaiement();
   }
@@ -99,9 +133,16 @@
       details.innerHTML = "Commande : " + escapeHtml(orderid) + "<br>Échéance " + escapeHtml(echeance) + " : " + escapeHtml(date) + " - " + escapeHtml(montant);
     }
 
-    if (statustripe === "paye") {
-      afficherMessage("Votre paiement est validé. Retour vers votre abonnement...", "succes");
-      programmerRedirectionAbonnement();
+    const etat = String(paiement.etat || "").trim().toLowerCase();
+    if (statustripe === "paye" && etat === "paye") {
+      afficherMessage(pageOrigine ? "Votre paiement est validé. Retour à la page d’origine..." : "Votre paiement est validé.", "succes");
+      if (pageOrigine) programmerRedirectionOrigine();
+      return;
+    }
+
+    if (statustripe === "paye" || etat === "paye") {
+      afficherMessage("Le statut de cette échéance est incohérent. Aucun nouveau paiement n’est proposé. Contactez l’association.", "erreur");
+      afficherQuitter();
       return;
     }
 
@@ -205,6 +246,7 @@
   }
 
   function afficherQuitter() {
+    if (!pageOrigine) return;
     const bouton = document.querySelector("[data-lcdp-paiement-cb-quitter]");
     afficherBoutonAction(bouton);
   }
@@ -215,14 +257,11 @@
     bouton.hidden = false;
   }
 
-  function programmerRedirectionAbonnement() {
-    if (redirectionPaiementValideProgrammee) return;
+  function programmerRedirectionOrigine() {
+    if (!pageOrigine || redirectionPaiementValideProgrammee) return;
 
     redirectionPaiementValideProgrammee = true;
-
-    window.setTimeout(() => {
-      window.location.replace(PAGE_ABONNEMENT_MEMBRE);
-    }, 900);
+    window.setTimeout(revenirPageOrigine, 900);
   }
 
   function construireEndpointApi(cleModerne, cleLegacy, sousDomaineWorker) {
