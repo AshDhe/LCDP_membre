@@ -53,6 +53,7 @@
       });
     })();
   </script>
+  <link rel="stylesheet" href="./alerte-planifier.css?v=20261113-acces-entree-v1">
 </head>
 <body class="lcdp-app-page lcdp-mes-acces-page">
   <div class="lcdp-app-wrapper">
@@ -65,7 +66,7 @@
 <div class="lcdp-box-workflow-reservation lcdp-box-workflow-reservation--planning-page lcdp-box-workflow-reservation--calendrier-mois lcdp-workflow-reservation-box"  data-lcdp-box-workflow-reservation>
   <section class="lcdp-box-workflow-reservation__card" data-lcdp-workflow-reservation-card>
     <div class="lcdp-box-workflow-reservation__content" data-lcdp-workflow-reservation-content>
-<section class="lcdp-box-liste-card lcdp-box-liste-card--planning-membre" data-lcdp-box-liste-card>
+<section class="lcdp-box-liste-card lcdp-box-liste-card--planning-membre lcdp-box-liste-card--mode-liste lcdp-planning-navigation-permanente" data-lcdp-box-liste-card>
   <div class="lcdp-box-liste-card__header">
     <div class="lcdp-box-liste-card__heading">
       <h2 class="lcdp-box-liste-card__title lcdp-editorial-eyebrow" data-lcdp-liste-card-title>
@@ -80,7 +81,7 @@
   </div>
 
   <div class="lcdp-box-liste-card__tools" data-lcdp-liste-card-tools>
-    <form class="lcdp-planning-filtres" aria-label="Filtres des journées bénévoles">
+    <form class="lcdp-planning-filtres" aria-label="Filtres des journées bénévoles" id="lcdp-planning-filtres-contenu" hidden>
       <div class="lcdp-planning-filtres__champs"><div class="lcdp-planning-filtres__champ" data-lcdp-filtre-champ="mois"><label class="lcdp-planning-filtres__label" for="lcdp-planning-filtre-mois">Période</label><select class="lcdp-planning-filtres__select" id="lcdp-planning-filtre-mois" data-lcdp-filtre="mois" disabled><option value="">Tous</option></select></div>
 <div class="lcdp-planning-filtres__champ" data-lcdp-filtre-champ="departement"><label class="lcdp-planning-filtres__label" for="lcdp-planning-filtre-departement">Département</label><select class="lcdp-planning-filtres__select" id="lcdp-planning-filtre-departement" data-lcdp-filtre="departement" disabled><option value="">Tous</option></select></div>
 <div class="lcdp-planning-filtres__champ" data-lcdp-filtre-champ="parc"><label class="lcdp-planning-filtres__label" for="lcdp-planning-filtre-parc">Parc</label><select class="lcdp-planning-filtres__select" id="lcdp-planning-filtre-parc" data-lcdp-filtre="parc" disabled><option value="">Tous</option></select></div></div>
@@ -106,6 +107,6 @@
     <div id="lcdp-footer-slot"></div>
     <div id="lcdp-lightbox-slot"></div>
   </div>
-  <script src="./journee-benevole.js?v=20261126-base"></script>
+  <script src="./journee-benevole.js?v=20261126-gabarit-mes-acces"></script>
 </body>
 </html>
