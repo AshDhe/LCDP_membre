@@ -47,7 +47,7 @@
     el("dfa-confirmation-mail").hidden = !paye;
     retour.hidden = paye;
     const montantOperation = euros(d.montantCentimes);
-    if (d.statut === "paye") message("Votre versement de "+montantOperation+" est confirmé. Merci pour votre soutien aux parcs du réseau La Clé du Parc.");
+    if (d.statut === "paye") message("Votre versement de "+montantOperation+" est confirmé.\nMerci pour votre soutien aux parcs du réseau La Clé du Parc.");
     else if (d.statut === "annule") message("Votre demande de dotation est annulée. Aucun nouveau paiement n’est engagé.");
     else if (d.statut === "incident") message("Votre dotation est en cours de vérification. Aucun nouveau règlement n’est proposé.");
     else if (retourVerification) message("La confirmation bancaire de votre paiement de "+montantOperation+" est en attente. Aucun nouveau règlement n’est nécessaire à ce stade.");
