@@ -1368,8 +1368,8 @@
     liens.push(
       {
         label: "Abonnement",
-        espace: "public",
-        href: "/ESPACE-PUBLIC/abonnement-membre.html?source=menu-burger-membre"
+        espace: "membre",
+        href: "/ESPACE-MEMBRE/presentation-abonnements.html?source=menu-burger-membre"
       },
       {
         label: "Inviter",
