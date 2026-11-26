@@ -33,7 +33,6 @@
   const ENDPOINT_REGLEMENT_PUBLICATION = construireEndpointApi("workerFormInscriptionMembreUrl","WORKER_FORM_INSCRIPTION_MEMBRE_URL","","form-inscription-membre-api");
 
   const PAGE_PAIEMENT_CB = construireUrlMembre("/ESPACE-MEMBRE/paiement-cb.html");
-  const PAGE_ABONNEMENT_MEMBRE = construireUrlMembre("/ESPACE-MEMBRE/abonnement-membre.html");
 
   let pageInitialisee = false;
   let actionAccueilEnCours = false;
@@ -365,7 +364,18 @@
       bouton.type = "button";
       bouton.className = "lcdp-button lcdp-button-secondary lcdp-workflow-micro-action";
       bouton.textContent = "Payer";
-      bouton.addEventListener("click", () => redirigerMembre(PAGE_ABONNEMENT_MEMBRE));
+      bouton.addEventListener("click", async () => {
+        if (bouton.disabled) return;
+        bouton.disabled = true;
+        try {
+          await gererPaiementSuspensionMembre(etat);
+        } catch (error) {
+          console.error("Ouverture du paiement :", error);
+          await afficherAlerte("Impossible d’ouvrir le paiement. Merci de réessayer.", { profil: "erreur" });
+        } finally {
+          bouton.disabled = false;
+        }
+      });
       bloc.appendChild(bouton);
     }
   }
@@ -380,13 +390,6 @@
       etat.abonnementSuspendu === true &&
       etat.paiementSuspension
     );
-  }
-
-  async function redirigerVersAbonnementPourRegularisation() {
-    const ok = await afficherAlerte("Votre abonnement est suspendu (non payé). Vous allez être redirigé vers la page d’abonnement.", { mode: "confirmation" });
-    if (!ok) return;
-
-    window.location.href = PAGE_ABONNEMENT_MEMBRE;
   }
 
   async function afficherEcheancesPaiementSuspension(etat) {
@@ -444,7 +447,10 @@
       description.textContent = "Échéance " + String(echeance.numero) + " du " + formaterDatePaiementSuspension(echeance.date) + " : " + formaterMontantPaiementSuspension(echeance.montant) + " TTC\nNon payée";
 
       const boutonPayer = creerBoutonPaiementSuspension("Payer", "lcdp-button-secondary lcdp-workflow-micro-action lcdp-workflow-micro-action--alerte-paiement", () => {
-        ouvrirPagePaiementSuspension(paiement, echeance.numero).catch(console.error);
+        ouvrirPagePaiementSuspension(paiement, echeance.numero).catch(async (error) => {
+          console.error("Ouverture du paiement :", error);
+          await afficherAlerte("Impossible d’ouvrir le paiement. Merci de réessayer.", { profil: "erreur" });
+        });
       });
 
       ligne.appendChild(description);
@@ -882,7 +888,7 @@
     }
 
     if (suspensionPourNonPaiement(etat)) {
-      await redirigerVersAbonnementPourRegularisation();
+      await gererPaiementSuspensionMembre(etat);
       return;
     }
 
