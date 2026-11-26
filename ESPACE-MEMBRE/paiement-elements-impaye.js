@@ -20,7 +20,7 @@
   }
   function preparer() {
     if(!chargement)chargement=Promise.all([
-      ressource("link",objet("/CSSBASE/lcdp-paiement-elements.css?v=20261126-scroll-v2")),
+      ressource("link",objet("/CSSBASE/lcdp-paiement-elements.css?v=20261126-main-v3")),
       ressource("link",objet("/CSSBASE/lcdp-attente.css?v=20261126-v1")),
       typeof window.Stripe==="function"?Promise.resolve():ressource("script","https://js.stripe.com/endive/stripe.js")
     ]).catch(e=>{chargement=null;throw e;});
@@ -47,17 +47,42 @@
     const logo=el("logo-lcdp");
     logo.addEventListener("load",()=>{logo.hidden=false;el("logo-attente").hidden=true;},{once:true});
     logo.src=objet("/IMAG/LOGO/logo-bouton-navigation-76.webp");
+    // Le formulaire bancaire remplace temporairement le main appelant,
+    // sans hériter de ses règles de centrage, de hauteur ni de défilement.
+    const mainOrigine=slot.closest("main, .lcdp-site-main");
+    const wrapper=mainOrigine?.parentElement;
+    if(!wrapper?.matches(".lcdp-app-wrapper,.lcdp-site-page") ||
+       wrapper.querySelector(":scope > [data-lcdp-paiement-elements-main]"))
+      throw Error("Wrapper de paiement indisponible.");
+    const main=document.createElement("main");
+    main.className="lcdp-site-main";
+    main.setAttribute("data-lcdp-paiement-elements-main","");
+    main.setAttribute("aria-label","Paiement sécurisé");
+    main.tabIndex=-1;
+    main.appendChild(template.content);
+    const ancienHidden=mainOrigine.hidden;
+    const ancienScroll=mainOrigine.scrollTop;
     let elementPaiement=null,enCours=false,ferme=false;
+    function restaurerWrapper(){
+      main.remove();
+      wrapper.classList.remove("lcdp-paiement-elements-actif");
+      mainOrigine.removeAttribute("data-lcdp-paiement-elements-masque");
+      mainOrigine.hidden=ancienHidden;
+      mainOrigine.scrollTop=ancienScroll;
+    }
     abandon.addEventListener("click",()=>{
       if(enCours||ferme)return;
       ferme=true;
       try{elementPaiement?.destroy();}catch{}
+      restaurerWrapper();
       options.quitter?.();
     });
-    slot.replaceChildren(template.content);
-    // Le contenu principal est le seul conteneur défilant du formulaire.
-    const main=slot.closest("main, .lcdp-site-main");
-    if(main)main.scrollTop=0;
+    mainOrigine.after(main);
+    wrapper.classList.add("lcdp-paiement-elements-actif");
+    mainOrigine.setAttribute("data-lcdp-paiement-elements-masque","");
+    mainOrigine.hidden=true;
+    main.scrollTop=0;
+    main.focus({preventScroll:true});
     try {
       if(typeof window.Stripe!=="function")throw Error("Le service sécurisé Stripe ne s’est pas chargé.");
       const stripe=window.Stripe(cle,{locale:"fr"});
