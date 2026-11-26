@@ -26,6 +26,7 @@
   const pageOrigine = options.integre ? window.location.href : retrouverPageOrigine();
   if (options.integre && orderid) { try { sessionStorage.setItem(cleOrigine, pageOrigine); } catch {} }
   let redirectionPaiementValideProgrammee = false;
+  let checkoutEnCours = false;
 
   function origineMembreSure(valeur) {
     if (!valeur) return "";
@@ -183,9 +184,13 @@
     afficherQuitter();
   }
 
-  async function creerCheckout() {
-    if (!racine.isConnected) return;
-    masquerActions();
+  async function creerCheckout(event) {
+    if (!racine.isConnected || checkoutEnCours) return;
+    checkoutEnCours = true;
+    const bouton = event?.currentTarget || racine.querySelector("[data-lcdp-paiement-cb-payer]");
+    const restaurer = activerAttenteBouton(bouton);
+    const quitter = racine.querySelector("[data-lcdp-paiement-cb-quitter]");
+    if (quitter) quitter.disabled = true;
     afficherMessage("Préparation du paiement sécurisé...", "information");
 
     try {
@@ -216,6 +221,10 @@
     } catch (error) {
       console.error("Erreur création Checkout Stripe :", error);
       afficherMessage(error.message || "Impossible de créer le paiement Stripe.", "erreur");
+      restaurer();
+      checkoutEnCours = false;
+      if (quitter) quitter.disabled = false;
+      masquerActions();
       afficherRecommencer();
       afficherQuitter();
     }
@@ -334,6 +343,28 @@
   return initialiserPage();
   }
 
+  function activerAttenteBouton(bouton) {
+    if (!bouton) return () => {};
+    if (window.LCDP_PaiementImpaye?.attendreBouton) return window.LCDP_PaiementImpaye.attendreBouton(bouton);
+    const disabled = bouton.disabled;
+    const spinner = document.createElement("img");
+    const cfg = window.SITE_CONFIG || {};
+    const chemin = "/IMAG/PICTO/pictowait.svg";
+    spinner.src = typeof window.LCDP_urlObjet === "function" ? window.LCDP_urlObjet(chemin) : cfg.objetUrl(chemin);
+    spinner.alt = "";
+    spinner.width = 20;
+    spinner.height = 20;
+    spinner.setAttribute("aria-hidden","true");
+    bouton.prepend(spinner);
+    bouton.disabled = true;
+    bouton.setAttribute("aria-busy","true");
+    return () => {
+      spinner.remove();
+      bouton.disabled = disabled;
+      bouton.removeAttribute("aria-busy");
+    };
+  }
+
   async function monterPaiementCB(slot, options = {}) {
     if (!slot?.isConnected) return;
     if (slot.querySelector("[data-lcdp-paiement-cb-payer]")) return initialiserPaiementCB(slot,options);
@@ -364,14 +395,20 @@
     message.before(details);
     actions.replaceChildren();
     for (const [type,libelle,style] of [
-      ["payer","Accéder au paiement sécurisé Stripe","principal"],
+      ["payer","Accéder au paiement sécurisé","principal"],
       ["recommencer","Recommencer","principal"],
-      ["quitter",options.integre ? "Retour aux échéances" : "Retour","secondaire"]
+      ["quitter",options.integre ? "Retour à la demande" : "Retour","secondaire"]
     ]) {
       const bouton = document.createElement("button");
       bouton.type = "button";
       bouton.className = "lcdp-dialogue-ref__bouton lcdp-dialogue-ref__bouton--"+style;
-      bouton.textContent = libelle;
+      if (type === "payer") {
+        const lignes = document.createElement("span");
+        lignes.append("Accéder au paiement", document.createElement("br"), "sécurisé");
+        bouton.appendChild(lignes);
+      } else {
+        bouton.textContent = libelle;
+      }
       bouton.setAttribute("data-lcdp-paiement-cb-"+type,"");
       bouton.hidden = true;
       actions.appendChild(bouton);
