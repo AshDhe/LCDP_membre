@@ -139,5 +139,21 @@
     el("dfa-choix").hidden = false;
     actualiserBoutons();
   }
-  demarrer().catch(erreur);
+  async function initialiserPage() {
+    await Promise.all([
+      demarrer().catch(erreur),
+      window.LCDP_cadreAccessoiresPret
+    ]);
+    if (!document.querySelector("#lcdp-bandeau-slot [data-lcdp-burger-slot][data-lcdp-burger-initialise='true']") ||
+        !document.querySelector("#lcdp-footer-slot .lcdp-box-footer")) {
+      window.LCDP_dfaAttenteErreur?.();
+      return;
+    }
+    await (document.fonts?.ready || Promise.resolve());
+    window.LCDP_dfaAttenteTerminer?.();
+  }
+  initialiserPage().catch(()=>window.LCDP_dfaAttenteErreur?.());
+  window.addEventListener("pageshow",event=>{
+    if (event.persisted && occupe) location.reload();
+  });
 })();

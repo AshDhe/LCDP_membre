@@ -8,6 +8,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Dotation financière annuelle individuelle La Clé du Parc.">
 
+  <link rel="preload" as="image" href="https://lacleduparc.fr/OBJET/IMAG/PICTO/pictowait.svg">
+  <style>
+    /* Voile initial, avant tout chargement du CSS et du cadre partagé. */
+    #dfa-attente:not([hidden]) { position:fixed; inset:0; z-index:2147483646; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px; box-sizing:border-box; background:#fff; text-align:center; }
+    #dfa-attente:not([hidden]) ~ .lcdp-app-wrapper { visibility:hidden; }
+    #dfa-attente [hidden], #dfa-attente[hidden] { display:none !important; }
+    #dfa-attente img { display:block; width:64px; height:64px; }
+    #dfa-attente p { margin:0; color:#334155; font:inherit; }
+    #dfa-attente a { color:#4e6838; font:inherit; text-decoration:underline; }
+    @media (prefers-reduced-motion:reduce) { #dfa-attente img { visibility:hidden; } }
+  </style>
+  <noscript><style>#dfa-attente { display:none!important; } #dfa-attente ~ .lcdp-app-wrapper { visibility:visible!important; }</style></noscript>
   <script src="../config.js"></script>
   <script>
     (() => {
@@ -25,10 +37,39 @@
     })();
   </script>
   <script src="./boutique-accessoires-cadre.js?v=20261126" defer></script>
-  <script src="./dfa-membre.js?v=20261126-dfa-direct-v5" defer></script>
+  <script src="./dfa-membre.js?v=20261126-dfa-direct-v6" defer></script>
 </head>
 
 <body class="lcdp-app-page lcdp-typographie-editoriale-commune">
+  <div id="dfa-attente" role="status" aria-label="Chargement de la dotation financière annuelle">
+    <img id="dfa-attente-picto" src="https://lacleduparc.fr/OBJET/IMAG/PICTO/pictowait.svg" alt="" width="64" height="64">
+    <p id="dfa-attente-erreur" hidden>Impossible de charger le formulaire. <a id="dfa-reessayer" href="">Réessayer</a></p>
+  </div>
+  <script>
+    (() => {
+      const attente = document.getElementById("dfa-attente");
+      const picto = document.getElementById("dfa-attente-picto");
+      const erreur = document.getElementById("dfa-attente-erreur");
+      let termine = false;
+      const echec = () => {
+        if (termine) return;
+        termine = true;
+        clearTimeout(delai);
+        picto.hidden = true;
+        erreur.hidden = false;
+        attente.setAttribute("role","alert");
+        attente.removeAttribute("aria-label");
+      };
+      const delai = setTimeout(echec, 25000);
+      window.LCDP_dfaAttenteErreur = echec;
+      window.LCDP_dfaAttenteTerminer = () => {
+        if (termine) return;
+        termine = true;
+        clearTimeout(delai);
+        attente.hidden = true;
+      };
+    })();
+  </script>
   <div class="lcdp-site-page lcdp-app-wrapper">
 
     <div id="lcdp-bandeau-slot"></div>
@@ -44,7 +85,7 @@
             <section class="lcdp-component lcdp-box-carousel lcdp-editorial-card" aria-label="Votre dotation">
               <h2 class="lcdp-box-carousel__title lcdp-boxtext__title--center" id="dfa-choix" hidden>Merci de soutenir les parcs</h2>
               <div class="lcdp-boxtext__content lcdp-editorial-copy">
-                <p id="dfa-statut" class="dfa-status" role="status" aria-live="polite">Chargement…</p>
+                <p id="dfa-statut" class="dfa-status" role="status" aria-live="polite" hidden></p>
                 <form id="formulaire-dfa-membre" class="lcdp-editorial-copy" aria-labelledby="dfa-choix" hidden>
                   <p id="dfa-aide">Utilisez le pavé numérique pour indiquer le montant de votre dotation financière annuelle.</p>
                   <button type="button" class="dfa-amount" id="dfa-montant" aria-describedby="dfa-aide" aria-haspopup="dialog">
