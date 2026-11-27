@@ -3,30 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Maquette indépendante du wrapper MA CLÉ, sans connexion ni action sur les réservations.">
+<meta name="description" content="Maquette du wrapper commun MA CLÉ, sans connexion ni action sur les réservations.">
 <title>MA CLÉ · Maquette de contrôle du wrapper</title>
+<script>
+  (() => {
+    const h = location.hostname;
+    const base = h === "ashdhe.github.io" || h === "huguespavret.github.io"
+      ? location.origin + "/LCDP_public" : "https://lacleduparc.fr";
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = base + "/OBJET/CSSBASE/lcdp-wrapper.css";
+    document.head.appendChild(link);
+  })();
+</script>
+<noscript><link rel="stylesheet" href="https://lacleduparc.fr/OBJET/CSSBASE/lcdp-wrapper.css"></noscript>
 <style>
-  /* Maquette volontairement AUTONOME : ni CSSBASE, ni Worker, ni session.
-     Elle permet de vérifier l'encadrement indépendamment de la page existante. */
+  /* Maquette sans connexion ni Worker, sur le wrapper commun de production. */
   :root { color-scheme: light; font-family: Arial,system-ui,sans-serif; }
   *,*::before,*::after { box-sizing:border-box; }
   html,body { margin:0; padding:0; }
-  body { min-height:100vh; min-height:100dvh; height:100dvh; display:flex;
-    align-items:flex-start; justify-content:center; padding:12px;
-    background:#e8eef4; color:#172b24; font:14px/1.5 Arial,system-ui,sans-serif; }
-  .ma-cle-wrapper { display:flex; flex-direction:column; width:100%; max-width:448px;
-    height:calc(100vh - 24px); height:calc(100dvh - 24px); max-height:850px;
-    min-height:0; background:#fff; border:2px solid #627c90; border-radius:24px;
-    overflow:hidden; box-shadow:0 20px 30px -5px rgba(15,23,42,.25),
-    0 8px 13px rgba(15,23,42,.17); }
   .ma-cle-header { display:flex; flex:0 0 auto; justify-content:space-between; align-items:center;
     gap:10px; padding:13px 18px; border-bottom:1px solid #dce5ed; background:#fff; }
   .ma-cle-logo { display:flex; gap:8px; align-items:center; font-weight:800; color:#345c3d; }
   .ma-cle-logo__picto { display:grid; place-items:center; height:28px; width:28px;
     border-radius:9px; color:white; background:#4e6838; font-size:16px; }
   .ma-cle-header-note { color:#667483; font-size:11px; text-align:right; }
-  .ma-cle-content { overflow-y:auto; overscroll-behavior:contain; background:#f8fafc;
-    min-height:0; flex:1 1 auto; padding:16px 14px 26px; }
+  .lcdp-app-wrapper > .ma-cle-content { padding:16px 14px 26px; }
   .ma-cle-footer { background:#fff; border-top:1px solid #e2e8f0; flex:0 0 auto;
     text-align:center; color:#687584; font-size:11px; padding:10px 12px; }
   .ma-cle-jalons { display:grid; grid-template-columns:repeat(6,minmax(0,1fr));
@@ -63,17 +65,15 @@
     border-radius:12px; margin:0; line-height:1.6; white-space:pre-wrap; }
   .indication { text-align:center; font-size:12px; color:#687584; margin:0; }
   .marqueur-maquette { color:#667; background:#e9f0f6; border-radius:6px; padding:4px 7px; font-size:10px; }
-  @media(min-width:768px) {body{align-items:center;padding:16px}
-    .ma-cle-wrapper{height:calc(100dvh - 32px)}}
 </style>
 </head>
-<body>
-<div class="ma-cle-wrapper" id="ma-cle-wrapper">
+<body class="lcdp-app-page">
+<div class="lcdp-app-wrapper" id="ma-cle-wrapper">
   <header class="ma-cle-header">
     <div class="ma-cle-logo"><span class="ma-cle-logo__picto" aria-hidden="true">⌘</span><span>LA CLÉ DU PARC</span></div>
     <span class="ma-cle-header-note">Espace membre</span>
   </header>
-  <main class="ma-cle-content">
+  <main class="lcdp-site-main ma-cle-content">
     <p class="marqueur-maquette">MAQUETTE VISUELLE – sans connexion</p>
     <nav aria-label="Étapes MA CLÉ">
       <ol class="ma-cle-jalons">
