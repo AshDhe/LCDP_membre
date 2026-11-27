@@ -104,7 +104,7 @@
   </script>
 </head>
 
-<body data-lcdp-suivi-compte="compte-facture-abonnement" class="lcdp-page-facture-a4">
+<body data-lcdp-suivi-compte="compte-facture-abonnement" class="lcdp-app-page lcdp-page-facture-a4">
   <div id="lcdp-attente-page-membre" class="lcdp-attente-plein-ecran" role="status" aria-label="Chargement de la page">
     <div class="lcdp-loading-spinner" aria-hidden="true">
       <svg class="lcdp-loading-spinner__track" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></circle></svg>
@@ -121,11 +121,13 @@
     })();
   </script>
 
-  <main class="lcdp-page-facture-a4__main" id="lcdp-facture-a4-root">
+  <div class="lcdp-app-wrapper lcdp-app-wriper--sans lcdp-app-wrapper--a4">
+    <main class="lcdp-site-main lcdp-page-facture-a4__main" id="lcdp-facture-a4-root">
     <p class="lcdp-page-facture-a4__message" data-lcdp-facture-a4-message>
       Chargement de la facture...
     </p>
-  </main>
+    </main>
+  </div>
 
   <script src="./facture-abonnement.js?v=20261112-options-ttc-v1"></script>
 </body>

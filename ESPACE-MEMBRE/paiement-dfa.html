@@ -32,8 +32,9 @@
   <script defer src="https://js.stripe.com/endive/stripe.js"></script>
   <script defer src="./paiement-dfa.js?v=20261126-stripe-commun-v2"></script>
 </head>
-<body class="lcdp-page-reserver lcdp-stripe-page">
-  <main class="lcdp-stripe lcdp-app-wrapper" aria-labelledby="paiement-titre">
+<body class="lcdp-app-page lcdp-page-reserver lcdp-stripe-page">
+  <div class="lcdp-app-wrapper lcdp-app-wriper--sans">
+    <main class="lcdp-stripe lcdp-site-main" aria-labelledby="paiement-titre">
     <header class="lcdp-stripe__entete">
       <span class="lcdp-stripe__logo">
         <img id="logo-lcdp" alt="La Clé du Parc" hidden>
@@ -65,6 +66,7 @@
       <button type="button" class="lcdp-stripe__reprendre" id="dfa-abandon">Quitter le paiement</button>
     </section>
     <footer class="lcdp-stripe__pied">Paiement traité par Stripe</footer>
-  </main>
+    </main>
+  </div>
 </body>
 </html>

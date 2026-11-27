@@ -32,8 +32,9 @@
   <script defer src="https://js.stripe.com/endive/stripe.js"></script>
   <script defer src="./paiement-stripe-membre.js?v=20261127-bienfaiteur-test-v3"></script>
 </head>
-<body data-lcdp-suivi-vt-abo="vt-paiement-stripe-membre" class="lcdp-page-reserver lcdp-stripe-page">
-  <main class="lcdp-stripe lcdp-app-wrapper" aria-labelledby="paiement-titre">
+<body data-lcdp-suivi-vt-abo="vt-paiement-stripe-membre" class="lcdp-app-page lcdp-page-reserver lcdp-stripe-page">
+  <div class="lcdp-app-wrapper lcdp-app-wriper--sans">
+    <main class="lcdp-stripe lcdp-site-main" aria-labelledby="paiement-titre">
     <header class="lcdp-stripe__entete">
       <span class="lcdp-stripe__logo">
         <img id="logo-lcdp" alt="La Clé du Parc" hidden>
@@ -71,6 +72,7 @@
       </form>
     </section>
     <footer class="lcdp-stripe__pied">Paiement traité par Stripe</footer>
-  </main>
+    </main>
+  </div>
 </body>
 </html>
