@@ -874,22 +874,11 @@
     if (!reponse.ok || contexte?.ok !== true) {
       throw new Error(contexte?.message || "Les droits DUO/FAMILLE sont indisponibles.");
     }
-    // Les classes Tailwind c040/c054/c065 existent déjà dans le CSS commun.
-    // Les charger uniquement quand le formulaire DUO/FAMILLE devient disponible.
+    // Les composants c040/c054/c065 sont déjà dans le CSS central.
+    // Activer les sélecteurs existants sans recharger un ancien module.
     const classes = new Set(String(document.documentElement.dataset.lcdpCss || "").split(/\s+/).filter(Boolean));
     ["c040","c054","c065"].forEach(code => classes.add(code));
     document.documentElement.dataset.lcdpCss = [...classes].join(" ");
-    const feuilleCommune = construireUrlObjet("/CSSBASE/lcdp-central-module-06.css");
-    if (!Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some(l => l.href === feuilleCommune)) {
-      await new Promise((resolve, reject) => {
-        const link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = feuilleCommune;
-        link.onload = resolve;
-        link.onerror = () => reject(new Error("Styles communs du formulaire indisponibles."));
-        document.head.appendChild(link);
-      });
-    }
     await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261121-mineurs-confirmation-v3");
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites&v=20261121-mineurs-confirmation-v3");
     const dialogue = document.createElement("div");
