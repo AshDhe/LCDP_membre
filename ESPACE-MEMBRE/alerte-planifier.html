@@ -147,8 +147,17 @@
       });
     })();
   </script>
-  <link rel="stylesheet" href="./grille-filtrage-acces.css?v=20261126-commun">
-  <link rel="stylesheet" href="./alerte-planifier.css?v=20261126-ig-express-v1">
+  <script>
+    // Sources uniques partagées avec les autres espaces, cascade historique conservée.
+    [
+      "/CSSBASE/lcdp-theme-espaces.css?v=20261127-commun-v1",
+      "/CSSBASE/lcdp-grille-filtrage-acces.css?v=20261127-commun-v1",
+      "/CSSBASE/lcdp-alerte-planifier.css?v=20261127-commun-v1"
+    ].forEach(path => {
+      const href = window.LCDP_urlObjet(path);
+      document.write('<link rel="stylesheet" href="' + href.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">');
+    });
+  </script>
 </head>
 
 <body data-lcdp-suivi-vt-abo="vt-alerte-planifier" class="lcdp-page-alerte-planifier lcdp-app-page">

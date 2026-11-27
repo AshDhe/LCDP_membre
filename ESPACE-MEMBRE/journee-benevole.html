@@ -68,8 +68,17 @@
       });
     })();
   </script>
-  <link rel="stylesheet" href="./grille-filtrage-acces.css?v=20261126-commun">
-  <link rel="stylesheet" href="./alerte-planifier.css?v=20261126-commun">
+  <script>
+    // Sources uniques partagées avec les autres espaces, cascade historique conservée.
+    [
+      "/CSSBASE/lcdp-theme-espaces.css?v=20261127-commun-v1",
+      "/CSSBASE/lcdp-grille-filtrage-acces.css?v=20261127-commun-v1",
+      "/CSSBASE/lcdp-alerte-planifier.css?v=20261127-commun-v1"
+    ].forEach(path => {
+      const href = window.LCDP_urlObjet(path);
+      document.write('<link rel="stylesheet" href="' + href.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">');
+    });
+  </script>
 </head>
 <body class="lcdp-app-page lcdp-mes-acces-page">
   <div id="lcdp-attente-page-membre" class="lcdp-attente-plein-ecran" role="status" aria-label="Chargement de la page">
