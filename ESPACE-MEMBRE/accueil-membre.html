@@ -217,10 +217,12 @@
 
     <!-- Footer identique à l'accueil public, remplacé par le fragment commun si disponible. -->
     <div id="lcdp-footer-slot">
-    <footer class="public-home__footer" data-lcdp-box-footer="">
+    <footer class="lcdp-box-footer" data-lcdp-box-footer="">
+    <div class="lcdp-box-footer__inner">
     <a data-lcdp-footer-mentions-legales="" data-site-href="/ESPACE-PUBLIC/mentions-legales.html" href="/ESPACE-PUBLIC/mentions-legales.html">Mentions légales - Données</a>
-    <span aria-hidden="true" class="public-home__footer-separator">•</span>
+    <span aria-hidden="true" class="lcdp-box-footer__separator">•</span>
     <button popovertarget="lcdp-footer-verification-info" type="button">Vérification</button>
+    </div>
     <div aria-label="Vérification" class="public-home__verification-info" id="lcdp-footer-verification-info" popover="auto" role="dialog">
     <button aria-label="Fermer" class="public-home__verification-close" popovertarget="lcdp-footer-verification-info" popovertargetaction="hide" type="button">×</button>
     <div data-verification-slot="" data-verification-url="https://script.google.com/macros/s/AKfycbz4PBr97qQBPrXcBc8jGE5560b3LBhmEwGXBw5H3YIqiGvExilaUK-ORCLK3NV2hZu3xA/exec"></div>
