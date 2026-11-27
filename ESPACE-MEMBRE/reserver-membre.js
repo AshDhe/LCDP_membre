@@ -939,6 +939,11 @@
     if (!idparc) return;
     try {
       const etat = await requeteDuoActif();
+      if(etat.habilitation?.eligible===false){
+        const majorite=etat.habilitation.reason==="majority_required";
+        const erreur=new Error(majorite?"Vous devez être déclaré majeur dans Mon compte pour poser une demande DUO ACTIF.":"Vous ne remplissez pas les conditions pour poser une demande DUO ACTIF.");
+        erreur.code=majorite?"DUO_MAJORITE":"DUO_HABILITATION";throw erreur;
+      }
       const mois = etat.moisAutorises;
       if (!Array.isArray(mois) || mois.length !== 3 || !mois.every(m=>/^\d{4}-(0[1-9]|1[0-2])$/.test(m)))
         throw new Error("Le service DUO ACTIF est en cours de mise à jour.");

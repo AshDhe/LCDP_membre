@@ -1252,7 +1252,8 @@
         workflowCache: workflowCle?.hidden === true
       };
       afficherControleAcces({success:true,screen:"guest_list",role:"abonne",
-        action:"checkin",guests:liste.guests,validated:liste.validated});
+        action:"checkin",guests:liste.guests,validated:liste.validated,
+        majorityDeclarationSupported:liste.majorityDeclarationSupported===true});
     } catch (error) {
       await afficherAlerte(error?.message || "Impossible de consulter les invités.");
     } finally {
@@ -1277,9 +1278,46 @@
     }
   }
 
-  async function validerAppelInvites(invites) {
+  async function confirmerMajoriteInvite(nom) {
+    const slot=document.getElementById("lcdp-lightbox-slot");
+    if(!slot)throw new Error("Confirmation indisponible.");
+    const focusInitial=document.activeElement;
+    const fragment=await chargerFragmentObjet("/HTMLBASE/02-dialogue-reference-choix.html");
+    slot.replaceChildren(fragment);
+    const dialogue=slot.querySelector('[data-lcdp-dialogue-reference="choix"]');
+    const titre=slot.querySelector("[data-lcdp-dialogue-titre]");
+    const texte=slot.querySelector("[data-lcdp-dialogue-message]");
+    const annuler=slot.querySelector('[data-lcdp-dialogue-action="annuler"]');
+    const confirmer=slot.querySelector('[data-lcdp-dialogue-action="confirmer"]');
+    if(!dialogue || !titre || !texte || !annuler || !confirmer){slot.replaceChildren();throw new Error("Structure de confirmation indisponible.");}
+    titre.textContent="Déclaration de majorité";
+    texte.textContent="Confirmez-vous, sous votre responsabilité, que "+nom+" est majeur(e) ?";
+    annuler.textContent="Annuler";confirmer.textContent="Confirmer";
+    return new Promise(resolve=>{
+      let termine=false;
+      const fermer=valeur=>{
+        if(termine)return;termine=true;
+        document.removeEventListener("keydown",clavier);
+        slot.replaceChildren();if(focusInitial?.isConnected)focusInitial.focus();resolve(valeur);
+      };
+      const clavier=event=>{
+        if(event.key==="Escape"){event.preventDefault();fermer(false);}
+        if(event.key==="Tab"){
+          event.preventDefault();
+          (document.activeElement===annuler?confirmer:annuler).focus();
+        }
+      };
+      annuler.addEventListener("click",()=>fermer(false),{once:true});
+      confirmer.addEventListener("click",()=>fermer(true),{once:true});
+      dialogue.addEventListener("click",event=>{if(event.target===dialogue)fermer(false);});
+      document.addEventListener("keydown",clavier);annuler.focus();
+    });
+  }
+
+  async function validerAppelInvites(invites,majeurs=[]) {
     if (!contexteAvantAppel) throw new Error("Ouvrez d’abord la liste des invités.");
-    const r = await appelerApi("/guests/call", {method:"POST",body:{guests:invites}});
+    const r = await appelerApi("/guests/call", {method:"POST",body:{guests:invites,majeurs}});
+    if(majeurs.length && r?.majorityDeclarationSupported!==true)throw new Error("La déclaration de majorité n’a pas été confirmée par le service.");
     if (r?.success !== true || r?.validated !== true) {
       throw new Error(r?.message || "La liste n’a pas pu être validée.");
     }
@@ -1331,11 +1369,12 @@
         else retourAppelInvites();
       },
       onConfirmed:async()=>{if(controleAccesEtat.simulation){afficherControleAcces({...controleAccesEtat,screen:"confirmation_done"});return;}try{afficherControleAcces(await appelerApi("/presence",{method:"GET"}));}catch(e){afficherControleAcces({screen:"capture_error",message:e.message});}},
-      onGuestConfirm:async guests=>{
+      onConfirmGuestMajority:confirmerMajoriteInvite,
+      onGuestConfirm:async (guests,majeurs=[])=>{
         if(controleAccesEtat?.action==="checkout") {
           afficherControleAcces(await appelerApi("/guests/confirm",{method:"POST",body:{guests}}));
         } else {
-          await validerAppelInvites(guests);
+          await validerAppelInvites(guests,majeurs);
         }
       },
       onHome:()=>{
