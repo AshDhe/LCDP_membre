@@ -37,7 +37,7 @@
         document.head.appendChild(lien);
       });
       chargementCSS = Promise.all([
-        charger("/CSSBASE/lcdp-lightbox-convergence.css?v=20261126-impayes-objet-v2"),
+        charger("/CSSBASE/lcdp-boite-dialogue.css"),
         charger("/CSSBASE/lcdp-paiements-en-attente.css?v=20261126-v2")
       ]).catch(erreur=>{chargementCSS=null;throw erreur;});
     }

@@ -307,7 +307,7 @@
   }
 
   function assurerCssAlerteSessionRemplacee() {
-    const href = buildUrl(objetBase, "/CSSBASE/lcdp-lightbox-convergence.css");
+    const href = buildUrl(objetBase, "/CSSBASE/lcdp-boite-dialogue.css");
     const existant = Array.from(
       document.querySelectorAll('link[rel="stylesheet"]')
     ).find(link => String(link.href || "") === href);

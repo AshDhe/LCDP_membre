@@ -319,7 +319,7 @@
     const conteneur = document.createElement("div");
     const focusInitial = document.activeElement;
     try {
-      await chargerCssObjetUneFois("/CSSBASE/lcdp-lightbox-convergence.css").catch(erreur => console.error("CSS dialogue DA :", erreur));
+      await chargerCssObjetUneFois("/CSSBASE/lcdp-boite-dialogue.css").catch(erreur => console.error("CSS dialogue DA :", erreur));
       conteneur.appendChild(await chargerDialogueReferenceDa(type));
       const dialogue = conteneur.querySelector('[data-lcdp-dialogue-reference="' + type + '"]');
       const titre = conteneur.querySelector("[data-lcdp-dialogue-titre]");

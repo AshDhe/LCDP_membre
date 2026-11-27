@@ -465,7 +465,7 @@
     conteneur.className = "lcdp-burger-alerte";
     const focusInitial = document.activeElement;
     try {
-      const cssUrl = construireUrlObjet("/CSSBASE/lcdp-lightbox-convergence.css");
+      const cssUrl = construireUrlObjet("/CSSBASE/lcdp-boite-dialogue.css");
       if (![...document.querySelectorAll('link[rel="stylesheet"]')]
         .some(lien => lien.href === new URL(cssUrl, document.baseURI).href)) {
         await new Promise((resolve, reject) => {
@@ -989,7 +989,7 @@
   }
 
   async function confirmerDeconnexionBurger() {
-    const cheminCss = "/CSSBASE/lcdp-lightbox-convergence.css";
+    const cheminCss = "/CSSBASE/lcdp-boite-dialogue.css";
     const hrefCss = construireUrlObjet(cheminCss);
     if (!Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some(link => link.href === hrefCss)) {
       await new Promise((resolve, reject) => {
