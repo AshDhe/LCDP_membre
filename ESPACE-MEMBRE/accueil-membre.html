@@ -108,7 +108,7 @@
   <!-- Même CSS central que l'accueil public, résolu sur le domaine OBJET configuré. -->
   <script>
     (() => {
-      const href = window.LCDP_urlObjet("/CSSBASE/lcdp-central-mobile-first.css");
+      const href = window.LCDP_urlObjet("/CSSBASE/lcdp-central-mobile-first.css?v=20261127-palette-commune");
       document.write('<link rel="stylesheet" href="' + href.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">');
       document.write('<script src="' + window.LCDP_urlObjet("/JSBASE/02-footer.js") + '" data-lcdp-footer-autonome defer><\/script>');
     })();
