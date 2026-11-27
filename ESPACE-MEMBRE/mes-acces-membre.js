@@ -538,7 +538,7 @@
     const urlObjet = chemin => typeof window.LCDP_urlObjet === "function"
       ? window.LCDP_urlObjet(chemin)
       : String(config.objetBaseUrl || config.OBJET_BASE || "https://lacleduparc.fr/OBJET").replace(/\/+$/, "") + chemin;
-    const css = urlObjet("/CSSBASE/lcdp-lightbox-convergence.css");
+    const css = urlObjet("/CSSBASE/lcdp-boite-dialogue.css");
     if (![...document.querySelectorAll('link[rel="stylesheet"]')].some(lien => lien.href === css)) {
       const lien = document.createElement("link");
       lien.rel = "stylesheet";
@@ -854,7 +854,7 @@
     const focusInitial = document.activeElement;
     let conteneur = null;
     try {
-      const css = urlObjet("/CSSBASE/lcdp-lightbox-convergence.css");
+      const css = urlObjet("/CSSBASE/lcdp-boite-dialogue.css");
       if (![...document.querySelectorAll('link[rel="stylesheet"]')].some(lien => lien.href === new URL(css, document.baseURI).href)) {
         await new Promise((resolve, reject) => {
           const lien = document.createElement("link");
@@ -877,7 +877,7 @@
       const conserver = conteneur.querySelector('[data-lcdp-dialogue-action="conserver"]');
       const supprimer = conteneur.querySelector('[data-lcdp-dialogue-action="supprimer"]');
       if (!dialogue || !titre || !texte || !conserver || !supprimer) return false;
-      if (document.querySelector('[data-lcdp-invitation-invites-overlay]')) dialogue.style.zIndex = "12000";
+      if (document.querySelector('[data-lcdp-invitation-invites-overlay]')) dialogue.classList.add("lcdp-boite-dialogue--superposee");
       titre.textContent = options.titre || "Annuler cet accès ?";
       texte.textContent = question;
       conserver.textContent = options.conserver || "Conserver";

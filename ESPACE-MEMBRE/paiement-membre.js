@@ -747,7 +747,7 @@
   async function afficherRetourEnAttente(message, panierAReprendre=null, confirme=false){
     try {
       // Le retour de paiement conserve sa propre action, mais partage le profil visuel INFORMATION.
-      const urlCss = cheminObjet('/CSSBASE/lcdp-lightbox-convergence.css');
+      const urlCss = cheminObjet('/CSSBASE/lcdp-boite-dialogue.css');
       if (![...document.querySelectorAll('link[rel="stylesheet"]')].some(lien => lien.href === urlCss)) {
         const lien = document.createElement('link');
         lien.rel = 'stylesheet';
@@ -759,7 +759,7 @@
         '[data-lcdp-dialogue-reference="information"]'
       );
       // Le slot PLANIFIER neutralise les clics par défaut : réactiver ceux du dialogue de retour paiement.
-      racine.style.pointerEvents = 'auto';
+      racine.classList.add('lcdp-boite-dialogue--interactive');
       const titre = racine.querySelector('[data-lcdp-dialogue-titre]');
       const texte = racine.querySelector('[data-lcdp-dialogue-message]');
       const bouton = racine.querySelector('[data-lcdp-dialogue-action="compris"]');

@@ -235,22 +235,14 @@
   }
 
   // Toutes les réponses visuelles DA sont bornées au wrapper appelant.
-  // Le positionnement structurel est explicite, même si un CSS ancien est en cache.
+  // Le positionnement structurel est défini par le CSS des dialogues.
   function monterHoteDa(conteneur) {
     const wrapper = document.querySelector(".lcdp-site-page.lcdp-app-wrapper");
     if (!wrapper) throw new Error("Wrapper de dialogue DA introuvable.");
     const elements = Array.from(wrapper.children).map(element => ({ element, inert: element.inert }));
     const classePresente = wrapper.classList.contains("lcdp-da-dialogue-actif");
-    const positionAvant = wrapper.style.getPropertyValue("position");
-    const prioriteAvant = wrapper.style.getPropertyPriority("position");
     wrapper.classList.add("lcdp-da-dialogue-actif");
-    if (getComputedStyle(wrapper).position === "static") wrapper.style.setProperty("position", "relative", "important");
     conteneur.classList.add("lcdp-da-dialogue-hote");
-    for (const [propriete, valeur] of Object.entries({
-      position: "absolute", inset: "0", width: "100%", height: "100%",
-      "min-height": "0", "max-height": "100%", "z-index": "9500",
-      overflow: "hidden", "border-radius": "inherit", "box-sizing": "border-box"
-    })) conteneur.style.setProperty(propriete, valeur, "important");
     wrapper.appendChild(conteneur);
     elements.forEach(({ element }) => { element.inert = true; });
     let retire = false;
@@ -259,19 +251,12 @@
       retire = true;
       conteneur.remove();
       if (!classePresente) wrapper.classList.remove("lcdp-da-dialogue-actif");
-      if (positionAvant) wrapper.style.setProperty("position", positionAvant, prioriteAvant);
-      else wrapper.style.removeProperty("position");
       elements.forEach(({ element, inert }) => { element.inert = inert; });
     };
   }
 
   function monterDialogueDa(conteneur, dialogue, focusInitial, surEchap) {
     dialogue.dataset.lcdpDialogueContext = "conteneur";
-    for (const [propriete, valeur] of Object.entries({
-      position: "absolute", inset: "0", width: "100%", height: "100%",
-      "min-height": "0", "max-height": "100%", display: "flex",
-      "align-items": "center", "justify-content": "center", "box-sizing": "border-box"
-    })) dialogue.style.setProperty(propriete, valeur, "important");
     const retirerHote = monterHoteDa(conteneur);
     const gererClavier = event => {
       if (event.key === "Escape") {
