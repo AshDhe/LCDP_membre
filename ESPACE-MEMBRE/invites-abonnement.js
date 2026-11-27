@@ -339,7 +339,7 @@
       adresse.type = "email";
       adresse.readOnly = true;
       adresse.value = contact.email;
-      adresse.style.background = "var(--lcdp-color-surface-soft,#edf0ed)";
+
       adresse.setAttribute("aria-label", "Adresse e-mail de l'invité " + categorie.toUpperCase());
       adresse.setAttribute("data-lcdp-invite-email", "");
       const etiquette = creerElement("label", "lcdp-box-champ-formulaire__checkbox-line");
@@ -372,17 +372,13 @@
     function ajouterChamp(categorie, initial = false) {
       if (enregistrementEnCours || ferme || contexte.annulationSeulement) return;
       const liste = vue.querySelector('[data-lcdp-invitation-nouveaux="' + categorie + '"]');
-      liste.style.display = "flex";
-      liste.style.flexDirection = "column";
-      liste.style.gap = "8px";
+
       const item = creerElement("li","lcdp-box-champ-formulaire");
       // Présentation explicite : le nouveau champ doit rester visible même
       // lorsque le formulaire est ouvert depuis un espace différent.
-      item.style.display = initial ? "block" : "grid";
-      item.style.gridTemplateColumns = initial ? "" : "minmax(0,1fr) 44px";
-      item.style.gap = "8px";
-      item.style.width = "100%";
-      item.style.minWidth = "0";
+
+      item.classList.add("lcdp-invite-nouvelle-ligne");
+      item.classList.toggle("lcdp-invite-nouvelle-ligne--initiale", initial);
       if (!initial) item.setAttribute("data-lcdp-invite-email-row","");
       const champ = creerElement("input");
       champ.type = "email";
