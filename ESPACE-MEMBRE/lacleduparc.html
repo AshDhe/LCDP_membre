@@ -96,7 +96,16 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="./lcdp-ma-cle.css?v=20261125-alerte-parc-v1">
+  <script>
+    // Sources uniques partagées avec les autres espaces, cascade historique conservée.
+    [
+      "/CSSBASE/lcdp-theme-espaces.css?v=20261127-commun-v1",
+      "/CSSBASE/lcdp-ma-cle.css?v=20261127-commun-v1"
+    ].forEach(path => {
+      const href = window.LCDP_urlObjet(path);
+      document.write('<link rel="stylesheet" href="' + href.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">');
+    });
+  </script>
 </head>
 
 <body data-lcdp-suivi-cle="cle-lacleduparc" class="lcdp-app-page lcdp-page-cle-du-parc">
