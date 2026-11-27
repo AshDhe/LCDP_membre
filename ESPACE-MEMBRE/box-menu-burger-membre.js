@@ -1279,21 +1279,10 @@
     }
   }
 
-  // Même style CSS que le menu public, sans styles injectés dans le HTML.
-  function assurerStyleBoutique() {
-    if (document.getElementById("lcdp-css-boutique-club")) return;
-    const lien = document.createElement("link");
-    lien.id = "lcdp-css-boutique-club";
-    lien.rel = "stylesheet";
-    lien.href = construireUrlObjet("/CSSBASE/lcdp-menu-burger-boutique.css?v=20261123-boutique-cadre");
-    document.head.appendChild(lien);
-  }
-
   async function initialiserMenuBurgerMembre(options = {}) {
     const slot = document.querySelector("[data-lcdp-burger-slot]");
 
     if (!slot) return;
-    assurerStyleBoutique();
 
     const etatMembre = options.etatMembre || {};
     const abonne = Object.prototype.hasOwnProperty.call(etatMembre, "abonne")
