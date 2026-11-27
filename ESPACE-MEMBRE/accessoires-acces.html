@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" data-lcdp-css="c085 c034 c038 c032 c083 c036 c033 c037 c041 c040 c084">
+<html lang="fr" data-lcdp-accessoires-acces data-lcdp-css="c085 c034 c038 c032 c083 c036 c033 c037 c041 c040 c084">
 <head>
   <meta charset="utf-8">
 
@@ -9,26 +9,7 @@
   <meta name="description" content="Cette page est en cours de mise à jour.">
 
   <link rel="preload" as="image" href="https://lacleduparc.fr/OBJET/IMAG/PICTO/pictowait.svg">
-  <style>
-    html:not(.lcdp-accessoires-prets) { background: #fff; }
-    html:not(.lcdp-accessoires-prets)::before {
-      content: ""; position: fixed; inset: 0; z-index: 2147483644; background: #fff;
-    }
-    html:not(.lcdp-accessoires-prets)::after {
-      content: ""; position: fixed; z-index: 2147483645; top: 50%; left: 50%;
-      width: 64px; height: 64px; transform: translate(-50%, -50%);
-      background: url("https://lacleduparc.fr/OBJET/IMAG/PICTO/pictowait.svg") center / contain no-repeat;
-    }
-    html:not(.lcdp-accessoires-prets) .lcdp-site-page { visibility: hidden; }
-    #lcdp-attente-arrivee {
-      position: fixed; inset: 0; z-index: 2147483646; background: #fff;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 16px; padding: 24px; box-sizing: border-box; text-align: center;
-    }
-    #lcdp-attente-arrivee img { display: block; width: 64px; height: 64px; }
-
-    #lcdp-attente-arrivee [hidden] { display: none; }
-  </style>
+  <link rel="stylesheet" href="https://lacleduparc.fr/OBJET/CSSBASE/lcdp-attente.css?v=20261127-accessoires">
   <script src="../config.js"></script>
   <script>
     (() => {
@@ -42,6 +23,7 @@
       window.LCDP_urlMembre = path => typeof cfg.membreUrl === "function" ? cfg.membreUrl(path) : joindre(membreBase, path);
       window.LCDP_urlObjet = path => typeof cfg.objetUrl === "function" ? cfg.objetUrl(path) : joindre(objetBase, path);
       document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css?v=20261126-da27f214') + '">');
+      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-objets-specifiques.css?v=20261127-proprietaire') + '">');
     })();
   </script>
   <script src="./boutique-accessoires-cadre.js?v=20261126-accessoires-transition-v1" defer></script>
@@ -60,7 +42,7 @@
     <main class="lcdp-site-main">
       <section class="lcdp-page-section" aria-label="Page en cours de mise à jour">
         <div class="lcdp-page-container">
-          <h2 class="lcdp-boxtext__title lcdp-boxtext__title--center" style="margin-bottom: 24px;">Accessoires d’accès</h2>
+          <h2 class="lcdp-boxtext__title lcdp-boxtext__title--center lcdp-boxtext__title--espace-apres">Accessoires d’accès</h2>
           <div class="lcdp-section-sommeil" role="status" aria-labelledby="lcdp-section-sommeil-titre">
               <div class="lcdp-section-sommeil__icone" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">

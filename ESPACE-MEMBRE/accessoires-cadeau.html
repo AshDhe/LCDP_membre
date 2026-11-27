@@ -21,6 +21,7 @@
       window.LCDP_urlMembre = path => typeof cfg.membreUrl === "function" ? cfg.membreUrl(path) : joindre(membreBase, path);
       window.LCDP_urlObjet = path => typeof cfg.objetUrl === "function" ? cfg.objetUrl(path) : joindre(objetBase, path);
       document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-central-mobile-first.css?v=20261126-da27f214') + '">');
+      document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet('/CSSBASE/lcdp-objets-specifiques.css?v=20261127-proprietaire') + '">');
     })();
   </script>
   <script src="./boutique-accessoires-cadre.js?v=20261126" defer></script>
@@ -34,7 +35,7 @@
     <main class="lcdp-site-main">
       <section class="lcdp-page-section" aria-label="Page en cours de mise à jour">
         <div class="lcdp-page-container">
-          <h2 class="lcdp-boxtext__title lcdp-boxtext__title--center" style="margin-bottom: 24px;">Accessoires cadeau</h2>
+          <h2 class="lcdp-boxtext__title lcdp-boxtext__title--center lcdp-boxtext__title--espace-apres">Accessoires cadeau</h2>
           <div class="lcdp-section-sommeil" role="status" aria-labelledby="lcdp-section-sommeil-titre">
               <div class="lcdp-section-sommeil__icone" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
