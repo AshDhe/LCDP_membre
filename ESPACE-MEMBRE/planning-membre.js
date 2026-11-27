@@ -3731,7 +3731,7 @@
     try {
     // Afficher le formulaire DUO/FAMILLE indépendamment du déploiement Worker.
     // Une route absente ne doit plus ramener à l'ancien formulaire.
-    await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css");
+    await Promise.all(["/CSSBASE/lcdp-objets-specifiques.css?v=20261127-objets-communs-v2","/CSSBASE/lcdp-formulaire.css?v=20261127-objets-communs-v2","/CSSBASE/lcdp-bouton-lien-picto.css?v=20261127-objets-communs-v2","/CSSBASE/lcdp-boite-dialogue.css?v=20261127-objets-communs-v2"].map(chargerCssObjetUneFois));
     await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261119-cycle-vie");
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites&v=20261113-invites-ux-v5");
     if (!window.LCDP_InvitationsAbonnement?.monter) {
@@ -3827,7 +3827,7 @@
     if (!invitations) return null;
     // Cette page utilise planning-membre.js, et non mes-acces-membre.js :
     // attendre le CSS du formulaire AVANT d'ouvrir la vue pleine page.
-    await chargerCssObjetUneFois("/CSSBASE/lcdp-mes-acces-membre.css?v=20261113-ajouter-retabli-v17");
+    await Promise.all(["/CSSBASE/lcdp-objets-specifiques.css?v=20261127-objets-communs-v2","/CSSBASE/lcdp-formulaire.css?v=20261127-objets-communs-v2","/CSSBASE/lcdp-bouton-lien-picto.css?v=20261127-objets-communs-v2","/CSSBASE/lcdp-boite-dialogue.css?v=20261127-objets-communs-v2"].map(chargerCssObjetUneFois));
     const surface = ouvrirSurfaceInvitationPleinePage();
     if (!surface) return null;
     const conteneur = surface.conteneur;

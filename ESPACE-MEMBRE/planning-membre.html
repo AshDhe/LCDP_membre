@@ -35,20 +35,19 @@
 
       [
         "/CSSBASE/cssbase.css?interface=spinner-officiel",
-        "/CSSBASE/lcdp-central-mobile-first.css?v=20261127-palette-commune",
+        "/CSSBASE/lcdp-central-mobile-first.css?v=20261127-objets-communs-v2",
         "/CSSBASE/lcdp-planifier.css?v=20261127-planning-proprietaire",
-        "/CSSBASE/lcdp-navigation-onglets.css",
-        "/CSSBASE/lcdp-carte-acces-visuel.css",
-        "/CSSBASE/lcdp-ui-badges.css?v=20261124-action-ambre",
+        "/CSSBASE/lcdp-bouton-lien-picto.css?v=20261127-objets-communs-v2",
+        "/CSSBASE/lcdp-image.css?v=20261127-objets-communs-v2",
+        "/CSSBASE/lcdp-objets-specifiques.css?v=20261127-objets-communs-v2",
         "/CSSBASE/lcdp-lightbox-convergence.css",
-        "/CSSBASE/lcdp-mes-acces-membre.css",
-        "/CSSBASE/lcdp-fiche-parc-wrapper.css?v=20261113-wrapper-unique-v9",
-        "/CSSBASE/lcdp-fiche-parc-vue-carte.css?v=20261113-wrapper-unique-v9"
+        "/CSSBASE/lcdp-boite-dialogue.css?v=20261127-objets-communs-v2",
+        "/CSSBASE/lcdp-formulaire.css?v=20261127-objets-communs-v2",
+        "/CSSBASE/lcdp-fiche-parc-wrapper.css?v=20261113-wrapper-unique-v9"
       ].forEach(path => {
         // Comme sur mes-informations.html : conserver l'ordre de cascade CSS
         // avant le style de page, sans chargement asynchrone concurrent.
-        const versionVue = path.endsWith("/lcdp-mes-acces-membre.css") ? "?v=20261124-etat-vide-actions-v1" : "";
-        document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(path) + versionVue + '">');
+        document.write('<link rel="stylesheet" href="' + window.LCDP_urlObjet(path) + '">');
       });
       document.write('<script src="' + window.LCDP_urlObjet('/JSBASE/03-galerie.js') + '"><\/script>');
     })();
