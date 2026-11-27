@@ -323,7 +323,7 @@
       const rond = document.createElement('span');
       rond.title = 'Invitation reçue';
       rond.setAttribute('aria-label', 'Invitation reçue');
-      rond.style.cssText = 'display:inline-block;width:1em;height:1em;border-radius:50%;background:#e78db3;vertical-align:middle;margin-right:6px';
+      rond.classList.add("lcdp-picto--invitation-recue");
       description.prepend(rond);
     }
 
@@ -345,11 +345,11 @@
         inviter.type = 'button';
         const icone = document.createElement('span');
         icone.setAttribute('aria-hidden', 'true');
-        icone.style.cssText = 'display:inline-flex;vertical-align:middle;margin-right:6px';
+        icone.classList.add("lcdp-picto--bouton-invites");
         icone.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>';
         inviter.append(icone, document.createTextNode('Invités '));
         const compteur = textEl('span', '', nombre === null ? '…' : nombre === 0 ? '-' : String(nombre));
-        compteur.style.cssText = 'border-radius:999px;background:rgba(75,99,51,.1);padding:1px 6px;font-size:.85em';
+        compteur.classList.add("lcdp-button__compteur");
         inviter.appendChild(compteur);
         inviter.addEventListener('click', () => void montrerInvites(r));
         actions.appendChild(inviter);

@@ -605,8 +605,7 @@
       bouton.setAttribute("aria-busy", "true");
       bouton.setAttribute("aria-label", "Chargement du formulaire de DA");
       const roue = creerRoueAttenteDa();
-      roue.style.width = "32px";
-      roue.style.height = "32px";
+      roue.classList.add("lcdp-picto--attente-32");
       bouton.replaceChildren(roue);
       try {
         if (options?.presentationSeule === true) {

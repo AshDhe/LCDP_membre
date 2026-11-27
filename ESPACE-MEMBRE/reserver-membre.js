@@ -696,8 +696,7 @@
       dialogue.classList.add("lcdp-planifier-parcs-inline");
       // Aucun rendu intermédiaire de la box : elle reste hors affichage
       // pendant le montage des fragments, CSS et cartes.
-      dialogue.style.display = "none";
-      dialogue.style.opacity = "0";
+      dialogue.classList.add("lcdp-boite-dialogue--montage");
       // Un seul titre, mis à jour lors du changement de département.
       titre.textContent = libelleDepartementListeParcs();
       form.querySelector(".lcdp-box-dialogue-champ__actions")?.remove();
@@ -798,8 +797,8 @@
   async function revelerDialogueParcs(dialogue, chargement) {
     // Laisser finir le calcul de mise en page avant d'exposer la box.
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    dialogue.style.display = "";
-    dialogue.style.opacity = "1";
+    dialogue.classList.remove("lcdp-boite-dialogue--montage");
+    dialogue.classList.add("lcdp-boite-dialogue--visible");
     chargement.remove();
   }
 

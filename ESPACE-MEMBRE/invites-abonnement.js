@@ -207,9 +207,9 @@
     // L'absence du spinner ne doit jamais bloquer l'ouverture du formulaire.
     const spinnerEnregistrement = spinnerOfficiel ? spinnerOfficiel.cloneNode(true) : null;
     spinnerEnregistrement?.setAttribute("aria-hidden", "true");
-    envoyer.style.display = "inline-flex";
-    envoyer.style.alignItems = "center";
-    envoyer.style.justifyContent = "center";
+
+
+
     const groupe = vue.querySelector("[data-lcdp-invitation-groupe]");
     const fermerCroix = vue.querySelector("[data-lcdp-listinvites-close]");
     const message = vue.querySelector("[data-lcdp-invitation-abonnement-message]");
@@ -315,16 +315,16 @@
         const blocage = motifBlocageAjout(categorie);
         if (blocage) {
           bouton.setAttribute("aria-disabled","true");
-          bouton.style.opacity = "0.55";
-          bouton.style.cursor = "help";
+
+
           // Un bouton grisé reste cliquable pour afficher l'explication.
-          bouton.style.pointerEvents = "auto";
+
           bouton.title = blocage;
         } else {
           bouton.removeAttribute("aria-disabled");
-          bouton.style.opacity = "";
-          bouton.style.cursor = "";
-          bouton.style.pointerEvents = "";
+
+
+
           bouton.title = categorie === "duo" ? "Ajouter un invité DUO / DUO+" : "Ajouter un invité FAMILLE";
         }
         note.textContent = "";
@@ -424,7 +424,7 @@
         liste.appendChild(creerLigneExistante(categorie,contact));
       }
       // Une liste vide ne doit pas réserver d'espace au-dessus du champ e-mail.
-      liste.style.display = contexte.contacts[categorie].length ? "" : "none";
+      liste.hidden = !contexte.contacts[categorie].length;
       ajouter.addEventListener("click", () => {
         const blocage = motifBlocageAjout(categorie);
         if (blocage) {
@@ -467,7 +467,7 @@
     groupe.addEventListener("click",() =>
       info("La fonction Groupe n'est pas disponible actuellement.")
     );
-    groupe.style.opacity = "0.55";
+
 
     formulaire.addEventListener("submit",async event => {
       event.preventDefault();
