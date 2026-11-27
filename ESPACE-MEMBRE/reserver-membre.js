@@ -1249,20 +1249,16 @@
     if (titre) titre.textContent = modeCoachPlanifierActif ? "FILTRE COACH (PRÉSENCE PARC)" : "FILTRE INVITÉS (ACCÈS PARC)";
     if (filtreInvites) {
       filtreInvites.hidden = modeCoachPlanifierActif;
-      filtreInvites.style.display = modeCoachPlanifierActif ? "none" : "";
     }
     if (filtreCoach) {
       filtreCoach.hidden = !modeCoachPlanifierActif;
-      filtreCoach.style.display = modeCoachPlanifierActif ? "" : "none";
     }
     if (informationCoach) {
       informationCoach.hidden = !modeCoachPlanifierActif;
-      informationCoach.style.display = modeCoachPlanifierActif ? "" : "none";
     }
     // Conserver la grille mensuelle permanente dans les deux modes.
     if (grille) {
       grille.hidden = false;
-      grille.style.display = "";
     }
     document.querySelectorAll(".lcdp-planifier-filtre--coach").forEach(bouton => {
       bouton.setAttribute("aria-pressed", String(modeCoachPlanifierActif));
@@ -1525,7 +1521,6 @@
     ligneCoach.className = "lcdp-box-legende__ligne";
     ligneCoach.dataset.lcdpFiltresCoach = "true";
     ligneCoach.hidden = true;
-    ligneCoach.style.display = "none";
     ligneCoach.addEventListener("change", () => igRendreSurCalendrier());
     for (const [categorie, picto] of [["sport","🏃"],["art","🎨"],["culture","🎭"],["recre","🎲"]]) {
       const etiquette = document.createElement("label");
@@ -1557,7 +1552,6 @@
     informationCoach.dataset.lcdpInformationCoach = "true";
     informationCoach.textContent = "Les présences des coachs seront affichées ici dès que les réservations Coach seront disponibles.";
     informationCoach.hidden = true;
-    informationCoach.style.display = "none";
     enteteFiltres.appendChild(informationCoach);
 
     // Légende sous le planning, construite avec le composant et les états CSS existants.
@@ -1813,7 +1807,7 @@
 
     function afficher() {
       // « accès clos » ne concerne que la consultation d'un parc sélectionné.
-      if (itemAccesClos) itemAccesClos.style.display = parcSelectionne ? "" : "none";
+      if (itemAccesClos) itemAccesClos.hidden = !parcSelectionne;
       enteteFiltres.classList.toggle("lcdp-planifier-entete-avec-parc", Boolean(parcSelectionne));
       const nomParcEnTete = document.getElementById("lcdp-planifier-parc-en-tete");
       if (nomParcEnTete) {
@@ -2399,7 +2393,7 @@
       const message = document.createElement("p");
       message.setAttribute("role", "status");
       message.textContent = resultatsAlerteActifs ? "Aucun parc ne correspond aux critères de cette recherche." : "Il n’y a pas encore de parc dans ce département.";
-      message.style.cssText = "box-sizing:border-box;width:100%;margin:12px auto;padding:16px 12px;border:1px solid #dce4da;border-radius:14px;background:#fff;box-shadow:0 3px 12px rgba(35,55,35,.08);color:#263e2f;font-weight:600;text-align:center;line-height:1.5";
+      message.classList.add("lcdp-box-liste-card-diaporama__message");
       zone.appendChild(message);
     }
     navigation.zoneDiaporama.replaceChildren(liste);
@@ -5754,7 +5748,6 @@
     const filtresInvitesJour = enteteJour.querySelector(".lcdp-planifier-legende-autorisations .lcdp-box-legende__ligne");
     if (filtresInvitesJour) {
       filtresInvitesJour.hidden = false;
-      filtresInvitesJour.style.removeProperty("display");
     }
     const ligneIdentiteJour = enteteJour.querySelector(".lcdp-planifier-entete-identite");
     const informationsJour = enteteJour.querySelector(".lcdp-planifier-entete-parc");
@@ -5847,7 +5840,7 @@
       // Un parc est nécessairement sélectionné dans cette troisième vue.
       legendeHoraires.querySelectorAll(".lcdp-box-legende__item").forEach(item => {
         if (item.textContent.trim() === "abonnement en cours") item.remove();
-        if (item.textContent.trim() === "accès de ce parc clos") item.style.display = "";
+        if (item.textContent.trim() === "accès de ce parc clos") item.hidden = false;
       });
       grille.after(legendeHoraires);
     }

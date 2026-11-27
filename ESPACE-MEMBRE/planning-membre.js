@@ -899,8 +899,8 @@
       // La croix partage réellement la ligne du nom du parc.
       fermer.classList.add("lcdp-planning-verso-fermer-inline");
       parcVerso.appendChild(fermer);
-      parcVerso.style.marginBottom = "0";
-      dateVerso.style.marginTop = "0";
+      parcVerso.classList.add("lcdp-planning-verso-parc-titre");
+      dateVerso.classList.add("lcdp-planning-verso-date");
     }
     if (actionsVerso) {
       actionsVerso.classList.add("lcdp-planning-verso-actions");
@@ -1146,7 +1146,6 @@
       shift.removeAttribute("role");
       shift.removeAttribute("aria-modal");
       fermer.addEventListener("click", fermerVueFicheDansMesAcces);
-      shift.style.visibility = "hidden";
       shift.setAttribute("aria-hidden", "true");
       shift.inert = true;
       hote.appendChild(shift);
@@ -1186,7 +1185,6 @@
       // Le changement de visibilité est atomique pour éviter l'effet
       // « wrapper qui se construit » observé sur Fiche et Carte.
       shift.classList.add("lcdp-box-shift-detail-parc--visible");
-      shift.style.removeProperty("visibility");
       shift.removeAttribute("aria-hidden");
       shift.inert = false;
       attente.remove();
@@ -1797,15 +1795,15 @@
     // Réutiliser LE spinner pleine page de MES ACCÈS, sans créer d'overlay.
     const attente = document.getElementById("lcdp-planning-attente");
     if (!attente) return () => {};
-    const affichageInitial = attente.style.display;
+    const attenteDejaActive = attente.classList.contains("lcdp-attente--active");
     const libelleInitial = attente.getAttribute("aria-label");
     attente.setAttribute("aria-label", "Chargement des invités");
-    attente.style.display = "flex";
+    attente.classList.add("lcdp-attente--active");
     let terminee = false;
     return () => {
       if (terminee) return;
       terminee = true;
-      attente.style.display = affichageInitial;
+      attente.classList.toggle("lcdp-attente--active", attenteDejaActive);
       if (libelleInitial === null) attente.removeAttribute("aria-label");
       else attente.setAttribute("aria-label", libelleInitial);
     };
@@ -3510,8 +3508,6 @@
     titre.className = "lcdp-box-card-listinvites-oui-non__title";
     titre.id = "lcdp-listinvites-lecture-title";
     titre.textContent = "INVITÉS";
-    titre.style.fontSize = "24px";
-    titre.style.fontWeight = "800";
     const liste = document.createElement("ul");
     liste.className = "lcdp-box-card-listinvites-oui-non__list lcdp-box-card-listinvites-oui-non__list--lecture";
     const invitesActifs = Array.isArray(invites) ? invites : [];

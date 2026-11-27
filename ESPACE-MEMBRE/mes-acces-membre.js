@@ -285,8 +285,6 @@
 
   function imageErreur(img) {
     img.hidden = true;
-    // Une règle CSS de classe peut contredire display:none du seul attribut hidden.
-    img.style.display = 'none';
     // Le nom, la date et le verso restent visibles quand le parc n'a pas d'image.
     img.alt = '';
   }
@@ -966,7 +964,7 @@
           <div class="lcdp-box-card-parc-diaporama__contenu">
             <div class="lcdp-box-card-parc__body">
               <div class="lcdp-box-card-parc__text"><h3 class="lcdp-box-card-parc__title" data-lcdp-diaporama-nom-dos></h3></div>
-              <p class="lcdp-box-card-parc__description" data-lcdp-diaporama-description style="margin:2px 0 8px"></p>\n               <div class="lcdp-box-card-parc__actions--reserver" data-lcdp-diaporama-actions></div>
+              <p class="lcdp-box-card-parc__description" data-lcdp-diaporama-description></p>\n               <div class="lcdp-box-card-parc__actions--reserver" data-lcdp-diaporama-actions></div>
             </div>
           </div>
         </div>

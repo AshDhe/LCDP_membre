@@ -96,13 +96,13 @@
     form.append(titre,description);
     const champs=node("div","lcdp-planning-filtres__champs");
     const nom=node("input","lcdp-planning-filtres__select");nom.id="lcdp-alerte-titre";nom.maxLength=80;nom.required=true;nom.placeholder="Ex. Week-ends dans le Loiret";
-    const nomChamp=champ("Nom de l'alerte",nom);nomChamp.style.gridColumn="1 / -1";champs.append(nomChamp);
+    const nomChamp=champ("Nom de l'alerte",nom);nomChamp.classList.add("lcdp-planning-filtres__champ--pleine-largeur");champs.append(nomChamp);
     groupe(champs,"departements","Départements",etat.references.departements.map(d=>[d.code,d.code+" - "+d.nom]),3);
     const parcs=groupe(champs,"parcs","Parcs",[],3);
     for(const el of champs.querySelectorAll('[data-critere-valeur="departements"]'))el.addEventListener("change",async()=>{
       try{await chargerParcs(true);}catch(e){message(e.message);}
     });
-    const cat=select("lcdp-alerte-categorie",types),catChamp=champ("Invités",cat);catChamp.style.gridColumn="1 / -1";champs.append(catChamp);
+    const cat=select("lcdp-alerte-categorie",types),catChamp=champ("Invités",cat);catChamp.classList.add("lcdp-planning-filtres__champ--pleine-largeur");champs.append(catChamp);
     groupe(champs,"plages","Plages horaires",plages,3);
     groupe(champs,"mois","Mois (avec année)",[],3,"month");
     groupe(champs,"jours","Jours de semaine",jours,3);
