@@ -879,7 +879,7 @@
     const classes = new Set(String(document.documentElement.dataset.lcdpCss || "").split(/\s+/).filter(Boolean));
     ["c040","c054","c065"].forEach(code => classes.add(code));
     document.documentElement.dataset.lcdpCss = [...classes].join(" ");
-    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261121-mineurs-confirmation-v3");
+    await chargerScriptMembreUneFois("/ESPACE-MEMBRE/invites-abonnement.js?interface=spinner-officiel&v=20261127-majorite-checkin-v1");
     const fragment = await chargerFragmentObjet("/HTMLBASE/04-card-invites-abonnement.html?formulaire=inviter-invites&v=20261121-mineurs-confirmation-v3");
     const dialogue = document.createElement("div");
     dialogue.className = "lcdp-box-dialogue-champ-inviter";
@@ -914,15 +914,14 @@
         }
         return dataDuo;
       },
-      inviterDuoActif:async (idflux,idduoactif,declarationMineurs) => {
+      inviterDuoActif:async (idflux,idduoactif) => {
         const reponseDuo = await fetch(ENDPOINT_INVITER_MEMBRE + "/duoactif/inviter",{
           method:"POST",credentials:"include",cache:"no-store",
           headers:{"Accept":"application/json","Content-Type":"application/json"},
-          body:JSON.stringify({idflux,idduoactif,...(declarationMineurs ? {declarationMineurs} : {})})
+          body:JSON.stringify({idflux,idduoactif})
         });
         const resultatDuo = await reponseDuo.json().catch(() => null);
         if (reponseDuo.status === 401) redirigerConnexionMembre("inactive");
-        if (resultatDuo?.declarationMineursRequise === true) return resultatDuo;
         if (!reponseDuo.ok || resultatDuo?.ok !== true || resultatDuo.confirme !== true) {
           throw new Error(resultatDuo?.message || "Invitation DUO ACTIF non confirmée.");
         }
@@ -931,14 +930,13 @@
         );
         return resultatDuo;
       },
-      enregistrer:async (idflux, selection, declarationMineurs) => {
+      enregistrer:async (idflux, selection) => {
         const resultatHttp = await fetch(ENDPOINT_INVITER_MEMBRE + "/invites-abonnement", {
           method:"POST",credentials:"include",cache:"no-store",
           headers:{"Accept":"application/json","Content-Type":"application/json"},
-          body:JSON.stringify({idflux,selection,...(declarationMineurs ? {declarationMineurs} : {})})
+          body:JSON.stringify({idflux,selection})
         });
         const resultat = await resultatHttp.json().catch(() => null);
-        if (resultat?.declarationMineursRequise === true) return resultat;
         if (!resultatHttp.ok || resultat?.ok !== true) {
           throw new Error(resultat?.message || "Invitations non enregistrées.");
         }

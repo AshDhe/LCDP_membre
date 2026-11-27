@@ -55,15 +55,76 @@
         if(!sortie)root.appendChild(element("p","lcdp-acces-message",
           "Cochez uniquement les invités présents. Les invités non cochés pourront effectuer leur propre check-in après validation de la liste."));
         const form=element("form","lcdp-acces-invites-form");
+        const declaratif=!sortie && etat.majorityDeclarationSupported===true;
+        const valider=bouton(sortie?"Valider":"Valider la liste");valider.type="submit";
+        let confirmationEnCours=false;
         const liste=element("ul","lcdp-acces-instructions");
-        (etat.guests || []).forEach(g=>{
+        if(declaratif && (etat.guests || []).length){
+          const tableau=element("table","lcdp-acces-appel-tableau");
+          const entete=element("thead"),ligneEntete=element("tr");
+          for(const texte of ["Invité","Présent","Mineur"]){
+            const th=element("th","",texte);th.scope="col";ligneEntete.appendChild(th);
+          }
+          entete.appendChild(ligneEntete);tableau.appendChild(entete);
+          const corps=element("tbody");tableau.appendChild(corps);
+          for(const g of etat.guests){
+            const ligne=element("tr"),identite=element("th","",g.name);identite.scope="row";
+            const deja=g.present===true;
+            const presence=element("td"),minorite=element("td");
+            const switchLabel=element("label","lcdp-box-card-listinvites-oui-non__switch");
+            const casePresence=element("input","lcdp-box-card-listinvites-oui-non__switch-input");
+            casePresence.type="checkbox";casePresence.name="guest";casePresence.value=g.id;
+            casePresence.checked=deja || g.checkedBySponsor===true;casePresence.disabled=deja;
+            casePresence.setAttribute("role","switch");casePresence.setAttribute("aria-label","Présence : "+g.name);
+            const slider=element("span","lcdp-box-card-listinvites-oui-non__switch-slider");
+            slider.setAttribute("aria-hidden","true");switchLabel.append(casePresence,slider);presence.appendChild(switchLabel);
+            if(g.majeur!==true){
+              const caseMineur=element("input");caseMineur.type="checkbox";caseMineur.name="minorite";caseMineur.value=g.id;
+              caseMineur.checked=true;caseMineur.disabled=deja || !casePresence.checked;
+              caseMineur.setAttribute("aria-label","Mineur : "+g.name);
+              minorite.appendChild(caseMineur);
+              casePresence.addEventListener("change",()=>{
+                if(!casePresence.checked)caseMineur.checked=true;
+                caseMineur.disabled=deja || !casePresence.checked;
+              });
+              caseMineur.addEventListener("change",async()=>{
+                if(caseMineur.checked)return;
+                caseMineur.checked=true;
+                if(confirmationEnCours || caseMineur.disabled || !casePresence.checked)return;
+                confirmationEnCours=true;valider.disabled=true;caseMineur.disabled=true;
+                try{
+                  const confirme=await actions.onConfirmGuestMajority?.(g.name);
+                  if(confirme===true && casePresence.checked && !deja)caseMineur.checked=false;
+                }catch(e){
+                  const erreur=element("p","lcdp-acces-erreur",e.message || "Confirmation indisponible.");
+                  erreur.setAttribute("role","alert");form.appendChild(erreur);
+                }finally{
+                  confirmationEnCours=false;valider.disabled=false;caseMineur.disabled=deja || !casePresence.checked;
+                  if(caseMineur.isConnected && !caseMineur.disabled)caseMineur.focus();
+                }
+              });
+            }
+            ligne.append(identite,presence,minorite);corps.appendChild(ligne);
+          }
+          form.appendChild(tableau);
+        }
+        if(!declaratif)(etat.guests || []).forEach(g=>{
           const item=element("li"),label=element("label"),casePresence=element("input");casePresence.type="checkbox";casePresence.value=g.id;casePresence.name="guest";const deja=sortie?g.exited===true:g.present===true;casePresence.checked=sortie?deja:g.checkedBySponsor===true;casePresence.disabled=deja;
           label.append(casePresence,document.createTextNode(" "+g.name+(deja?(sortie?" — sortie déjà confirmée":" — présence déjà confirmée"):"")));item.appendChild(label);liste.appendChild(item);
         });
         if(!(etat.guests || []).length)liste.appendChild(element("li","lcdp-acces-message","Aucun invité enregistré sur cet accès."));
-        const valider=bouton(sortie?"Valider":"Valider la liste");valider.type="submit";
-        const defilement=element("div","lcdp-acces-invites-liste");defilement.setAttribute("role","region");defilement.setAttribute("aria-label","Liste des invités");defilement.tabIndex=0;defilement.appendChild(liste);
-        form.append(defilement,valider);form.addEventListener("submit",async event=>{event.preventDefault();if(valider.disabled)return;valider.disabled=true;try{await actions.onGuestConfirm?.(Array.from(form.querySelectorAll('input[name="guest"]:checked:not(:disabled)')).map(i=>i.value));}catch(e){valider.disabled=false;const erreur=element("p","lcdp-acces-erreur",e.message);erreur.setAttribute("role","alert");form.appendChild(erreur);}});
+        const defilement=element("div","lcdp-acces-invites-liste");defilement.setAttribute("role","region");defilement.setAttribute("aria-label","Liste des invités");defilement.tabIndex=0;
+        const tableau=form.querySelector(".lcdp-acces-appel-tableau");
+        defilement.appendChild(tableau || liste);
+        form.append(defilement,valider);
+        form.addEventListener("submit",async event=>{
+          event.preventDefault();if(valider.disabled || confirmationEnCours)return;valider.disabled=true;
+          try{
+            const presents=Array.from(form.querySelectorAll('input[name="guest"]:checked:not(:disabled)')).map(i=>i.value);
+            const majeurs=declaratif?Array.from(form.querySelectorAll('input[name="minorite"]:not(:checked):not(:disabled)')).map(i=>i.value).filter(id=>presents.includes(id)):[];
+            await actions.onGuestConfirm?.(presents,majeurs);
+          }catch(e){valider.disabled=false;const erreur=element("p","lcdp-acces-erreur",e.message);erreur.setAttribute("role","alert");form.appendChild(erreur);}
+        });
         root.append(form,bouton("Retour",()=>actions.onBack?.()));return;
       }
       if(etat.screen==="confirmation_done")return;

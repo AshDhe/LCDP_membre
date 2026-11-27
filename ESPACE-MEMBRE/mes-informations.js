@@ -124,7 +124,7 @@
       key: "majoriteAffichage",
       action: {
         id: "modifier-majorite-membre",
-        texte: "Demander la modification de la majorité à l’administrateur",
+        texte: "Modifier votre majorité",
         mode: "picto",
         pictoRouge: true,
         securite: true
@@ -3462,8 +3462,7 @@ function afficherStatutDaCompte(compte) {
         ? "Opt-in le " + formaterDate(compteMembreActuel.optinGeolocalisation)
         : "Non enregistré",
       alias: formaterAliasAffichage(compteMembreActuel.alias),
-      majoriteAffichage: compteMembreActuel.majorite === "mineur" ? "Mineur"
-        : compteMembreActuel.majorite === "majeur" ? "Majeur" : "–",
+      majoriteAffichage: compteMembreActuel.majorite === "majeur" ? "Majeur" : "Mineur",
       membreDepuisAffichage: formaterMembreDepuis(compteMembreActuel.membreDepuis),
       parrainAffichage: formaterParrainAffichage(compteMembreActuel.parrain),
       departementAffichage: formaterDepartementAffichage(compteMembreActuel.departement, compteMembreActuel),
@@ -3905,16 +3904,22 @@ function afficherResumePointsPassion(compte) {
     if (demandeMajoriteEnCours) return;
     demandeMajoriteEnCours=true;
     try {
+      const declaration=compteMembreActuel.majorite!=="majeur" && compteMembreActuel.majoriteDeclarationDisponible===true;
       const confirmer=await ouvrirChoixSecurite(
+        declaration?"Confirmez-vous être majeur(e) ? Cette déclaration engage votre responsabilité. L’administrateur reçoit une notification.":
         "Souhaitez-vous transmettre une demande de modification de votre majorité à l’administrateur de l’application ?",
-        {titre:"Modifier votre majorité",libelleAnnuler:"Annuler",libelleConfirmer:"Transmettre"}
+        {titre:declaration?"Déclaration de majorité":"Modifier votre majorité",libelleAnnuler:"Annuler",libelleConfirmer:declaration?"Confirmer":"Transmettre"}
       );
       if (!confirmer) return;
-      const reponse=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+"/majorite-admin-request",{
+      const reponse=await fetch(ENDPOINT_MON_COMPTE_MEMBRE+(declaration?"/majorite-declaration":"/majorite-admin-request"),{
         method:"POST",credentials:"include",cache:"no-store",
-        headers:{"Content-Type":"application/json"},body:JSON.stringify({})
+        headers:{"Content-Type":"application/json"},body:JSON.stringify(declaration?{confirmation:true}:{})
       });
       const resultat=await reponse.json().catch(()=>null);
+      if(declaration && reponse.ok && resultat?.ok===true && resultat.majorite==="majeur"){
+        compteMembreActuel.majorite="majeur";
+        remplirChamp("champ-majorite-membre","Majeur","Non renseigné");
+      }
       await afficherResultatSecurite(resultat?.message ||
         "La demande de modification de majorité n’a pas pu être confirmée.");
     } catch {
