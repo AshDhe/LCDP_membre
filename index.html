@@ -9,6 +9,18 @@
   <meta name="description" content="Redirection vers le menu membre La Clé du Parc.">
 
   <script src="./config.js"></script>
+  <script>
+    (() => {
+      const h = location.hostname;
+      const base = h === "ashdhe.github.io" || h === "huguespavret.github.io"
+        ? location.origin + "/LCDP_public" : "https://lacleduparc.fr";
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = base + "/OBJET/CSSBASE/lcdp-wrapper.css";
+      document.head.appendChild(link);
+    })();
+  </script>
+  <noscript><link rel="stylesheet" href="https://lacleduparc.fr/OBJET/CSSBASE/lcdp-wrapper.css"></noscript>
 
   <script>
     (() => {
@@ -33,7 +45,11 @@
     })();
   </script>
 </head>
-<body>
-  <p>Redirection vers l’espace membre…</p>
+<body class="lcdp-app-page">
+  <div class="lcdp-app-wrapper lcdp-app-wriper--sans">
+    <main class="lcdp-site-main">
+      <section class="lcdp-page-section"><p>Redirection vers l’espace membre…</p></section>
+    </main>
+  </div>
 </body>
 </html>
